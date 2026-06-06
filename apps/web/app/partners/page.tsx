@@ -66,8 +66,8 @@ export default function PartnersPage() {
   const [currentUser, setCurrentUser] = useState<Referral | null>(null);
   const [programConfig, setProgramConfig] = useState(DEFAULT_CONFIG);
 
-  // Navigation states
-  const [viewMode, setViewMode] = useState<'landing' | 'register' | 'login' | 'dashboard'>('landing');
+  // Navigation states — login is now a separate page at /partners/login
+  const [viewMode, setViewMode] = useState<'landing' | 'register' | 'dashboard'>('landing');
   
   // Registration Form States
   const [regName, setRegName] = useState('');
@@ -77,9 +77,6 @@ export default function PartnersPage() {
   const [regAccountHolder, setRegAccountHolder] = useState('');
   const [regAccountNumber, setRegAccountNumber] = useState('');
   const [regRoutingCode, setRegRoutingCode] = useState('');
-  
-  // Login Form States
-  const [loginEmail, setLoginEmail] = useState('');
   
   // Update Bank Details Form States
   const [editBankName, setEditBankName] = useState('');
@@ -267,27 +264,11 @@ export default function PartnersPage() {
   };
 
   // Login handler
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!loginEmail) return;
-
-    const found = referrals.find(r => r.email.toLowerCase() === loginEmail.trim().toLowerCase());
-    if (found) {
-      setCurrentUser(found);
-      localStorage.setItem('dinepos_active_referral_email', found.email);
-      setViewMode('dashboard');
-      triggerAlert(`Welcome back, ${found.name}!`, 'success');
-    } else {
-      triggerAlert('Email address not registered in our partner portal.', 'error');
-    }
-  };
-
   // Logout handler
   const handleLogout = () => {
     setCurrentUser(null);
     localStorage.removeItem('dinepos_active_referral_email');
     setViewMode('landing');
-    triggerAlert('Logged out successfully.', 'info');
   };
 
   // Open Edit Bank details
@@ -384,13 +365,12 @@ export default function PartnersPage() {
                 >
                   {programConfig.programActive ? 'Join Ambassador Program' : 'Program Paused'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('login')}
-                  className="px-8 py-3.5 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                <Link
+                  href="/partners/login"
+                  className="px-8 py-3.5 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer inline-block text-center"
                 >
                   Ambassador Login
-                </button>
+                </Link>
               </div>
             </div>
 
@@ -605,50 +585,6 @@ export default function PartnersPage() {
                     className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-md"
                   >
                     Create Account
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
-        {/* ========================================================================= */}
-        {/* VIEW 3: LOGIN PROGRAM                                                     */}
-        {/* ========================================================================= */}
-        {viewMode === 'login' && (
-          <div className="max-w-[400px] mx-auto py-12 animate-fade-in duration-300">
-            <div className={`border ${theme.cardBg} rounded-2xl p-8 shadow-2xl space-y-6`}>
-              <div className="text-center space-y-2 pb-4 border-b border-white/5">
-                <h2 className="font-serif text-2xl text-white font-medium">Ambassador Login</h2>
-                <p className="text-xs text-[#A69984]">Enter your email to access your partner dashboard.</p>
-              </div>
-
-              <form onSubmit={handleLogin} className="space-y-4 text-xs font-semibold">
-                <div className="space-y-1.5">
-                  <label className="text-[#A69984]">Partner Email Address</label>
-                  <input 
-                    type="email" required placeholder="name@restaurant.com"
-                    value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
-                    className={`w-full bg-[#0e0e0d] border ${theme.inputBorder} rounded-lg p-3 text-white placeholder-white/20 focus:outline-none`}
-                  />
-                  <span className="text-[10px] text-[#A69984]/40 font-semibold block leading-tight pt-1">
-                    Try logging in with: <br />
-                    <code className="text-[#ffe2ab]/75 font-mono">chef@lebernardin.com</code> or <code className="text-[#ffe2ab]/75 font-mono">ana@hisafranko.com</code>
-                  </span>
-                </div>
-
-                <div className="pt-4 flex gap-4 select-none">
-                  <button 
-                    type="button" onClick={() => setViewMode('landing')}
-                    className="flex-1 py-3 border border-white/10 hover:border-white/20 text-[#A69984] font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer"
-                  >
-                    Back
-                  </button>
-                  <button 
-                    type="submit" 
-                    className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-md"
-                  >
-                    Log In
                   </button>
                 </div>
               </form>

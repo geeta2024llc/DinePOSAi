@@ -328,7 +328,7 @@ export default function HomePage() {
               Join the Ambassador Program <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </Link>
             <Link
-              href="/partners"
+              href="/partners/login"
               className="border border-outline font-title-md text-primary px-lg py-sm rounded hover:bg-surface-variant transition-all duration-300"
             >
               Ambassador Login
