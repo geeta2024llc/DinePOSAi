@@ -394,6 +394,10 @@ export default function SuperAdminPage() {
   const [addReferralTarget, setAddReferralTarget] = useState<Ambassador | null>(null);
   const [newReferralData, setNewReferralData] = useState({ name: '', contact: '', services: [] as string[], status: 'Pending' });
 
+  // Partner Dashboard preview modal state
+  const [showPartnerViewModal, setShowPartnerViewModal] = useState(false);
+  const [partnerViewAmbassador, setPartnerViewAmbassador] = useState<Ambassador | null>(null);
+
   // Locations view toggle
   const [locationsView, setLocationsView] = useState<'card' | 'list'>('list');
 
@@ -2606,6 +2610,13 @@ export default function SuperAdminPage() {
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                   <button type="button"
+                                    onClick={() => { setPartnerViewAmbassador(amb); setShowPartnerViewModal(true); }}
+                                    className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-white/15 text-[#A69984] hover:text-white hover:border-white/25 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">preview</span>
+                                    Partner View
+                                  </button>
+                                  <button type="button"
                                     onClick={() => { setEditAmbassadorTarget(amb); setEditAmbassadorData({ name: amb.name, email: amb.email, phone: amb.phone, code: amb.code }); setShowEditAmbassadorModal(true); }}
                                     className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-violet-500/25 text-violet-400 hover:bg-violet-500/10 transition-all cursor-pointer flex items-center gap-1"
                                   >
@@ -2821,6 +2832,7 @@ export default function SuperAdminPage() {
                         <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Commission Rate (%)</label>
                         <div className="flex items-center gap-3">
                           <input
+                            aria-label="Commission Rate"
                             type="number" min="1" max="50"
                             value={referralConfig.commissionRate}
                             onChange={e => setReferralConfig(prev => ({ ...prev, commissionRate: parseInt(e.target.value) || 0 }))}
@@ -2834,6 +2846,7 @@ export default function SuperAdminPage() {
                         <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Flat Reward per Signup ($)</label>
                         <div className="flex items-center gap-3">
                           <input
+                            aria-label="Flat Reward per Signup in USD"
                             type="number" min="0"
                             value={referralConfig.rewardPerSignup}
                             onChange={e => setReferralConfig(prev => ({ ...prev, rewardPerSignup: parseInt(e.target.value) || 0 }))}
@@ -2846,6 +2859,7 @@ export default function SuperAdminPage() {
                       <div>
                         <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Minimum Payout Threshold ($)</label>
                         <input
+                          aria-label="Minimum Payout Threshold in USD"
                           type="number" min="0"
                           value={referralConfig.minPayoutThreshold}
                           onChange={e => setReferralConfig(prev => ({ ...prev, minPayoutThreshold: parseInt(e.target.value) || 0 }))}
@@ -2866,6 +2880,7 @@ export default function SuperAdminPage() {
                       <div>
                         <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Referral Base URL</label>
                         <input
+                          aria-label="Referral Base URL"
                           type="text"
                           value={referralConfig.referralBaseUrl}
                           onChange={e => setReferralConfig(prev => ({ ...prev, referralBaseUrl: e.target.value }))}
@@ -2876,6 +2891,7 @@ export default function SuperAdminPage() {
                       <div>
                         <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Cookie Tracking Duration (Days)</label>
                         <input
+                          aria-label="Cookie Tracking Duration in Days"
                           type="number" min="1" max="365"
                           value={referralConfig.cookieDuration}
                           onChange={e => setReferralConfig(prev => ({ ...prev, cookieDuration: parseInt(e.target.value) || 30 }))}
@@ -5109,6 +5125,234 @@ export default function SuperAdminPage() {
         </div>
       )}
 
+      {/* MODAL: PARTNER DASHBOARD PREVIEW */}
+      {showPartnerViewModal && partnerViewAmbassador && (() => {
+        const amb = partnerViewAmbassador;
+        const totalEarned = amb.paidRewards + amb.pendingRewards;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in duration-300">
+            <div className="bg-[#0e0e0d] border border-white/10 w-full max-w-5xl rounded-2xl shadow-2xl relative flex flex-col max-h-[94vh]">
+
+              {/* Modal chrome */}
+              <div className="flex items-center justify-between px-8 py-4 border-b border-white/5 flex-shrink-0 bg-[#161513]/80 rounded-t-2xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#ffc53d]/10 border border-[#ffc53d]/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#ffc53d] text-sm">preview</span>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-[#ffc53d]/70 font-bold uppercase tracking-widest">Super Admin Preview</p>
+                    <p className="text-white font-bold text-sm leading-tight">Partner Dashboard — {amb.name}</p>
+                  </div>
+                </div>
+                <button type="button"
+                  onClick={() => { setShowPartnerViewModal(false); setPartnerViewAmbassador(null); }}
+                  className="text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-xl">close</span>
+                </button>
+              </div>
+
+              {/* Scrollable dashboard content */}
+              <div className="overflow-y-auto flex-1 p-8 space-y-7 font-sans">
+
+                {/* Dashboard header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h1 className="font-serif text-[38px] font-bold text-white tracking-wide leading-none">Partner Dashboard</h1>
+                    <p className="text-[11.5px] text-[#A69984]/60 font-semibold mt-2">
+                      Ambassador Account: <span className="text-[#A69984]/90">{amb.name}</span> • Joined {amb.joinedDate}
+                    </p>
+                  </div>
+                  <button type="button" disabled
+                    className="flex items-center gap-2 px-4 py-2.5 border border-white/[0.08] text-[#A69984]/35 rounded-xl font-bold text-[10.5px] uppercase tracking-widest cursor-not-allowed select-none"
+                  >
+                    <span className="material-symbols-outlined text-sm">logout</span>
+                    Sign Out
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                  {/* Left + Middle (2/3) */}
+                  <div className="lg:col-span-2 space-y-5">
+
+                    {/* Ambassador Code Card */}
+                    <div className="bg-[#161513] border border-[#ffc53d]/20 rounded-2xl p-6">
+                      <div className="mb-3">
+                        <span className="px-2.5 py-1 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] text-[8.5px] font-black uppercase tracking-widest rounded-lg">Your Ambassador Code</span>
+                      </div>
+                      <p className="font-mono font-black text-[#ffc53d] text-4xl tracking-[0.12em] mb-2">{amb.code}</p>
+                      <p className="text-[#A69984]/60 text-xs font-medium mb-5 leading-relaxed max-w-sm">
+                        Share this code or copy your link to onboard new venues. Rewards accrue automatically when they complete registration.
+                      </p>
+                      <button type="button"
+                        onClick={() => { navigator.clipboard?.writeText(`${referralConfig.referralBaseUrl}${amb.code}`); triggerToast('Referral link copied to clipboard!', 'success'); }}
+                        className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-black text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer shadow-md"
+                      >
+                        <span className="material-symbols-outlined text-sm">content_copy</span>
+                        Copy Referral Link
+                      </button>
+                    </div>
+
+                    {/* KPI Row */}
+                    <div className="grid grid-cols-3 gap-4">
+                      {[
+                        { label: 'Total Earned', value: `$${totalEarned.toLocaleString()}`, sub: 'Historical Accruals', icon: 'trending_up', valueColor: 'text-[#ffc53d]', iconColor: 'text-emerald-400' },
+                        { label: 'Paid Out', value: `$${amb.paidRewards.toLocaleString()}`, sub: 'Transferred to Bank', icon: 'check_circle', valueColor: 'text-white', iconColor: 'text-[#A69984]/40' },
+                        { label: 'Pending Balance', value: `$${amb.pendingRewards.toLocaleString()}`, sub: 'Awaiting Admin Payout', icon: 'circle', valueColor: 'text-[#ffc53d]', iconColor: 'text-[#ffc53d]' },
+                      ].map(kpi => (
+                        <div key={kpi.label} className="bg-[#161513] border border-white/5 rounded-2xl p-5">
+                          <div className="flex items-center justify-between mb-4">
+                            <span className="text-[8.5px] text-[#A69984]/50 font-bold uppercase tracking-widest">{kpi.label}</span>
+                            <span className={`material-symbols-outlined text-base ${kpi.iconColor}`}>{kpi.icon}</span>
+                          </div>
+                          <p className={`font-serif text-2xl font-bold ${kpi.valueColor}`}>{kpi.value}</p>
+                          <p className="text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-widest mt-1">{kpi.sub}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Invited Businesses Table */}
+                    <div className="bg-[#161513] border border-white/5 rounded-2xl overflow-hidden">
+                      <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                        <div>
+                          <h3 className="text-white font-bold text-sm">Invited Businesses</h3>
+                          <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">Real-time status of restaurants referred by your ambassador link.</p>
+                        </div>
+                        <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-full text-[10px] text-[#A69984]/65 font-bold">{amb.invitedBusinesses.length} Referrals</span>
+                      </div>
+                      {amb.invitedBusinesses.length === 0 ? (
+                        <div className="py-12 text-center">
+                          <span className="material-symbols-outlined text-4xl text-[#A69984]/15 block">storefront</span>
+                          <p className="text-[#A69984]/40 text-xs font-medium mt-3">No businesses referred yet. Share your code to get started.</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-white/5 text-[8.5px] text-[#A69984]/45 font-bold uppercase tracking-widest">
+                                <th className="text-left px-6 py-3">Establishment</th>
+                                <th className="text-left px-4 py-3">Onboarded</th>
+                                <th className="text-left px-4 py-3">Active Services</th>
+                                <th className="text-center px-4 py-3">Status</th>
+                                <th className="text-right px-6 py-3">Earned Reward</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.04]">
+                              {amb.invitedBusinesses.map(biz => (
+                                <tr key={biz.id} className="hover:bg-white/[0.01] transition-colors">
+                                  <td className="px-6 py-4">
+                                    <p className="text-white font-bold text-xs">{biz.name}</p>
+                                    <p className="text-[#A69984]/40 text-[9.5px] mt-0.5 uppercase tracking-wider font-bold">Contact: {biz.contact}</p>
+                                  </td>
+                                  <td className="px-4 py-4 text-[#A69984]/60 text-xs font-semibold">{biz.joinedDate}</td>
+                                  <td className="px-4 py-4">
+                                    <div className="flex flex-wrap gap-1">
+                                      {biz.services.map((svc, si) => (
+                                        <span key={si} className="px-2 py-0.5 bg-white/[0.04] border border-white/[0.07] rounded text-[8.5px] text-[#A69984]/65 font-bold uppercase tracking-wider">{svc}</span>
+                                      ))}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-4 text-center">
+                                    <span className={`px-2.5 py-0.5 rounded-lg text-[8.5px] font-bold uppercase tracking-wider border ${
+                                      biz.status === 'Active' || biz.status === 'Subscribed'
+                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                    }`}>{biz.status}</span>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <span className={`font-bold text-sm font-mono ${biz.reward > 0 ? 'text-[#ffc53d]' : 'text-[#A69984]/35'}`}>${biz.reward}</span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right Column — Bank + Policies */}
+                  <div className="space-y-5">
+
+                    {/* Bank Account Card */}
+                    <div className="bg-[#161513] border border-white/5 rounded-2xl p-6">
+                      <div className="flex items-center justify-between mb-5">
+                        <h3 className="text-white font-bold text-sm">Payout Bank Account</h3>
+                        <button type="button"
+                          onClick={() => { setShowPartnerViewModal(false); setPartnerViewAmbassador(null); handleOpenEditBank(amb); }}
+                          className="text-[9.5px] text-[#ffe2ab]/60 hover:text-[#ffc53d] font-bold uppercase tracking-widest transition-colors cursor-pointer"
+                        >
+                          Edit Details
+                        </button>
+                      </div>
+                      {amb.bank.bankName ? (
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-[8px] text-[#A69984]/45 font-bold uppercase tracking-widest mb-0.5">Bank Name</p>
+                            <p className="text-white font-bold text-xs">{amb.bank.bankName}</p>
+                          </div>
+                          <div>
+                            <p className="text-[8px] text-[#A69984]/45 font-bold uppercase tracking-widest mb-0.5">Account Holder</p>
+                            <p className="text-white font-bold text-xs">{amb.bank.accountHolder}</p>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-[8px] text-[#A69984]/45 font-bold uppercase tracking-widest mb-0.5">Account Number</p>
+                              <p className="text-[#A69984]/70 font-mono text-xs">{amb.bank.accountNumber || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[8px] text-[#A69984]/45 font-bold uppercase tracking-widest mb-0.5">Routing Code</p>
+                              <p className="text-[#A69984]/70 font-mono text-xs">{amb.bank.routingNumber || '—'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-start gap-2.5 bg-amber-500/5 border border-amber-500/12 rounded-xl p-3.5">
+                            <span className="material-symbols-outlined text-amber-500/60 text-sm flex-shrink-0 mt-0.5">shield</span>
+                            <p className="text-[#A69984]/50 text-[9px] font-medium leading-relaxed">
+                              Bank payout coordinates are on file. Reward transfers are processed by the platform administrator within 3 business days of approval.
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="py-6 text-center">
+                          <span className="material-symbols-outlined text-4xl text-[#A69984]/15 block">account_balance</span>
+                          <p className="text-[#A69984]/40 text-xs font-semibold mt-3">No bank details on file.</p>
+                          <button type="button"
+                            onClick={() => { setShowPartnerViewModal(false); setPartnerViewAmbassador(null); handleOpenEditBank(amb); }}
+                            className="mt-3 px-4 py-2 bg-sky-500/10 border border-sky-500/25 text-sky-400 text-[10px] font-bold uppercase tracking-wider rounded-lg hover:bg-sky-500/15 transition-colors cursor-pointer"
+                          >
+                            Add Bank Details
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Payout Policies Card */}
+                    <div className="bg-[#161513] border border-white/5 rounded-2xl p-6">
+                      <h3 className="text-white font-bold text-sm mb-5">Referral Payout Policies</h3>
+                      <ul className="space-y-3.5">
+                        {[
+                          `Rewards accumulate when a referred merchant completes their registration using your code.`,
+                          <>Flat reward per signup: <span className="text-[#ffc53d] font-bold">${referralConfig.rewardPerSignup}</span> per establishment.</>,
+                          <>Commission on first payment: <span className="text-[#ffc53d] font-bold">{referralConfig.commissionRate}%</span> of the referred tenant&apos;s first subscription charge.</>,
+                          <>Minimum payout threshold: <span className="text-[#ffc53d] font-bold">${referralConfig.minPayoutThreshold}</span>. Admin processes transfers within 3 business days.</>,
+                          <>Cookie tracking window: <span className="text-[#ffc53d] font-bold">{referralConfig.cookieDuration} days</span> — referral attribution is maintained for returning visitors.</>,
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-start gap-2.5 text-[10.5px] text-[#A69984]/60 font-medium leading-relaxed">
+                            <span className="w-1 h-1 rounded-full bg-[#A69984]/40 mt-2 flex-shrink-0"></span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* MODAL: EDIT AMBASSADOR PROFILE */}
       {showEditAmbassadorModal && editAmbassadorTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
@@ -5161,6 +5405,8 @@ export default function SuperAdminPage() {
                 <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Referral Code</label>
                 <div className="flex gap-2">
                   <input type="text"
+                    aria-label="Referral Code"
+                    placeholder="e.g. MARCUS421"
                     value={editAmbassadorData.code}
                     onChange={e => setEditAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
                     className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
