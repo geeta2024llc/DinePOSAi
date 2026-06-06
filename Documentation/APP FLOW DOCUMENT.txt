@@ -1,0 +1,384 @@
+DinePosAI — FULL APP FLOW DOCUMENT (V1)
+
+0. SYSTEM OVERVIEW
+DinePosAI has 4 major systems:
+Public SaaS Website
+Restaurant System (Tenant App)
+Customer Digital Menu
+KDS (Kitchen)
+POS (Cashier)
+Manager Panel
+Super Admin Platform
+Core System Services (Auth, Sync, Billing)
+
+1. AUTH FLOW (LOGIN / SIGNUP)
+
+1.1 Signup Page
+UI Elements
+Business Name
+Email
+Password
+Confirm Password
+Country selector
+“Start Free Trial” button
+Button: Start Free Trial
+On Click:
+Validate inputs
+Create tenant
+Create admin user
+Start 14-day trial
+Redirect → Onboarding Flow
+
+Success State
+“Account created successfully”
+Redirect to onboarding
+
+Error States
+Email already exists → show “Account already exists”
+Weak password → show validation error
+Network error → “Try again”
+
+1.2 Signin Page
+Inputs:
+Email
+Password
+Button: Sign In
+On Click:
+Validate credentials
+Check subscription status
+Check device limit
+
+Success Flow:
+Redirect based on role:
+Admin → Manager Dashboard
+Cashier → POS
+Kitchen → KDS
+
+Error States:
+Invalid credentials → “Incorrect email/password”
+Account suspended → “Contact admin”
+Device limit reached → force logout old device
+
+1.3 Forgot Password
+Flow:
+Enter email
+Send reset link
+States:
+Success → “Reset link sent”
+Error → email not found
+
+2. ONBOARDING FLOW (VERY IMPORTANT)
+
+Screen: Setup Wizard (Step-by-step)
+
+Step 1: Business Setup
+Restaurant name
+Address
+Currency
+Language
+Tax type
+Button: Next
+
+Step 2: Tax Setup
+VAT % or fixed tax
+Service charge toggle
+
+Step 3: Menu Setup
+Add category
+Add item (name, price)
+Button: Skip / Finish
+
+Step 4: Device Setup
+Register tablet (QR pairing)
+Register KDS screen
+Register POS device
+
+Success State
+“Setup completed”
+Redirect → Dashboard
+
+3. CUSTOMER FLOW (DIGITAL MENU)
+
+Screen: Digital Menu
+Sections:
+Categories
+Items
+Cart sidebar
+AI suggestion panel
+
+Button: Add to Cart
+Action:
+Add item to cart
+Update cart total
+
+Button: Place Order
+Action:
+Create order
+Send to KDS
+
+Success State:
+“Order placed successfully”
+Show Order Tracking Screen
+
+Error States:
+Offline → store locally
+Menu unavailable → show message
+
+Empty State:
+“No items available”
+
+Order Tracking Screen
+Status Flow:
+Received
+Accepted
+Cooking
+Ready
+Served
+
+4. KITCHEN FLOW (KDS)
+
+Screen: KDS Orders Page
+Order Card Actions:
+Button: Accept
+Changes status → ACCEPTED
+Button: Reject
+Requires reason input
+Button: Mark Preparing
+Starts cooking timer
+Button: Mark Ready
+Sends update to POS + Customer
+
+Success States:
+Status updated animation
+Order moves column
+
+Error States:
+Sync failed → retry button
+
+Empty State:
+“No active orders”
+
+5. CASHIER FLOW (POS)
+
+Screen: POS Dashboard
+Features:
+Menu grid
+Cart panel
+Active orders list
+
+Button: Add Item
+Adds to cart
+
+Button: Modify Order
+Opens edit modal
+
+Button: Checkout
+Redirect → Checkout Page
+
+Checkout Page
+
+Inputs:
+Payment method (Cash / Card / QR)
+Discount (optional)
+Split payment toggle
+
+Button: Pay Now
+Actions:
+Validate total
+Process payment
+Generate invoice
+Save transaction
+
+Success State:
+“Payment Successful”
+Print invoice modal
+Redirect → POS
+
+Error States:
+Payment failed → retry option
+Network error → offline queue
+
+Button: Print Receipt
+Sends to printer
+Error:
+Printer offline → show retry
+
+Button: Refund
+Flow:
+Select transaction
+Enter reason (mandatory)
+Confirm refund
+
+Success:
+Refund recorded
+
+6. MANAGER FLOW
+
+Dashboard Screen
+Shows:
+Revenue today
+Orders count
+Net sales
+
+Navigation Buttons:
+Reports
+Menu
+Staff
+Tables
+Payments
+Settings
+
+Reports Page
+Filters:
+Date range
+Actions:
+Export CSV
+Export Excel
+
+Empty State:
+“No data available”
+
+Menu Management
+Actions:
+Add item
+Edit item
+Disable item
+
+Staff Management
+Actions:
+Add staff
+Disable staff
+Assign role
+
+Table Management
+Actions:
+Create table
+Rename table
+Delete table
+
+Payment Management
+Actions:
+View transactions
+Refund
+Void
+
+7. SETTINGS FLOW
+
+Settings Page Sections:
+Tax settings
+Currency
+Language
+Printer settings
+Device management
+
+Device Actions:
+Add device
+Remove device
+Force logout device
+
+Error:
+Device not reachable
+
+8. SUPER ADMIN FLOW
+
+Super Admin Dashboard
+Metrics:
+Total tenants
+MRR
+Active subscriptions
+
+Tenant Management
+Actions:
+View tenant
+Suspend tenant
+Activate tenant
+
+Success:
+Tenant status updated
+
+Error:
+Cannot suspend active billing tenant
+
+System Settings
+Pricing plans
+Global tax rules
+Feature toggles
+
+9. PAYMENT / SUBSCRIPTION FLOW (SAAS)
+
+Trial Flow
+Signup → auto 14-day trial
+
+Billing Page
+Buttons:
+Upgrade plan
+View invoices
+Cancel subscription
+
+Upgrade Flow:
+Select plan
+Choose payment method
+Confirm payment
+Activate plan
+
+Success:
+“Subscription activated”
+
+Error:
+Payment failed → retry
+
+10. SYSTEM STATES (GLOBAL)
+
+Offline Mode
+Behavior:
+Show offline badge
+Save actions locally
+Sync when online
+
+Sync Failure
+Show retry button
+Log error in system monitor
+
+Empty State Standard
+Icon
+Message
+“No data found”
+
+Error State Standard
+Clear message
+Retry button
+Optional support link
+
+Success State Standard
+Toast notification
+Green confirmation
+Auto navigation if needed
+
+11. NAVIGATION STRUCTURE
+
+Role-Based Routing
+Customer:
+/menu
+Kitchen:
+/kds
+Cashier:
+/pos
+/checkout
+Manager:
+/dashboard
+/reports
+/settings
+Super Admin:
+/admin
+
+🎯 FINAL UX PRINCIPLE
+DinePosAI must follow:
+“Zero confusion, one action per screen, instant feedback, offline-safe operations”
+
+🚀 RESULT
+This document ensures an AI coding agent can:
+build every page
+connect every flow
+handle errors correctly
+manage offline cases
+implement SaaS structure

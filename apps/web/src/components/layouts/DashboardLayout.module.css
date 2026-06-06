@@ -1,0 +1,126 @@
+.container {
+  display: flex;
+  height: 100vh;
+  background-color: var(--color-background);
+}
+
+.sidebar {
+  width: 250px;
+  background-color: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.logo {
+  height: 70px;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-6);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--color-primary);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nav {
+  flex: 1;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.navItem:hover {
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  text-decoration: none;
+}
+
+.navItem.active {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+
+.logoutWrapper {
+  padding: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+
+.logoutButton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: all 0.2s;
+}
+
+.logoutButton:hover {
+  background-color: var(--color-background);
+  color: var(--color-error);
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  height: 70px;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-8);
+}
+
+.title {
+  font-size: 24px;
+  margin: 0;
+}
+
+.userProfile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-weight: 500;
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.content {
+  flex: 1;
+  padding: var(--space-8);
+  overflow-y: auto;
+}

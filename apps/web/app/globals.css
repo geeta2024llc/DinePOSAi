@@ -1,0 +1,92 @@
+/* apps/web/app/globals.css */
+@import "tailwindcss";
+
+@theme {
+  --color-surface-variant: #353534;
+  --color-surface-container-lowest: #0e0e0e;
+  --color-on-primary-container: #6d5000;
+  --color-surface-tint: #fbbc00;
+  --color-primary-fixed: #ffdfa0;
+  --color-on-tertiary-fixed-variant: #474747;
+  --color-secondary-container: #af8d11;
+  --color-on-tertiary-container: #555454;
+  --color-on-secondary-container: #342800;
+  --color-primary: #ffe2ab;
+  --color-on-primary: #402d00;
+  --color-surface-bright: #393939;
+  --color-secondary-fixed: #ffe088;
+  --color-on-tertiary: #303030;
+  --color-on-primary-fixed: #261a00;
+  --color-inverse-on-surface: #313030;
+  --color-tertiary-fixed-dim: #c8c6c6;
+  --color-surface-container-high: #2a2a2a;
+  --color-inverse-primary: #795900;
+  --color-surface: #131313;
+  --color-outline: #9c8f78;
+  --color-on-primary-fixed-variant: #5c4300;
+  --color-on-surface: #e5e2e1;
+  --color-primary-fixed-dim: #fbbc00;
+  --color-on-surface-variant: #d4c5ab;
+  --color-tertiary-fixed: #e4e2e1;
+  --color-on-error-container: #ffdad6;
+  --color-surface-container-highest: #353534;
+  --color-tertiary-container: #cbc9c9;
+  --color-background: #131313;
+  --color-surface-dim: #131313;
+  --color-on-secondary-fixed: #241a00;
+  --color-secondary-fixed-dim: #e9c349;
+  --color-secondary: #e9c349;
+  --color-on-secondary-fixed-variant: #574500;
+  --color-error: #ffb4ab;
+  --color-on-tertiary-fixed: #1b1c1c;
+  --color-on-background: #e5e2e1;
+  --color-inverse-surface: #e5e2e1;
+  --color-outline-variant: #504532;
+  --color-on-secondary: #3c2f00;
+  --color-surface-container: #201f1f;
+  --color-tertiary: #e8e5e4;
+  --color-primary-container: #ffbf00;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-surface-container-low: #1c1b1b;
+
+  --font-headline-lg-mobile: 'Playfair Display', serif;
+  --font-display-lg: 'Playfair Display', serif;
+  --font-label-sm: 'Inter', sans-serif;
+  --font-title-md: 'Inter', sans-serif;
+  --font-headline-lg: 'Playfair Display', serif;
+  --font-kds-timer: 'Inter', sans-serif;
+  --font-body-md: 'Inter', sans-serif;
+
+  /* Spacing Variables */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 1rem;
+  --spacing-md: 1.5rem;
+  --spacing-lg: 2rem;
+  --spacing-xl: 4rem;
+  --spacing-margin-desktop: 2rem;
+  --spacing-gutter: 1.5rem;
+}
+
+body {
+  background-color: #0e0e0e;
+  color: #e5e2e1;
+  font-family: 'Inter', sans-serif;
+}
+
+.glass-panel {
+  background: rgba(30, 30, 30, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(156, 143, 120, 0.1);
+}
+
+.glow-shadow {
+  box-shadow: 0 12px 32px rgba(255, 191, 0, 0.08);
+}
+
+.hover-glow:hover {
+  box-shadow: 0 12px 32px rgba(255, 191, 0, 0.15);
+  border-color: rgba(255, 191, 0, 0.3);
+  transform: translateY(-2px);
+}

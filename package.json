@@ -1,0 +1,15 @@
+{
+  "name": "dineposai-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Multi-tenant restaurant POS and operating system",
+  "scripts": {
+    "dev": "pnpm --filter \"*\" dev",
+    "build": "pnpm --filter \"*\" build",
+    "start": "pnpm --filter \"*\" start",
+    "test": "pnpm --filter \"*\" test"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

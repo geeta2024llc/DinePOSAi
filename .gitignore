@@ -1,0 +1,45 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+lib/
+*.tsbuildinfo
+
+# Local env files (MUST NEVER BE COMMITTED)
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.*.local
+
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Turbo cache
+.turbo/
+
+# Local agents and IDE specific directories
+.gemini/
+.gemini-agent/
+*.log
+
