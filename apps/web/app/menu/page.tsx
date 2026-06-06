@@ -3,6 +3,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 
+type SpicyLevel = 'Mild' | 'Normal' | 'Hot' | 'Super Hot';
+
 interface MenuItem {
   id: string;
   name: string;
@@ -12,6 +14,7 @@ interface MenuItem {
   image: string;
   tags: string[];
   allergens?: string[];
+  spicyLevel?: SpicyLevel;
 }
 
 interface CartItem {
@@ -52,7 +55,8 @@ const menuItems: MenuItem[] = [
     description: 'Hand-cut A5 Wagyu, quail egg yolk, cornichons, shallots, Dijon emulsion, served with toasted brioche points.',
     image: '/images/wagyu_beef_tartare.png',
     tags: ['Non-Veg'],
-    allergens: []
+    allergens: [],
+    spicyLevel: 'Mild' as SpicyLevel
   },
   {
     id: 'start-2',
@@ -72,7 +76,8 @@ const menuItems: MenuItem[] = [
     description: 'Pan-seared jumbo scallops, sweet pea purée, crispy pancetta, meyer lemon beurre blanc.',
     image: '/images/pan_seared_scallops.png',
     tags: ['Seafood', 'Non-Veg'],
-    allergens: ['Shellfish']
+    allergens: ['Shellfish'],
+    spicyLevel: 'Normal' as SpicyLevel
   },
   // Mains
   {
@@ -103,7 +108,8 @@ const menuItems: MenuItem[] = [
     description: '8oz USDA Prime tenderloin, truffle potato purée, glazed organic heirloom carrots, rich bone marrow reduction.',
     image: '/images/filet_mignon.png',
     tags: ['GF', 'Non-Veg'],
-    allergens: []
+    allergens: [],
+    spicyLevel: 'Hot' as SpicyLevel
   },
   // Desserts
   {
@@ -148,6 +154,13 @@ const menuItems: MenuItem[] = [
     allergens: []
   }
 ];
+
+const spicyMeta: Record<SpicyLevel, { textColor: string; bg: string; border: string }> = {
+  'Mild':      { textColor: 'text-yellow-400',  bg: 'bg-yellow-400/10',  border: 'border-yellow-400/25' },
+  'Normal':    { textColor: 'text-orange-400',  bg: 'bg-orange-400/10',  border: 'border-orange-400/25' },
+  'Hot':       { textColor: 'text-orange-500',  bg: 'bg-orange-500/10',  border: 'border-orange-500/25' },
+  'Super Hot': { textColor: 'text-red-500',     bg: 'bg-red-500/10',     border: 'border-red-500/25'    },
+};
 
 const itemModifiersConfig: { [itemId: string]: { title: string; options: { name: string; price?: number }[]; type: 'single' | 'multiple' }[] } = {
   'spec-1': [
@@ -223,6 +236,9 @@ export default function DigitalMenuPage() {
 
   // Allergen exclusion filters
   const [allergenExclusions, setAllergenExclusions] = useState<string[]>([]);
+
+  // Spicy level filter
+  const [spicyFilter, setSpicyFilter] = useState<'all' | SpicyLevel>('all');
 
   // Item customization states
   const [selectedCustomizingItem, setSelectedCustomizingItem] = useState<MenuItem | null>(null);
@@ -541,6 +557,9 @@ export default function DigitalMenuPage() {
         return false;
       }
 
+      // Spicy level filter
+      if (spicyFilter !== 'all' && item.spicyLevel !== spicyFilter) return false;
+
       // Search match
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -549,7 +568,7 @@ export default function DigitalMenuPage() {
 
       return true;
     });
-  }, [activeCategory, diningOption, dietaryOption, allergenExclusions, searchQuery, items]);
+  }, [activeCategory, diningOption, dietaryOption, allergenExclusions, spicyFilter, searchQuery, items]);
 
   // AI response engine
   const handleAISubmit = (e?: React.FormEvent) => {
@@ -813,8 +832,31 @@ export default function DigitalMenuPage() {
                 );
               })}
             </div>
+
+            {/* Elegant Spacing Divider */}
+            <span className="text-white/10 font-light select-none">|</span>
+
+            {/* Spicy Level Filter Capsule */}
+            <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-0.5 items-center">
+              <span className="text-[9px] uppercase font-bold text-[#A69984]/50 px-2.5 tracking-wider">Spice:</span>
+              {(['Mild', 'Normal', 'Hot', 'Super Hot'] as SpicyLevel[]).map(level => {
+                const m = spicyMeta[level];
+                const isActive = spicyFilter === level;
+                return (
+                  <button
+                    type="button"
+                    key={level}
+                    onClick={() => setSpicyFilter(isActive ? 'all' : level)}
+                    className={`px-3 py-1.5 rounded-full font-sans text-[10px] uppercase tracking-wider font-bold transition-all duration-300 flex items-center gap-1 cursor-pointer ${isActive ? `${m.bg} ${m.textColor} border ${m.border}` : 'text-[#A69984]/80 hover:text-white hover:bg-white/5'}`}
+                  >
+                    <span className={`material-symbols-outlined text-[12px] leading-none ${isActive ? m.textColor : ''}`}>local_fire_department</span>
+                    {level}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          
+
           {/* Right Side Buttons (Table Dropdown and Search Button) */}
           <div className="flex items-center gap-2 sm:gap-4 relative">
             <button 
@@ -947,6 +989,31 @@ export default function DigitalMenuPage() {
                 })}
               </div>
             </div>
+
+            {/* Spicy Level Filter */}
+            <div className="space-y-1.5">
+              <label className="block text-[9px] uppercase font-bold text-[#A69984]/50 tracking-wider">Spicy Level</label>
+              <div className="grid grid-cols-2 gap-2">
+                {(['Mild', 'Normal', 'Hot', 'Super Hot'] as SpicyLevel[]).map(level => {
+                  const m = spicyMeta[level];
+                  const isActive = spicyFilter === level;
+                  return (
+                    <button
+                      type="button"
+                      key={level}
+                      onClick={() => setSpicyFilter(isActive ? 'all' : level)}
+                      className={`py-2 px-3 rounded-xl font-sans text-[10px] uppercase tracking-wider font-bold transition-all flex items-center justify-between border cursor-pointer ${isActive ? `${m.bg} ${m.textColor} ${m.border}` : 'bg-[#12110f] border-white/5 text-[#A69984]/80'}`}
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span className={`material-symbols-outlined text-[12px] leading-none ${isActive ? m.textColor : ''}`}>local_fire_department</span>
+                        {level}
+                      </span>
+                      {isActive && <span className={`material-symbols-outlined text-[12px] ${m.textColor}`}>check_circle</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 
@@ -992,16 +1059,25 @@ export default function DigitalMenuPage() {
                         {/* Tags */}
                         <div className="flex flex-wrap gap-1.5 select-none">
                           {item.tags.slice(0, 2).map(tag => (
-                            <span 
+                            <span
                               key={tag}
                               className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] text-white/70 font-sans tracking-wide font-medium"
                             >
                               <span className="material-symbols-outlined text-[10px] leading-none text-[#ffe2ab]">
                                 {tag === 'GF' ? 'info' : tag === 'Veg' ? 'eco' : tag === 'Seafood' ? 'water_drop' : 'restaurant'}
-                              </span> 
+                              </span>
                               {tag}
                             </span>
                           ))}
+                          {item.spicyLevel && (() => {
+                            const m = spicyMeta[item.spicyLevel];
+                            return (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 ${m.bg} ${m.border} border rounded-full text-[9px] font-sans tracking-wide font-bold ${m.textColor}`}>
+                                <span className={`material-symbols-outlined text-[10px] leading-none ${m.textColor}`}>local_fire_department</span>
+                                {item.spicyLevel}
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         {/* Cart Buttons */}
@@ -1261,7 +1337,7 @@ export default function DigitalMenuPage() {
                   <div>
                     <div className="flex flex-wrap gap-1.5 mb-2.5">
                       {selectedItem.tags.map(tag => (
-                        <span 
+                        <span
                           key={tag}
                           className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] text-[#ffe2ab] font-sans tracking-wide font-semibold"
                         >
@@ -1271,6 +1347,15 @@ export default function DigitalMenuPage() {
                           {tag}
                         </span>
                       ))}
+                      {selectedItem.spicyLevel && (() => {
+                        const m = spicyMeta[selectedItem.spicyLevel];
+                        return (
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 ${m.bg} ${m.border} border rounded-full text-[9px] font-sans tracking-wide font-bold ${m.textColor}`}>
+                            <span className={`material-symbols-outlined text-[9px] leading-none ${m.textColor}`}>local_fire_department</span>
+                            {selectedItem.spicyLevel}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <h2 className="font-serif text-2xl sm:text-3xl text-white tracking-wide font-medium leading-tight">
                       {selectedItem.name}
