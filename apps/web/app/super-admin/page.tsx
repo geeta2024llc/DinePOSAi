@@ -338,6 +338,10 @@ export default function SuperAdminPage() {
     minPayoutThreshold: number;
     referralBaseUrl: string;
     cookieDuration: number;
+    autoRewardOnConversion: boolean;
+    notifyAmbassadorOnSignup: boolean;
+    notifyAmbassadorOnPayout: boolean;
+    paymentMethod: 'bank_transfer' | 'ach' | 'wire' | 'paypal';
   };
   const defaultReferralConfig: ReferralConfig = {
     programActive: true,
@@ -346,6 +350,10 @@ export default function SuperAdminPage() {
     minPayoutThreshold: 100,
     referralBaseUrl: 'https://dineposai.com/signup?ref=',
     cookieDuration: 30,
+    autoRewardOnConversion: true,
+    notifyAmbassadorOnSignup: true,
+    notifyAmbassadorOnPayout: true,
+    paymentMethod: 'bank_transfer',
   };
   const [referralConfig, setReferralConfig] = useState<ReferralConfig>(() => {
     if (typeof window !== 'undefined') {
@@ -371,6 +379,20 @@ export default function SuperAdminPage() {
   // QR Poster modal state
   const [showQrModal, setShowQrModal] = useState(false);
   const [qrModalAmbassador, setQrModalAmbassador] = useState<Ambassador | null>(null);
+
+  // Ambassador search/filter state
+  const [ambassadorSearch, setAmbassadorSearch] = useState('');
+  const [ambassadorStatusFilter, setAmbassadorStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
+
+  // Edit Ambassador modal state
+  const [showEditAmbassadorModal, setShowEditAmbassadorModal] = useState(false);
+  const [editAmbassadorTarget, setEditAmbassadorTarget] = useState<Ambassador | null>(null);
+  const [editAmbassadorData, setEditAmbassadorData] = useState({ name: '', email: '', phone: '', code: '' });
+
+  // Add Referred Business modal state
+  const [showAddReferralModal, setShowAddReferralModal] = useState(false);
+  const [addReferralTarget, setAddReferralTarget] = useState<Ambassador | null>(null);
+  const [newReferralData, setNewReferralData] = useState({ name: '', contact: '', services: [] as string[], status: 'Pending' });
 
   // Locations view toggle
   const [locationsView, setLocationsView] = useState<'card' | 'list'>('list');
@@ -555,10 +577,138 @@ export default function SuperAdminPage() {
     triggerToast(`Ambassador "${amb?.name}" status set to ${amb?.status}.`, 'success');
   };
 
+  const handleEditAmbassador = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editAmbassadorTarget) return;
+    if (!editAmbassadorData.name || !editAmbassadorData.email) {
+      triggerToast('Name and email are required.', 'info');
+      return;
+    }
+    const normalizedCode = editAmbassadorData.code.toUpperCase().replace(/[^A-Z0-9]/g, '') || editAmbassadorTarget.code;
+    if (normalizedCode !== editAmbassadorTarget.code && ambassadors.some(a => a.id !== editAmbassadorTarget.id && a.code === normalizedCode)) {
+      triggerToast(`Code "${normalizedCode}" is already used by another ambassador.`, 'info');
+      return;
+    }
+    const updated = ambassadors.map(a => a.id === editAmbassadorTarget.id
+      ? { ...a, name: editAmbassadorData.name, email: editAmbassadorData.email, phone: editAmbassadorData.phone, code: normalizedCode }
+      : a
+    );
+    setAmbassadors(updated);
+    localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+    setShowEditAmbassadorModal(false);
+    setEditAmbassadorTarget(null);
+    triggerToast(`Ambassador "${editAmbassadorData.name}" updated successfully.`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `Updated ambassador profile for "${editAmbassadorData.name}" — code: ${normalizedCode}`,
+      tenant: 'Referral Program', type: 'security'
+    }, ...prev]);
+  };
+
+  const handleAddReferral = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!addReferralTarget || !newReferralData.name.trim() || !newReferralData.contact.trim()) {
+      triggerToast('Business name and contact email are required.', 'info');
+      return;
+    }
+    const isConverted = newReferralData.status === 'Subscribed' || newReferralData.status === 'Active';
+    const reward = isConverted ? referralConfig.rewardPerSignup : 0;
+    const newBiz: ReferralBusiness = {
+      id: `biz-${Date.now()}`,
+      name: newReferralData.name.trim(),
+      contact: newReferralData.contact.trim(),
+      joinedDate: new Date().toISOString().split('T')[0],
+      status: newReferralData.status,
+      services: newReferralData.services,
+      reward,
+    };
+    const updated = ambassadors.map(a => a.id === addReferralTarget.id
+      ? { ...a, invitedBusinesses: [...a.invitedBusinesses, newBiz], pendingRewards: a.pendingRewards + reward }
+      : a
+    );
+    setAmbassadors(updated);
+    localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+    setShowAddReferralModal(false);
+    setAddReferralTarget(null);
+    setNewReferralData({ name: '', contact: '', services: [], status: 'Pending' });
+    triggerToast(`Referral "${newBiz.name}" logged for ${addReferralTarget.name}.${reward > 0 ? ` $${reward} reward queued.` : ''}`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `Manually logged referral "${newBiz.name}" for ambassador "${addReferralTarget.name}" — status: ${newBiz.status}`,
+      tenant: 'Referral Program', type: 'info'
+    }, ...prev]);
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem('dinepos_referrals');
     if (stored) {
       setAmbassadors(JSON.parse(stored));
+    } else {
+      const initial: Ambassador[] = [
+        {
+          id: 'amb-1',
+          name: 'Marcus Nguyen',
+          email: 'marcus@restaurantgrowth.com',
+          phone: '+1 415 555 0182',
+          code: 'MARCUS421',
+          bank: { bankName: 'Wells Fargo', accountNumber: '••••7821', routingNumber: '121000248', accountHolder: 'Marcus Nguyen LLC' },
+          invitedBusinesses: [
+            { id: 'biz-1', name: 'Nobu Tokyo', contact: 'chef@nobu.com', joinedDate: '2026-03-18', status: 'Subscribed', services: ['POS', 'KDS', 'Analytics'], reward: 150 },
+            { id: 'biz-2', name: 'Sketch London', contact: 'info@sketch.uk', joinedDate: '2026-04-02', status: 'Active', services: ['POS', 'Self Checkout'], reward: 150 },
+            { id: 'biz-3', name: 'Osteria Francescana', contact: 'massimo@osteria.it', joinedDate: '2026-04-22', status: 'Pending', services: ['POS'], reward: 0 },
+          ],
+          pendingRewards: 300,
+          paidRewards: 600,
+          joinedDate: '2026-01-10',
+          status: 'active',
+        },
+        {
+          id: 'amb-2',
+          name: 'Priya Sharma',
+          email: 'priya@hospitalitybridge.io',
+          phone: '+44 7700 900891',
+          code: 'PRIYA882',
+          bank: { bankName: 'HSBC UK', accountNumber: '••••3309', routingNumber: 'MIDLGB22', accountHolder: 'Priya Sharma Consulting' },
+          invitedBusinesses: [
+            { id: 'biz-4', name: 'Hawksmoor Manchester', contact: 'gm@hawksmoor.com', joinedDate: '2026-02-14', status: 'Subscribed', services: ['POS', 'KDS'], reward: 150 },
+            { id: 'biz-5', name: 'Hakkasan Dubai', contact: 'dubai@hakkasan.com', joinedDate: '2026-05-01', status: 'Active', services: ['POS', 'AI Concierge', 'Analytics'], reward: 150 },
+          ],
+          pendingRewards: 150,
+          paidRewards: 1050,
+          joinedDate: '2025-11-20',
+          status: 'active',
+        },
+        {
+          id: 'amb-3',
+          name: 'Diego Vasquez',
+          email: 'diego@chainops.mx',
+          phone: '+52 55 5555 9020',
+          code: 'DIEGO334',
+          bank: { bankName: '', accountNumber: '', routingNumber: '', accountHolder: '' },
+          invitedBusinesses: [
+            { id: 'biz-6', name: 'Quintonil', contact: 'jorge@quintonil.com', joinedDate: '2026-04-11', status: 'Pending', services: ['POS'], reward: 0 },
+          ],
+          pendingRewards: 0,
+          paidRewards: 0,
+          joinedDate: '2026-03-30',
+          status: 'active',
+        },
+        {
+          id: 'amb-4',
+          name: 'Christine LeBlanc',
+          email: 'christine@nexthospitality.ca',
+          phone: '+1 604 555 0334',
+          code: 'CHRI117',
+          bank: { bankName: 'RBC Royal Bank', accountNumber: '••••5501', routingNumber: '000300002', accountHolder: 'Christine LeBlanc' },
+          invitedBusinesses: [],
+          pendingRewards: 0,
+          paidRewards: 250,
+          joinedDate: '2025-09-15',
+          status: 'suspended',
+        },
+      ];
+      localStorage.setItem('dinepos_referrals', JSON.stringify(initial));
+      setAmbassadors(initial);
     }
     const storedPay = localStorage.getItem('dinepos_referral_payouts');
     if (storedPay) {
@@ -2229,6 +2379,62 @@ export default function SuperAdminPage() {
               {referralSubTab === 'overview' && (
                 <div className="space-y-8">
 
+                  {/* Top Performers Leaderboard */}
+                  {ambassadors.length > 0 && (() => {
+                    const ranked = [...ambassadors]
+                      .map(a => ({ ...a, totalEarned: a.paidRewards + a.pendingRewards, conversions: a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length }))
+                      .sort((a, b) => b.totalEarned - a.totalEarned)
+                      .slice(0, 3);
+                    const medals = ['🥇', '🥈', '🥉'];
+                    const medalColors = ['text-[#ffc53d]', 'text-[#9ca3af]', 'text-[#b45309]'];
+                    const cardBorders = ['border-[#ffc53d]/20', 'border-white/8', 'border-white/8'];
+                    return (
+                      <div className={`${theme.cardBg} border rounded-2xl p-7 font-sans`}>
+                        <div className="flex justify-between items-center mb-5">
+                          <div>
+                            <h3 className="text-white font-bold text-sm tracking-wide">Top Performers</h3>
+                            <p className="text-[10px] text-[#A69984]/50 font-semibold mt-1">Ranked by lifetime earnings (paid + pending)</p>
+                          </div>
+                          <span className="material-symbols-outlined text-[#ffc53d] text-xl">workspace_premium</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {ranked.map((amb, idx) => (
+                            <div key={amb.id} className={`bg-white/[0.025] border ${cardBorders[idx]} rounded-xl p-4 flex flex-col gap-3`}>
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xl">{medals[idx]}</span>
+                                  <div>
+                                    <p className="text-white font-bold text-xs leading-tight">{amb.name}</p>
+                                    <p className={`font-mono font-black text-[10px] ${medalColors[idx]} mt-0.5`}>{amb.code}</p>
+                                  </div>
+                                </div>
+                                <span className={`px-2 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${amb.status === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'}`}>
+                                  {amb.status}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2 text-center">
+                                <div className="bg-white/[0.03] rounded-lg p-2">
+                                  <p className="text-[8.5px] text-[#A69984]/50 font-bold uppercase tracking-widest">Total Earned</p>
+                                  <p className={`font-bold text-sm mt-0.5 ${medalColors[idx]}`}>${amb.totalEarned.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-white/[0.03] rounded-lg p-2">
+                                  <p className="text-[8.5px] text-[#A69984]/50 font-bold uppercase tracking-widest">Conversions</p>
+                                  <p className="text-white font-bold text-sm mt-0.5">{amb.conversions}<span className="text-[#A69984]/40 font-normal text-xs">/{amb.invitedBusinesses.length}</span></p>
+                                </div>
+                              </div>
+                              {amb.pendingRewards > 0 && (
+                                <div className="flex items-center gap-1.5 bg-amber-500/8 border border-amber-500/15 rounded-lg px-3 py-1.5">
+                                  <span className="material-symbols-outlined text-amber-400 text-xs">schedule</span>
+                                  <span className="text-amber-400 text-[9.5px] font-bold">${amb.pendingRewards.toFixed(2)} pending payout</span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Conversion Funnel */}
                   <div className={`${theme.cardBg} border rounded-2xl p-7 font-sans`}>
                     <div className="flex justify-between items-center mb-6">
@@ -2284,6 +2490,32 @@ export default function SuperAdminPage() {
                       </button>
                     </div>
 
+                    {/* Search + Filter Bar */}
+                    {ambassadors.length > 0 && (
+                      <div className="px-6 py-3.5 border-b border-white/5 flex flex-col sm:flex-row gap-3 font-sans">
+                        <div className="relative flex-1">
+                          <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#A69984]/40 text-sm">search</span>
+                          <input
+                            type="text"
+                            placeholder="Search by name, email or code…"
+                            value={ambassadorSearch}
+                            onChange={e => setAmbassadorSearch(e.target.value)}
+                            className="w-full bg-white/[0.03] border border-white/[0.07] rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/30"
+                          />
+                        </div>
+                        <div className="flex gap-1 bg-white/[0.03] border border-white/[0.07] rounded-xl p-1 flex-shrink-0">
+                          {(['all', 'active', 'suspended'] as const).map(s => (
+                            <button key={s} type="button"
+                              onClick={() => setAmbassadorStatusFilter(s)}
+                              className={`px-3.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer capitalize ${ambassadorStatusFilter === s ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-[#A69984]/55 hover:text-white'}`}
+                            >
+                              {s === 'all' ? `All (${ambassadors.length})` : `${s} (${ambassadors.filter(a => a.status === s).length})`}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {ambassadors.length === 0 ? (
                       <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
                         <span className="material-symbols-outlined text-5xl text-[#A69984]/20">loyalty</span>
@@ -2297,8 +2529,23 @@ export default function SuperAdminPage() {
                         </button>
                       </div>
                     ) : (
-                      <div className="divide-y divide-white/5">
-                        {ambassadors.map((amb) => (
+                      <div>
+                        {(() => {
+                          const q = ambassadorSearch.toLowerCase();
+                          const filteredAmbs = ambassadors.filter(a =>
+                            (ambassadorStatusFilter === 'all' || a.status === ambassadorStatusFilter) &&
+                            (!q || a.name.toLowerCase().includes(q) || a.code.toLowerCase().includes(q) || a.email.toLowerCase().includes(q))
+                          );
+                          if (filteredAmbs.length === 0) return (
+                            <div className="py-14 text-center font-sans">
+                              <span className="material-symbols-outlined text-4xl text-[#A69984]/20 block">search_off</span>
+                              <p className="text-white font-semibold text-sm mt-3">No ambassadors match your filter</p>
+                              <p className="text-[#A69984]/50 text-xs mt-1">Try adjusting the search term or status filter.</p>
+                            </div>
+                          );
+                          return (
+                        <div className="divide-y divide-white/5">
+                          {filteredAmbs.map((amb) => (
                           <div key={amb.id} className="p-6 hover:bg-white/[0.015] transition-colors">
                             <div className="flex flex-col lg:flex-row lg:items-start gap-6">
 
@@ -2358,6 +2605,20 @@ export default function SuperAdminPage() {
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
+                                  <button type="button"
+                                    onClick={() => { setEditAmbassadorTarget(amb); setEditAmbassadorData({ name: amb.name, email: amb.email, phone: amb.phone, code: amb.code }); setShowEditAmbassadorModal(true); }}
+                                    className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-violet-500/25 text-violet-400 hover:bg-violet-500/10 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">edit</span>
+                                    Edit
+                                  </button>
+                                  <button type="button"
+                                    onClick={() => { setAddReferralTarget(amb); setNewReferralData({ name: '', contact: '', services: [], status: 'Pending' }); setShowAddReferralModal(true); }}
+                                    className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-[#ffc53d]/25 text-[#ffc53d] hover:bg-[#ffc53d]/10 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">add_business</span>
+                                    Add Referral
+                                  </button>
                                   <button type="button"
                                     onClick={() => handleOpenEditBank(amb)}
                                     className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-sky-500/25 text-sky-400 hover:bg-sky-500/10 transition-all cursor-pointer flex items-center gap-1"
@@ -2421,8 +2682,35 @@ export default function SuperAdminPage() {
                                 </div>
                               </div>
                             )}
+
+                            {/* Per-ambassador payout history inline */}
+                            {payoutHistory.filter(tx => tx.ambassadorId === amb.id).length > 0 && (
+                              <div className="mt-4 border-t border-white/5 pt-4">
+                                <p className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-xs">receipt_long</span>
+                                  Payout History
+                                </p>
+                                <div className="flex flex-wrap gap-2">
+                                  {payoutHistory.filter(tx => tx.ambassadorId === amb.id).slice(0, 5).map(tx => (
+                                    <div key={tx.id} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-1.5">
+                                      <span className="material-symbols-outlined text-emerald-400 text-xs">check_circle</span>
+                                      <span className="text-emerald-400 font-bold text-[10px]">${tx.amount.toFixed(2)}</span>
+                                      <span className="text-[#A69984]/45 text-[9.5px] font-mono">{tx.date}</span>
+                                    </div>
+                                  ))}
+                                  {payoutHistory.filter(tx => tx.ambassadorId === amb.id).length > 5 && (
+                                    <div className="flex items-center px-3 py-1.5 text-[#A69984]/45 text-[9.5px]">
+                                      +{payoutHistory.filter(tx => tx.ambassadorId === amb.id).length - 5} more
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
+                        </div>
+                          );
+                        })()}
                       </div>
                     )}
                   </div>
@@ -2521,6 +2809,7 @@ export default function SuperAdminPage() {
               {/* CONFIG SUB-TAB: Program Settings */}
               {referralSubTab === 'config' && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans">
+
                   {/* Commission & Rewards */}
                   <div className={`${theme.cardBg} border rounded-2xl p-7`}>
                     <div className="flex items-center gap-2 mb-6">
@@ -2617,6 +2906,82 @@ export default function SuperAdminPage() {
                       >
                         Save Configuration
                       </button>
+                    </div>
+                  </div>
+
+                  {/* Automation & Notifications — full width */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-7 lg:col-span-2`}>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-[#ffc53d] text-lg">notifications_active</span>
+                      <h3 className="text-white font-bold text-sm tracking-wide">Automation & Notifications</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Toggles column */}
+                      <div className="space-y-4">
+                        {[
+                          { key: 'autoRewardOnConversion' as const, label: 'Auto-Reward on Conversion', desc: 'Automatically credit ambassador reward when a referred business subscribes — no manual approval needed.' },
+                          { key: 'notifyAmbassadorOnSignup' as const, label: 'Notify Ambassador on Signup', desc: 'Send an email notification to the ambassador when a business signs up with their referral code.' },
+                          { key: 'notifyAmbassadorOnPayout' as const, label: 'Notify Ambassador on Payout', desc: 'Notify ambassador by email when a payout is processed and funds are being transferred.' },
+                        ].map(setting => (
+                          <div key={setting.key} className="flex items-start justify-between gap-4 p-4 bg-white/[0.025] border border-white/[0.06] rounded-xl">
+                            <div className="flex-1">
+                              <p className="text-white font-bold text-xs">{setting.label}</p>
+                              <p className="text-[#A69984]/50 text-[9.5px] mt-0.5 leading-relaxed">{setting.desc}</p>
+                            </div>
+                            <button type="button"
+                              onClick={() => setReferralConfig(prev => ({ ...prev, [setting.key]: !prev[setting.key] }))}
+                              className={`relative w-11 h-6 rounded-full transition-all cursor-pointer flex-shrink-0 mt-0.5 ${referralConfig[setting.key] ? 'bg-emerald-500' : 'bg-white/10'}`}
+                            >
+                              <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${referralConfig[setting.key] ? 'left-[22px]' : 'left-0.5'}`}></span>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Payment method column */}
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-3">Payout Method</label>
+                          <div className="space-y-2">
+                            {([
+                              { value: 'bank_transfer', label: 'Bank Transfer', icon: 'account_balance', desc: 'Standard ACH/wire to registered bank account' },
+                              { value: 'ach', label: 'ACH Direct', icon: 'swap_horiz', desc: 'Automated Clearing House — US domestic only' },
+                              { value: 'wire', label: 'International Wire', icon: 'public', desc: 'SWIFT/SEPA for international ambassadors' },
+                              { value: 'paypal', label: 'PayPal', icon: 'currency_exchange', desc: 'PayPal business account transfer' },
+                            ] as { value: ReferralConfig['paymentMethod']; label: string; icon: string; desc: string }[]).map(opt => (
+                              <button key={opt.value} type="button"
+                                onClick={() => setReferralConfig(prev => ({ ...prev, paymentMethod: opt.value }))}
+                                className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-left ${
+                                  referralConfig.paymentMethod === opt.value
+                                    ? 'bg-[#ffc53d]/8 border-[#ffc53d]/30'
+                                    : 'bg-white/[0.02] border-white/[0.06] hover:border-white/15'
+                                }`}
+                              >
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${referralConfig.paymentMethod === opt.value ? 'bg-[#ffc53d]/15' : 'bg-white/5'}`}>
+                                  <span className={`material-symbols-outlined text-sm ${referralConfig.paymentMethod === opt.value ? 'text-[#ffc53d]' : 'text-[#A69984]/50'}`}>{opt.icon}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`font-bold text-[11px] ${referralConfig.paymentMethod === opt.value ? 'text-[#ffc53d]' : 'text-white'}`}>{opt.label}</p>
+                                  <p className="text-[#A69984]/45 text-[9px] font-medium mt-0.5">{opt.desc}</p>
+                                </div>
+                                {referralConfig.paymentMethod === opt.value && (
+                                  <span className="material-symbols-outlined text-[#ffc53d] text-base flex-shrink-0">check_circle</span>
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <button type="button"
+                          onClick={() => {
+                            localStorage.setItem('dinepos_referral_config', JSON.stringify(referralConfig));
+                            window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_referral_config', newValue: JSON.stringify(referralConfig) }));
+                            triggerToast('Automation & notification settings saved!', 'success');
+                          }}
+                          className="w-full py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                        >
+                          Save Preferences
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -4740,6 +5105,208 @@ export default function SuperAdminPage() {
                 Print Poster
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: EDIT AMBASSADOR PROFILE */}
+      {showEditAmbassadorModal && editAmbassadorTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            <button type="button"
+              onClick={() => { setShowEditAmbassadorModal(false); setEditAmbassadorTarget(null); }}
+              className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-violet-400 text-xl">edit</span>
+              </div>
+              <div>
+                <h2 className="font-serif text-xl font-bold text-white tracking-wide">Edit Ambassador</h2>
+                <p className="text-[10.5px] text-[#A69984]/55 font-semibold mt-0.5">Update contact details and referral code for <span className="text-white">{editAmbassadorTarget.name}</span></p>
+              </div>
+            </div>
+
+            <form onSubmit={handleEditAmbassador} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Full Name *</label>
+                  <input type="text" required placeholder="Full name"
+                    value={editAmbassadorData.name}
+                    onChange={e => setEditAmbassadorData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Phone</label>
+                  <input type="tel" placeholder="+1 555 000 0000"
+                    value={editAmbassadorData.phone}
+                    onChange={e => setEditAmbassadorData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Email Address *</label>
+                <input type="email" required placeholder="email@example.com"
+                  value={editAmbassadorData.email}
+                  onChange={e => setEditAmbassadorData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                />
+              </div>
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Referral Code</label>
+                <div className="flex gap-2">
+                  <input type="text"
+                    value={editAmbassadorData.code}
+                    onChange={e => setEditAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                    className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
+                  />
+                  <button type="button"
+                    onClick={() => setEditAmbassadorData(prev => ({ ...prev, code: generateReferralCode(prev.name || editAmbassadorTarget.name) }))}
+                    className="px-3 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-sm">shuffle</span>
+                    New
+                  </button>
+                </div>
+                <p className="text-[9px] text-[#A69984]/35 mt-1">Changing a live code will break any existing referral links for this ambassador.</p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button"
+                  onClick={() => { setShowEditAmbassadorModal(false); setEditAmbassadorTarget(null); }}
+                  className="flex-1 py-3 border border-white/10 hover:border-white/20 text-[#A69984] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="flex-1 py-3 bg-violet-600 hover:bg-violet-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span className="material-symbols-outlined text-sm">check</span>
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: ADD REFERRED BUSINESS */}
+      {showAddReferralModal && addReferralTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[520px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            <button type="button"
+              onClick={() => { setShowAddReferralModal(false); setAddReferralTarget(null); }}
+              className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/20 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-[#ffc53d] text-xl">add_business</span>
+              </div>
+              <div>
+                <h2 className="font-serif text-xl font-bold text-white tracking-wide">Log Referred Business</h2>
+                <p className="text-[10.5px] text-[#A69984]/55 font-semibold mt-0.5">
+                  Manually add a referral for ambassador <span className="text-[#ffc53d] font-mono">{addReferralTarget.code}</span> — {addReferralTarget.name}
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleAddReferral} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Business Name *</label>
+                  <input type="text" required placeholder="e.g. Nobu Chicago"
+                    value={newReferralData.name}
+                    onChange={e => setNewReferralData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Contact Email *</label>
+                  <input type="email" required placeholder="owner@business.com"
+                    value={newReferralData.contact}
+                    onChange={e => setNewReferralData(prev => ({ ...prev, contact: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Current Status</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['Pending', 'Active', 'Subscribed'] as const).map(s => (
+                    <button key={s} type="button"
+                      onClick={() => setNewReferralData(prev => ({ ...prev, status: s }))}
+                      className={`py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all cursor-pointer ${
+                        newReferralData.status === s
+                          ? s === 'Subscribed' ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
+                            : s === 'Active' ? 'bg-sky-500/15 border-sky-500/35 text-sky-400'
+                            : 'bg-amber-500/15 border-amber-500/35 text-amber-400'
+                          : 'bg-white/[0.02] border-white/[0.06] text-[#A69984]/50 hover:border-white/15'
+                      }`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-[#A69984]/35 mt-1.5">
+                  {newReferralData.status === 'Pending' ? 'No reward credited yet — ambassador earns reward upon subscription.' : newReferralData.status === 'Active' ? 'Trial in progress.' : `Ambassador will earn $${referralConfig.rewardPerSignup} reward immediately.`}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Services Purchased</label>
+                <div className="flex flex-wrap gap-2">
+                  {['POS', 'KDS', 'Analytics', 'AI Concierge', 'Self Checkout', 'Offline Mode'].map(svc => {
+                    const selected = newReferralData.services.includes(svc);
+                    return (
+                      <button key={svc} type="button"
+                        onClick={() => setNewReferralData(prev => ({
+                          ...prev,
+                          services: selected ? prev.services.filter(s => s !== svc) : [...prev.services, svc]
+                        }))}
+                        className={`px-3 py-1.5 rounded-lg font-bold text-[10px] border transition-all cursor-pointer ${
+                          selected ? 'bg-[#ffc53d]/10 border-[#ffc53d]/25 text-[#ffc53d]' : 'bg-white/[0.03] border-white/[0.08] text-[#A69984]/55 hover:border-white/15'
+                        }`}
+                      >
+                        {selected && <span className="material-symbols-outlined text-[9px] mr-1">check</span>}
+                        {svc}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {(newReferralData.status === 'Active' || newReferralData.status === 'Subscribed') && (
+                <div className="bg-emerald-500/8 border border-emerald-500/20 rounded-xl p-4 flex items-start gap-3">
+                  <span className="material-symbols-outlined text-emerald-400 text-base flex-shrink-0 mt-0.5">payments</span>
+                  <p className="text-emerald-300 text-[10.5px] font-semibold leading-relaxed">
+                    <strong className="text-emerald-400">${referralConfig.rewardPerSignup}</strong> reward will be added to {addReferralTarget.name}&apos;s pending balance.
+                  </p>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button type="button"
+                  onClick={() => { setShowAddReferralModal(false); setAddReferralTarget(null); }}
+                  className="flex-1 py-3 border border-white/10 hover:border-white/20 text-[#A69984] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span className="material-symbols-outlined text-sm">add_business</span>
+                  Log Referral
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
