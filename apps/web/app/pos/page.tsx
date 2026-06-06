@@ -305,7 +305,7 @@ export default function PosPage() {
             
             <button className="w-[42px] h-[42px] flex items-center justify-center bg-transparent border border-white/5 hover:border-white/10 rounded-xl text-white transition-colors relative cursor-pointer">
               <span className="material-symbols-outlined text-xl text-[#ffe2ab]">notifications</span>
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full absolute top-3 right-3 animate-pulse"></span>
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-full absolute top-3 right-3 motion-safe:motion-safe:animate-pulse"></span>
             </button>
 
             <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10">
@@ -430,7 +430,7 @@ export default function PosPage() {
                       
                       {/* Name & Note */}
                       <div className="col-span-8 text-left">
-                        <div className="font-sans font-bold text-sm text-white">{item.name}</div>
+                        <div className="font-sans font-bold text-sm text-white truncate pr-2">{item.name}</div>
                         {item.note && (
                           <div className="font-sans text-[12px] text-[#A69984]/65 font-medium mt-1">
                             {item.note}

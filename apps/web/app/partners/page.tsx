@@ -52,10 +52,20 @@ interface Referral {
   invitedBusinesses: InvitedBusiness[];
 }
 
+const DEFAULT_CONFIG = {
+  programActive: true,
+  commissionRate: 10,
+  rewardPerSignup: 150,
+  minPayoutThreshold: 100,
+  referralBaseUrl: 'https://dineposai.com/signup?ref=',
+  cookieDuration: 30,
+};
+
 export default function PartnersPage() {
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [currentUser, setCurrentUser] = useState<Referral | null>(null);
-  
+  const [programConfig, setProgramConfig] = useState(DEFAULT_CONFIG);
+
   // Navigation states
   const [viewMode, setViewMode] = useState<'landing' | 'register' | 'login' | 'dashboard'>('landing');
   
@@ -90,6 +100,19 @@ export default function PartnersPage() {
       setAlert({ message: '', type: null });
     }, 4000);
   };
+
+  // Load program config from localStorage (set by super-admin)
+  useEffect(() => {
+    const saved = localStorage.getItem('dinepos_referral_config');
+    if (saved) { try { setProgramConfig(prev => ({ ...prev, ...JSON.parse(saved) })); } catch { /* */ } }
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'dinepos_referral_config' && e.newValue) {
+        try { setProgramConfig(prev => ({ ...prev, ...JSON.parse(e.newValue!) })); } catch { /* */ }
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Sync and initialize localStorage database
   useEffect(() => {
@@ -303,9 +326,10 @@ export default function PartnersPage() {
     triggerAlert('Payout bank details updated successfully.', 'success');
   };
 
-  // Helper to copy referral link
+  // Helper to copy referral link — uses admin-configured base URL, falls back to current origin
   const copyReferralLink = (code: string) => {
-    const link = `${window.location.origin}/register?ref=${code}`;
+    const base = programConfig.referralBaseUrl || `${window.location.origin}/register?ref=`;
+    const link = base.endsWith('=') || base.endsWith('/') ? `${base}${code}` : `${base}${code}`;
     navigator.clipboard.writeText(link);
     triggerAlert('Referral link copied to clipboard!', 'success');
   };
@@ -324,27 +348,44 @@ export default function PartnersPage() {
         {/* VIEW 1: LANDING PAGE                                                      */}
         {/* ========================================================================= */}
         {viewMode === 'landing' && (
-          <div className="space-y-16 py-8 animate-fade-in duration-300">
+          <div className="space-y-14 py-8 animate-fade-in duration-300">
+
+            {/* Program status banner — only shows if paused */}
+            {!programConfig.programActive && (
+              <div className="flex items-center gap-3 bg-rose-500/10 border border-rose-500/20 rounded-xl px-5 py-3 text-rose-400 font-sans text-xs font-bold">
+                <span className="material-symbols-outlined text-base">pause_circle</span>
+                The Ambassador Program is currently paused. New registrations are temporarily suspended. Existing ambassadors may continue to refer and track rewards.
+              </div>
+            )}
+
+            {/* Hero */}
             <div className="text-center max-w-3xl mx-auto space-y-6">
               <span className="inline-block border border-[#ffe2ab]/20 rounded-full px-4 py-1.5 text-[#ffe2ab] text-[10px] uppercase font-bold tracking-[0.25em] bg-[#ffe2ab]/5">
-                DINEPOS AMBASSADORS
+                DinePOS Ambassador Network
               </span>
               <h1 className="font-serif text-white text-5xl md:text-6xl font-medium leading-tight tracking-wide">
                 Introduce DinePOS.<br />
                 <span className="text-[#ffc53d] italic">Earn Premium Rewards.</span>
               </h1>
               <p className="text-[#A69984] text-lg leading-relaxed font-normal max-w-2xl mx-auto">
-                Promote our premium restaurant POS operating system to your culinary network. Help venues optimize front-of-house operations and earn rewards on every onboarded location.
+                Promote our premium restaurant POS operating system to your culinary network. Earn <strong className="text-[#ffc53d]">${programConfig.rewardPerSignup}</strong> per signup plus <strong className="text-[#ffc53d]">{programConfig.commissionRate}% commission</strong> on every onboarded location.
               </p>
-              
-              <div className="flex flex-wrap justify-center gap-4 pt-6 select-none">
+
+              <div className="flex flex-wrap justify-center gap-4 pt-4 select-none">
                 <button
+                  type="button"
                   onClick={() => setViewMode('register')}
-                  className="px-8 py-3.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95 cursor-pointer"
+                  disabled={!programConfig.programActive}
+                  className={`px-8 py-3.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-lg active:scale-95 ${
+                    programConfig.programActive
+                      ? 'bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] cursor-pointer'
+                      : 'bg-white/10 text-white/30 cursor-not-allowed'
+                  }`}
                 >
-                  Join Ambassador Program
+                  {programConfig.programActive ? 'Join Ambassador Program' : 'Program Paused'}
                 </button>
                 <button
+                  type="button"
                   onClick={() => setViewMode('login')}
                   className="px-8 py-3.5 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer"
                 >
@@ -353,15 +394,53 @@ export default function PartnersPage() {
               </div>
             </div>
 
-            {/* How it Works / Perks */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8">
+            {/* Live program stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-5 font-sans">
+              {[
+                {
+                  label: 'Active Ambassadors',
+                  value: referrals.filter(r => r.status === 'ACTIVE').length,
+                  icon: 'group',
+                  color: 'text-white',
+                },
+                {
+                  label: 'Businesses Referred',
+                  value: referrals.reduce((s, r) => s + r.invitedBusinesses.length, 0),
+                  icon: 'storefront',
+                  color: 'text-violet-400',
+                },
+                {
+                  label: 'Reward per Signup',
+                  value: `$${programConfig.rewardPerSignup}`,
+                  icon: 'payments',
+                  color: 'text-[#ffc53d]',
+                },
+                {
+                  label: 'Commission Rate',
+                  value: `${programConfig.commissionRate}%`,
+                  icon: 'percent',
+                  color: 'text-emerald-400',
+                },
+              ].map(stat => (
+                <div key={stat.label} className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between`}>
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-[9.5px] text-[#A69984]/60 uppercase tracking-widest">{stat.label}</span>
+                    <span className="material-symbols-outlined text-[#A69984]/30 text-lg">{stat.icon}</span>
+                  </div>
+                  <div className={`font-serif text-3xl font-bold ${stat.color} mt-4`}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* How it Works */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className={`p-8 rounded-2xl border ${theme.cardBg} space-y-4`}>
                 <div className="w-12 h-12 rounded-xl bg-[#ffe2ab]/10 border border-[#ffe2ab]/25 flex items-center justify-center text-[#ffc53d]">
                   <span className="material-symbols-outlined text-2xl font-bold">share</span>
                 </div>
                 <h3 className="font-serif text-lg text-white font-semibold tracking-wide">1. Share Your Code</h3>
                 <p className="text-xs text-[#A69984] leading-relaxed">
-                  Register as a partner, input your bank details for payments, and copy your custom invite link. No upfront commitments or fees required.
+                  Register as a partner, add your bank details for payouts, and copy your custom invite link. No upfront commitments, no fees.
                 </p>
               </div>
 
@@ -371,7 +450,7 @@ export default function PartnersPage() {
                 </div>
                 <h3 className="font-serif text-lg text-white font-semibold tracking-wide">2. Venues Register</h3>
                 <p className="text-xs text-[#A69984] leading-relaxed">
-                  When a restaurant signs up for our Demo or Trial using your code, you instantly see who joined, when, and what services they activated on their dashboard.
+                  When a restaurant signs up using your code, you instantly see who joined, when, and what services they activated on your live dashboard.
                 </p>
               </div>
 
@@ -379,21 +458,42 @@ export default function PartnersPage() {
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400">
                   <span className="material-symbols-outlined text-2xl">payments</span>
                 </div>
-                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">3. Get Paid Cash</h3>
+                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">3. Get Paid</h3>
                 <p className="text-xs text-[#A69984] leading-relaxed">
-                  Earn **$100.00** immediately when they onboard for Demo Use, plus a **$200.00** conversion bonus when they activate a paid monthly plan. Payments are transferred directly to your bank account by the admin.
+                  Earn <span className="text-[#ffc53d] font-bold">${programConfig.rewardPerSignup}</span> per onboarded business plus <span className="text-[#ffc53d] font-bold">{programConfig.commissionRate}% commission</span>. Paid directly to your bank once you hit the <span className="text-[#ffc53d] font-bold">${programConfig.minPayoutThreshold}</span> threshold.
                 </p>
               </div>
             </div>
 
-            {/* Testimonials or Quotes */}
+            {/* Reward policy card */}
+            <div className={`border ${theme.cardBg} rounded-2xl p-7 font-sans`}>
+              <div className="flex items-center gap-2 mb-5">
+                <span className="material-symbols-outlined text-[#ffc53d] text-lg">policy</span>
+                <h3 className="text-white font-bold text-sm tracking-wide">Reward Policy</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {[
+                  { label: 'Flat Reward per Signup', value: `$${programConfig.rewardPerSignup}`, desc: 'Credited when referred business activates their account', color: 'text-[#ffc53d]' },
+                  { label: 'Commission on 1st Payment', value: `${programConfig.commissionRate}%`, desc: 'Percentage of their first subscription payment', color: 'text-emerald-400' },
+                  { label: 'Minimum Payout Threshold', value: `$${programConfig.minPayoutThreshold}`, desc: 'Balance required before requesting a withdrawal', color: 'text-sky-400' },
+                ].map(p => (
+                  <div key={p.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
+                    <div className="text-[9.5px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-2">{p.label}</div>
+                    <div className={`font-serif text-2xl font-bold ${p.color} mb-1.5`}>{p.value}</div>
+                    <div className="text-[10px] text-[#A69984]/50 leading-relaxed">{p.desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Testimonial */}
             <div className={`border ${theme.cardBg} rounded-2xl p-10 flex flex-col md:flex-row items-center gap-8 shadow-2xl`}>
               <div className="w-20 h-20 rounded-full overflow-hidden border border-white/10 shrink-0 bg-amber-500/10 flex items-center justify-center text-amber-400">
                 <span className="material-symbols-outlined text-3xl">restaurant</span>
               </div>
               <div className="space-y-3">
                 <p className="text-sm font-serif italic text-white/95 leading-relaxed font-normal">
-                  "As a culinary consultant, I suggest DinePOS to every new fine-dining restaurant I work with. The onboarding is incredibly smooth, and the payout system ensures I am rewarded transparently for helping businesses find the right tools."
+                  "As a culinary consultant, I suggest DinePOS to every fine-dining restaurant I work with. The onboarding is incredibly smooth, and the payout system ensures I am rewarded transparently for helping businesses find the right tools."
                 </p>
                 <div className="text-[11px] text-[#A69984]/50 font-bold uppercase tracking-wider font-sans">
                   Eric Ripert • Chef & DinePOS Ambassador
@@ -827,10 +927,11 @@ export default function PartnersPage() {
                 <div className={`p-6 rounded-2xl border ${theme.cardBg} space-y-4 font-sans text-xs`}>
                   <h4 className="font-serif text-white font-semibold tracking-wide border-b border-white/5 pb-2">Referral Payout Policies</h4>
                   <ul className="space-y-2.5 text-[#A69984]/70 font-medium list-disc list-inside">
-                    <li>Rewards accumulate immediately when the referred merchant opens a free Demo account.</li>
-                    <li>The default demo sign-up commission is **$100.00** per establishment.</li>
-                    <li>If the establishment moves onto a paid plan within 90 days, you earn an extra **$200.00** conversion bonus.</li>
-                    <li>Platform admin processes payouts within **3 business days** of invoice approvals.</li>
+                    <li>Rewards accumulate when a referred merchant completes their registration using your code.</li>
+                    <li>Flat reward per signup: <span className="text-[#ffc53d] font-bold">${programConfig.rewardPerSignup}</span> per establishment.</li>
+                    <li>Commission on first payment: <span className="text-[#ffc53d] font-bold">{programConfig.commissionRate}%</span> of the referred tenant's first subscription charge.</li>
+                    <li>Minimum payout threshold: <span className="text-[#ffc53d] font-bold">${programConfig.minPayoutThreshold}</span>. Admin processes transfers within 3 business days.</li>
+                    <li>Cookie tracking window: <span className="text-[#ffc53d] font-bold">{programConfig.cookieDuration} days</span> — referral attribution is maintained for returning visitors.</li>
                   </ul>
                 </div>
 

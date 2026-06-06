@@ -23,7 +23,8 @@ export default function HomePage() {
             Introducing DinePOS AI System
           </span>
           <h1 className="font-display-lg text-5xl md:text-7xl text-on-surface mb-md max-w-4xl leading-tight">
-            The Art of Modern <br />
+            The Art of Modern{' '}
+            <br className="hidden sm:block" />
             <span className="text-primary italic">Hospitality</span>
           </h1>
           <p className="font-body-md text-on-surface-variant max-w-2xl mx-auto mb-lg text-lg leading-relaxed">
@@ -48,10 +49,10 @@ export default function HomePage() {
             <p className="font-body-md text-on-surface-variant">Seamless synchronization from front-of-house to the pass.</p>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-md auto-rows-[minmax(300px,_auto)]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-md auto-rows-[minmax(280px,_auto)]">
             
             {/* POS Card (Large) */}
-            <div className="md:col-span-2 lg:col-span-8 glass-panel rounded-xl p-lg relative overflow-hidden group hover-glow transition-all duration-500 flex flex-col justify-between">
+            <div className="lg:col-span-8 glass-panel rounded-xl p-lg relative overflow-hidden group hover-glow transition-all duration-500 flex flex-col justify-between">
               <div className="absolute right-0 top-0 w-1/2 h-full opacity-20 transform translate-x-1/4 group-hover:translate-x-10 transition-transform duration-700 pointer-events-none">
                 <img 
                   alt="Sleek point of sale tablet mock" 
@@ -74,7 +75,7 @@ export default function HomePage() {
             </div>
 
             {/* KDS Card (Small) */}
-            <div className="md:col-span-1 lg:col-span-4 glass-panel rounded-xl p-lg relative group hover-glow transition-all duration-500 flex flex-col justify-between">
+            <div className="lg:col-span-4 glass-panel rounded-xl p-lg relative group hover-glow transition-all duration-500 flex flex-col justify-between">
               <div>
                 <span className="material-symbols-outlined text-primary text-4xl mb-sm">kitchen</span>
                 <h3 className="font-title-md text-2xl text-on-surface mb-xs font-semibold">Kitchen Display</h3>
@@ -99,7 +100,7 @@ export default function HomePage() {
             </div>
 
             {/* Concierge Card (Medium) */}
-            <div className="md:col-span-1 lg:col-span-4 glass-panel rounded-xl p-lg relative group hover-glow transition-all duration-500 flex flex-col justify-between">
+            <div className="lg:col-span-4 glass-panel rounded-xl p-lg relative group hover-glow transition-all duration-500 flex flex-col justify-between">
               <div>
                 <span className="material-symbols-outlined text-primary text-4xl mb-sm">support_agent</span>
                 <h3 className="font-title-md text-2xl text-on-surface mb-xs font-semibold">Global Concierge</h3>
@@ -110,7 +111,7 @@ export default function HomePage() {
             </div>
 
             {/* Guest Management Card (Large) */}
-            <div className="md:col-span-2 lg:col-span-8 glass-panel rounded-xl p-lg relative overflow-hidden group hover-glow transition-all duration-500 flex flex-col justify-between">
+            <div className="lg:col-span-8 glass-panel rounded-xl p-lg relative overflow-hidden group hover-glow transition-all duration-500 flex flex-col justify-between">
               <div className="relative z-10 w-full md:w-1/2 flex flex-col h-full justify-between">
                 <div>
                   <span className="material-symbols-outlined text-primary text-4xl mb-sm">book_online</span>
@@ -244,6 +245,98 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Ambassador Program Section */}
+      <section className="py-xl bg-surface relative z-10 border-t border-outline/10 overflow-hidden">
+        {/* Ambient glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[400px] bg-[radial-gradient(ellipse_at_center,rgba(255,197,61,0.04)_0%,transparent_70%)] pointer-events-none"></div>
+
+        <div className="max-w-7xl mx-auto px-margin-desktop relative z-10">
+
+          {/* Section header */}
+          <div className="text-center mb-xl">
+            <span className="inline-block border border-primary/20 rounded-full px-4 py-1.5 font-label-sm text-primary text-[10px] uppercase tracking-[0.22em] bg-primary/5 mb-md">
+              Ambassador Network
+            </span>
+            <h2 className="font-headline-lg text-4xl text-on-surface mb-xs font-semibold">
+              Earn While You Introduce
+            </h2>
+            <p className="font-body-md text-on-surface-variant max-w-2xl mx-auto">
+              Refer restaurants to DinePOS AI and earn premium cash rewards for every onboarded location. Our ambassador network is growing globally.
+            </p>
+          </div>
+
+          {/* Stats bar */}
+          <div className="grid grid-cols-3 gap-md mb-xl">
+            {[
+              { value: '$150', label: 'Reward per signup', icon: 'payments' },
+              { value: '10%', label: 'Commission on first payment', icon: 'percent' },
+              { value: '$0', label: 'Cost to join the program', icon: 'loyalty' },
+            ].map(stat => (
+              <div key={stat.label} className="glass-panel rounded-xl p-lg text-center border border-outline/20 group hover-glow transition-all duration-500">
+                <span className="material-symbols-outlined text-primary text-3xl mb-sm block">{stat.icon}</span>
+                <div className="font-display-lg text-3xl text-on-surface font-bold mb-xs">{stat.value}</div>
+                <div className="font-label-sm text-on-surface-variant text-xs uppercase tracking-wider">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* How it works — 3 steps */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-md mb-xl">
+            {[
+              {
+                step: '01',
+                icon: 'share',
+                color: 'text-primary',
+                bg: 'bg-primary/10 border-primary/20',
+                title: 'Register & Get Your Code',
+                body: 'Sign up as a DinePOS ambassador in under 2 minutes. You\'ll receive a unique referral code and link to share with your culinary network.',
+              },
+              {
+                step: '02',
+                icon: 'storefront',
+                color: 'text-emerald-400',
+                bg: 'bg-emerald-500/10 border-emerald-500/20',
+                title: 'Restaurants Sign Up',
+                body: 'When a venue registers using your code, they\'re instantly tracked on your ambassador dashboard — showing status, services activated, and accrued rewards.',
+              },
+              {
+                step: '03',
+                icon: 'account_balance',
+                color: 'text-amber-400',
+                bg: 'bg-amber-500/10 border-amber-500/20',
+                title: 'Collect Your Earnings',
+                body: 'Earnings are credited per onboarded location and paid directly to your bank account by the platform admin once you reach the minimum threshold.',
+              },
+            ].map(step => (
+              <div key={step.step} className="glass-panel rounded-xl p-lg flex flex-col gap-md border border-outline/20 group hover-glow transition-all duration-500 relative overflow-hidden">
+                <div className="absolute top-4 right-4 font-display-lg text-5xl text-on-surface-variant/5 font-bold leading-none select-none">{step.step}</div>
+                <div className={`w-12 h-12 rounded-xl ${step.bg} border flex items-center justify-center`}>
+                  <span className={`material-symbols-outlined text-2xl ${step.color}`}>{step.icon}</span>
+                </div>
+                <h3 className="font-title-md text-lg text-on-surface font-semibold">{step.title}</h3>
+                <p className="font-body-md text-on-surface-variant text-sm leading-relaxed">{step.body}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA row */}
+          <div className="flex flex-col sm:flex-row gap-md items-center justify-center">
+            <Link
+              href="/partners"
+              className="bg-primary-container text-on-primary-container font-title-md px-lg py-sm rounded hover:bg-primary transition-all duration-300 transform hover:-translate-y-1 glow-shadow flex items-center gap-xs"
+            >
+              Join the Ambassador Program <span className="material-symbols-outlined text-sm">arrow_forward</span>
+            </Link>
+            <Link
+              href="/partners"
+              className="border border-outline font-title-md text-primary px-lg py-sm rounded hover:bg-surface-variant transition-all duration-300"
+            >
+              Ambassador Login
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Testimonials Section */}
       <section className="py-xl bg-surface-container-lowest relative z-10 border-t border-outline/10">
         <div className="max-w-7xl mx-auto px-margin-desktop">
@@ -252,10 +345,10 @@ export default function HomePage() {
               <h2 className="font-headline-lg text-4xl text-on-surface mb-sm font-semibold">Trusted by the Elite</h2>
               <p className="font-body-md text-on-surface-variant mb-lg">See how top-tier establishments are redefining service with DinePOS AI.</p>
               <div className="flex gap-sm">
-                <button className="w-12 h-12 rounded-full border border-outline flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-colors">
+                <button type="button" aria-label="Previous testimonial" className="w-12 h-12 rounded-full border border-outline flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   <span className="material-symbols-outlined">arrow_back</span>
                 </button>
-                <button className="w-12 h-12 rounded-full border border-outline flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-colors">
+                <button type="button" aria-label="Next testimonial" className="w-12 h-12 rounded-full border border-outline flex items-center justify-center text-on-surface hover:text-primary hover:border-primary transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary">
                   <span className="material-symbols-outlined">arrow_forward</span>
                 </button>
               </div>
@@ -309,6 +402,7 @@ export default function HomePage() {
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/support">Contact Support</Link>
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/experience">Experience</Link>
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/solutions">Solutions</Link>
+            <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/partners">Ambassador Program</Link>
           </div>
           <div className="text-on-surface-variant font-label-sm text-xs opacity-60">
             © 2026 DinePOS AI Hospitality Systems. All rights reserved.

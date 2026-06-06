@@ -197,7 +197,7 @@ export default function LoginPage() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-11 py-3 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 ${!showPassword && password ? 'tracking-[0.25em]' : ''}`}
+                className="w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-11 py-3 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-colors duration-200 hover:border-white/15"
                 placeholder={showPassword ? 'password' : '••••••••••••'} 
               />
               <button 
@@ -237,10 +237,13 @@ export default function LoginPage() {
             className="w-full bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/50 disabled:cursor-not-allowed text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest py-3.5 rounded-lg transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:shadow-[0_4px_24px_rgba(255,226,171,0.2)] hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-6"
           >
             {isLoading ? (
-              <span className="w-4 h-4 border-2 border-[#402d00]/30 border-t-[#402d00] rounded-full animate-spin"></span>
+              <span className="flex items-center gap-2">
+                <span className="w-4 h-4 border-2 border-[#402d00]/30 border-t-[#402d00] rounded-full animate-spin flex-shrink-0"></span>
+                Signing In…
+              </span>
             ) : (
               <span className="flex items-center gap-2">
-                Sign In <span className="material-symbols-outlined text-sm font-black transition-transform duration-300 group-hover:translate-x-0.5">arrow_forward</span>
+                Sign In <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
               </span>
             )}
           </button>
@@ -303,8 +306,8 @@ export default function LoginPage() {
         </div>
 
         {/* Muted bottom operational guideline text */}
-        <div className="mt-6 text-center text-[#A69984]/40 font-sans text-[10px] leading-relaxed max-w-[240px] mx-auto select-none uppercase tracking-[0.06em]">
-          Secure operational gateway.<br />Authorized personnel only.
+        <div className="mt-6 text-center text-[#A69984]/40 font-sans text-[10px] leading-relaxed select-none uppercase tracking-[0.06em]">
+          Secure operational gateway · Authorized personnel only
         </div>
       </div>
     </div>

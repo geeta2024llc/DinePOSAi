@@ -213,6 +213,8 @@ const translations: Record<string, Record<string, string>> = {
     languageSelect: "Dashboard Language",
     langEn: "English (US)",
     langJa: "日本語 (Japanese)",
+    langZh: "中文（简体）",
+    langKo: "한국어 (Korean)",
     digitalMenuPrefs: "Digital Menu Preferences & Exclusions",
     maxDisplayPrice: "Maximum Display Price",
     maxDisplayPriceDesc: "Items priced above this amount will be hidden from the customer-facing menu.",
@@ -353,6 +355,8 @@ const translations: Record<string, Record<string, string>> = {
     languageSelect: "表示言語",
     langEn: "English (US)",
     langJa: "日本語 (Japanese)",
+    langZh: "中文（简体）",
+    langKo: "한국어 (Korean)",
     digitalMenuPrefs: "デジタルメニューの表示・機能設定",
     maxDisplayPrice: "メニュー表示の最大価格",
     maxDisplayPriceDesc: "この設定金額を超えるメニュー項目は、顧客向けデジタルメニューには非表示になります。",
@@ -436,12 +440,297 @@ const translations: Record<string, Record<string, string>> = {
     taxBasisDesc: "消費税を小計に追加加算する（外税）か、商品の販売価格に含める（内税）かを選択します。",
     subtotalInclusive: "小計 (税込)",
     includedTax: "内消費税 (8%)",
+  },
+  zh: {
+    adminConsole: "管理控制台",
+    general: "基本设置",
+    payments: "收入与账单",
+    hardware: "设备管理",
+    staff: "员工管理",
+    security: "安全设置",
+    menuEditor: "菜单编辑",
+    saveChanges: "保存设置",
+    signOut: "退出登录",
+    searchPlaceholder: "搜索设置...",
+    administrator: "管理员",
+    generalTitle: "基本设置",
+    generalDesc: "配置餐厅信息、收据模板和界面主题。",
+    restaurantInfo: "餐厅信息",
+    restaurantName: "餐厅名称",
+    contactEmail: "联系邮箱",
+    taxIdLabel: "税号 / VAT",
+    businessAddress: "营业地址",
+    saveProfile: "保存资料",
+    globalThemeTitle: "界面主题设置",
+    customThemeConfig: "自定义主题配置",
+    customThemeDesc: "用您喜欢的颜色定制仪表板",
+    receiptOptionsTitle: "收据与账单布局设置",
+    showLogo: "显示店铺标志",
+    showLogoDesc: "在收据顶部打印徽标",
+    showTaxId: "显示税号",
+    showTaxIdDesc: "在收据中包含税号（VAT）",
+    showServer: "显示服务员姓名",
+    showServerDesc: "在收据上打印收银员姓名",
+    showTable: "显示桌号",
+    showTableDesc: "显示餐桌编号",
+    showTimestamp: "显示订单时间",
+    showTimestampDesc: "在收据中包含结账日期时间",
+    showFeedbackQr: "显示评价二维码",
+    showFeedbackQrDesc: "打印客户评价页面的二维码",
+    showSocial: "显示社交媒体链接",
+    showSocialDesc: "显示官方社交账号链接",
+    includeServiceCharge: "包含服务费",
+    includeServiceChargeDesc: "自动添加10%服务费",
+    showCustomFooter: "显示自定义页脚",
+    showCustomFooterDesc: "在收据底部添加自定义文字",
+    livePreview: "实时预览",
+    realtimeSync: "同步中",
+    currentTable: "餐桌: T-14",
+    serverLabel: "服务员: JULIAN B.",
+    orderLabel: "订单 #2345",
+    subtotal: "小计",
+    tax: "税费",
+    serviceCharge: "服务费 (10%)",
+    gratuity: "小费 (建议20%)",
+    grandTotal: "总计",
+    regionalSettings: "地区与货币设置",
+    languageSelect: "界面语言",
+    langEn: "English (US)",
+    langJa: "日本語 (Japanese)",
+    langZh: "中文（简体）",
+    langKo: "한국어 (Korean)",
+    digitalMenuPrefs: "数字菜单偏好设置",
+    maxDisplayPrice: "最高显示价格",
+    maxDisplayPriceDesc: "价格超过此金额的菜品将在顾客菜单中隐藏。",
+    excludedFoodTags: "排除的食品标签",
+    excludedFoodTagsDesc: "在顾客菜单中隐藏带有这些标签的菜品。",
+    digitalMenuFeatures: "数字菜单功能开关",
+    enableAIConcierge: "启用AI礼宾服务",
+    enableAIConciergeDesc: "允许顾客通过AI咨询菜品推荐和搭配建议。",
+    enableSelfCheckout: "启用顾客自助结账",
+    enableSelfCheckoutDesc: "允许顾客在餐桌上直接自助点单。",
+    subAndBilling: "订阅与账单管理",
+    subDesc: "管理企业套餐、支付方式和查看即将到期的账单。",
+    downloadStatements: "下载账单明细",
+    currentPlan: "当前套餐",
+    planName: "企业成长版",
+    planBilling: "按年计费 • 到期时间：2026年11月15日",
+    activeTerminals: "在线终端数",
+    cloudStorage: "云存储空间",
+    changePlan: "更改套餐",
+    manageAddons: "管理附加功能",
+    paymentMethod: "支付方式",
+    editBtn: "编辑",
+    defaultMethod: "默认",
+    addBackupMethod: "添加备用支付方式",
+    invoiceLedger: "近期账单记录",
+    dateCol: "日期",
+    descCol: "说明",
+    amountCol: "金额",
+    statusCol: "状态",
+    actionCol: "操作",
+    upcomingStatus: "待付款",
+    paidStatus: "已付款",
+    failedStatus: "付款失败",
+    menuWelcome: "菜单编辑器",
+    menuDesc: "创建、编辑、分类和管理餐厅数字菜单。",
+    avgProfit: "平均利润率",
+    totalItems: "菜品总数",
+    specDishes: "特色菜品",
+    manageCats: "管理分类",
+    addMenuItem: "添加菜品",
+    editMenuItem: "编辑菜品",
+    itemCol: "菜品",
+    categoryCol: "分类",
+    costCol: "成本",
+    priceCol: "售价",
+    marginCol: "利润率",
+    actionsCol: "操作",
+    categoryManager: "分类管理",
+    addCategory: "添加分类",
+    editCategory: "编辑分类",
+    categoryName: "分类名称",
+    categoryIcon: "分类图标",
+    activeCategories: "已启用分类",
+    hardwareFleet: "硬件设备",
+    hardwareDesc: "监控连接的终端设备、打印机、展示屏及收银抽屉。",
+    pairNewDevice: "配对新设备",
+    globalPreferences: "全局偏好设置",
+    autoReconnect: "自动重新连接设备",
+    defaultGateway: "默认网关",
+    btDiscovery: "蓝牙信标发现",
+    statusIndicators: "状态告警",
+    testDrawerKick: "测试收银抽屉",
+    cashDrawers: "收银抽屉",
+    openOnCash: "现金结账时自动打开",
+    requireManager: "手动开启需要管理员PIN授权",
+    staffDirectory: "员工目录",
+    staffDesc: "监控员工状态、排班情况和客户满意度评分。",
+    onShift: "在班",
+    offDuty: "休息",
+    overtime: "加班",
+    weeklyRoster: "每周排班表",
+    securityConsole: "安全控制台",
+    securityDesc: "修改权限控制、查看系统审计记录及设置会话超时。",
+    timeoutLabel: "会话空闲超时（分钟）",
+    passcodeLabel: "默认员工密码长度（位数）",
+    roleAccess: "角色访问权限",
+    auditTrail: "系统审计日志",
+    taxBasisLabel: "税金计算方式",
+    preTaxLabel: "税前（不含税）",
+    postTaxLabel: "税后（含税）",
+    taxBasisDesc: "选择税金是在小计之外加收（税前）还是已包含在价格中（税后）。",
+    subtotalInclusive: "小计（含税）",
+    includedTax: "含税额 (8%)",
+  },
+  ko: {
+    adminConsole: "관리 콘솔",
+    general: "일반 설정",
+    payments: "매출 및 청구",
+    hardware: "하드웨어 설정",
+    staff: "직원 관리",
+    security: "보안 설정",
+    menuEditor: "메뉴 편집",
+    saveChanges: "설정 저장",
+    signOut: "로그아웃",
+    searchPlaceholder: "설정 검색...",
+    administrator: "관리자",
+    generalTitle: "일반 설정",
+    generalDesc: "레스토랑 정보, 영수증 템플릿 및 화면 테마를 구성합니다.",
+    restaurantInfo: "레스토랑 정보",
+    restaurantName: "레스토랑 이름",
+    contactEmail: "연락처 이메일",
+    taxIdLabel: "사업자 번호 / VAT",
+    businessAddress: "사업장 주소",
+    saveProfile: "정보 저장",
+    globalThemeTitle: "테마 설정",
+    customThemeConfig: "커스텀 테마 구성",
+    customThemeDesc: "원하는 색상으로 대시보드를 커스터마이즈하세요",
+    receiptOptionsTitle: "영수증 및 청구서 레이아웃 설정",
+    showLogo: "매장 로고 표시",
+    showLogoDesc: "영수증 상단에 로고를 인쇄합니다",
+    showTaxId: "사업자 번호 표시",
+    showTaxIdDesc: "영수증에 사업자 번호(VAT)를 포함합니다",
+    showServer: "담당 직원 이름 표시",
+    showServerDesc: "영수증에 계산원 이름을 인쇄합니다",
+    showTable: "테이블 번호 표시",
+    showTableDesc: "테이블 ID를 표시합니다",
+    showTimestamp: "주문 일시 표시",
+    showTimestampDesc: "영수증에 결제 날짜와 시간을 포함합니다",
+    showFeedbackQr: "고객 평가 QR 표시",
+    showFeedbackQrDesc: "고객 평가 페이지의 QR 코드를 인쇄합니다",
+    showSocial: "SNS 링크 표시",
+    showSocialDesc: "공식 SNS 계정 링크를 표시합니다",
+    includeServiceCharge: "서비스 요금 포함",
+    includeServiceChargeDesc: "자동으로 10% 서비스 요금을 추가합니다",
+    showCustomFooter: "사용자 지정 푸터 메시지 표시",
+    showCustomFooterDesc: "영수증 하단에 사용자 지정 텍스트를 추가합니다",
+    livePreview: "실시간 미리보기",
+    realtimeSync: "동기화 중",
+    currentTable: "테이블: T-14",
+    serverLabel: "담당: JULIAN B.",
+    orderLabel: "주문 #2345",
+    subtotal: "소계",
+    tax: "세금",
+    serviceCharge: "서비스 요금 (10%)",
+    gratuity: "팁 (권장 20%)",
+    grandTotal: "합계",
+    regionalSettings: "지역 및 통화 설정",
+    languageSelect: "대시보드 언어",
+    langEn: "English (US)",
+    langJa: "日本語 (Japanese)",
+    langZh: "中文（简体）",
+    langKo: "한국어 (Korean)",
+    digitalMenuPrefs: "디지털 메뉴 환경설정",
+    maxDisplayPrice: "최대 표시 가격",
+    maxDisplayPriceDesc: "이 금액을 초과하는 메뉴 항목은 고객용 메뉴에서 숨겨집니다.",
+    excludedFoodTags: "제외할 음식 태그",
+    excludedFoodTagsDesc: "이 태그가 포함된 메뉴 항목을 고객 메뉴에서 숨깁니다.",
+    digitalMenuFeatures: "디지털 메뉴 기능 설정",
+    enableAIConcierge: "AI 컨시어지 활성화",
+    enableAIConciergeDesc: "고객이 AI에게 메뉴 추천 및 페어링에 대해 질문할 수 있도록 합니다.",
+    enableSelfCheckout: "고객 셀프 체크아웃 활성화",
+    enableSelfCheckoutDesc: "고객이 테이블에서 직접 셀프 체크아웃으로 주문할 수 있도록 합니다.",
+    subAndBilling: "구독 및 청구 관리",
+    subDesc: "현재 플랜, 결제 방법 및 청구서 내역을 관리합니다.",
+    downloadStatements: "청구서 명세서 다운로드",
+    currentPlan: "현재 플랜",
+    planName: "엔터프라이즈 성장 플랜",
+    planBilling: "연간 결제 • 갱신일: 2026년 11월 15일",
+    activeTerminals: "활성 단말기",
+    cloudStorage: "클라우드 저장소",
+    changePlan: "플랜 변경",
+    manageAddons: "부가 기능 관리",
+    paymentMethod: "결제 방법",
+    editBtn: "편집",
+    defaultMethod: "기본",
+    addBackupMethod: "백업 결제 방법 추가",
+    invoiceLedger: "청구서 내역",
+    dateCol: "날짜",
+    descCol: "설명",
+    amountCol: "금액",
+    statusCol: "상태",
+    actionCol: "작업",
+    upcomingStatus: "예정",
+    paidStatus: "결제 완료",
+    failedStatus: "결제 실패",
+    menuWelcome: "메뉴 편집기",
+    menuDesc: "디지털 메뉴 항목을 생성, 편집, 분류 및 관리합니다.",
+    avgProfit: "평균 이익률",
+    totalItems: "전체 메뉴 수",
+    specDishes: "특선 요리",
+    manageCats: "카테고리 관리",
+    addMenuItem: "메뉴 항목 추가",
+    editMenuItem: "메뉴 항목 편집",
+    itemCol: "메뉴 항목",
+    categoryCol: "카테고리",
+    costCol: "원가",
+    priceCol: "판매가",
+    marginCol: "마진",
+    actionsCol: "작업",
+    categoryManager: "카테고리 관리자",
+    addCategory: "카테고리 추가",
+    editCategory: "카테고리 편집",
+    categoryName: "카테고리 이름",
+    categoryIcon: "카테고리 아이콘",
+    activeCategories: "활성 카테고리",
+    hardwareFleet: "하드웨어 기기",
+    hardwareDesc: "연결된 단말기, 프린터, 전시 화면 및 계산기 서랍을 모니터링합니다.",
+    pairNewDevice: "새 기기 페어링",
+    globalPreferences: "전역 환경설정",
+    autoReconnect: "기기 자동 재연결",
+    defaultGateway: "기본 네트워크 게이트웨이",
+    btDiscovery: "블루투스 비콘 검색",
+    statusIndicators: "상태 알림",
+    testDrawerKick: "계산기 서랍 테스트",
+    cashDrawers: "계산기 서랍",
+    openOnCash: "현금 결제 시 자동 열기",
+    requireManager: "수동 개방 시 관리자 PIN 인증 필요",
+    staffDirectory: "직원 목록",
+    staffDesc: "직원 상태, 교대 일정 및 고객 만족도를 모니터링합니다.",
+    onShift: "근무 중",
+    offDuty: "휴무",
+    overtime: "초과 근무",
+    weeklyRoster: "주간 근무 일정",
+    securityConsole: "보안 콘솔",
+    securityDesc: "역할 접근 권한 수정, 시스템 감사 기록 검토 및 세션 타임아웃 설정.",
+    timeoutLabel: "세션 유휴 타임아웃 (분)",
+    passcodeLabel: "기본 직원 비밀번호 길이 (자리)",
+    roleAccess: "역할별 접근 권한",
+    auditTrail: "시스템 감사 로그",
+    taxBasisLabel: "세금 계산 방식",
+    preTaxLabel: "세전 (외세)",
+    postTaxLabel: "세후 (내세)",
+    taxBasisDesc: "세금을 소계에 추가 적용할지(세전) 가격에 포함할지(세후) 선택합니다.",
+    subtotalInclusive: "소계 (세금 포함)",
+    includedTax: "포함 세금 (8%)",
   }
 };
 
 export default function DashboardPage() {
   // Localization States
-  const [language, setLanguage] = useState<'en' | 'ja'>('en');
+  const [language, setLanguage] = useState<'en' | 'ja' | 'zh' | 'ko'>('en');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
 
   // Sidebar tab selection state - defaults to operations (Operations Console) matching target mockup
@@ -644,7 +933,9 @@ export default function DashboardPage() {
       if (savedText) setCustomText(savedText);
       if (savedTextMuted) setCustomTextMuted(savedTextMuted);
       if (savedAesthetic) setGlobalAesthetic(savedAesthetic);
-      if (savedLang === 'ja' || savedLang === 'en') setLanguage(savedLang);
+      if (['en', 'ja', 'zh', 'ko'].includes(savedLang || '')) setLanguage(savedLang as 'en' | 'ja' | 'zh' | 'ko');
+      const savedCurrency = localStorage.getItem('dinepos_currency');
+      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) setCurrency(savedCurrency as 'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW');
       if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
         setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
       }
@@ -834,7 +1125,7 @@ export default function DashboardPage() {
       }
       if (e.key === 'dinepos_language' && e.newValue) {
         if (e.newValue === 'ja' || e.newValue === 'en') {
-          setLanguage(e.newValue as 'en' | 'ja');
+          setLanguage(e.newValue as 'en' | 'ja' | 'zh' | 'ko');
         }
       }
       if (e.key === 'dinepos_tax_type' && e.newValue) {
@@ -860,20 +1151,31 @@ export default function DashboardPage() {
 
   const t = themes[globalAesthetic as keyof typeof themes] || themes['Midnight Black'];
 
-  const isJpy = language === 'ja';
+  const currencySymbols: Record<string, string> = { USD: '$', JPY: '¥', EUR: '€', GBP: '£', CNY: '¥', KRW: '₩' };
+  const currencyRates: Record<string, number> = { USD: 1, JPY: 150, EUR: 0.92, GBP: 0.79, CNY: 7.24, KRW: 1340 };
+  const isJpy = currency === 'JPY' || currency === 'KRW';
   const formatCurrency = (val: number) => {
-    if (isJpy) {
-      return `¥${Math.round(val * 150).toLocaleString()}`;
-    }
-    return `$${parseFloat(val as any || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const rate = currencyRates[currency] || 1;
+    const sym = currencySymbols[currency] || '$';
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') return `${sym}${Math.round(converted).toLocaleString()}`;
+    return `${sym}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const tr = translations[language] || translations['en'];
 
-  const handleLanguageChange = (newLang: 'en' | 'ja') => {
+  const handleLanguageChange = (newLang: 'en' | 'ja' | 'zh' | 'ko') => {
     setLanguage(newLang);
     localStorage.setItem('dinepos_language', newLang);
-    triggerToast(newLang === 'ja' ? '表示言語と通貨を日本語に設定しました。' : 'Language and currency updated to English.', 'success');
+    const names: Record<string, string> = { en: 'English', ja: 'Japanese / 日本語', zh: 'Chinese / 中文', ko: 'Korean / 한국어' };
+    triggerToast(`Dashboard language set to ${names[newLang]}.`, 'success');
+  };
+
+  const handleCurrencyChange = (newCurrency: 'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW') => {
+    setCurrency(newCurrency);
+    localStorage.setItem('dinepos_currency', newCurrency);
+    const cnames: Record<string, string> = { USD: 'USD ($)', JPY: 'JPY (¥)', EUR: 'EUR (€)', GBP: 'GBP (£)', CNY: 'CNY (¥)', KRW: 'KRW (₩)' };
+    triggerToast(`Display currency changed to ${cnames[newCurrency]}.`, 'success');
   };
 
   const handleTaxTypeChange = (newTaxType: 'pre-tax' | 'post-tax') => {
@@ -1283,7 +1585,7 @@ export default function DashboardPage() {
               placeholder={activeTab === 'operations' ? "Search settings..." : activeTab === 'payments' ? "Search transactions..." : activeTab === 'hardware' ? "Search devices..." : "Search parameters..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-[240px] bg-black/20 border ${t.border} rounded-xl pl-11 pr-4 py-2.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`}
+              className={`w-full max-w-[240px] bg-black/20 border ${t.border} rounded-xl pl-11 pr-4 py-2.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`}
             />
           </div>
           
@@ -1310,25 +1612,25 @@ export default function DashboardPage() {
 
             {/* Language Toggle */}
             <div className={`flex items-center ${t.cardBgOpaque} border ${t.border} rounded-xl overflow-hidden select-none`}>
-              <button
-                onClick={() => handleLanguageChange('en')}
-                className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
-                  language === 'en' ? `${t.accentBg} ${t.accentText}` : `${t.textMuted} hover:text-white`
-                }`}
-                title="English / USD"
-              >
-                🇺🇸 EN
-              </button>
-              <div className={`w-px h-5 ${t.border} bg-white/10`}></div>
-              <button
-                onClick={() => handleLanguageChange('ja')}
-                className={`px-3 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
-                  language === 'ja' ? `${t.accentBg} ${t.accentText}` : `${t.textMuted} hover:text-white`
-                }`}
-                title="日本語 / JPY"
-              >
-                🇯🇵 JA
-              </button>
+              {([
+                { code: 'en', flag: '🇺🇸', label: 'EN', title: 'English' },
+                { code: 'ja', flag: '🇯🇵', label: 'JA', title: '日本語' },
+                { code: 'zh', flag: '🇨🇳', label: 'ZH', title: '中文' },
+                { code: 'ko', flag: '🇰🇷', label: 'KO', title: '한국어' },
+              ] as const).map((lang, i) => (
+                <React.Fragment key={lang.code}>
+                  {i > 0 && <div className={`w-px h-4 bg-white/10`}></div>}
+                  <button
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className={`px-2.5 py-2.5 text-[9.5px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
+                      language === lang.code ? `${t.accentBg} ${t.accentText}` : `${t.textMuted} hover:text-white`
+                    }`}
+                    title={lang.title}
+                  >
+                    {lang.flag} {lang.label}
+                  </button>
+                </React.Fragment>
+              ))}
             </div>
 
             <button 
@@ -1592,7 +1894,7 @@ export default function DashboardPage() {
                 <div className="flex justify-between items-center select-none pl-1">
                   <h3 className="font-serif text-base font-bold text-[#ffe2ab] uppercase tracking-wider">Live Preview</h3>
                   <div className="flex items-center gap-1.5 text-[10.5px] text-[#ffe2ab] font-bold uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#ffe2ab] animate-pulse"></span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#ffe2ab] motion-safe:animate-pulse"></span>
                     Sync Active
                   </div>
                 </div>
@@ -2153,7 +2455,7 @@ export default function DashboardPage() {
                                 <td className="px-6 py-4 align-middle">
                                   {member.status === 'ON_SHIFT' && (
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-400 font-bold text-[9px] uppercase tracking-wider rounded-full">
-                                      <span className="w-1 h-1 rounded-full bg-sky-400 animate-pulse"></span>
+                                      <span className="w-1 h-1 rounded-full bg-sky-400 motion-safe:animate-pulse"></span>
                                       + On Shift
                                     </span>
                                   )}
@@ -2164,7 +2466,7 @@ export default function DashboardPage() {
                                   )}
                                   {member.status === 'OVERTIME' && (
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[9px] uppercase tracking-wider rounded-full">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 motion-safe:animate-pulse"></span>
                                       Approaching (Overtime)
                                     </span>
                                   )}
@@ -3529,38 +3831,74 @@ export default function DashboardPage() {
 
                   {/* Regional & Currency Settings */}
                   <div className={`${t.cardBgOpaque} rounded-2xl p-7 shadow-xl`}>
-                    <div className="flex items-center gap-2 mb-5">
+                    <div className="flex items-center gap-2 mb-6">
                       <span className={`material-symbols-outlined ${t.accent} text-lg`}>language</span>
                       <h3 className={`${t.text} font-bold text-sm tracking-wide select-none`}>{tr.regionalSettings}</h3>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
+
+                      {/* Language Selection */}
                       <div>
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>{tr.languageSelect}</label>
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => handleLanguageChange('en')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
-                              language === 'en'
-                                ? `${t.accentBg} ${t.accentLightBorder} ${t.accentText}`
-                                : `${t.inputBg} ${t.inputBorder} ${t.textMuted} hover:border-white/20 hover:text-white`
-                            }`}
-                          >
-                            <span className="text-base">🇺🇸</span>
-                            <span>{tr.langEn}</span>
-                          </button>
-                          <button
-                            onClick={() => handleLanguageChange('ja')}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
-                              language === 'ja'
-                                ? `${t.accentBg} ${t.accentLightBorder} ${t.accentText}`
-                                : `${t.inputBg} ${t.inputBorder} ${t.textMuted} hover:border-white/20 hover:text-white`
-                            }`}
-                          >
-                            <span className="text-base">🇯🇵</span>
-                            <span>{tr.langJa}</span>
-                          </button>
+                        <div className="grid grid-cols-2 gap-3">
+                          {([
+                            { code: 'en', flag: '🇺🇸', label: tr.langEn },
+                            { code: 'ja', flag: '🇯🇵', label: tr.langJa },
+                            { code: 'zh', flag: '🇨🇳', label: tr.langZh },
+                            { code: 'ko', flag: '🇰🇷', label: tr.langKo },
+                          ] as const).map(lang => (
+                            <button
+                              key={lang.code}
+                              onClick={() => handleLanguageChange(lang.code)}
+                              className={`flex items-center gap-2.5 py-3 px-4 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
+                                language === lang.code
+                                  ? `${t.accentBg} ${t.accentLightBorder} ${t.accentText}`
+                                  : `${t.inputBg} ${t.inputBorder} ${t.textMuted} hover:border-white/20 hover:text-white`
+                              }`}
+                            >
+                              <span className="text-base">{lang.flag}</span>
+                              <span>{lang.label}</span>
+                            </button>
+                          ))}
                         </div>
                       </div>
+
+                      {/* Currency Selection */}
+                      <div>
+                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>Display Currency</label>
+                        <div className="grid grid-cols-3 gap-2.5">
+                          {([
+                            { code: 'USD', symbol: '$', name: 'US Dollar' },
+                            { code: 'EUR', symbol: '€', name: 'Euro' },
+                            { code: 'GBP', symbol: '£', name: 'Pound' },
+                            { code: 'JPY', symbol: '¥', name: 'Yen' },
+                            { code: 'CNY', symbol: '¥', name: 'Yuan' },
+                            { code: 'KRW', symbol: '₩', name: 'Won' },
+                          ] as const).map(cur => (
+                            <button
+                              key={cur.code}
+                              onClick={() => handleCurrencyChange(cur.code)}
+                              className={`flex flex-col items-center py-3 px-2 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
+                                currency === cur.code
+                                  ? `${t.accentBg} ${t.accentLightBorder} ${t.accentText}`
+                                  : `${t.inputBg} ${t.inputBorder} ${t.textMuted} hover:border-white/20 hover:text-white`
+                              }`}
+                            >
+                              <span className="font-serif text-lg leading-none">{cur.symbol}</span>
+                              <span className="text-[9.5px] font-bold uppercase tracking-wider mt-1">{cur.code}</span>
+                              <span className="text-[8px] font-medium mt-0.5 opacity-70">{cur.name}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <div className={`flex items-center gap-3 mt-3 p-3.5 rounded-xl border ${t.border} ${t.inputBg}/30`}>
+                          <span className={`material-symbols-outlined text-base ${t.accent}`}>info</span>
+                          <p className={`text-[10px] ${t.textMuted} font-semibold leading-relaxed`}>
+                            Currency conversions are approximate. Current rate: 1 USD = {currencyRates[currency].toLocaleString()} {currency}.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Tax Basis */}
                       <div>
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>{tr.taxBasisLabel}</label>
                         <div className="flex gap-3">
@@ -3591,14 +3929,7 @@ export default function DashboardPage() {
                           {tr.taxBasisDesc}
                         </p>
                       </div>
-                      <div className={`flex items-center gap-3 p-4 rounded-xl border ${t.border} ${t.inputBg}/30`}>
-                        <span className={`material-symbols-outlined text-lg ${t.accent}`}>payments</span>
-                        <p className={`text-[10.5px] ${t.textMuted} font-semibold leading-relaxed`}>
-                          {language === 'en'
-                            ? 'Currency: USD ($) — All prices displayed in US Dollars.'
-                            : '通貨: 日本円 (¥) — 全ての価格は日本円で表示されます（×150換算）。'}
-                        </p>
-                      </div>
+
                     </div>
                   </div>
 
@@ -3712,7 +4043,7 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-center px-1">
                     <h3 className={`font-serif text-base font-bold ${t.accent} uppercase tracking-wider`}>{tr.livePreview}</h3>
                     <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse"></span>
                       {tr.realtimeSync}
                     </div>
                   </div>
@@ -4333,7 +4664,7 @@ export default function DashboardPage() {
           {/* Fallback Placeholder tab for other sections */}
           {activeTab !== 'operations' && activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && (
             <div className={`text-center py-36 select-none border border-dashed ${t.border} rounded-2xl ${t.inputBg}/30`}>
-              <span className={`material-symbols-outlined text-5xl ${t.accent} opacity-40 animate-pulse font-light mb-4 block`}>construction</span>
+              <span className={`material-symbols-outlined text-5xl ${t.accent} opacity-40 motion-safe:animate-pulse font-light mb-4 block`}>construction</span>
               <h3 className={`font-serif text-xl ${t.text} mb-2 tracking-wide capitalize`}>{activeTab} Dashboard Panel</h3>
               <p className={`font-sans text-xs font-semibold max-w-sm mx-auto ${t.textMuted}`}>
                 Auditing tools and administrative controls for {activeTab} parameters are currently being synchronized.

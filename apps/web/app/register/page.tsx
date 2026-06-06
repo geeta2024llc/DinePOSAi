@@ -17,14 +17,32 @@ function RegisterForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [referralAmbassadorName, setReferralAmbassadorName] = useState('');
+  const [rewardPerSignup, setRewardPerSignup] = useState(150);
 
-  // Auto-fill referral code from URL query param ?ref=CODE
+  // Auto-fill referral code from URL query param ?ref=CODE and look up ambassador
   useEffect(() => {
     const refParam = searchParams.get('ref');
-    if (refParam) {
-      setReferralCode(refParam.toUpperCase());
-    }
+    if (refParam) setReferralCode(refParam.toUpperCase());
   }, [searchParams]);
+
+  // Load program config and resolve ambassador name when referralCode changes
+  useEffect(() => {
+    const cfg = localStorage.getItem('dinepos_referral_config');
+    if (cfg) { try { const parsed = JSON.parse(cfg); if (parsed.rewardPerSignup) setRewardPerSignup(parsed.rewardPerSignup); } catch { /* */ } }
+  }, []);
+
+  useEffect(() => {
+    if (!referralCode.trim()) { setReferralAmbassadorName(''); return; }
+    try {
+      const stored = localStorage.getItem('dinepos_referrals');
+      if (stored) {
+        const refs = JSON.parse(stored);
+        const match = refs.find((r: { code: string; name: string }) => r.code.toUpperCase() === referralCode.trim().toUpperCase());
+        setReferralAmbassadorName(match ? match.name : '');
+      }
+    } catch { /* */ }
+  }, [referralCode]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,10 +77,10 @@ function RegisterForm() {
               joinedDate: new Date().toISOString().split('T')[0],
               status: 'Demo Use',
               services: ['POS Terminal', 'KDS Screen'],
-              reward: 100
+              reward: rewardPerSignup
             };
             referrals[refIdx].invitedBusinesses.push(newBusiness);
-            referrals[refIdx].pendingRewards += 100;
+            referrals[refIdx].pendingRewards += rewardPerSignup;
             localStorage.setItem('dinepos_referrals', JSON.stringify(referrals));
             // Dispatch a storage event so partner dashboard syncs in real-time
             window.dispatchEvent(new StorageEvent('storage', {
@@ -216,7 +234,7 @@ function RegisterForm() {
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className={`w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-11 py-2.5 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 ${!showPassword && password ? 'tracking-[0.25em]' : ''}`}
+                    className="w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-11 py-2.5 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-colors duration-200 hover:border-white/15"
                     placeholder={showPassword ? 'password' : '••••••••'} 
                   />
                   <button 
@@ -240,23 +258,38 @@ function RegisterForm() {
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#A69984]/40">
                     <span className="material-symbols-outlined text-[19px] leading-none">redeem</span>
                   </div>
-                  <input 
+                  <input
                     type="text"
                     value={referralCode}
                     onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
-                    className={`w-full bg-[#12110f]/90 border ${referralCode ? 'border-[#ffe2ab]/30' : 'border-white/10'} rounded-lg pl-11 pr-4 py-2.5 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 tracking-widest font-mono`}
+                    className={`w-full bg-[#12110f]/90 border ${referralCode ? 'border-[#ffe2ab]/30' : 'border-white/10'} rounded-lg pl-11 pr-10 py-2.5 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 tracking-widest font-mono uppercase`}
                     placeholder="REF-ERIC-77"
                   />
                   {referralCode && (
                     <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
-                      <span className="material-symbols-outlined text-[#ffc53d] text-sm">verified</span>
+                      <span className={`material-symbols-outlined text-sm ${referralAmbassadorName ? 'text-[#ffc53d]' : 'text-[#A69984]/40'}`}>
+                        {referralAmbassadorName ? 'verified' : 'help_outline'}
+                      </span>
                     </div>
                   )}
                 </div>
-                {referralCode && (
-                  <p className="text-[10px] text-[#ffc53d]/80 font-semibold pl-1 flex items-center gap-1">
-                    <span className="material-symbols-outlined text-xs">loyalty</span>
-                    Referral code applied. The ambassador who invited you will be rewarded.
+
+                {/* Verified ambassador banner */}
+                {referralCode && referralAmbassadorName && (
+                  <div className="flex items-center gap-2.5 bg-[#ffc53d]/8 border border-[#ffc53d]/20 rounded-lg px-3 py-2.5">
+                    <span className="material-symbols-outlined text-[#ffc53d] text-base flex-shrink-0">verified_user</span>
+                    <div>
+                      <p className="text-[10.5px] text-[#ffc53d] font-bold leading-none">Ambassador verified: {referralAmbassadorName}</p>
+                      <p className="text-[9.5px] text-[#A69984]/60 font-medium mt-0.5">They'll earn <span className="text-[#ffc53d]">${rewardPerSignup}</span> when you activate your account.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Code entered but no matching ambassador */}
+                {referralCode && !referralAmbassadorName && (
+                  <p className="text-[10px] text-[#A69984]/55 font-semibold pl-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">info</span>
+                    Code will be validated on submission.
                   </p>
                 )}
               </div>
@@ -286,10 +319,13 @@ function RegisterForm() {
                 className="w-full bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/50 disabled:cursor-not-allowed text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest py-3.5 rounded-lg transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:shadow-[0_4px_24px_rgba(255,226,171,0.2)] hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-6"
               >
                 {isLoading ? (
-                  <span className="w-4 h-4 border-2 border-[#402d00]/30 border-t-[#402d00] rounded-full animate-spin"></span>
+                  <span className="flex items-center gap-2">
+                    <span className="w-4 h-4 border-2 border-[#402d00]/30 border-t-[#402d00] rounded-full animate-spin flex-shrink-0"></span>
+                    Creating Account…
+                  </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    Request Access <span className="material-symbols-outlined text-sm font-black transition-transform duration-300 group-hover:translate-x-0.5">arrow_forward</span>
+                    Request Access <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
                   </span>
                 )}
               </button>
@@ -305,7 +341,7 @@ function RegisterForm() {
       </div>
 
       {/* Luxury Minimalist Footer */}
-      <footer className="w-full py-6 px-[48px] bg-[#0c0c0b] border-t border-white/5 flex flex-col sm:flex-row justify-between items-center text-[10px] text-[#A69984]/45 tracking-wider select-none gap-4">
+      <footer className="w-full py-6 px-6 sm:px-12 bg-[#0c0c0b] border-t border-white/5 flex flex-col sm:flex-row justify-between items-center text-[10px] text-[#A69984]/45 tracking-wider select-none gap-3">
         <div>© 2024 DinePOS AI. All rights reserved.</div>
         <div className="flex gap-6 font-semibold">
           <Link href="/support" className="hover:text-[#ffe2ab] transition-colors">Help</Link>

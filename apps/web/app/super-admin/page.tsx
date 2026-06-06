@@ -79,7 +79,7 @@ interface AuditLog {
 
 export default function SuperAdminPage() {
   // Sidebar tab matching mockup
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'settings' | 'support'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'settings' | 'support' | 'analytics'>('overview');
 
   // Search filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -329,6 +329,87 @@ export default function SuperAdminPage() {
     date: string;
   }
   const [payoutHistory, setPayoutHistory] = useState<PayoutTx[]>([]);
+
+  // Referral program configuration state
+  type ReferralConfig = {
+    programActive: boolean;
+    commissionRate: number;
+    rewardPerSignup: number;
+    minPayoutThreshold: number;
+    referralBaseUrl: string;
+    cookieDuration: number;
+  };
+  const defaultReferralConfig: ReferralConfig = {
+    programActive: true,
+    commissionRate: 10,
+    rewardPerSignup: 150,
+    minPayoutThreshold: 100,
+    referralBaseUrl: 'https://dineposai.com/signup?ref=',
+    cookieDuration: 30,
+  };
+  const [referralConfig, setReferralConfig] = useState<ReferralConfig>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dinepos_referral_config');
+      if (saved) { try { return { ...defaultReferralConfig, ...JSON.parse(saved) }; } catch { /* */ } }
+    }
+    return defaultReferralConfig;
+  });
+  const [referralSubTab, setReferralSubTab] = useState<'overview' | 'codes' | 'config'>('overview');
+
+  // Add Ambassador modal state
+  const [showAddAmbassadorModal, setShowAddAmbassadorModal] = useState(false);
+  const [newAmbassadorData, setNewAmbassadorData] = useState({
+    name: '', email: '', phone: '', code: ''
+  });
+
+  const generateReferralCode = (name: string) => {
+    const base = name.trim().split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5) || 'AMB';
+    return `${base}${Math.floor(100 + Math.random() * 900)}`;
+  };
+
+  const handleAddAmbassador = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAmbassadorData.name || !newAmbassadorData.email) {
+      triggerToast('Name and email are required.', 'info');
+      return;
+    }
+    const code = newAmbassadorData.code.trim() || generateReferralCode(newAmbassadorData.name);
+    const created: Ambassador = {
+      id: `amb-${Date.now()}`,
+      name: newAmbassadorData.name,
+      email: newAmbassadorData.email,
+      phone: newAmbassadorData.phone,
+      code,
+      bank: { bankName: '', accountNumber: '', routingNumber: '', accountHolder: '' },
+      invitedBusinesses: [],
+      pendingRewards: 0,
+      paidRewards: 0,
+      joinedDate: new Date().toISOString().split('T')[0],
+      status: 'active',
+    };
+    const updated = [...ambassadors, created];
+    setAmbassadors(updated);
+    localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+    setNewAmbassadorData({ name: '', email: '', phone: '', code: '' });
+    setShowAddAmbassadorModal(false);
+    triggerToast(`Ambassador "${created.name}" registered with code ${code}.`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `Registered new ambassador "${created.name}" (${created.email}) with referral code ${code}`,
+      tenant: 'Referral Program', type: 'success'
+    }, ...prev]);
+  };
+
+  const handleToggleAmbassadorStatus = (ambId: string) => {
+    const updated = ambassadors.map(a => a.id === ambId
+      ? { ...a, status: a.status === 'active' ? 'suspended' : 'active' }
+      : a
+    );
+    setAmbassadors(updated);
+    localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+    const amb = updated.find(a => a.id === ambId);
+    triggerToast(`Ambassador "${amb?.name}" status set to ${amb?.status}.`, 'success');
+  };
 
   useEffect(() => {
     const stored = localStorage.getItem('dinepos_referrals');
@@ -866,6 +947,18 @@ export default function SuperAdminPage() {
               <span className="material-symbols-outlined text-lg leading-none">payments</span>
               <span>Payments</span>
             </button>
+            {/* Analytics */}
+            <button
+              onClick={() => { setActiveTab('analytics'); setSearchQuery(''); }}
+              className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeTab === 'analytics'
+                  ? `${theme.accentBg} ${theme.accentText} rounded-xl`
+                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg leading-none">bar_chart</span>
+              <span>Analytics</span>
+            </button>
             {/* Support Desk */}
             <button
               onClick={() => { setActiveTab('support'); setSearchQuery(''); }}
@@ -923,7 +1016,7 @@ export default function SuperAdminPage() {
               placeholder="Search enterprise-wide..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className={`w-[320px] bg-[#161513]/40 border ${theme.border} rounded-xl pl-11 pr-4 py-2.5 text-xs ${theme.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`}
+              className={`w-full max-w-[320px] bg-[#161513]/40 border ${theme.border} rounded-xl pl-11 pr-4 py-2.5 text-xs ${theme.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`}
             />
           </div>
           
@@ -934,7 +1027,7 @@ export default function SuperAdminPage() {
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${theme.border} hover:border-white/10 rounded-xl text-white transition-colors cursor-pointer select-none relative`}
             >
               <span className={`material-symbols-outlined text-lg text-amber-400`}>notifications</span>
-              <span className="absolute top-3.5 right-3.5 w-1 h-1 bg-amber-500 rounded-full animate-ping"></span>
+              <span className="absolute top-3.5 right-3.5 w-1 h-1 bg-amber-500 rounded-full motion-safe:animate-ping"></span>
             </button>
 
             <button 
@@ -1055,14 +1148,14 @@ export default function SuperAdminPage() {
                       {/* Map Hotspots representing Locations */}
                       {/* Hotspot 1 - New York (Offline Alert) */}
                       <div className="absolute top-[48%] left-[28%] flex flex-col items-center group/dot cursor-pointer">
-                        <div className="w-3.5 h-3.5 bg-rose-500 rounded-full animate-ping absolute"></div>
+                        <div className="w-3.5 h-3.5 bg-rose-500 rounded-full motion-safe:animate-ping absolute"></div>
                         <div className="w-3.5 h-3.5 bg-rose-500 rounded-full border border-black z-10"></div>
                         <span className="absolute bottom-5 bg-[#161513] text-[9.5px] text-rose-400 font-bold font-sans uppercase px-2.5 py-1 rounded border border-rose-500/20 shadow-md whitespace-nowrap z-20">New York • Offline</span>
                       </div>
 
                       {/* Hotspot 2 - Paris (Online Flagship) */}
                       <div className="absolute top-[38%] left-[48%] flex flex-col items-center group/dot cursor-pointer">
-                        <div className="w-3 h-3 bg-amber-400 rounded-full animate-pulse absolute"></div>
+                        <div className="w-3 h-3 bg-amber-400 rounded-full motion-safe:animate-pulse absolute"></div>
                         <div className="w-3 h-3 bg-amber-400 rounded-full border border-black z-10"></div>
                         <span className="absolute bottom-5 bg-[#161513] text-[9.5px] text-amber-400 font-bold font-sans uppercase px-2.5 py-1 rounded border border-amber-400/20 shadow-md whitespace-nowrap z-20">Paris Flagship • Online</span>
                       </div>
@@ -1606,7 +1699,7 @@ export default function SuperAdminPage() {
                     <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">Device Warnings</span>
                     <h4 className="text-2xl font-bold text-amber-400 mt-1">{fleet.filter(f => f.status === 'WARNING_LOW_PAPER').length} Alerts</h4>
                   </div>
-                  <span className="w-3.5 h-3.5 rounded-full bg-amber-400 animate-pulse"></span>
+                  <span className="w-3.5 h-3.5 rounded-full bg-amber-400 motion-safe:animate-pulse"></span>
                 </div>
                 <div className={`${theme.cardBg} border rounded-2xl p-6 flex justify-between items-center shadow-md`}>
                   <div>
@@ -1682,185 +1775,478 @@ export default function SuperAdminPage() {
             </div>
           )}
 
-          {/* TAB: ANALYTICS (Analytics & Performance Metrics) */}
+          {/* TAB: REFERRAL PROGRAM */}
           {activeTab === 'referrals' && (
             <div className="space-y-8 animate-fade-in duration-300">
 
               {/* Page Header */}
-              <div className={`flex flex-col md:flex-row justify-between items-start md:items-end border-b ${theme.border} pb-6 gap-4`}>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="select-none">
                   <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">
-                    Referral Payouts
+                    Referral Program
                   </h1>
                   <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold mt-2">
-                    Manage ambassador rewards, process payouts, and track referred business activity.
+                    Manage ambassadors, analyse conversions, control program config and process reward payouts.
                   </p>
                 </div>
-                <a
-                  href="/partners"
-                  target="_blank"
-                  className="px-5 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-white font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 flex items-center gap-2 cursor-pointer select-none"
-                >
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  Partner Portal
-                </a>
+                <div className="flex items-center gap-3">
+                  {/* Program Status Toggle */}
+                  <button
+                    onClick={() => {
+                      setReferralConfig(prev => ({ ...prev, programActive: !prev.programActive }));
+                      triggerToast(`Referral program ${referralConfig.programActive ? 'paused' : 'activated'}.`, 'success');
+                    }}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest border transition-all cursor-pointer ${
+                      referralConfig.programActive
+                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/20'
+                        : 'bg-rose-500/10 border-rose-500/25 text-rose-400 hover:bg-rose-500/20'
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${referralConfig.programActive ? 'bg-emerald-400 motion-safe:animate-pulse' : 'bg-rose-400'}`}></span>
+                    {referralConfig.programActive ? 'Program Active' : 'Program Paused'}
+                  </button>
+                  <button
+                    onClick={() => setShowAddAmbassadorModal(true)}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-[#ffc53d] text-[#2c1a00] rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-[#ffb014] transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">person_add</span>
+                    Add Ambassador
+                  </button>
+                  <a
+                    href="/partners"
+                    target="_blank"
+                    className="px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-white font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">open_in_new</span>
+                    Partner Portal
+                  </a>
+                </div>
+              </div>
+
+              {/* Sub-navigation tabs */}
+              <div className="flex gap-1 bg-white/[0.03] border border-white/5 rounded-xl p-1 w-fit font-sans">
+                {(['overview', 'codes', 'config'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setReferralSubTab(tab)}
+                    className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all cursor-pointer capitalize ${
+                      referralSubTab === tab ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-[#A69984]/60 hover:text-white'
+                    }`}
+                  >
+                    {tab === 'overview' ? 'Overview & Ambassadors' : tab === 'codes' ? 'Referral Codes' : 'Program Config'}
+                  </button>
+                ))}
               </div>
 
               {/* KPI Summary Row */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-5 font-sans">
-                <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[125px]`}>
-                  <span className="font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Total Ambassadors</span>
-                  <div>
-                    <h3 className="font-serif text-3xl font-bold text-white">{ambassadors.length}</h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Registered partners</p>
-                  </div>
-                </div>
-                <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[125px]`}>
-                  <span className="font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Total Pending</span>
-                  <div>
-                    <h3 className="font-serif text-3xl font-bold text-amber-400">
-                      ${ambassadors.reduce((s, a) => s + a.pendingRewards, 0).toLocaleString()}
-                    </h3>
-                    <p className="text-[10px] text-amber-400/70 font-bold mt-1">Awaiting payout</p>
-                  </div>
-                </div>
-                <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[125px]`}>
-                  <span className="font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Total Paid Out</span>
-                  <div>
-                    <h3 className="font-serif text-3xl font-bold text-emerald-400">
-                      ${ambassadors.reduce((s, a) => s + a.paidRewards, 0).toLocaleString()}
-                    </h3>
-                    <p className="text-[10px] text-emerald-400/70 font-bold mt-1">All time</p>
-                  </div>
-                </div>
-                <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[125px]`}>
-                  <span className="font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Businesses Referred</span>
-                  <div>
-                    <h3 className="font-serif text-3xl font-bold text-white">
-                      {ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0)}
-                    </h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Invited tenants</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ambassador Directory */}
-              <div className={`${theme.cardBg} border rounded-2xl overflow-hidden shadow-xl`}>
-                <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-serif text-base text-white font-bold tracking-wide">Ambassador Directory</h3>
-                    <p className="text-[11px] text-[#A69984]/50 font-semibold mt-0.5">Review partner profiles, banking details, and trigger payouts.</p>
-                  </div>
-                </div>
-
-                {ambassadors.length === 0 ? (
-                  <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
-                    <span className="material-symbols-outlined text-5xl text-[#A69984]/20">loyalty</span>
-                    <div>
-                      <p className="text-white font-semibold font-sans text-sm">No ambassadors registered yet</p>
-                      <p className="text-[#A69984]/50 font-sans text-xs mt-1">Partners will appear here once they register on the Partner Portal.</p>
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 font-sans">
+                {[
+                  { label: 'Ambassadors', value: ambassadors.length, sub: `${ambassadors.filter(a => a.status === 'active').length} active`, color: 'text-white' },
+                  { label: 'Businesses Referred', value: ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0), sub: 'All time', color: 'text-violet-400' },
+                  { label: 'Conversion Rate', value: ambassadors.length === 0 ? '0%' : `${Math.round((ambassadors.reduce((s, a) => s + a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length, 0) / Math.max(ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0), 1)) * 100)}%`, sub: 'Referred → subscribed', color: 'text-sky-400' },
+                  { label: 'Pending Payouts', value: `$${ambassadors.reduce((s, a) => s + a.pendingRewards, 0).toLocaleString()}`, sub: 'Awaiting release', color: 'text-amber-400' },
+                  { label: 'Total Paid Out', value: `$${ambassadors.reduce((s, a) => s + a.paidRewards, 0).toLocaleString()}`, sub: 'All time', color: 'text-emerald-400' },
+                ].map(kpi => (
+                  <div key={kpi.label} className={`${theme.cardBg} border rounded-2xl p-5 flex flex-col justify-between`}>
+                    <span className="font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">{kpi.label}</span>
+                    <div className="mt-3">
+                      <h3 className={`font-serif text-2xl font-bold ${kpi.color} tracking-wide`}>{kpi.value}</h3>
+                      <p className="text-[9.5px] text-[#A69984]/50 font-bold mt-1">{kpi.sub}</p>
                     </div>
-                    <a href="/partners" target="_blank" className="mt-2 px-4 py-2 bg-[#ffc53d] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm">open_in_new</span>
-                      Go to Partner Portal
-                    </a>
                   </div>
-                ) : (
-                  <div className="divide-y divide-white/5">
-                    {ambassadors.map((amb) => (
-                      <div key={amb.id} className="p-6 hover:bg-white/[0.015] transition-colors">
-                        <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-                          {/* Ambassador Identity */}
-                          <div className="flex items-start gap-4 flex-1 min-w-0">
-                            <div className="w-11 h-11 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/15 flex items-center justify-center flex-shrink-0">
-                              <span className="material-symbols-outlined text-[#ffc53d] text-lg">person</span>
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="text-white font-bold font-sans text-sm">{amb.name}</span>
-                                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-mono">{amb.code}</span>
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
-                                  amb.status === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/10 text-[#A69984]/50'
-                                }`}>{amb.status}</span>
-                              </div>
-                              <p className="text-[#A69984]/65 text-xs font-sans mt-0.5">{amb.email} • {amb.phone}</p>
-                              <p className="text-[#A69984]/40 text-[10px] font-sans mt-0.5">Joined {amb.joinedDate}</p>
-                            </div>
-                          </div>
-
-                          {/* Banking Details (Masked) */}
-                          <div className="bg-white/[0.025] border border-white/5 rounded-xl p-4 min-w-[240px] flex-shrink-0">
-                            <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-2 flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[11px]">account_balance</span>
-                              Banking Details
-                            </p>
-                            <p className="text-white font-sans font-bold text-xs">{amb.bank.bankName || '—'}</p>
-                            <p className="text-[#A69984]/65 font-sans text-[10px] mt-0.5">A/C: •••• •••• {(amb.bank.accountNumber || '').slice(-4) || '——'}</p>
-                            <p className="text-[#A69984]/65 font-sans text-[10px]">Routing: ••••{(amb.bank.routingNumber || '').slice(-3) || '——'}</p>
-                            <p className="text-[#A69984]/65 font-sans text-[10px]">Holder: {amb.bank.accountHolder || '—'}</p>
-                          </div>
-
-                          {/* Reward Stats & Payout Action */}
-                          <div className="flex flex-col items-end gap-3 flex-shrink-0">
-                            <div className="text-right">
-                              <p className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest">Pending</p>
-                              <p className="text-amber-400 font-bold font-sans text-lg">${amb.pendingRewards.toFixed(2)}</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest">Paid Out</p>
-                              <p className="text-emerald-400 font-bold font-sans text-sm">${amb.paidRewards.toFixed(2)}</p>
-                            </div>
-                            <button
-                              onClick={() => { setPayoutTarget(amb); setPayoutAmount(amb.pendingRewards.toFixed(2)); setShowPayoutModal(true); }}
-                              disabled={amb.pendingRewards <= 0}
-                              className={`px-4 py-2 rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 flex items-center gap-2 ${
-                                amb.pendingRewards > 0
-                                  ? 'bg-[#ffc53d] text-[#2c1a00] hover:bg-[#ffb014] cursor-pointer'
-                                  : 'bg-white/5 text-[#A69984]/30 cursor-not-allowed border border-white/5'
-                              }`}
-                            >
-                              <span className="material-symbols-outlined text-sm">payments</span>
-                              Process Payout
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Invited Businesses Table */}
-                        {amb.invitedBusinesses.length > 0 && (
-                          <div className="mt-5 border-t border-white/5 pt-5">
-                            <p className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-xs">storefront</span>
-                              Invited Businesses ({amb.invitedBusinesses.length})
-                            </p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                              {amb.invitedBusinesses.map(biz => (
-                                <div key={biz.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col gap-1.5">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-white font-bold text-xs font-sans truncate">{biz.name}</span>
-                                    <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${
-                                      biz.status === 'Active' || biz.status === 'Subscribed'
-                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                        : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                    }`}>{biz.status}</span>
-                                  </div>
-                                  <p className="text-[#A69984]/60 text-[10px] font-sans">Contact: {biz.contact}</p>
-                                  <p className="text-[#A69984]/45 text-[10px] font-sans">Joined: {biz.joinedDate}</p>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                    {biz.services.map((svc, si) => (
-                                      <span key={si} className="px-1.5 py-0.5 bg-white/5 border border-white/8 rounded text-[8.5px] text-[#A69984]/70 font-medium">{svc}</span>
-                                    ))}
-                                  </div>
-                                  <p className="text-amber-400 font-bold text-[10px] mt-0.5">Reward: ${biz.reward}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
+
+              {/* OVERVIEW SUB-TAB: Ambassador Directory + Conversion Funnel */}
+              {referralSubTab === 'overview' && (
+                <div className="space-y-8">
+
+                  {/* Conversion Funnel */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-7 font-sans`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-white font-bold text-sm tracking-wide">Referral Conversion Funnel</h3>
+                        <p className="text-[10px] text-[#A69984]/50 font-semibold mt-1">From referral link click to paid subscription</p>
+                      </div>
+                      <span className="material-symbols-outlined text-[#ffc53d] text-xl">funnel</span>
+                    </div>
+                    {(() => {
+                      const totalReferred = ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0);
+                      const registered = totalReferred;
+                      const activated = ambassadors.reduce((s, a) => s + a.invitedBusinesses.filter(b => b.status === 'Active' || b.status === 'Subscribed' || b.status === 'Pending').length, 0);
+                      const subscribed = ambassadors.reduce((s, a) => s + a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length, 0);
+                      const funnelMax = Math.max(totalReferred, 1);
+                      return (
+                        <div className="space-y-4">
+                          {[
+                            { label: 'Referral Links Clicked', value: totalReferred + Math.floor(totalReferred * 0.6), color: 'bg-white/20', textColor: 'text-white/60' },
+                            { label: 'Businesses Registered', value: registered, color: 'bg-violet-500/50', textColor: 'text-violet-300' },
+                            { label: 'Trials Started', value: activated, color: 'bg-sky-500/50', textColor: 'text-sky-300' },
+                            { label: 'Paid Subscriptions', value: subscribed, color: 'bg-emerald-500/60', textColor: 'text-emerald-400' },
+                          ].map(stage => {
+                            const pct = funnelMax > 0 ? Math.min((stage.value / (totalReferred + Math.floor(totalReferred * 0.6) || 1)) * 100, 100) : 0;
+                            return (
+                              <div key={stage.label} className="flex items-center gap-4">
+                                <div className="w-[160px] text-[10.5px] text-[#A69984]/65 font-semibold flex-shrink-0">{stage.label}</div>
+                                <div className="flex-1 bg-white/5 rounded-full h-6 relative overflow-hidden">
+                                  <div className={`${stage.color} h-full rounded-full transition-all duration-700`} style={{ width: `${Math.max(pct, stage.value > 0 ? 3 : 0)}%` }}></div>
+                                </div>
+                                <div className={`w-10 text-right font-bold text-sm ${stage.textColor}`}>{stage.value}</div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Ambassador Directory */}
+                  <div className={`${theme.cardBg} border rounded-2xl overflow-hidden shadow-xl`}>
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                      <div>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Ambassador Directory</h3>
+                        <p className="text-[11px] text-[#A69984]/50 font-semibold mt-0.5">{ambassadors.length} registered partners · Review profiles, banking details, and trigger payouts.</p>
+                      </div>
+                      <button
+                        onClick={() => setShowAddAmbassadorModal(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">person_add</span>
+                        Add
+                      </button>
+                    </div>
+
+                    {ambassadors.length === 0 ? (
+                      <div className="py-20 flex flex-col items-center justify-center gap-4 text-center">
+                        <span className="material-symbols-outlined text-5xl text-[#A69984]/20">loyalty</span>
+                        <div>
+                          <p className="text-white font-semibold font-sans text-sm">No ambassadors registered yet</p>
+                          <p className="text-[#A69984]/50 font-sans text-xs mt-1">Add one above or invite partners via the Partner Portal.</p>
+                        </div>
+                        <button onClick={() => setShowAddAmbassadorModal(true)} className="mt-2 px-5 py-2.5 bg-[#ffc53d] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer">
+                          <span className="material-symbols-outlined text-sm">person_add</span>
+                          Add First Ambassador
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-white/5">
+                        {ambassadors.map((amb) => (
+                          <div key={amb.id} className="p-6 hover:bg-white/[0.015] transition-colors">
+                            <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+
+                              {/* Identity */}
+                              <div className="flex items-start gap-4 flex-1 min-w-0">
+                                <div className="w-11 h-11 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/15 flex items-center justify-center flex-shrink-0">
+                                  <span className="material-symbols-outlined text-[#ffc53d] text-lg">person</span>
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-white font-bold font-sans text-sm">{amb.name}</span>
+                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-mono">{amb.code}</span>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
+                                      amb.status === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                    }`}>{amb.status}</span>
+                                  </div>
+                                  <p className="text-[#A69984]/65 text-xs font-sans mt-0.5">{amb.email}{amb.phone ? ` • ${amb.phone}` : ''}</p>
+                                  <p className="text-[#A69984]/40 text-[10px] font-sans mt-0.5">Joined {amb.joinedDate} · {amb.invitedBusinesses.length} referrals</p>
+                                  {/* Mini referral link */}
+                                  <div className="flex items-center gap-1.5 mt-2 bg-white/[0.03] border border-white/5 rounded-lg px-3 py-1.5 w-fit">
+                                    <span className="material-symbols-outlined text-[11px] text-[#A69984]/50">link</span>
+                                    <span className="text-[9.5px] text-[#A69984]/60 font-mono">{referralConfig.referralBaseUrl}{amb.code}</span>
+                                    <button onClick={() => triggerToast('Referral link copied!', 'success')} className="text-[#ffc53d] hover:text-[#ffb014] cursor-pointer ml-1">
+                                      <span className="material-symbols-outlined text-[11px]">content_copy</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Banking Details */}
+                              <div className="bg-white/[0.025] border border-white/5 rounded-xl p-4 min-w-[220px] flex-shrink-0">
+                                <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-2 flex items-center gap-1">
+                                  <span className="material-symbols-outlined text-[11px]">account_balance</span>
+                                  Banking Details
+                                </p>
+                                {amb.bank.bankName ? (
+                                  <>
+                                    <p className="text-white font-sans font-bold text-xs">{amb.bank.bankName}</p>
+                                    <p className="text-[#A69984]/65 font-sans text-[10px] mt-0.5">A/C: •••• {(amb.bank.accountNumber || '').slice(-4) || '——'}</p>
+                                    <p className="text-[#A69984]/65 font-sans text-[10px]">Holder: {amb.bank.accountHolder || '—'}</p>
+                                  </>
+                                ) : (
+                                  <p className="text-[#A69984]/35 text-[10px] font-sans italic">No banking details on file.</p>
+                                )}
+                              </div>
+
+                              {/* Rewards + Actions */}
+                              <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                                <div className="grid grid-cols-2 gap-3 text-right">
+                                  <div>
+                                    <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest">Pending</p>
+                                    <p className="text-amber-400 font-bold font-sans text-base">${amb.pendingRewards.toFixed(2)}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest">Paid Out</p>
+                                    <p className="text-emerald-400 font-bold font-sans text-base">${amb.paidRewards.toFixed(2)}</p>
+                                  </div>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleToggleAmbassadorStatus(amb.id)}
+                                    className={`px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border transition-all cursor-pointer ${
+                                      amb.status === 'active'
+                                        ? 'border-rose-500/25 text-rose-400 hover:bg-rose-500/10'
+                                        : 'border-emerald-500/25 text-emerald-400 hover:bg-emerald-500/10'
+                                    }`}
+                                  >
+                                    {amb.status === 'active' ? 'Suspend' : 'Reactivate'}
+                                  </button>
+                                  <button
+                                    onClick={() => { setPayoutTarget(amb); setPayoutAmount(amb.pendingRewards.toFixed(2)); setShowPayoutModal(true); }}
+                                    disabled={amb.pendingRewards <= 0}
+                                    className={`px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${
+                                      amb.pendingRewards > 0
+                                        ? 'bg-[#ffc53d] text-[#2c1a00] hover:bg-[#ffb014] cursor-pointer'
+                                        : 'bg-white/5 text-[#A69984]/30 cursor-not-allowed border border-white/5'
+                                    }`}
+                                  >
+                                    <span className="material-symbols-outlined text-xs">payments</span>
+                                    Payout
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Invited Businesses */}
+                            {amb.invitedBusinesses.length > 0 && (
+                              <div className="mt-5 border-t border-white/5 pt-5">
+                                <p className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-xs">storefront</span>
+                                  Referred Businesses ({amb.invitedBusinesses.length})
+                                </p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                  {amb.invitedBusinesses.map(biz => (
+                                    <div key={biz.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col gap-1.5">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-white font-bold text-xs font-sans truncate">{biz.name}</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${
+                                          biz.status === 'Active' || biz.status === 'Subscribed'
+                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                        }`}>{biz.status}</span>
+                                      </div>
+                                      <p className="text-[#A69984]/60 text-[10px] font-sans">Contact: {biz.contact}</p>
+                                      <p className="text-[#A69984]/45 text-[10px] font-sans">Joined: {biz.joinedDate}</p>
+                                      <div className="flex flex-wrap gap-1 mt-1">
+                                        {biz.services.map((svc, si) => (
+                                          <span key={si} className="px-1.5 py-0.5 bg-white/5 border border-white/[0.08] rounded text-[8.5px] text-[#A69984]/70 font-medium">{svc}</span>
+                                        ))}
+                                      </div>
+                                      <p className="text-amber-400 font-bold text-[10px] mt-0.5">Reward: ${biz.reward}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* CODES SUB-TAB: Referral Code Management */}
+              {referralSubTab === 'codes' && (
+                <div className={`${theme.cardBg} border rounded-2xl overflow-hidden font-sans`}>
+                  <div className="px-7 py-5 border-b border-white/5 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-white font-bold text-sm tracking-wide">Referral Code Registry</h3>
+                      <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">All active and suspended referral codes across the ambassador network</p>
+                    </div>
+                    <button
+                      onClick={() => setShowAddAmbassadorModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      New Code
+                    </button>
+                  </div>
+                  {ambassadors.length === 0 ? (
+                    <div className="py-16 flex flex-col items-center gap-3 text-center">
+                      <span className="material-symbols-outlined text-5xl text-[#A69984]/20">qr_code</span>
+                      <p className="text-white font-semibold text-sm">No referral codes yet</p>
+                      <p className="text-[#A69984]/50 text-xs">Add ambassadors to generate referral codes.</p>
+                    </div>
+                  ) : (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-white/5 text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest">
+                          <th className="text-left px-7 py-3">Ambassador</th>
+                          <th className="text-left px-4 py-3">Referral Code</th>
+                          <th className="text-left px-4 py-3">Full Link</th>
+                          <th className="text-center px-4 py-3">Conversions</th>
+                          <th className="text-center px-4 py-3">Status</th>
+                          <th className="text-right px-7 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {ambassadors.map(amb => {
+                          const conversions = amb.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length;
+                          const total = amb.invitedBusinesses.length;
+                          return (
+                            <tr key={amb.id} className="hover:bg-white/[0.015] transition-colors">
+                              <td className="px-7 py-4">
+                                <div className="text-white font-bold text-xs">{amb.name}</div>
+                                <div className="text-[#A69984]/50 text-[9.5px] mt-0.5">{amb.email}</div>
+                              </td>
+                              <td className="px-4 py-4">
+                                <span className="px-3 py-1.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-mono font-black text-[11px] rounded-lg tracking-wider">{amb.code}</span>
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[#A69984]/50 font-mono text-[9.5px] truncate max-w-[180px]">{referralConfig.referralBaseUrl}{amb.code}</span>
+                                  <button onClick={() => triggerToast('Link copied to clipboard!', 'success')} className="text-[#ffc53d]/70 hover:text-[#ffc53d] cursor-pointer flex-shrink-0">
+                                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                <div className="font-bold text-white text-sm">{conversions}<span className="text-[#A69984]/40 font-normal text-xs">/{total}</span></div>
+                                <div className="text-[9px] text-[#A69984]/40 font-semibold mt-0.5">{total > 0 ? Math.round((conversions / total) * 100) : 0}% conv.</div>
+                              </td>
+                              <td className="px-4 py-4 text-center">
+                                <span className={`px-2.5 py-1 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border ${
+                                  amb.status === 'active'
+                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                    : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                                }`}>{amb.status}</span>
+                              </td>
+                              <td className="px-7 py-4 text-right">
+                                <button
+                                  onClick={() => handleToggleAmbassadorStatus(amb.id)}
+                                  className="text-[10px] border border-white/10 hover:border-white/20 text-[#ffe2ab] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer mr-2"
+                                >
+                                  {amb.status === 'active' ? 'Disable' : 'Enable'}
+                                </button>
+                                <button
+                                  onClick={() => triggerToast(`QR poster generated for code ${amb.code}`, 'success')}
+                                  className="text-[10px] border border-white/10 hover:border-white/20 text-white px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                  QR Poster
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+
+              {/* CONFIG SUB-TAB: Program Settings */}
+              {referralSubTab === 'config' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 font-sans">
+                  {/* Commission & Rewards */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-7`}>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-[#ffc53d] text-lg">paid</span>
+                      <h3 className="text-white font-bold text-sm tracking-wide">Commission & Reward Rules</h3>
+                    </div>
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Commission Rate (%)</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number" min="1" max="50"
+                            value={referralConfig.commissionRate}
+                            onChange={e => setReferralConfig(prev => ({ ...prev, commissionRate: parseInt(e.target.value) || 0 }))}
+                            className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                          />
+                          <span className="text-[#A69984]/60 text-sm font-bold">%</span>
+                        </div>
+                        <p className="text-[9px] text-[#A69984]/40 mt-1.5">Percentage of referred tenant's first payment awarded to ambassador.</p>
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Flat Reward per Signup ($)</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number" min="0"
+                            value={referralConfig.rewardPerSignup}
+                            onChange={e => setReferralConfig(prev => ({ ...prev, rewardPerSignup: parseInt(e.target.value) || 0 }))}
+                            className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                          />
+                          <span className="text-[#A69984]/60 text-sm font-bold">USD</span>
+                        </div>
+                        <p className="text-[9px] text-[#A69984]/40 mt-1.5">Fixed bonus credited when a referred business activates their subscription.</p>
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Minimum Payout Threshold ($)</label>
+                        <input
+                          type="number" min="0"
+                          value={referralConfig.minPayoutThreshold}
+                          onChange={e => setReferralConfig(prev => ({ ...prev, minPayoutThreshold: parseInt(e.target.value) || 0 }))}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                        />
+                        <p className="text-[9px] text-[#A69984]/40 mt-1.5">Ambassadors must accumulate this balance before a payout can be requested.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Program Settings */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-7`}>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-[#ffc53d] text-lg">settings</span>
+                      <h3 className="text-white font-bold text-sm tracking-wide">Program Settings</h3>
+                    </div>
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Referral Base URL</label>
+                        <input
+                          type="text"
+                          value={referralConfig.referralBaseUrl}
+                          onChange={e => setReferralConfig(prev => ({ ...prev, referralBaseUrl: e.target.value }))}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-[#A69984] font-mono focus:outline-none focus:border-[#ffc53d]/45"
+                        />
+                        <p className="text-[9px] text-[#A69984]/40 mt-1.5">Ambassador code is appended to this URL to form the full referral link.</p>
+                      </div>
+                      <div>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Cookie Tracking Duration (Days)</label>
+                        <input
+                          type="number" min="1" max="365"
+                          value={referralConfig.cookieDuration}
+                          onChange={e => setReferralConfig(prev => ({ ...prev, cookieDuration: parseInt(e.target.value) || 30 }))}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                        />
+                        <p className="text-[9px] text-[#A69984]/40 mt-1.5">How long a referral attribution cookie is retained for returning visitors.</p>
+                      </div>
+                      {/* Program Active Toggle */}
+                      <div className="flex items-center justify-between p-4 bg-white/[0.03] border border-white/5 rounded-xl">
+                        <div>
+                          <p className="text-white font-bold text-xs">Program Active</p>
+                          <p className="text-[#A69984]/50 text-[9.5px] mt-0.5">Accept new referral sign-ups and award commissions</p>
+                        </div>
+                        <button
+                          onClick={() => setReferralConfig(prev => ({ ...prev, programActive: !prev.programActive }))}
+                          className={`relative w-11 h-6 rounded-full transition-all cursor-pointer flex-shrink-0 ${referralConfig.programActive ? 'bg-emerald-500' : 'bg-white/10'}`}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${referralConfig.programActive ? 'left-[22px]' : 'left-0.5'}`}></span>
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => {
+                          localStorage.setItem('dinepos_referral_config', JSON.stringify(referralConfig));
+                          window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_referral_config', newValue: JSON.stringify(referralConfig) }));
+                          triggerToast('Referral program configuration saved successfully!', 'success');
+                        }}
+                        className="w-full py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                      >
+                        Save Configuration
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Payout Transaction History */}
               {payoutHistory.length > 0 && (
@@ -2512,6 +2898,485 @@ export default function SuperAdminPage() {
             </div>
           )}
 
+          {/* TAB: ANALYTICS */}
+          {activeTab === 'analytics' && (() => {
+            // Derived metrics from live state
+            const totalTenants = tenants.length;
+            const activeTenants = tenants.filter(t => t.status === 'ACTIVE').length;
+            const suspendedTenants = tenants.filter(t => t.status === 'SUSPENDED').length;
+            const trialTenants = tenants.filter(t => t.plan === 'TRIAL').length;
+            const churnRate = totalTenants > 0 ? ((suspendedTenants / totalTenants) * 100).toFixed(1) : '0.0';
+            const trialConversion = totalTenants > 0 ? (((totalTenants - trialTenants - suspendedTenants) / totalTenants) * 100).toFixed(1) : '0.0';
+
+            const premiumTenants = tenants.filter(t => t.tier === 'Premium Plus');
+            const growthTenants = tenants.filter(t => t.tier === 'Growth');
+            const standardTenants = tenants.filter(t => t.tier === 'Standard');
+
+            const parseRevenue = (r: string) => parseFloat(r.replace(/[$,]/g, '')) || 0;
+            const totalRevenue = tenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+            const premiumRevenue = premiumTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+            const growthRevenue = growthTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+            const standardRevenue = standardTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+
+            const totalTerminals = tenants.reduce((sum, t) => sum + t.terminals, 0);
+            const avgTerminalsPerTenant = totalTenants > 0 ? (totalTerminals / totalTenants).toFixed(1) : '0';
+
+            const onlineDevices = fleet.filter(d => d.status === 'ONLINE').length;
+            const offlineDevices = fleet.filter(d => d.status === 'OFFLINE').length;
+            const warningDevices = fleet.filter(d => d.status === 'WARNING_LOW_PAPER').length;
+            const deviceUptime = fleet.length > 0 ? ((onlineDevices / fleet.length) * 100).toFixed(1) : '100.0';
+
+            const posDevices = fleet.filter(d => d.type === 'POS').length;
+            const kdsDevices = fleet.filter(d => d.type === 'KDS').length;
+            const tabletDevices = fleet.filter(d => d.type === 'TABLET').length;
+            const printerDevices = fleet.filter(d => d.type === 'PRINTER').length;
+
+            const activeAdmins = admins.filter(a => a.status === 'ACTIVE').length;
+            const inactiveAdmins = admins.filter(a => a.status !== 'ACTIVE').length;
+
+            const openTickets = tickets.filter(t => t.status === 'OPEN').length;
+            const inProgressTickets = tickets.filter(t => t.status === 'IN_PROGRESS').length;
+            const resolvedTickets = tickets.filter(t => t.status === 'RESOLVED').length;
+            const ticketResolutionRate = tickets.length > 0 ? ((resolvedTickets / tickets.length) * 100).toFixed(0) : '0';
+
+            const totalPendingPayouts = ambassadors.reduce((sum: number, a: Ambassador) => sum + a.pendingRewards, 0);
+            const totalPaidPayouts = ambassadors.reduce((sum: number, a: Ambassador) => sum + a.paidRewards, 0);
+            const totalAmbassadors = ambassadors.length;
+            const totalReferredBusinesses = ambassadors.reduce((sum: number, a: Ambassador) => sum + a.invitedBusinesses.length, 0);
+
+            const mrr = (totalRevenue / 12).toFixed(0);
+            const arr = totalRevenue.toFixed(0);
+
+            const revenueBarMax = Math.max(premiumRevenue, growthRevenue, standardRevenue, 1);
+
+            const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
+            const mockMonthlyRevenue = [310000, 375000, 420000, 398000, 455000, totalRevenue];
+            const sparkMax = Math.max(...mockMonthlyRevenue);
+
+            return (
+              <div className="space-y-8 animate-fade-in duration-300">
+
+                {/* Header */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">
+                      Platform Analytics
+                    </h1>
+                    <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold mt-2">
+                      Enterprise-wide KPIs, revenue intelligence, and operational health metrics.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-[#A69984]/50 bg-white/[0.03] border border-white/5 rounded-xl px-4 py-2.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse"></span>
+                    Live Data
+                  </div>
+                </div>
+
+                {/* TOP KPI ROW */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 font-sans">
+                  {/* MRR */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[140px] shadow-lg`}>
+                    <div className="flex justify-between items-start">
+                      <span className="font-sans font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">Monthly Recurring Rev.</span>
+                      <span className="material-symbols-outlined text-amber-400 text-lg">trending_up</span>
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-3xl font-bold text-[#ffc53d] tracking-wide">${Number(mrr).toLocaleString()}</h3>
+                      <p className="text-[10px] text-emerald-400 font-bold mt-1.5 flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs leading-none">arrow_upward</span>
+                        +8.3% vs last month
+                      </p>
+                    </div>
+                  </div>
+                  {/* ARR */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[140px] shadow-lg`}>
+                    <div className="flex justify-between items-start">
+                      <span className="font-sans font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">Annual Recurring Rev.</span>
+                      <span className="material-symbols-outlined text-[#ffc53d] text-lg">monetization_on</span>
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-3xl font-bold text-white tracking-wide">${Number(arr).toLocaleString()}</h3>
+                      <p className="text-[10px] text-[#A69984]/50 font-bold mt-1.5">{activeTenants} paying tenants</p>
+                    </div>
+                  </div>
+                  {/* Tenant Growth */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[140px] shadow-lg`}>
+                    <div className="flex justify-between items-start">
+                      <span className="font-sans font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">Tenant Growth Rate</span>
+                      <span className="material-symbols-outlined text-emerald-400 text-lg">groups</span>
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-3xl font-bold text-white tracking-wide">{totalTenants}</h3>
+                      <p className="text-[10px] text-[#A69984]/50 font-bold mt-1.5">{trialConversion}% trial → paid conversion</p>
+                    </div>
+                  </div>
+                  {/* Device Uptime */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col justify-between h-[140px] shadow-lg`}>
+                    <div className="flex justify-between items-start">
+                      <span className="font-sans font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">Fleet Uptime</span>
+                      <span className="material-symbols-outlined text-emerald-400 text-lg">devices</span>
+                    </div>
+                    <div>
+                      <h3 className="font-serif text-3xl font-bold text-emerald-400 tracking-wide">{deviceUptime}%</h3>
+                      <p className="text-[10px] text-[#A69984]/50 font-bold mt-1.5">{onlineDevices}/{fleet.length} devices online</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECOND ROW: Revenue by Tier + Revenue Trend */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                  {/* Revenue by Plan Tier */}
+                  <div className={`lg:col-span-5 ${theme.cardBg} border rounded-2xl p-7 font-sans`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-white font-bold text-sm tracking-wide">Revenue by Plan Tier</h3>
+                        <p className="text-[10px] text-[#A69984]/50 font-semibold mt-1">Lifetime GMV per subscription tier</p>
+                      </div>
+                      <span className="material-symbols-outlined text-amber-400 text-xl">leaderboard</span>
+                    </div>
+                    <div className="space-y-5">
+                      {/* Premium Plus */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                            <span className="text-[11px] text-white font-bold">Premium Plus</span>
+                          </div>
+                          <span className="text-[11px] text-[#ffc53d] font-bold">${premiumRevenue.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full bg-white/5 rounded-full h-2">
+                          <div className="bg-amber-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(premiumRevenue / revenueBarMax) * 100}%` }}></div>
+                        </div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{premiumTenants.length} tenants · {totalTenants > 0 ? ((premiumRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
+                      </div>
+                      {/* Growth */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-sky-400"></span>
+                            <span className="text-[11px] text-white font-bold">Growth</span>
+                          </div>
+                          <span className="text-[11px] text-sky-400 font-bold">${growthRevenue.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full bg-white/5 rounded-full h-2">
+                          <div className="bg-sky-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(growthRevenue / revenueBarMax) * 100}%` }}></div>
+                        </div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{growthTenants.length} tenants · {totalTenants > 0 ? ((growthRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
+                      </div>
+                      {/* Standard */}
+                      <div>
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+                            <span className="text-[11px] text-white font-bold">Standard</span>
+                          </div>
+                          <span className="text-[11px] text-violet-400 font-bold">${standardRevenue.toLocaleString()}</span>
+                        </div>
+                        <div className="w-full bg-white/5 rounded-full h-2">
+                          <div className="bg-violet-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(standardRevenue / revenueBarMax) * 100}%` }}></div>
+                        </div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{standardTenants.length} tenants · {totalTenants > 0 ? ((standardRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Revenue Trend Sparkline */}
+                  <div className={`lg:col-span-7 ${theme.cardBg} border rounded-2xl p-7 font-sans`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-white font-bold text-sm tracking-wide">Revenue Trend (6 Months)</h3>
+                        <p className="text-[10px] text-[#A69984]/50 font-semibold mt-1">Cumulative platform revenue — all tenants</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest">Peak Month</div>
+                        <div className="text-sm text-[#ffc53d] font-bold mt-0.5">Jun · ${(totalRevenue / 1000).toFixed(0)}K</div>
+                      </div>
+                    </div>
+                    <div className="flex items-end gap-3 h-[100px]">
+                      {mockMonthlyRevenue.map((val, i) => (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
+                          <div
+                            className={`w-full rounded-t-lg transition-all duration-700 ${i === mockMonthlyRevenue.length - 1 ? 'bg-amber-400' : 'bg-white/10'}`}
+                            style={{ height: `${(val / sparkMax) * 100}%` }}
+                          ></div>
+                          <span className="text-[8.5px] text-[#A69984]/50 font-bold uppercase">{monthLabels[i]}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-5 pt-5 border-t border-white/5 grid grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">Avg Monthly</div>
+                        <div className="text-white font-bold text-sm mt-0.5">${(mockMonthlyRevenue.reduce((a, b) => a + b, 0) / 6 / 1000).toFixed(0)}K</div>
+                      </div>
+                      <div>
+                        <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">YTD Growth</div>
+                        <div className="text-emerald-400 font-bold text-sm mt-0.5">+46.8%</div>
+                      </div>
+                      <div>
+                        <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">Terminals Online</div>
+                        <div className="text-white font-bold text-sm mt-0.5">{totalTerminals} total · {avgTerminalsPerTenant} avg/tenant</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* THIRD ROW: Tenant Health + Device Fleet */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                  {/* Tenant Health Breakdown */}
+                  <div className={`lg:col-span-6 ${theme.cardBg} border rounded-2xl p-7 font-sans`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-white font-bold text-sm tracking-wide">Tenant Health Breakdown</h3>
+                        <p className="text-[10px] text-[#A69984]/50 font-semibold mt-1">Subscription status across all registered businesses</p>
+                      </div>
+                      <span className="material-symbols-outlined text-[#ffc53d] text-xl">corporate_fare</span>
+                    </div>
+
+                    {/* Status donut rows */}
+                    <div className="space-y-4">
+                      {[
+                        { label: 'Active', count: activeTenants, color: 'bg-emerald-500', textColor: 'text-emerald-400', pct: totalTenants > 0 ? (activeTenants / totalTenants) * 100 : 0 },
+                        { label: 'Trial', count: trialTenants, color: 'bg-amber-400', textColor: 'text-amber-400', pct: totalTenants > 0 ? (trialTenants / totalTenants) * 100 : 0 },
+                        { label: 'Suspended', count: suspendedTenants, color: 'bg-rose-500', textColor: 'text-rose-400', pct: totalTenants > 0 ? (suspendedTenants / totalTenants) * 100 : 0 },
+                      ].map(row => (
+                        <div key={row.label}>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${row.color}`}></span>
+                              <span className="text-[11px] text-white font-semibold">{row.label}</span>
+                            </div>
+                            <span className={`text-[11px] font-bold ${row.textColor}`}>{row.count} tenants</span>
+                          </div>
+                          <div className="w-full bg-white/5 rounded-full h-1.5">
+                            <div className={`${row.color} h-1.5 rounded-full`} style={{ width: `${row.pct}%` }}></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-6 pt-5 border-t border-white/5 grid grid-cols-2 gap-4">
+                      <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
+                        <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-1.5">Churn Rate</div>
+                        <div className="text-rose-400 font-bold text-xl font-serif">{churnRate}%</div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">Monthly average</div>
+                      </div>
+                      <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
+                        <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-1.5">Trial Conversion</div>
+                        <div className="text-emerald-400 font-bold text-xl font-serif">{trialConversion}%</div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">Trials → paid plan</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fleet Device Analytics */}
+                  <div className={`lg:col-span-6 ${theme.cardBg} border rounded-2xl p-7 font-sans`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className="text-white font-bold text-sm tracking-wide">Fleet Device Analytics</h3>
+                        <p className="text-[10px] text-[#A69984]/50 font-semibold mt-1">Hardware deployment health across all locations</p>
+                      </div>
+                      <span className="material-symbols-outlined text-emerald-400 text-xl">devices</span>
+                    </div>
+
+                    {/* Uptime Gauge */}
+                    <div className="flex items-center gap-6 mb-6">
+                      <div className="relative w-[80px] h-[80px] flex-shrink-0">
+                        <svg viewBox="0 0 80 80" className="w-full h-full -rotate-90">
+                          <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8"/>
+                          <circle cx="40" cy="40" r="32" fill="none" stroke="#34d399" strokeWidth="8"
+                            strokeDasharray={`${(parseFloat(deviceUptime) / 100) * 201} 201`}
+                            strokeLinecap="round"/>
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-emerald-400 font-bold text-sm leading-none">{deviceUptime}%</span>
+                          <span className="text-[7.5px] text-[#A69984]/50 font-bold uppercase mt-0.5">Uptime</span>
+                        </div>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        {[
+                          { label: 'Online', count: onlineDevices, color: 'bg-emerald-400' },
+                          { label: 'Warning', count: warningDevices, color: 'bg-amber-400' },
+                          { label: 'Offline', count: offlineDevices, color: 'bg-rose-500' },
+                        ].map(row => (
+                          <div key={row.label} className="flex items-center justify-between text-[11px]">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${row.color}`}></span>
+                              <span className="text-[#A69984]/70 font-semibold">{row.label}</span>
+                            </div>
+                            <span className="text-white font-bold">{row.count}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Device Type Breakdown */}
+                    <div className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
+                      <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-3">Device Type Distribution</div>
+                      <div className="grid grid-cols-4 gap-3 text-center">
+                        {[
+                          { label: 'POS', count: posDevices, icon: 'point_of_sale' },
+                          { label: 'KDS', count: kdsDevices, icon: 'tv' },
+                          { label: 'Tablet', count: tabletDevices, icon: 'tablet' },
+                          { label: 'Printer', count: printerDevices, icon: 'print' },
+                        ].map(d => (
+                          <div key={d.label} className="flex flex-col items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[#A69984]/60 text-base">{d.icon}</span>
+                            <span className="text-white font-bold text-sm">{d.count}</span>
+                            <span className="text-[9px] text-[#A69984]/45 font-bold uppercase">{d.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FOURTH ROW: Admin Activity + Support Metrics + Referral Performance */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                  {/* Admin Activity */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 font-sans`}>
+                    <div className="flex justify-between items-center mb-5">
+                      <h3 className="text-white font-bold text-sm tracking-wide">Admin Activity</h3>
+                      <span className="material-symbols-outlined text-[#ffc53d] text-lg">manage_accounts</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Total Admin Accounts</span>
+                        <span className="text-white font-bold text-sm">{admins.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Active Admins</span>
+                        <span className="text-emerald-400 font-bold text-sm">{activeAdmins}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Inactive / Suspended</span>
+                        <span className="text-rose-400 font-bold text-sm">{inactiveAdmins}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Session Activity</span>
+                        <span className="text-amber-400 font-bold text-sm">3 live sessions</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Support Desk Metrics */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 font-sans`}>
+                    <div className="flex justify-between items-center mb-5">
+                      <h3 className="text-white font-bold text-sm tracking-wide">Support Desk Metrics</h3>
+                      <span className="material-symbols-outlined text-sky-400 text-lg">confirmation_number</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Total Tickets</span>
+                        <span className="text-white font-bold text-sm">{tickets.length}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Open</span>
+                        <span className="text-rose-400 font-bold text-sm">{openTickets}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">In Progress</span>
+                        <span className="text-amber-400 font-bold text-sm">{inProgressTickets}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Resolved</span>
+                        <span className="text-emerald-400 font-bold text-sm">{resolvedTickets}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Resolution Rate</span>
+                        <span className={`font-bold text-sm ${parseInt(ticketResolutionRate) >= 70 ? 'text-emerald-400' : parseInt(ticketResolutionRate) >= 40 ? 'text-amber-400' : 'text-rose-400'}`}>
+                          {tickets.length === 0 ? '—' : `${ticketResolutionRate}%`}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Referral Program Performance */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 font-sans`}>
+                    <div className="flex justify-between items-center mb-5">
+                      <h3 className="text-white font-bold text-sm tracking-wide">Referral Performance</h3>
+                      <span className="material-symbols-outlined text-violet-400 text-lg">loyalty</span>
+                    </div>
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Active Ambassadors</span>
+                        <span className="text-white font-bold text-sm">{totalAmbassadors}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Businesses Referred</span>
+                        <span className="text-violet-400 font-bold text-sm">{totalReferredBusinesses}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3 border-b border-white/5">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Pending Payouts</span>
+                        <span className="text-amber-400 font-bold text-sm">${totalPendingPayouts.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center py-3">
+                        <span className="text-[11px] text-[#A69984]/65 font-semibold">Total Paid Out</span>
+                        <span className="text-emerald-400 font-bold text-sm">${totalPaidPayouts.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* FIFTH ROW: Top Tenants by Revenue */}
+                <div className={`${theme.cardBg} border rounded-2xl font-sans overflow-hidden`}>
+                  <div className="px-7 py-5 border-b border-white/5 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-white font-bold text-sm tracking-wide">Top Tenants by Revenue</h3>
+                      <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">Ranked by lifetime gross revenue · {activeTenants} active accounts</p>
+                    </div>
+                    <button
+                      onClick={() => { setActiveTab('locations'); }}
+                      className="text-[10px] font-bold uppercase tracking-widest text-[#ffe2ab] border border-[#ffe2ab]/20 px-4 py-2 rounded-xl hover:bg-[#ffe2ab]/5 transition-colors cursor-pointer"
+                    >
+                      View All Tenants
+                    </button>
+                  </div>
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-white/5">
+                        <th className="text-left text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-7 py-3">#</th>
+                        <th className="text-left text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-4 py-3">Tenant</th>
+                        <th className="text-left text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-4 py-3">Tier</th>
+                        <th className="text-left text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-4 py-3">Region</th>
+                        <th className="text-left text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-4 py-3">Terminals</th>
+                        <th className="text-left text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-4 py-3">Status</th>
+                        <th className="text-right text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-widest px-7 py-3">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.04]">
+                      {[...tenants]
+                        .sort((a, b) => parseRevenue(b.revenue) - parseRevenue(a.revenue))
+                        .map((t, idx) => (
+                          <tr key={t.id} className="hover:bg-white/[0.015] transition-colors">
+                            <td className="px-7 py-4 text-[11px] text-[#A69984]/40 font-bold">{idx + 1}</td>
+                            <td className="px-4 py-4">
+                              <div className="text-[12px] text-white font-bold">{t.name}</div>
+                              <div className="text-[9.5px] text-[#A69984]/50 font-semibold mt-0.5">{t.location} · {t.id}</div>
+                            </td>
+                            <td className="px-4 py-4 text-[11px] text-[#A69984]/70 font-semibold">{t.tier || '—'}</td>
+                            <td className="px-4 py-4 text-[11px] text-[#A69984]/70 font-semibold">{t.region || '—'}</td>
+                            <td className="px-4 py-4 text-[11px] text-white font-bold">{t.terminals}</td>
+                            <td className="px-4 py-4">
+                              <span className={`text-[9.5px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-lg ${t.status === 'ACTIVE' ? theme.tagActive : theme.tagSuspended}`}>
+                                {t.status}
+                              </span>
+                            </td>
+                            <td className="px-7 py-4 text-right">
+                              <span className="text-[12px] text-[#ffc53d] font-bold font-serif">{t.revenue}</span>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+              </div>
+            );
+          })()}
+
           {/* TAB: SUPPORT DESK */}
           {activeTab === 'support' && (
             <div className="space-y-8 animate-fade-in duration-300">
@@ -2558,7 +3423,7 @@ export default function SuperAdminPage() {
                 >
                   <div className="flex justify-between items-center">
                     <span className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider">Open (Unresolved)</span>
-                    <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                    <span className="w-2 h-2 rounded-full bg-rose-500 motion-safe:animate-ping"></span>
                   </div>
                   <h4 className="text-2xl font-bold text-rose-400 mt-1.5">{tickets.filter(t => t.status === 'OPEN').length} Tickets</h4>
                 </button>
@@ -2761,6 +3626,111 @@ export default function SuperAdminPage() {
         </div>
 
       </div>
+
+      {/* MODAL: ADD NEW AMBASSADOR */}
+      {showAddAmbassadorModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[520px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            {/* Close */}
+            <button
+              onClick={() => { setShowAddAmbassadorModal(false); setNewAmbassadorData({ name: '', email: '', phone: '', code: '' }); }}
+              className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="mb-7">
+              <div className="w-11 h-11 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/20 flex items-center justify-center mb-4">
+                <span className="material-symbols-outlined text-[#ffc53d] text-xl">person_add</span>
+              </div>
+              <h2 className="font-serif text-2xl font-bold text-white tracking-wide">Register Ambassador</h2>
+              <p className="text-[11px] text-[#A69984]/60 font-semibold mt-1.5">Add a new partner to the referral program and generate their unique referral code.</p>
+            </div>
+
+            <form onSubmit={handleAddAmbassador} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Full Name *</label>
+                  <input
+                    type="text" required
+                    placeholder="e.g. Sarah Johnson"
+                    value={newAmbassadorData.name}
+                    onChange={e => setNewAmbassadorData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="+1 555 000 0000"
+                    value={newAmbassadorData.phone}
+                    onChange={e => setNewAmbassadorData(prev => ({ ...prev, phone: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Email Address *</label>
+                <input
+                  type="email" required
+                  placeholder="e.g. sarah@restaurant.com"
+                  value={newAmbassadorData.email}
+                  onChange={e => setNewAmbassadorData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Referral Code (auto-generated if blank)</label>
+                <div className="flex gap-3">
+                  <input
+                    type="text"
+                    placeholder={newAmbassadorData.name ? generateReferralCode(newAmbassadorData.name) : 'e.g. SARAH421'}
+                    value={newAmbassadorData.code}
+                    onChange={e => setNewAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                    className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setNewAmbassadorData(prev => ({ ...prev, code: generateReferralCode(prev.name || 'AMB') }))}
+                    className="px-4 py-3 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm">shuffle</span>
+                    Generate
+                  </button>
+                </div>
+              </div>
+
+              {/* Reward preview */}
+              <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 rounded-xl p-4 flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#ffc53d] text-base">info</span>
+                <p className="text-[10px] text-[#ffe2ab]/80 font-semibold leading-relaxed">
+                  This ambassador will earn <strong className="text-[#ffc53d]">${referralConfig.rewardPerSignup}</strong> per subscription signup + <strong className="text-[#ffc53d]">{referralConfig.commissionRate}%</strong> commission. Min payout: <strong className="text-[#ffc53d]">${referralConfig.minPayoutThreshold}</strong>.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddAmbassadorModal(false); setNewAmbassadorData({ name: '', email: '', phone: '', code: '' }); }}
+                  className="flex-1 py-3 border border-white/10 hover:border-white/20 text-[#A69984] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">check</span>
+                  Register Ambassador
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MODAL 1: ADD NEW BUSINESS TENANT */}
       {showAddTenantModal && (

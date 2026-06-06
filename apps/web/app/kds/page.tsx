@@ -408,7 +408,7 @@ export default function KdsPage() {
         {/* Scrollable Order Card Grid */}
         <div className="flex-1 overflow-y-auto px-10 pb-32 pt-5">
           {filteredTickets.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
               {filteredTickets.map(ticket => {
                 const isOver15m = ticket.secondsElapsed >= 900;
                 
@@ -420,19 +420,27 @@ export default function KdsPage() {
                 }
 
                 return (
-                  <div 
-                    key={ticket.id} 
-                    className={`bg-[#161513]/95 border rounded-2xl p-8 shadow-xl flex flex-col justify-between transition-all duration-300 min-h-[340px] ${
+                  <div
+                    key={ticket.id}
+                    className={`bg-[#161513]/95 border rounded-2xl p-8 shadow-xl flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
                       ticket.id === 'ticket-4' && ticket.status === 'pending'
-                        ? 'opacity-30 border-white/5' 
+                        ? 'border-white/5 bg-[#12110f]/80'
                         : isOver15m && ticket.status === 'pending'
-                          ? 'border-[#ef4444]/25 shadow-[0_4px_24px_rgba(239,68,68,0.06)]' 
+                          ? 'border-[#ef4444]/25 shadow-[0_4px_24px_rgba(239,68,68,0.06)]'
                           : 'border-white/5 hover:border-white/10'
                     }`}
                   >
+                    {/* HOLD watermark stripe */}
+                    {ticket.id === 'ticket-4' && ticket.status === 'pending' && (
+                      <div className="absolute inset-0 pointer-events-none z-10 flex items-start justify-end p-3">
+                        <span className="bg-[#A69984]/15 border border-[#A69984]/20 text-[#A69984]/60 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg">
+                          On Hold
+                        </span>
+                      </div>
+                    )}
                     
                     {/* Header Details */}
-                    <div>
+                    <div className={ticket.id === 'ticket-4' && ticket.status === 'pending' ? 'opacity-50' : ''}>
                       <div className="flex justify-between items-center mb-7 select-none">
                         <div className="flex items-center gap-2.5">
                           <h3 className={`font-serif text-lg font-bold tracking-wide ${tableHeaderColor}`}>

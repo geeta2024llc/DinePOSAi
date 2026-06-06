@@ -743,26 +743,29 @@ export default function DigitalMenuPage() {
           <div className="hidden lg:flex items-center gap-4 select-none">
             {/* Dining Options Capsule */}
             <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-0.5">
-              <button 
+              <button
+                type="button"
                 onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
-                className={`px-4 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${diningOption === 'dine-in' ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_14px_rgba(255,226,171,0.35)]' : 'text-[#A69984]/80 hover:text-[#ffe2ab] hover:bg-[#ffe2ab]/10'}`}
+                className={`flex-1 min-w-[76px] px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'dine-in' ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_14px_rgba(255,226,171,0.35)]' : 'text-[#A69984]/80 hover:text-[#ffe2ab] hover:bg-[#ffe2ab]/10'}`}
               >
                 <span className="material-symbols-outlined text-[15px] leading-none">restaurant</span>
-                Dine-in
+                <span className="hidden xs:inline">Dine-in</span>
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
-                className={`px-4 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${diningOption === 'takeaway' ? 'bg-[#38bdf8] text-[#0c4a6e] shadow-[0_4px_14px_rgba(56,189,248,0.35)]' : 'text-[#A69984]/80 hover:text-[#38bdf8] hover:bg-[#38bdf8]/10'}`}
+                className={`flex-1 min-w-[76px] px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'takeaway' ? 'bg-[#38bdf8] text-[#0c4a6e] shadow-[0_4px_14px_rgba(56,189,248,0.35)]' : 'text-[#A69984]/80 hover:text-[#38bdf8] hover:bg-[#38bdf8]/10'}`}
               >
                 <span className="material-symbols-outlined text-[15px] leading-none">takeout_dining</span>
-                Takeaway
+                <span className="hidden xs:inline">Takeaway</span>
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
-                className={`px-4 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center gap-1.5 cursor-pointer ${diningOption === 'delivery' ? 'bg-[#fb923c] text-[#7c2d12] shadow-[0_4px_14px_rgba(251,146,60,0.35)]' : 'text-[#A69984]/80 hover:text-[#fb923c] hover:bg-[#fb923c]/10'}`}
+                className={`flex-1 min-w-[76px] px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'delivery' ? 'bg-[#fb923c] text-[#7c2d12] shadow-[0_4px_14px_rgba(251,146,60,0.35)]' : 'text-[#A69984]/80 hover:text-[#fb923c] hover:bg-[#fb923c]/10'}`}
               >
                 <span className="material-symbols-outlined text-[15px] leading-none">moped</span>
-                Delivery
+                <span className="hidden xs:inline">Delivery</span>
               </button>
             </div>
 
@@ -825,12 +828,12 @@ export default function DigitalMenuPage() {
 
             {/* Table Dropdown Menu */}
             {isTableDropdownOpen && (
-              <div className="absolute top-[52px] left-0 bg-[#161513] border border-white/10 rounded-xl p-3 shadow-2xl z-50 grid grid-cols-4 gap-2 w-[200px] sm:w-[220px]">
+              <div className="absolute top-[52px] left-0 bg-[#161513] border border-white/10 rounded-xl p-3 shadow-2xl z-50 grid grid-cols-3 sm:grid-cols-4 gap-2 w-[180px] sm:w-[220px]">
                 {Array.from({ length: 16 }, (_, i) => i + 1).map(num => (
                   <button
                     key={num}
                     onClick={() => handleTableChange(num)}
-                    className={`p-2 font-sans font-bold text-xs rounded transition-all cursor-pointer ${tableNumber === num ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white hover:bg-white/5'}`}
+                    className={`py-2.5 px-1 font-sans font-bold text-xs rounded transition-all cursor-pointer min-h-[36px] flex items-center justify-center ${tableNumber === num ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white hover:bg-white/5'}`}
                   >
                     T{num}
                   </button>
@@ -976,7 +979,7 @@ export default function DigitalMenuPage() {
                     {/* Content Section */}
                     <div className="p-6 flex-1 flex flex-col justify-between">
                       <div>
-                        <h3 className="font-serif text-base text-white group-hover:text-[#ffe2ab] transition-colors duration-300 tracking-wide font-medium leading-snug line-clamp-1">
+                        <h3 className="font-serif text-base text-white group-hover:text-[#ffe2ab] transition-colors duration-300 tracking-wide font-medium leading-snug line-clamp-2">
                           {item.name}
                         </h3>
                         <p className="font-sans text-[#A69984]/70 text-[11.5px] leading-relaxed mt-2.5 line-clamp-2 min-h-[34px]">
@@ -1038,7 +1041,7 @@ export default function DigitalMenuPage() {
               })}
             </div>
           ) : (
-            <div className="text-center py-24 text-[#A69984]/40 font-sans text-sm select-none border border-dashed border-white/5 rounded-3xl bg-white/[0.01]">
+            <div className="text-center py-24 text-[#A69984]/40 font-sans text-sm select-none border border-dashed border-white/5 rounded-2xl bg-white/[0.01]">
               No active items found in this section matching your filters.
             </div>
           )}
@@ -1377,7 +1380,7 @@ export default function DigitalMenuPage() {
       {orderSubmitted && (
         <div className="fixed inset-0 w-screen h-screen bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 flex-none">
           <div className="bg-[#161513] border border-[#ffe2ab]/20 p-6 sm:p-10 rounded-2xl max-w-md w-full shadow-2xl text-center relative select-none">
-            <span className="material-symbols-outlined text-6xl text-[#ffe2ab] mb-4 font-light animate-pulse">check_circle</span>
+            <span className="material-symbols-outlined text-6xl text-[#ffe2ab] mb-4 font-light motion-safe:animate-pulse">check_circle</span>
             <h3 className="font-serif text-2xl text-white mb-2 font-medium tracking-wide">Order Handed to Kitchen</h3>
             <p className="text-[#ffe2ab] text-xs font-bold uppercase tracking-wider mb-4 font-sans">
               Table {tableNumber} • Transmitted Successfully
@@ -1395,7 +1398,7 @@ export default function DigitalMenuPage() {
               <div>
                 <div className="text-[10px] text-[#A69984]/40 font-bold uppercase tracking-wider mb-1">Status</div>
                 <div className="text-[#ffe2ab] text-sm font-bold flex items-center gap-1.5 justify-center">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ffe2ab] animate-ping"></span> Active
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ffe2ab] motion-safe:animate-ping"></span> Active
                 </div>
               </div>
             </div>
@@ -1430,7 +1433,7 @@ export default function DigitalMenuPage() {
               <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-b from-[#181715] to-[#121110] border border-[#ffe2ab]/20 flex items-center justify-center text-[#ffe2ab]">
-                    <span className="material-symbols-outlined text-lg leading-none animate-pulse">auto_awesome</span>
+                    <span className="material-symbols-outlined text-lg leading-none motion-safe:animate-pulse">auto_awesome</span>
                   </div>
                   <div>
                     <h3 className="font-serif text-base text-white font-medium tracking-wide">Aura Concierge</h3>
@@ -1446,7 +1449,10 @@ export default function DigitalMenuPage() {
               </div>
 
               {/* Chat messages */}
-              <div className="space-y-4 h-[60vh] overflow-y-auto pr-1 flex flex-col scrollbar-hide">
+              <div className="relative">
+                <div className="pointer-events-none absolute top-0 left-0 right-0 h-8 bg-gradient-to-b from-[#0c0b0a] to-transparent z-10"></div>
+              </div>
+              <div className="space-y-4 h-[60vh] overflow-y-auto pr-1 flex flex-col scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
                 {aiMessages.map((msg, index) => (
                   <div 
                     key={index}
