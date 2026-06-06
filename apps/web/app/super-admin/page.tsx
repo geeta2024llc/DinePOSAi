@@ -79,7 +79,7 @@ interface AuditLog {
 
 export default function SuperAdminPage() {
   // Sidebar tab matching mockup
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'settings' | 'support' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'promocodes' | 'settings' | 'support' | 'analytics'>('overview');
 
   // Search filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -375,6 +375,44 @@ export default function SuperAdminPage() {
   // Locations view toggle
   const [locationsView, setLocationsView] = useState<'card' | 'list'>('list');
 
+  // Promo Code types and state
+  interface PromoCodeUsage {
+    tenantId: string;
+    tenantName: string;
+    usedAt: string;
+    planId: string;
+    discountAmount: number;
+  }
+  interface PromoCode {
+    id: string;
+    code: string;
+    description: string;
+    discountType: 'percentage' | 'flat';
+    discountValue: number;
+    applicablePlan: string;
+    maxUses: number | null;
+    currentUses: number;
+    expiresAt: string | null;
+    status: 'active' | 'inactive' | 'expired';
+    createdAt: string;
+    usageLog: PromoCodeUsage[];
+  }
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
+  const [showCreatePromoModal, setShowCreatePromoModal] = useState(false);
+  const [showPromoDetailModal, setShowPromoDetailModal] = useState(false);
+  const [selectedPromoCode, setSelectedPromoCode] = useState<PromoCode | null>(null);
+  const [promoSearchQuery, setPromoSearchQuery] = useState('');
+  const [promoFilterStatus, setPromoFilterStatus] = useState<'all' | 'active' | 'inactive' | 'expired'>('all');
+  const [newPromoData, setNewPromoData] = useState({
+    code: '',
+    description: '',
+    discountType: 'percentage' as 'percentage' | 'flat',
+    discountValue: '',
+    applicablePlan: 'all',
+    maxUses: '',
+    expiresAt: '',
+  });
+
   const generateReferralCode = (name: string) => {
     const base = name.trim().split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5) || 'AMB';
     return `${base}${Math.floor(100 + Math.random() * 900)}`;
@@ -533,6 +571,198 @@ export default function SuperAdminPage() {
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  // Promo codes initialization & sync
+  useEffect(() => {
+    const stored = localStorage.getItem('dinepos_promo_codes');
+    if (stored) {
+      setPromoCodes(JSON.parse(stored));
+    } else {
+      const initial: PromoCode[] = [
+        {
+          id: 'promo-1',
+          code: 'LAUNCH50',
+          description: '50% off first month for new restaurant signups',
+          discountType: 'percentage',
+          discountValue: 50,
+          applicablePlan: 'all',
+          maxUses: 100,
+          currentUses: 47,
+          expiresAt: '2026-09-30',
+          status: 'active',
+          createdAt: '2026-01-15',
+          usageLog: [
+            { tenantId: 'TEN-4581', tenantName: 'Bouchon Bakery', usedAt: '2026-05-20', planId: 'plan-standard', discountAmount: 49.50 },
+            { tenantId: 'TEN-8821', tenantName: 'The Obsidian Room', usedAt: '2026-03-12', planId: 'plan-growth', discountAmount: 149.50 },
+          ]
+        },
+        {
+          id: 'promo-2',
+          code: 'ENTERPRISE30',
+          description: '30% off Enterprise Growth plan — partner tier only',
+          discountType: 'percentage',
+          discountValue: 30,
+          applicablePlan: 'plan-growth',
+          maxUses: 50,
+          currentUses: 18,
+          expiresAt: '2026-12-31',
+          status: 'active',
+          createdAt: '2026-02-01',
+          usageLog: []
+        },
+        {
+          id: 'promo-3',
+          code: 'FLAT100',
+          description: '$100 flat discount on any plan — ambassador referral perk',
+          discountType: 'flat',
+          discountValue: 100,
+          applicablePlan: 'all',
+          maxUses: null,
+          currentUses: 23,
+          expiresAt: null,
+          status: 'active',
+          createdAt: '2026-03-10',
+          usageLog: []
+        },
+        {
+          id: 'promo-4',
+          code: 'WINTER20',
+          description: '20% winter season promotional discount',
+          discountType: 'percentage',
+          discountValue: 20,
+          applicablePlan: 'all',
+          maxUses: 200,
+          currentUses: 200,
+          expiresAt: '2026-02-28',
+          status: 'expired',
+          createdAt: '2025-12-01',
+          usageLog: []
+        },
+        {
+          id: 'promo-5',
+          code: 'PREMIUM100',
+          description: '$100 off Premium Plus — currently paused for review',
+          discountType: 'flat',
+          discountValue: 100,
+          applicablePlan: 'plan-premium',
+          maxUses: 30,
+          currentUses: 8,
+          expiresAt: '2026-12-31',
+          status: 'inactive',
+          createdAt: '2026-04-01',
+          usageLog: []
+        },
+      ];
+      localStorage.setItem('dinepos_promo_codes', JSON.stringify(initial));
+      setPromoCodes(initial);
+    }
+    const handlePromoStorageChange = (e: StorageEvent) => {
+      if (e.key === 'dinepos_promo_codes' && e.newValue) setPromoCodes(JSON.parse(e.newValue));
+    };
+    window.addEventListener('storage', handlePromoStorageChange);
+    return () => window.removeEventListener('storage', handlePromoStorageChange);
+  }, []);
+
+  const generatePromoCode = () => {
+    const words = ['DINE', 'POS', 'SAVE', 'DEAL', 'BOOST', 'PRO', 'VIP', 'PLUS', 'PRIME', 'GOLD'];
+    const word = words[Math.floor(Math.random() * words.length)];
+    const num = Math.floor(10 + Math.random() * 90);
+    return `${word}${num}`;
+  };
+
+  const handleCreatePromoCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPromoData.code.trim() || !newPromoData.description.trim() || !newPromoData.discountValue) {
+      triggerToast('Code, description and discount value are required.', 'info');
+      return;
+    }
+    const discountVal = parseFloat(newPromoData.discountValue);
+    if (isNaN(discountVal) || discountVal <= 0) {
+      triggerToast('Discount value must be a positive number.', 'info');
+      return;
+    }
+    if (newPromoData.discountType === 'percentage' && discountVal > 100) {
+      triggerToast('Percentage discount cannot exceed 100%.', 'info');
+      return;
+    }
+    const normalized = newPromoData.code.toUpperCase().replace(/\s/g, '');
+    if (promoCodes.some(p => p.code === normalized)) {
+      triggerToast(`Code "${normalized}" already exists.`, 'info');
+      return;
+    }
+    const created: PromoCode = {
+      id: `promo-${Date.now()}`,
+      code: normalized,
+      description: newPromoData.description.trim(),
+      discountType: newPromoData.discountType,
+      discountValue: discountVal,
+      applicablePlan: newPromoData.applicablePlan,
+      maxUses: newPromoData.maxUses ? parseInt(newPromoData.maxUses) : null,
+      currentUses: 0,
+      expiresAt: newPromoData.expiresAt || null,
+      status: 'active',
+      createdAt: new Date().toISOString().split('T')[0],
+      usageLog: [],
+    };
+    const updated = [...promoCodes, created];
+    setPromoCodes(updated);
+    localStorage.setItem('dinepos_promo_codes', JSON.stringify(updated));
+    window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_promo_codes', newValue: JSON.stringify(updated) }));
+    setNewPromoData({ code: '', description: '', discountType: 'percentage', discountValue: '', applicablePlan: 'all', maxUses: '', expiresAt: '' });
+    setShowCreatePromoModal(false);
+    triggerToast(`Promo code "${created.code}" created!`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `Created promo code "${created.code}" — ${created.discountType === 'percentage' ? `${created.discountValue}% off` : `$${created.discountValue} flat`} on ${created.applicablePlan === 'all' ? 'all plans' : (saasPlans.find(s => s.id === created.applicablePlan)?.name || created.applicablePlan)}`,
+      tenant: 'Promo Codes', type: 'success'
+    }, ...prev]);
+  };
+
+  const handleTogglePromoStatus = (id: string) => {
+    const updated = promoCodes.map(p => {
+      if (p.id !== id || p.status === 'expired') return p;
+      return { ...p, status: (p.status === 'active' ? 'inactive' : 'active') as 'active' | 'inactive' };
+    });
+    setPromoCodes(updated);
+    localStorage.setItem('dinepos_promo_codes', JSON.stringify(updated));
+    const code = updated.find(p => p.id === id);
+    triggerToast(`Promo code "${code?.code}" is now ${code?.status}.`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `${code?.status === 'active' ? 'Activated' : 'Deactivated'} promo code "${code?.code}"`,
+      tenant: 'Promo Codes', type: 'security'
+    }, ...prev]);
+  };
+
+  const handleDeletePromoCode = (id: string, code: string) => {
+    const updated = promoCodes.filter(p => p.id !== id);
+    setPromoCodes(updated);
+    localStorage.setItem('dinepos_promo_codes', JSON.stringify(updated));
+    if (selectedPromoCode?.id === id) setSelectedPromoCode(null);
+    triggerToast(`Promo code "${code}" permanently deleted.`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `Permanently deleted promo code "${code}"`,
+      tenant: 'Promo Codes', type: 'security'
+    }, ...prev]);
+  };
+
+  const handleExportPromoCodes = () => {
+    const header = ['Code', 'Description', 'Type', 'Value', 'Applicable Plan', 'Max Uses', 'Current Uses', 'Expires', 'Status', 'Created'];
+    const rows = promoCodes.map(p => [
+      p.code, p.description, p.discountType,
+      p.discountType === 'percentage' ? `${p.discountValue}%` : `$${p.discountValue}`,
+      p.applicablePlan === 'all' ? 'All Plans' : (saasPlans.find(s => s.id === p.applicablePlan)?.name || p.applicablePlan),
+      p.maxUses ?? 'Unlimited', p.currentUses,
+      p.expiresAt ?? 'No Expiry', p.status, p.createdAt
+    ]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `dineposai_promocodes_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    triggerToast('Promo codes exported as CSV.', 'success');
+  };
 
   const handleProcessPayout = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1052,6 +1282,18 @@ export default function SuperAdminPage() {
             >
               <span className="material-symbols-outlined text-lg leading-none">payments</span>
               <span>Payments</span>
+            </button>
+            {/* Promo Codes */}
+            <button type="button"
+              onClick={() => { setActiveTab('promocodes'); setSearchQuery(''); }}
+              className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeTab === 'promocodes'
+                  ? `${theme.accentBg} ${theme.accentText} rounded-xl`
+                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg leading-none">local_offer</span>
+              <span>Promo Codes</span>
             </button>
             {/* Analytics */}
             <button type="button"
@@ -3775,6 +4017,407 @@ export default function SuperAdminPage() {
             </div>
           )}
 
+
+          {/* TAB: PROMO CODES */}
+          {activeTab === 'promocodes' && (() => {
+            const filteredPromos = promoCodes.filter(p => {
+              const matchesSearch = p.code.toLowerCase().includes(promoSearchQuery.toLowerCase()) || p.description.toLowerCase().includes(promoSearchQuery.toLowerCase());
+              const matchesStatus = promoFilterStatus === 'all' || p.status === promoFilterStatus;
+              return matchesSearch && matchesStatus;
+            });
+            const totalRedemptions = promoCodes.reduce((s, p) => s + p.currentUses, 0);
+            const activeCount = promoCodes.filter(p => p.status === 'active').length;
+            const totalDiscountGiven = promoCodes.reduce((s, p) => s + p.usageLog.reduce((ls, u) => ls + u.discountAmount, 0), 0);
+            return (
+              <div className="space-y-8 animate-fade-in">
+                {/* Header */}
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">Promo Codes</h1>
+                    <p className="font-sans text-[12.5px] text-[#A69984]/65 font-semibold mt-2">Create and manage subscription discount codes for your SaaS plans.</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={handleExportPromoCodes}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${theme.border} hover:border-white/20 text-xs font-bold uppercase tracking-wider ${theme.textMuted} hover:text-white transition-all`}>
+                      <span className="material-symbols-outlined text-sm">download</span>Export CSV
+                    </button>
+                    <button type="button" onClick={() => setShowCreatePromoModal(true)}
+                      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl ${theme.accentBg} ${theme.accentText} text-xs font-bold uppercase tracking-wider ${theme.accentHoverBg} transition-all shadow-lg`}>
+                      <span className="material-symbols-outlined text-sm">add</span>Create Code
+                    </button>
+                  </div>
+                </div>
+
+                {/* KPI Row */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total Codes', value: promoCodes.length, icon: 'local_offer', color: 'text-amber-400' },
+                    { label: 'Active Codes', value: activeCount, icon: 'check_circle', color: 'text-emerald-400' },
+                    { label: 'Total Redemptions', value: totalRedemptions, icon: 'redeem', color: 'text-sky-400' },
+                    { label: 'Total Discount Given', value: `$${totalDiscountGiven.toFixed(0)}`, icon: 'savings', color: 'text-violet-400' },
+                  ].map(kpi => (
+                    <div key={kpi.label} className={`${theme.cardBg} border rounded-2xl p-5 flex items-center gap-4`}>
+                      <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
+                        <span className={`material-symbols-outlined text-xl ${kpi.color}`}>{kpi.icon}</span>
+                      </div>
+                      <div>
+                        <div className="font-sans text-[10px] text-[#A69984]/60 uppercase tracking-widest font-bold">{kpi.label}</div>
+                        <div className="font-serif text-2xl text-white font-bold mt-0.5">{kpi.value}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Filter / Search Bar */}
+                <div className="flex items-center gap-3">
+                  <div className="relative flex-grow max-w-xs">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-sm text-[#A69984]/40">search</span>
+                    <input type="text" placeholder="Search code or description..."
+                      value={promoSearchQuery} onChange={e => setPromoSearchQuery(e.target.value)}
+                      className={`w-full bg-[#161513]/40 border ${theme.border} rounded-xl pl-9 pr-4 py-2.5 text-xs ${theme.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`} />
+                  </div>
+                  <select aria-label="Filter by status"
+                    value={promoFilterStatus} onChange={e => setPromoFilterStatus(e.target.value as typeof promoFilterStatus)}
+                    className={`bg-[#161513] border ${theme.border} rounded-xl px-4 py-2.5 text-xs ${theme.text} focus:outline-none focus:border-white/20 font-bold uppercase tracking-wider`}>
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="expired">Expired</option>
+                  </select>
+                  <div className="text-xs text-[#A69984]/50 font-bold">{filteredPromos.length} of {promoCodes.length}</div>
+                </div>
+
+                {/* Promo Codes Table */}
+                <div className={`${theme.cardBg} border rounded-2xl overflow-hidden`}>
+                  {/* Table header */}
+                  <div className="grid grid-cols-[2fr_3fr_1.5fr_1.5fr_1.5fr_1.5fr_1.5fr_auto] gap-4 px-6 py-3 border-b border-white/5 bg-white/[0.02]">
+                    {['Code', 'Description', 'Discount', 'Plan', 'Uses', 'Expires', 'Status', 'Actions'].map(h => (
+                      <div key={h} className="text-[10px] font-bold uppercase tracking-widest text-[#A69984]/50">{h}</div>
+                    ))}
+                  </div>
+                  {filteredPromos.length === 0 ? (
+                    <div className="py-16 text-center">
+                      <span className="material-symbols-outlined text-4xl text-[#A69984]/20 block mb-3">local_offer</span>
+                      <p className="text-[#A69984]/50 text-sm font-bold">No promo codes match your filter.</p>
+                    </div>
+                  ) : (
+                    filteredPromos.map(promo => {
+                      const isExpiredByDate = promo.expiresAt && new Date(promo.expiresAt) < new Date();
+                      const isMaxedOut = promo.maxUses !== null && promo.currentUses >= promo.maxUses;
+                      const displayStatus = (isExpiredByDate || isMaxedOut) ? 'expired' : promo.status;
+                      const usagePct = promo.maxUses ? Math.min(100, (promo.currentUses / promo.maxUses) * 100) : 0;
+                      return (
+                        <div key={promo.id} className={`grid grid-cols-[2fr_3fr_1.5fr_1.5fr_1.5fr_1.5fr_1.5fr_auto] gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/[0.015] transition-colors items-center`}>
+                          {/* Code */}
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-bold text-amber-400 text-sm tracking-widest">{promo.code}</span>
+                          </div>
+                          {/* Description */}
+                          <div className="text-xs text-[#A69984]/70 font-medium leading-snug line-clamp-2">{promo.description}</div>
+                          {/* Discount */}
+                          <div>
+                            <span className="font-bold text-sm text-white">
+                              {promo.discountType === 'percentage' ? `${promo.discountValue}%` : `$${promo.discountValue}`}
+                            </span>
+                            <div className="text-[10px] text-[#A69984]/50 font-bold mt-0.5 capitalize">{promo.discountType}</div>
+                          </div>
+                          {/* Plan */}
+                          <div className="text-xs text-[#A69984]/70 font-semibold">
+                            {promo.applicablePlan === 'all' ? <span className="text-sky-400">All Plans</span> : (saasPlans.find(s => s.id === promo.applicablePlan)?.name || promo.applicablePlan)}
+                          </div>
+                          {/* Uses */}
+                          <div>
+                            <div className="text-xs font-bold text-white">{promo.currentUses}{promo.maxUses ? ` / ${promo.maxUses}` : ' / ∞'}</div>
+                            {promo.maxUses && (
+                              <div className="w-full bg-white/5 rounded-full h-1 mt-1.5">
+                                <div className={`h-1 rounded-full ${isMaxedOut ? 'bg-rose-500' : 'bg-amber-400'}`} style={{ width: `${usagePct}%` }} />
+                              </div>
+                            )}
+                          </div>
+                          {/* Expires */}
+                          <div className="text-xs text-[#A69984]/60 font-medium">
+                            {promo.expiresAt ? (
+                              <span className={isExpiredByDate ? 'text-rose-400' : 'text-[#A69984]/60'}>{promo.expiresAt}</span>
+                            ) : <span className="text-emerald-400/70">No Expiry</span>}
+                          </div>
+                          {/* Status badge */}
+                          <div>
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
+                              displayStatus === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                              displayStatus === 'inactive' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' :
+                              'bg-white/5 border-white/10 text-[#A69984]/50'
+                            }`}>{displayStatus}</span>
+                          </div>
+                          {/* Actions */}
+                          <div className="flex items-center gap-1.5">
+                            <button type="button" onClick={() => { setSelectedPromoCode(promo); setShowPromoDetailModal(true); }}
+                              title="View usage details"
+                              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                              <span className="material-symbols-outlined text-sm text-[#A69984]/70">visibility</span>
+                            </button>
+                            {displayStatus !== 'expired' && (
+                              <button type="button" onClick={() => handleTogglePromoStatus(promo.id)}
+                                title={promo.status === 'active' ? 'Deactivate' : 'Activate'}
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${promo.status === 'active' ? 'bg-rose-500/10 hover:bg-rose-500/20' : 'bg-emerald-500/10 hover:bg-emerald-500/20'}`}>
+                                <span className={`material-symbols-outlined text-sm ${promo.status === 'active' ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                  {promo.status === 'active' ? 'pause' : 'play_arrow'}
+                                </span>
+                              </button>
+                            )}
+                            <button type="button" onClick={() => handleDeletePromoCode(promo.id, promo.code)}
+                              title="Delete permanently"
+                              className="w-7 h-7 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 flex items-center justify-center transition-colors">
+                              <span className="material-symbols-outlined text-sm text-rose-400">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Empty state CTA */}
+                {promoCodes.length === 0 && (
+                  <div className="text-center py-20">
+                    <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-4">
+                      <span className="material-symbols-outlined text-3xl text-amber-400">local_offer</span>
+                    </div>
+                    <h3 className="font-serif text-xl text-white mb-2">No promo codes yet</h3>
+                    <p className="text-[#A69984]/60 text-sm mb-6">Create your first discount code to attract new restaurant subscribers.</p>
+                    <button type="button" onClick={() => setShowCreatePromoModal(true)}
+                      className={`inline-flex items-center gap-2 px-5 py-3 rounded-xl ${theme.accentBg} ${theme.accentText} text-xs font-bold uppercase tracking-wider ${theme.accentHoverBg} transition-all shadow-lg`}>
+                      <span className="material-symbols-outlined text-sm">add</span>Create First Code
+                    </button>
+                  </div>
+                )}
+
+                {/* CREATE PROMO CODE MODAL */}
+                {showCreatePromoModal && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className={`${theme.cardBgOpaque} border rounded-2xl w-full max-w-lg shadow-2xl`}>
+                      <div className="flex items-center justify-between p-6 border-b border-white/5">
+                        <div>
+                          <h3 className="font-serif text-xl text-white font-bold">Create Promo Code</h3>
+                          <p className="text-[11px] text-[#A69984]/60 font-medium mt-0.5">New discount code for subscription plans</p>
+                        </div>
+                        <button type="button" onClick={() => setShowCreatePromoModal(false)}
+                          className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                          <span className="material-symbols-outlined text-sm text-[#A69984]/60">close</span>
+                        </button>
+                      </div>
+                      <form onSubmit={handleCreatePromoCode} className="p-6 space-y-5 overflow-y-auto max-h-[70vh]">
+                        {/* Code */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">Promo Code *</label>
+                          <div className="flex gap-2">
+                            <input type="text" required aria-label="Promo code" placeholder="e.g. SAVE30, LAUNCH50"
+                              value={newPromoData.code}
+                              onChange={e => setNewPromoData(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                              className={`flex-grow bg-[#0e0e0d] border ${theme.border} rounded-xl px-4 py-3 text-xs text-white font-mono font-bold uppercase tracking-widest focus:outline-none focus:border-amber-500/50 placeholder-white/20`} />
+                            <button type="button" onClick={() => setNewPromoData(p => ({ ...p, code: generatePromoCode() }))}
+                              className={`px-4 py-3 rounded-xl border ${theme.border} hover:border-white/20 text-xs font-bold text-[#A69984]/60 hover:text-white transition-all whitespace-nowrap`}>
+                              Auto-Generate
+                            </button>
+                          </div>
+                        </div>
+                        {/* Description */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">Description *</label>
+                          <input type="text" required aria-label="Promo code description" placeholder="Brief purpose of this promo code"
+                            value={newPromoData.description}
+                            onChange={e => setNewPromoData(p => ({ ...p, description: e.target.value }))}
+                            className={`w-full bg-[#0e0e0d] border ${theme.border} rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500/50 placeholder-white/20`} />
+                        </div>
+                        {/* Discount type + value */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">Discount Type *</label>
+                            <select aria-label="Discount type" value={newPromoData.discountType}
+                              onChange={e => setNewPromoData(p => ({ ...p, discountType: e.target.value as 'percentage' | 'flat' }))}
+                              className={`w-full bg-[#0e0e0d] border ${theme.border} rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500/50`}>
+                              <option value="percentage">Percentage (%)</option>
+                              <option value="flat">Flat Amount ($)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">
+                              {newPromoData.discountType === 'percentage' ? 'Percent Off *' : 'Flat Discount ($) *'}
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-4 top-3 text-xs text-[#A69984]/50 font-bold">
+                                {newPromoData.discountType === 'percentage' ? '%' : '$'}
+                              </span>
+                              <input type="number" required min="1" max={newPromoData.discountType === 'percentage' ? '100' : undefined}
+                                step="0.01" aria-label="Discount value" placeholder={newPromoData.discountType === 'percentage' ? '0–100' : 'e.g. 100'}
+                                value={newPromoData.discountValue}
+                                onChange={e => setNewPromoData(p => ({ ...p, discountValue: e.target.value }))}
+                                className={`w-full bg-[#0e0e0d] border ${theme.border} rounded-xl pl-8 pr-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500/50 placeholder-white/20`} />
+                            </div>
+                          </div>
+                        </div>
+                        {/* Applicable Plan */}
+                        <div>
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">Applicable Plan</label>
+                          <select aria-label="Applicable plan" value={newPromoData.applicablePlan}
+                            onChange={e => setNewPromoData(p => ({ ...p, applicablePlan: e.target.value }))}
+                            className={`w-full bg-[#0e0e0d] border ${theme.border} rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500/50`}>
+                            <option value="all">All Plans</option>
+                            {saasPlans.map(plan => (
+                              <option key={plan.id} value={plan.id}>{plan.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        {/* Max Uses + Expiry */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">Max Uses (blank = unlimited)</label>
+                            <input type="number" min="1" aria-label="Maximum number of uses" placeholder="e.g. 100"
+                              value={newPromoData.maxUses}
+                              onChange={e => setNewPromoData(p => ({ ...p, maxUses: e.target.value }))}
+                              className={`w-full bg-[#0e0e0d] border ${theme.border} rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500/50 placeholder-white/20`} />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984]/60 mb-2">Expiry Date (blank = no expiry)</label>
+                            <input type="date" aria-label="Expiry date"
+                              value={newPromoData.expiresAt}
+                              onChange={e => setNewPromoData(p => ({ ...p, expiresAt: e.target.value }))}
+                              className={`w-full bg-[#0e0e0d] border ${theme.border} rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500/50`} />
+                          </div>
+                        </div>
+                        {/* Preview */}
+                        {newPromoData.code && newPromoData.discountValue && (
+                          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400/70 mb-2">Preview</div>
+                            <div className="flex items-center gap-3">
+                              <span className="font-mono font-black text-amber-400 text-lg tracking-widest">{newPromoData.code || '—'}</span>
+                              <span className="text-[#A69984]/60 text-xs">—</span>
+                              <span className="text-white text-sm font-bold">
+                                {newPromoData.discountType === 'percentage' ? `${newPromoData.discountValue}% off` : `$${newPromoData.discountValue} off`}
+                              </span>
+                              <span className="text-[#A69984]/40 text-xs">
+                                {newPromoData.applicablePlan === 'all' ? 'all plans' : (saasPlans.find(s => s.id === newPromoData.applicablePlan)?.name || '')}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex gap-3 pt-2">
+                          <button type="button" onClick={() => setShowCreatePromoModal(false)}
+                            className={`flex-1 px-4 py-3 rounded-xl border ${theme.border} hover:border-white/20 text-xs font-bold text-[#A69984]/60 hover:text-white transition-all`}>
+                            Cancel
+                          </button>
+                          <button type="submit"
+                            className={`flex-1 px-4 py-3 rounded-xl ${theme.accentBg} ${theme.accentText} text-xs font-bold uppercase tracking-wider ${theme.accentHoverBg} transition-all`}>
+                            Create Promo Code
+                          </button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* PROMO CODE DETAIL / USAGE MODAL */}
+                {showPromoDetailModal && selectedPromoCode && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                    <div className={`${theme.cardBgOpaque} border rounded-2xl w-full max-w-2xl shadow-2xl`}>
+                      <div className="flex items-center justify-between p-6 border-b border-white/5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-amber-400 text-xl">local_offer</span>
+                          </div>
+                          <div>
+                            <h3 className="font-mono font-black text-amber-400 text-xl tracking-widest">{selectedPromoCode.code}</h3>
+                            <p className="text-xs text-[#A69984]/60 font-medium mt-0.5">{selectedPromoCode.description}</p>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => setShowPromoDetailModal(false)}
+                          className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center transition-colors">
+                          <span className="material-symbols-outlined text-sm text-[#A69984]/60">close</span>
+                        </button>
+                      </div>
+                      <div className="p-6 space-y-6 overflow-y-auto max-h-[70vh]">
+                        {/* Code stats */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                          {[
+                            { label: 'Discount', value: selectedPromoCode.discountType === 'percentage' ? `${selectedPromoCode.discountValue}%` : `$${selectedPromoCode.discountValue}`, sub: selectedPromoCode.discountType },
+                            { label: 'Uses', value: `${selectedPromoCode.currentUses}${selectedPromoCode.maxUses ? ` / ${selectedPromoCode.maxUses}` : ' / ∞'}`, sub: 'redemptions' },
+                            { label: 'Expires', value: selectedPromoCode.expiresAt ?? 'Never', sub: selectedPromoCode.expiresAt ? (new Date(selectedPromoCode.expiresAt) < new Date() ? 'expired' : 'upcoming') : 'no expiry' },
+                            { label: 'Status', value: selectedPromoCode.status.charAt(0).toUpperCase() + selectedPromoCode.status.slice(1), sub: `created ${selectedPromoCode.createdAt}` },
+                          ].map(s => (
+                            <div key={s.label} className="bg-white/[0.03] rounded-xl p-4 border border-white/5">
+                              <div className="text-[10px] font-bold uppercase tracking-widest text-[#A69984]/50 mb-1">{s.label}</div>
+                              <div className="font-bold text-white text-base">{s.value}</div>
+                              <div className="text-[10px] text-[#A69984]/40 mt-0.5 capitalize">{s.sub}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Applicable plan */}
+                        <div className="flex items-center gap-3 bg-white/[0.02] rounded-xl p-4 border border-white/5">
+                          <span className="material-symbols-outlined text-sky-400 text-lg">inventory_2</span>
+                          <div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-[#A69984]/50">Applicable Plan</div>
+                            <div className="text-sm font-bold text-white mt-0.5">
+                              {selectedPromoCode.applicablePlan === 'all' ? 'All Plans' : (saasPlans.find(s => s.id === selectedPromoCode.applicablePlan)?.name || selectedPromoCode.applicablePlan)}
+                            </div>
+                          </div>
+                        </div>
+                        {/* Usage log */}
+                        <div>
+                          <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#A69984]/50 mb-3">Usage Log ({selectedPromoCode.usageLog.length})</h4>
+                          {selectedPromoCode.usageLog.length === 0 ? (
+                            <div className="py-8 text-center bg-white/[0.02] rounded-xl border border-white/5">
+                              <span className="material-symbols-outlined text-2xl text-[#A69984]/20 block mb-2">history</span>
+                              <p className="text-xs text-[#A69984]/40 font-bold">No redemptions recorded yet.</p>
+                            </div>
+                          ) : (
+                            <div className={`${theme.cardBg} border rounded-xl overflow-hidden`}>
+                              <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-3 bg-white/[0.02] border-b border-white/5">
+                                {['Tenant', 'Plan Used', 'Used On', 'Saved'].map(h => (
+                                  <div key={h} className="text-[10px] font-bold uppercase tracking-widest text-[#A69984]/40">{h}</div>
+                                ))}
+                              </div>
+                              {selectedPromoCode.usageLog.map((u, i) => (
+                                <div key={i} className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-4 px-5 py-3 border-b border-white/5 last:border-0 items-center">
+                                  <div className="text-xs font-bold text-white">{u.tenantName}</div>
+                                  <div className="text-xs text-[#A69984]/60">{saasPlans.find(s => s.id === u.planId)?.name || u.planId}</div>
+                                  <div className="text-xs text-[#A69984]/60">{u.usedAt}</div>
+                                  <div className="text-xs font-bold text-emerald-400">${u.discountAmount.toFixed(2)}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Actions */}
+                        <div className="flex gap-3 pt-2 border-t border-white/5">
+                          {selectedPromoCode.status !== 'expired' && (
+                            <button type="button"
+                              onClick={() => { handleTogglePromoStatus(selectedPromoCode.id); setShowPromoDetailModal(false); }}
+                              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-xs font-bold uppercase tracking-wider transition-all ${
+                                selectedPromoCode.status === 'active'
+                                  ? 'border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20'
+                                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                              }`}>
+                              <span className="material-symbols-outlined text-sm">{selectedPromoCode.status === 'active' ? 'pause' : 'play_arrow'}</span>
+                              {selectedPromoCode.status === 'active' ? 'Deactivate' : 'Activate'}
+                            </button>
+                          )}
+                          <button type="button"
+                            onClick={() => { handleDeletePromoCode(selectedPromoCode.id, selectedPromoCode.code); setShowPromoDetailModal(false); }}
+                            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs font-bold uppercase tracking-wider transition-all">
+                            <span className="material-symbols-outlined text-sm">delete</span>Delete Code
+                          </button>
+                          <button type="button" onClick={() => setShowPromoDetailModal(false)}
+                            className={`ml-auto px-4 py-2.5 rounded-xl border ${theme.border} hover:border-white/20 text-xs font-bold text-[#A69984]/60 hover:text-white transition-all`}>
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
         </div>
 
       </div>
@@ -4705,6 +5348,7 @@ export default function SuperAdminPage() {
           </div>
         </div>
       )}
+
 
       {/* GLOBAL TOAST FEEDBACK NOTIFICATION */}
       {toast.show && (
