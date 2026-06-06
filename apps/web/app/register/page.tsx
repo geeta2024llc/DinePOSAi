@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function RegisterPage() {
+function RegisterForm() {
+
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
@@ -14,6 +16,15 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [referralCode, setReferralCode] = useState('');
+
+  // Auto-fill referral code from URL query param ?ref=CODE
+  useEffect(() => {
+    const refParam = searchParams.get('ref');
+    if (refParam) {
+      setReferralCode(refParam.toUpperCase());
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +42,40 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     
+    // If referral code provided, sync the new business to the partner's record
+    if (referralCode.trim()) {
+      try {
+        const stored = localStorage.getItem('dinepos_referrals');
+        if (stored) {
+          const referrals = JSON.parse(stored);
+          const refIdx = referrals.findIndex((r: { code: string }) =>
+            r.code.toUpperCase() === referralCode.trim().toUpperCase()
+          );
+          if (refIdx !== -1) {
+            const newBusiness = {
+              id: `TEN-${Math.floor(1000 + Math.random() * 9000)}`,
+              name: restaurantName,
+              contact: fullName,
+              joinedDate: new Date().toISOString().split('T')[0],
+              status: 'Demo Use',
+              services: ['POS Terminal', 'KDS Screen'],
+              reward: 100
+            };
+            referrals[refIdx].invitedBusinesses.push(newBusiness);
+            referrals[refIdx].pendingRewards += 100;
+            localStorage.setItem('dinepos_referrals', JSON.stringify(referrals));
+            // Dispatch a storage event so partner dashboard syncs in real-time
+            window.dispatchEvent(new StorageEvent('storage', {
+              key: 'dinepos_referrals',
+              newValue: JSON.stringify(referrals)
+            }));
+          }
+        }
+      } catch (err) {
+        console.error('Referral sync error:', err);
+      }
+    }
+
     // Simulate high-end onboarding process delay
     setTimeout(() => {
       setIsLoading(false);
@@ -185,7 +230,37 @@ export default function RegisterPage() {
                   </button>
                 </div>
               </div>
-              
+
+              {/* Optional Referral Code field */}
+              <div className="space-y-1.5">
+                <label className="block text-[#A69984]/95 font-sans text-xs font-semibold select-none">
+                  Referral Code <span className="text-[#A69984]/45 font-normal">(optional)</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#A69984]/40">
+                    <span className="material-symbols-outlined text-[19px] leading-none">redeem</span>
+                  </div>
+                  <input 
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    className={`w-full bg-[#12110f]/90 border ${referralCode ? 'border-[#ffe2ab]/30' : 'border-white/10'} rounded-lg pl-11 pr-4 py-2.5 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 tracking-widest font-mono`}
+                    placeholder="REF-ERIC-77"
+                  />
+                  {referralCode && (
+                    <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
+                      <span className="material-symbols-outlined text-[#ffc53d] text-sm">verified</span>
+                    </div>
+                  )}
+                </div>
+                {referralCode && (
+                  <p className="text-[10px] text-[#ffc53d]/80 font-semibold pl-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-xs">loyalty</span>
+                    Referral code applied. The ambassador who invited you will be rewarded.
+                  </p>
+                )}
+              </div>
+
               {/* Terms Checkbox */}
               <div className="flex items-start pt-2 select-none">
                 <label className="relative flex items-start cursor-pointer select-none">
@@ -238,5 +313,13 @@ export default function RegisterPage() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen bg-[#0e0e0d] text-white">Loading...</div>}>
+      <RegisterForm />
+    </Suspense>
   );
 }
