@@ -359,8 +359,21 @@ export default function SuperAdminPage() {
   // Add Ambassador modal state
   const [showAddAmbassadorModal, setShowAddAmbassadorModal] = useState(false);
   const [newAmbassadorData, setNewAmbassadorData] = useState({
-    name: '', email: '', phone: '', code: ''
+    name: '', email: '', phone: '', code: '',
+    bankName: '', accountHolder: '', accountNumber: '', routingNumber: '',
   });
+
+  // Edit Bank Details modal state (super-admin can update ambassador bank details)
+  const [showEditBankModal, setShowEditBankModal] = useState(false);
+  const [editBankTarget, setEditBankTarget] = useState<Ambassador | null>(null);
+  const [editBankData, setEditBankData] = useState({ bankName: '', accountHolder: '', accountNumber: '', routingNumber: '' });
+
+  // QR Poster modal state
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [qrModalAmbassador, setQrModalAmbassador] = useState<Ambassador | null>(null);
+
+  // Locations view toggle
+  const [locationsView, setLocationsView] = useState<'card' | 'list'>('list');
 
   const generateReferralCode = (name: string) => {
     const base = name.trim().split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5) || 'AMB';
@@ -380,7 +393,14 @@ export default function SuperAdminPage() {
       email: newAmbassadorData.email,
       phone: newAmbassadorData.phone,
       code,
-      bank: { bankName: '', accountNumber: '', routingNumber: '', accountHolder: '' },
+      bank: {
+        bankName: newAmbassadorData.bankName,
+        accountNumber: newAmbassadorData.accountNumber
+          ? newAmbassadorData.accountNumber.replace(/.(?=.{4})/g, '•')
+          : '',
+        routingNumber: newAmbassadorData.routingNumber,
+        accountHolder: newAmbassadorData.accountHolder,
+      },
       invitedBusinesses: [],
       pendingRewards: 0,
       paidRewards: 0,
@@ -390,7 +410,7 @@ export default function SuperAdminPage() {
     const updated = [...ambassadors, created];
     setAmbassadors(updated);
     localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
-    setNewAmbassadorData({ name: '', email: '', phone: '', code: '' });
+    setNewAmbassadorData({ name: '', email: '', phone: '', code: '', bankName: '', accountHolder: '', accountNumber: '', routingNumber: '' });
     setShowAddAmbassadorModal(false);
     triggerToast(`Ambassador "${created.name}" registered with code ${code}.`, 'success');
     setAuditLogs(prev => [{
@@ -398,6 +418,92 @@ export default function SuperAdminPage() {
       action: `Registered new ambassador "${created.name}" (${created.email}) with referral code ${code}`,
       tenant: 'Referral Program', type: 'success'
     }, ...prev]);
+  };
+
+  // Open bank-edit modal for a given ambassador
+  const handleOpenEditBank = (amb: Ambassador) => {
+    setEditBankTarget(amb);
+    setEditBankData({
+      bankName: amb.bank.bankName,
+      accountHolder: amb.bank.accountHolder,
+      accountNumber: '',   // always blank so they re-enter for security
+      routingNumber: amb.bank.routingNumber,
+    });
+    setShowEditBankModal(true);
+  };
+
+  const handleSaveEditBank = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editBankTarget) return;
+    if (!editBankData.bankName || !editBankData.accountHolder || !editBankData.routingNumber) {
+      triggerToast('Bank name, account holder and routing number are required.', 'info');
+      return;
+    }
+    const updated = ambassadors.map(a =>
+      a.id === editBankTarget.id
+        ? {
+            ...a,
+            bank: {
+              bankName: editBankData.bankName,
+              accountHolder: editBankData.accountHolder,
+              accountNumber: editBankData.accountNumber
+                ? editBankData.accountNumber.replace(/.(?=.{4})/g, '•')
+                : a.bank.accountNumber,
+              routingNumber: editBankData.routingNumber,
+            }
+          }
+        : a
+    );
+    setAmbassadors(updated);
+    localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+    setShowEditBankModal(false);
+    setEditBankTarget(null);
+    triggerToast(`Bank details updated for "${editBankTarget.name}".`, 'success');
+    setAuditLogs(prev => [{
+      id: Date.now(), time: 'Just now', actor: 'Super Admin',
+      action: `Updated payout bank details for ambassador "${editBankTarget.name}"`,
+      tenant: 'Referral Program', type: 'security'
+    }, ...prev]);
+  };
+
+  // Export tenants list as CSV
+  const handleExportTenants = () => {
+    const header = ['ID', 'Name', 'Location', 'Tier', 'Region', 'Plan', 'Status', 'Terminals', 'Revenue', 'Joined'];
+    const rows = tenants.map(t => [t.id, t.name, t.location, t.tier || '', t.region || '', t.plan, t.status, t.terminals, t.revenue, t.joined]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `dineposai_tenants_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    triggerToast('Tenant list exported as CSV.', 'success');
+  };
+
+  // Export referral/ambassador data as CSV
+  const handleExportReferrals = () => {
+    const header = ['ID', 'Name', 'Email', 'Phone', 'Code', 'Status', 'Joined', 'Pending Rewards', 'Paid Rewards', 'Referrals Count', 'Bank Name', 'Account Holder'];
+    const rows = ambassadors.map(a => [
+      a.id, a.name, a.email, a.phone, a.code, a.status, a.joinedDate,
+      a.pendingRewards, a.paidRewards, a.invitedBusinesses.length,
+      a.bank.bankName, a.bank.accountHolder
+    ]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `dineposai_referrals_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    triggerToast('Referral data exported as CSV.', 'success');
+  };
+
+  // Export payout history as CSV
+  const handleExportPayoutHistory = () => {
+    const header = ['TX ID', 'Date', 'Ambassador', 'Amount (USD)', 'Note'];
+    const rows = payoutHistory.map(tx => [tx.id, tx.date, tx.ambassadorName, tx.amount.toFixed(2), tx.note]);
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `dineposai_payouts_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    triggerToast('Payout history exported as CSV.', 'success');
   };
 
   const handleToggleAmbassadorStatus = (ambId: string) => {
@@ -876,7 +982,7 @@ export default function SuperAdminPage() {
           {/* Navigation Links */}
           <nav className="space-y-2 font-sans">
             {/* Overview */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('overview'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'overview'
@@ -888,7 +994,7 @@ export default function SuperAdminPage() {
               <span>Overview</span>
             </button>
             {/* Tenants */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('locations'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'locations'
@@ -900,7 +1006,7 @@ export default function SuperAdminPage() {
               <span>Tenants</span>
             </button>
             {/* Access Control */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('access'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'access'
@@ -912,7 +1018,7 @@ export default function SuperAdminPage() {
               <span>Access Control</span>
             </button>
             {/* System Health */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('health'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'health'
@@ -924,7 +1030,7 @@ export default function SuperAdminPage() {
               <span>System Health</span>
             </button>
             {/* Referrals */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('referrals'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'referrals'
@@ -936,7 +1042,7 @@ export default function SuperAdminPage() {
               <span>Referrals</span>
             </button>
             {/* Payments */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('payments'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'payments'
@@ -948,7 +1054,7 @@ export default function SuperAdminPage() {
               <span>Payments</span>
             </button>
             {/* Analytics */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('analytics'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'analytics'
@@ -960,7 +1066,7 @@ export default function SuperAdminPage() {
               <span>Analytics</span>
             </button>
             {/* Support Desk */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('support'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'support'
@@ -972,7 +1078,7 @@ export default function SuperAdminPage() {
               <span>Support Desk</span>
             </button>
             {/* Global Settings */}
-            <button
+            <button type="button"
               onClick={() => { setActiveTab('settings'); setSearchQuery(''); }}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'settings'
@@ -988,7 +1094,7 @@ export default function SuperAdminPage() {
 
         {/* Sidebar Footer Controls */}
         <div className="pt-6 font-sans border-t border-white/5 space-y-4">
-          <button 
+          <button type="button" 
             onClick={() => triggerToast('Opening global console documentation...', 'info')}
             className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`}
           >
@@ -1022,7 +1128,7 @@ export default function SuperAdminPage() {
           
           {/* Header controls and user context */}
           <div className="flex items-center gap-4">
-            <button 
+            <button type="button" 
               onClick={() => triggerToast('System health logs clear. 0 concerns.', 'info')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${theme.border} hover:border-white/10 rounded-xl text-white transition-colors cursor-pointer select-none relative`}
             >
@@ -1030,7 +1136,7 @@ export default function SuperAdminPage() {
               <span className="absolute top-3.5 right-3.5 w-1 h-1 bg-amber-500 rounded-full motion-safe:animate-ping"></span>
             </button>
 
-            <button 
+            <button type="button" 
               onClick={() => triggerToast('Opening cluster security settings...', 'info')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${theme.border} hover:border-white/10 rounded-xl text-white transition-colors cursor-pointer select-none`}
             >
@@ -1128,66 +1234,75 @@ export default function SuperAdminPage() {
                         <p className="text-[11px] text-[#A69984]/50 font-semibold mt-0.5">Real-time status of managed nodes</p>
                       </div>
                       <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-0.5 text-[10px] font-bold font-sans uppercase tracking-wider">
-                        <button 
-                          onClick={() => triggerToast('Switching to list representation...', 'info')}
-                          className="px-3 py-1.5 rounded text-white/50 hover:text-white transition-colors cursor-pointer"
+                        <button type="button"
+                          onClick={() => setLocationsView('list')}
+                          className={`px-3 py-1.5 rounded transition-all cursor-pointer ${locationsView === 'list' ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-white/50 hover:text-white'}`}
                         >
                           List View
                         </button>
-                        <button className="px-3 py-1.5 bg-[#ffc53d] text-[#2c1a00] rounded font-bold transition-all cursor-pointer">
+                        <button type="button"
+                          onClick={() => setLocationsView('card')}
+                          className={`px-3 py-1.5 rounded transition-all cursor-pointer ${locationsView === 'card' ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-white/50 hover:text-white'}`}
+                        >
                           Map View
                         </button>
                       </div>
                     </div>
 
-                    {/* Dark map container */}
-                    <div className="relative w-full h-[320px] bg-[#0c0c0b] rounded-xl flex items-center justify-center border border-white/5 group shadow-inner">
-                      {/* Ambient map dot overlay grid */}
-                      <div className="absolute inset-0 bg-[radial-gradient(#ffe2ab/4_1.2px,transparent_1.2px)] [background-size:16px_16px] opacity-25"></div>
+                    {/* Map View */}
+                    {locationsView === 'card' && (
+                      <>
+                        <div className="relative w-full h-[320px] bg-[#0c0c0b] rounded-xl flex items-center justify-center border border-white/5 group shadow-inner">
+                          <div className="absolute inset-0 bg-[radial-gradient(#ffe2ab/4_1.2px,transparent_1.2px)] [background-size:16px_16px] opacity-25"></div>
+                          <div className="absolute top-[48%] left-[28%] flex flex-col items-center group/dot cursor-pointer">
+                            <div className="w-3.5 h-3.5 bg-rose-500 rounded-full motion-safe:animate-ping absolute"></div>
+                            <div className="w-3.5 h-3.5 bg-rose-500 rounded-full border border-black z-10"></div>
+                            <span className="absolute bottom-5 bg-[#161513] text-[9.5px] text-rose-400 font-bold font-sans uppercase px-2.5 py-1 rounded border border-rose-500/20 shadow-md whitespace-nowrap z-20">New York • Offline</span>
+                          </div>
+                          <div className="absolute top-[38%] left-[48%] flex flex-col items-center group/dot cursor-pointer">
+                            <div className="w-3 h-3 bg-amber-400 rounded-full motion-safe:animate-pulse absolute"></div>
+                            <div className="w-3 h-3 bg-amber-400 rounded-full border border-black z-10"></div>
+                            <span className="absolute bottom-5 bg-[#161513] text-[9.5px] text-amber-400 font-bold font-sans uppercase px-2.5 py-1 rounded border border-amber-400/20 shadow-md whitespace-nowrap z-20">Paris Flagship • Online</span>
+                          </div>
+                          <div className="absolute top-[52%] left-[78%] flex flex-col items-center group/dot cursor-pointer">
+                            <div className="w-2 h-2 bg-amber-400 rounded-full border border-black z-10"></div>
+                            <span className="absolute bottom-4 bg-[#161513] text-[9px] text-[#A69984] font-bold font-sans uppercase px-2 py-0.5 rounded border border-white/5 shadow-md whitespace-nowrap z-20 scale-0 group-hover/dot:scale-100 transition-all">Tokyo Outpost</span>
+                          </div>
+                          <span className="material-symbols-outlined text-[100px] text-white/[0.03] group-hover:scale-105 transition-transform duration-700 pointer-events-none select-none">public</span>
+                        </div>
+                        <div className="flex items-center gap-6 text-[10.5px] font-sans font-bold uppercase tracking-wider select-none">
+                          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span><span className="text-white">Online Sites</span><span className="text-[#A69984]/65 ml-0.5 font-normal">38</span></div>
+                          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span><span className="text-white">Maintenance</span><span className="text-[#A69984]/65 ml-0.5 font-normal">3</span></div>
+                          <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span><span className="text-white">Critical Alert</span><span className="text-[#A69984]/65 ml-0.5 font-normal">1</span></div>
+                        </div>
+                      </>
+                    )}
 
-                      {/* Map Hotspots representing Locations */}
-                      {/* Hotspot 1 - New York (Offline Alert) */}
-                      <div className="absolute top-[48%] left-[28%] flex flex-col items-center group/dot cursor-pointer">
-                        <div className="w-3.5 h-3.5 bg-rose-500 rounded-full motion-safe:animate-ping absolute"></div>
-                        <div className="w-3.5 h-3.5 bg-rose-500 rounded-full border border-black z-10"></div>
-                        <span className="absolute bottom-5 bg-[#161513] text-[9.5px] text-rose-400 font-bold font-sans uppercase px-2.5 py-1 rounded border border-rose-500/20 shadow-md whitespace-nowrap z-20">New York • Offline</span>
+                    {/* List View */}
+                    {locationsView === 'list' && (
+                      <div className="space-y-2 max-h-[370px] overflow-y-auto pr-1">
+                        {tenants.map(t => (
+                          <div key={t.id} className="flex items-center justify-between px-4 py-3 bg-white/[0.025] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-colors">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.status === 'ACTIVE' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                              <div className="min-w-0">
+                                <div className="text-white font-bold text-xs truncate">{t.name}</div>
+                                <div className="text-[#A69984]/50 text-[9.5px] font-semibold mt-0.5">{t.location} · {t.id}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 flex-shrink-0 ml-4">
+                              <div className="text-right">
+                                <div className="text-[#ffc53d] font-bold text-xs">{t.revenue}</div>
+                                <div className="text-[#A69984]/45 text-[9px] font-semibold">{t.terminals} terminals</div>
+                              </div>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${t.status === 'ACTIVE' ? theme.tagActive : theme.tagSuspended}`}>
+                                {t.status}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-
-                      {/* Hotspot 2 - Paris (Online Flagship) */}
-                      <div className="absolute top-[38%] left-[48%] flex flex-col items-center group/dot cursor-pointer">
-                        <div className="w-3 h-3 bg-amber-400 rounded-full motion-safe:animate-pulse absolute"></div>
-                        <div className="w-3 h-3 bg-amber-400 rounded-full border border-black z-10"></div>
-                        <span className="absolute bottom-5 bg-[#161513] text-[9.5px] text-amber-400 font-bold font-sans uppercase px-2.5 py-1 rounded border border-amber-400/20 shadow-md whitespace-nowrap z-20">Paris Flagship • Online</span>
-                      </div>
-
-                      {/* Hotspot 3 - Tokyo (Online) */}
-                      <div className="absolute top-[52%] left-[78%] flex flex-col items-center group/dot cursor-pointer">
-                        <div className="w-2 h-2 bg-amber-400 rounded-full border border-black z-10"></div>
-                        <span className="absolute bottom-4 bg-[#161513] text-[9px] text-[#A69984] font-bold font-sans uppercase px-2 py-0.5 rounded border border-white/5 shadow-md whitespace-nowrap z-20 scale-0 group-hover/dot:scale-100 transition-all">Tokyo Outpost</span>
-                      </div>
-
-                      {/* World Map Symbol Silhouette */}
-                      <span className="material-symbols-outlined text-[100px] text-white/[0.03] group-hover:scale-105 transition-transform duration-700 pointer-events-none select-none">public</span>
-                    </div>
-
-                    {/* Legend block */}
-                    <div className="flex items-center gap-6 text-[10.5px] font-sans font-bold uppercase tracking-wider select-none">
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-                        <span className="text-white">Online Sites</span>
-                        <span className="text-[#A69984]/65 ml-0.5 font-normal">38</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-600"></span>
-                        <span className="text-white">Maintenance</span>
-                        <span className="text-[#A69984]/65 ml-0.5 font-normal">3</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                        <span className="text-white">Critical Alert</span>
-                        <span className="text-[#A69984]/65 ml-0.5 font-normal">1</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -1259,7 +1374,7 @@ export default function SuperAdminPage() {
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={() => { setActiveTab('access'); }} 
                       className="w-full text-center py-2.5 text-[10px] text-white hover:text-white transition-colors border border-white/10 hover:border-white/20 rounded-xl font-bold uppercase tracking-widest select-none cursor-pointer"
                     >
@@ -1290,7 +1405,7 @@ export default function SuperAdminPage() {
                           <span className="text-[#A69984]/65">Operational</span>
                         </div>
                         <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                          <div className="bg-[#ffc53d] h-full rounded-full" style={{ width: '100%' }}></div>
+                          <div className=" w-full"></div>
                         </div>
                       </div>
 
@@ -1301,7 +1416,7 @@ export default function SuperAdminPage() {
                           <span className="text-[#A69984]/65">Operational</span>
                         </div>
                         <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden">
-                          <div className="bg-[#ffc53d] h-full rounded-full" style={{ width: '100%' }}></div>
+                          <div className=" w-full"></div>
                         </div>
                       </div>
                     </div>
@@ -1346,25 +1461,25 @@ export default function SuperAdminPage() {
 
                     {/* 2x2 grid controls */}
                     <div className="grid grid-cols-2 gap-3 text-[10px] font-bold tracking-wider uppercase select-none">
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Successfully flushed redis & proxy caches.', 'success')}
                         className="p-3 border border-white/5 hover:border-white/10 bg-white/[0.01] hover:bg-white/[0.03] text-white/80 rounded-xl transition-all cursor-pointer text-center font-bold"
                       >
                         Flush Cache
                       </button>
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Triggered global SSH key rotations.', 'success')}
                         className="p-3 border border-white/5 hover:border-white/10 bg-white/[0.01] hover:bg-white/[0.03] text-white/80 rounded-xl transition-all cursor-pointer text-center font-bold"
                       >
                         Rotate Keys
                       </button>
-                      <button 
+                      <button type="button" 
                         onClick={() => setShowTerminalModal(true)}
                         className="p-3 border border-white/5 hover:border-white/10 bg-white/[0.01] hover:bg-white/[0.03] text-white/80 rounded-xl transition-all cursor-pointer text-center font-bold"
                       >
                         Remote CMD
                       </button>
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Initiated global system logs export sequence.', 'success')}
                         className="p-3 border border-white/5 hover:border-white/10 bg-white/[0.01] hover:bg-white/[0.03] text-white/80 rounded-xl transition-all cursor-pointer text-center font-bold"
                       >
@@ -1378,7 +1493,7 @@ export default function SuperAdminPage() {
 
               {/* Bottom Right Floating Action Button */}
               <div className="fixed bottom-8 right-8 z-30 select-none">
-                <button 
+                <button type="button" 
                   onClick={() => setShowAddTenantModal(true)}
                   className="w-12 h-12 rounded-full bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] flex items-center justify-center shadow-2xl transition-all active:scale-95 cursor-pointer animate-bounce"
                 >
@@ -1405,14 +1520,14 @@ export default function SuperAdminPage() {
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => triggerToast('Exporting global tenants list...', 'success')}
+                  <button type="button"
+                    onClick={() => handleExportTenants()}
                     className="px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center gap-1.5 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm font-bold">download</span>
                     Export
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => setShowAddTenantModal(true)}
                     className={`px-5 py-2.5 ${theme.accentBg} ${theme.accentHoverBg} ${theme.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}
                   >
@@ -1491,6 +1606,7 @@ export default function SuperAdminPage() {
                   {/* Status Dropdown */}
                   <div className="relative">
                     <select
+                      aria-label="Status filter"
                       value={statusFilter}
                       onChange={(e) => setStatusFilter(e.target.value as any)}
                       className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
@@ -1505,6 +1621,7 @@ export default function SuperAdminPage() {
                   {/* Tier Dropdown */}
                   <div className="relative">
                     <select
+                      aria-label="Tier filter"
                       value={tierFilter}
                       onChange={(e) => setTierFilter(e.target.value as any)}
                       className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
@@ -1520,6 +1637,7 @@ export default function SuperAdminPage() {
                   {/* Region Dropdown */}
                   <div className="relative">
                     <select
+                      aria-label="Region filter"
                       value={regionFilter}
                       onChange={(e) => setRegionFilter(e.target.value as any)}
                       className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
@@ -1608,7 +1726,7 @@ export default function SuperAdminPage() {
                             )}
                           </td>
                           <td className="py-4 px-4 text-right space-x-2">
-                            <button 
+                            <button type="button" 
                               onClick={() => toggleTenantStatus(t.id, t.name, t.status)}
                               className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                                 t.status === 'ACTIVE' 
@@ -1618,7 +1736,7 @@ export default function SuperAdminPage() {
                             >
                               {t.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
                             </button>
-                            <button 
+                            <button type="button" 
                               onClick={() => triggerToast(`Requesting analytics details for ${t.name}...`, 'info')}
                               className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
                             >
@@ -1637,20 +1755,20 @@ export default function SuperAdminPage() {
                     Showing 1 to {filteredTenants.length} of 142
                   </div>
                   <div className="flex items-center gap-1">
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer">
+                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer">
                       <span className="material-symbols-outlined text-sm">chevron_left</span>
                     </button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ffc53d] text-[#2c1a00] font-bold transition-colors cursor-pointer">
+                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ffc53d] text-[#2c1a00] font-bold transition-colors cursor-pointer">
                       1
                     </button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
+                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
                       2
                     </button>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
+                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
                       3
                     </button>
                     <span className="px-2">...</span>
-                    <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer">
+                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer">
                       <span className="material-symbols-outlined text-sm">chevron_right</span>
                     </button>
                   </div>
@@ -1676,7 +1794,7 @@ export default function SuperAdminPage() {
                   </p>
                 </div>
                 
-                <button
+                <button type="button"
                   onClick={() => triggerToast('Scanning for newly attached network gateways...', 'info')}
                   className={`px-5 py-3 border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}
                 >
@@ -1752,13 +1870,13 @@ export default function SuperAdminPage() {
                             </span>
                           </td>
                           <td className="py-4 px-4 text-right">
-                            <button 
+                            <button type="button" 
                               onClick={() => triggerToast(`Sending remote diagnostic ping payload to ${f.name} (${f.ip})...`, 'info')}
                               className="text-[10px] border border-white/10 hover:border-white/20 text-white px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer mr-2"
                             >
                               Ping Test
                             </button>
-                            <button 
+                            <button type="button" 
                               onClick={() => triggerToast(`Initiated remote log dump retrieval from ${f.name}`, 'success')}
                               className="text-[10px] text-[#ffe2ab] hover:text-[#ffc53d] font-bold uppercase tracking-wider transition-colors cursor-pointer"
                             >
@@ -1791,7 +1909,7 @@ export default function SuperAdminPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   {/* Program Status Toggle */}
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setReferralConfig(prev => ({ ...prev, programActive: !prev.programActive }));
                       triggerToast(`Referral program ${referralConfig.programActive ? 'paused' : 'activated'}.`, 'success');
@@ -1805,12 +1923,20 @@ export default function SuperAdminPage() {
                     <span className={`w-1.5 h-1.5 rounded-full ${referralConfig.programActive ? 'bg-emerald-400 motion-safe:animate-pulse' : 'bg-rose-400'}`}></span>
                     {referralConfig.programActive ? 'Program Active' : 'Program Paused'}
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => setShowAddAmbassadorModal(true)}
                     className="flex items-center gap-2 px-4 py-2.5 bg-[#ffc53d] text-[#2c1a00] rounded-xl font-bold text-[11px] uppercase tracking-widest hover:bg-[#ffb014] transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-sm">person_add</span>
                     Add Ambassador
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportReferrals}
+                    className="px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#A69984] hover:text-white font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all flex items-center gap-2 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">download</span>
+                    Export CSV
                   </button>
                   <a
                     href="/partners"
@@ -1826,7 +1952,7 @@ export default function SuperAdminPage() {
               {/* Sub-navigation tabs */}
               <div className="flex gap-1 bg-white/[0.03] border border-white/5 rounded-xl p-1 w-fit font-sans">
                 {(['overview', 'codes', 'config'] as const).map(tab => (
-                  <button
+                  <button type="button"
                     key={tab}
                     onClick={() => setReferralSubTab(tab)}
                     className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-widest transition-all cursor-pointer capitalize ${
@@ -1907,7 +2033,7 @@ export default function SuperAdminPage() {
                         <h3 className="font-serif text-base text-white font-bold tracking-wide">Ambassador Directory</h3>
                         <p className="text-[11px] text-[#A69984]/50 font-semibold mt-0.5">{ambassadors.length} registered partners · Review profiles, banking details, and trigger payouts.</p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowAddAmbassadorModal(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
                       >
@@ -1923,7 +2049,7 @@ export default function SuperAdminPage() {
                           <p className="text-white font-semibold font-sans text-sm">No ambassadors registered yet</p>
                           <p className="text-[#A69984]/50 font-sans text-xs mt-1">Add one above or invite partners via the Partner Portal.</p>
                         </div>
-                        <button onClick={() => setShowAddAmbassadorModal(true)} className="mt-2 px-5 py-2.5 bg-[#ffc53d] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer">
+                        <button type="button" onClick={() => setShowAddAmbassadorModal(true)} className="mt-2 px-5 py-2.5 bg-[#ffc53d] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer">
                           <span className="material-symbols-outlined text-sm">person_add</span>
                           Add First Ambassador
                         </button>
@@ -1953,7 +2079,7 @@ export default function SuperAdminPage() {
                                   <div className="flex items-center gap-1.5 mt-2 bg-white/[0.03] border border-white/5 rounded-lg px-3 py-1.5 w-fit">
                                     <span className="material-symbols-outlined text-[11px] text-[#A69984]/50">link</span>
                                     <span className="text-[9.5px] text-[#A69984]/60 font-mono">{referralConfig.referralBaseUrl}{amb.code}</span>
-                                    <button onClick={() => triggerToast('Referral link copied!', 'success')} className="text-[#ffc53d] hover:text-[#ffb014] cursor-pointer ml-1">
+                                    <button type="button" onClick={() => triggerToast('Referral link copied!', 'success')} className="text-[#ffc53d] hover:text-[#ffb014] cursor-pointer ml-1">
                                       <span className="material-symbols-outlined text-[11px]">content_copy</span>
                                     </button>
                                   </div>
@@ -1989,8 +2115,15 @@ export default function SuperAdminPage() {
                                     <p className="text-emerald-400 font-bold font-sans text-base">${amb.paidRewards.toFixed(2)}</p>
                                   </div>
                                 </div>
-                                <div className="flex gap-2">
-                                  <button
+                                <div className="flex flex-wrap gap-2">
+                                  <button type="button"
+                                    onClick={() => handleOpenEditBank(amb)}
+                                    className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-sky-500/25 text-sky-400 hover:bg-sky-500/10 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">account_balance</span>
+                                    {amb.bank.bankName ? 'Edit Bank' : 'Add Bank'}
+                                  </button>
+                                  <button type="button"
                                     onClick={() => handleToggleAmbassadorStatus(amb.id)}
                                     className={`px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border transition-all cursor-pointer ${
                                       amb.status === 'active'
@@ -2000,9 +2133,8 @@ export default function SuperAdminPage() {
                                   >
                                     {amb.status === 'active' ? 'Suspend' : 'Reactivate'}
                                   </button>
-                                  <button
+                                  <button type="button"
                                     onClick={() => { setPayoutTarget(amb); setPayoutAmount(amb.pendingRewards.toFixed(2)); setShowPayoutModal(true); }}
-                                    disabled={amb.pendingRewards <= 0}
                                     className={`px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${
                                       amb.pendingRewards > 0
                                         ? 'bg-[#ffc53d] text-[#2c1a00] hover:bg-[#ffb014] cursor-pointer'
@@ -2063,7 +2195,7 @@ export default function SuperAdminPage() {
                       <h3 className="text-white font-bold text-sm tracking-wide">Referral Code Registry</h3>
                       <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">All active and suspended referral codes across the ambassador network</p>
                     </div>
-                    <button
+                    <button type="button"
                       onClick={() => setShowAddAmbassadorModal(true)}
                       className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
                     >
@@ -2105,7 +2237,7 @@ export default function SuperAdminPage() {
                               <td className="px-4 py-4">
                                 <div className="flex items-center gap-2">
                                   <span className="text-[#A69984]/50 font-mono text-[9.5px] truncate max-w-[180px]">{referralConfig.referralBaseUrl}{amb.code}</span>
-                                  <button onClick={() => triggerToast('Link copied to clipboard!', 'success')} className="text-[#ffc53d]/70 hover:text-[#ffc53d] cursor-pointer flex-shrink-0">
+                                  <button type="button" onClick={() => triggerToast('Link copied to clipboard!', 'success')} className="text-[#ffc53d]/70 hover:text-[#ffc53d] cursor-pointer flex-shrink-0">
                                     <span className="material-symbols-outlined text-sm">content_copy</span>
                                   </button>
                                 </div>
@@ -2122,14 +2254,14 @@ export default function SuperAdminPage() {
                                 }`}>{amb.status}</span>
                               </td>
                               <td className="px-7 py-4 text-right">
-                                <button
+                                <button type="button"
                                   onClick={() => handleToggleAmbassadorStatus(amb.id)}
                                   className="text-[10px] border border-white/10 hover:border-white/20 text-[#ffe2ab] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer mr-2"
                                 >
                                   {amb.status === 'active' ? 'Disable' : 'Enable'}
                                 </button>
-                                <button
-                                  onClick={() => triggerToast(`QR poster generated for code ${amb.code}`, 'success')}
+                                <button type="button"
+                                  onClick={() => { setQrModalAmbassador(amb); setShowQrModal(true); }}
                                   className="text-[10px] border border-white/10 hover:border-white/20 text-white px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
                                 >
                                   QR Poster
@@ -2226,14 +2358,14 @@ export default function SuperAdminPage() {
                           <p className="text-white font-bold text-xs">Program Active</p>
                           <p className="text-[#A69984]/50 text-[9.5px] mt-0.5">Accept new referral sign-ups and award commissions</p>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => setReferralConfig(prev => ({ ...prev, programActive: !prev.programActive }))}
                           className={`relative w-11 h-6 rounded-full transition-all cursor-pointer flex-shrink-0 ${referralConfig.programActive ? 'bg-emerald-500' : 'bg-white/10'}`}
                         >
                           <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${referralConfig.programActive ? 'left-[22px]' : 'left-0.5'}`}></span>
                         </button>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => {
                           localStorage.setItem('dinepos_referral_config', JSON.stringify(referralConfig));
                           window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_referral_config', newValue: JSON.stringify(referralConfig) }));
@@ -2251,8 +2383,14 @@ export default function SuperAdminPage() {
               {/* Payout Transaction History */}
               {payoutHistory.length > 0 && (
                 <div className={`${theme.cardBg} border rounded-2xl overflow-hidden shadow-xl`}>
-                  <div className="p-6 border-b border-white/5">
+                  <div className="p-6 border-b border-white/5 flex items-center justify-between">
                     <h3 className="font-serif text-base text-white font-bold tracking-wide">Payout Transaction History</h3>
+                    <button type="button" onClick={handleExportPayoutHistory}
+                      className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#A69984]/60 hover:text-[#ffe2ab] border border-white/10 hover:border-white/20 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">download</span>
+                      Export CSV
+                    </button>
                   </div>
                   <div className="divide-y divide-white/5">
                     {payoutHistory.map(tx => (
@@ -2295,8 +2433,21 @@ export default function SuperAdminPage() {
                 </div>
 
                 {/* Download Statements trigger */}
-                <button
-                  onClick={() => triggerToast('Compiling platform financial statements download...', 'success')}
+                <button type="button"
+                  onClick={() => {
+                    const header = ['Date', 'Tenant', 'Plan', 'Amount', 'Status', 'Invoice #'];
+                    const rows = [
+                      ['Nov 15, 2026', 'The Obsidian Room', 'Enterprise Growth', '$2,499.00', 'Upcoming', 'INV-8821-NOV'],
+                      ['Oct 01, 2026', 'Lumière Brasserie', 'Enterprise Growth', '$450.00', 'Paid', 'INV-7734-OCT'],
+                      ['Oct 01, 2026', 'Aman Resorts', 'Premium Plus', '$999.00', 'Paid', 'INV-9021-OCT'],
+                    ];
+                    const csv = [header, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a'); a.href = url; a.download = `platform_statements_${new Date().toISOString().split('T')[0]}.csv`; a.click();
+                    URL.revokeObjectURL(url);
+                    triggerToast('Financial statements exported as CSV.', 'success');
+                  }}
                   className={`bg-transparent border ${theme.buttonOutline} px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none`}
                 >
                   Download Statements
@@ -2344,13 +2495,13 @@ export default function SuperAdminPage() {
                     </div>
 
                     <div className="flex items-center gap-3 pt-6 z-10 select-none">
-                      <button 
+                      <button type="button" 
                         onClick={() => setShowPlanEditorModal(true)}
                         className={`bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 shadow-md cursor-pointer`}
                       >
                         Manage Plans
                       </button>
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Opening billing add-ons and modules marketplace...', 'info')}
                         className={`bg-transparent border ${theme.buttonOutline} font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer`}
                       >
@@ -2366,7 +2517,7 @@ export default function SuperAdminPage() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-center select-none">
                         <h3 className={`font-serif text-sm text-white font-bold tracking-wide`}>Payment Gateways</h3>
-                        <button 
+                        <button type="button" 
                           onClick={() => triggerToast('Opening platform payment processor settings...', 'info')}
                           className="text-[9.5px] text-[#ffe2ab] font-bold tracking-widest hover:text-white uppercase transition-colors cursor-pointer"
                         >
@@ -2394,7 +2545,7 @@ export default function SuperAdminPage() {
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={() => triggerToast('Opening gateway setup helper...', 'info')}
                       className={`w-full py-3 bg-transparent border border-dashed ${theme.borderStrong} hover:border-white/20 text-[#A69984] font-sans font-bold text-[9.5px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-4`}
                     >
@@ -2444,7 +2595,7 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading invoice preview...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -2469,7 +2620,7 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading receipt...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -2494,7 +2645,7 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Initiated manual retry of payment sequence for Cafe Zenith...', 'info')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-rose-400 transition-colors cursor-pointer mx-auto`}
                           >
@@ -2519,7 +2670,7 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading receipt...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -2544,7 +2695,7 @@ export default function SuperAdminPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading receipt...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -2576,7 +2727,7 @@ export default function SuperAdminPage() {
                   </p>
                 </div>
                 
-                <button
+                <button type="button"
                   onClick={() => setShowAddAdminModal(true)}
                   className={`px-5 py-3 ${theme.accentBg} ${theme.accentHoverBg} ${theme.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}
                 >
@@ -2607,7 +2758,7 @@ export default function SuperAdminPage() {
                       <p className="text-[11px] text-[#A69984]/70 mt-1 font-medium">Locked out of dashboard terminal. Needs password/passcode replacement immediately to handle night audit operations.</p>
                     </div>
                     
-                    <button 
+                    <button type="button" 
                       onClick={() => handleOpenResetModal(admins.find(a => a.id === 'adm-3')!)}
                       className="px-4 py-2.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold uppercase tracking-wider text-[10px] rounded-lg transition-colors flex items-center gap-1 select-none cursor-pointer"
                     >
@@ -2627,7 +2778,7 @@ export default function SuperAdminPage() {
                       <p className="text-[11px] text-[#A69984]/70 mt-1 font-medium">Billing node mismatch is preventing terminal synchronizations. System disabled tenant temporarily. Admin demands clearance validation.</p>
                     </div>
                     
-                    <button 
+                    <button type="button" 
                       onClick={() => {
                         toggleTenantStatus('tenant-5', 'Hisa Franko', 'SUSPENDED');
                         triggerToast('Sync block cleared. Tenant status set to active.', 'success');
@@ -2681,13 +2832,13 @@ export default function SuperAdminPage() {
                             </span>
                           </td>
                           <td className="py-4 px-4 text-right space-x-2">
-                            <button 
+                            <button type="button" 
                               onClick={() => handleOpenResetModal(a)}
                               className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
                             >
                               Password
                             </button>
-                            <button 
+                            <button type="button" 
                               onClick={() => toggleAdminStatus(a.id, a.name, a.status)}
                               className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                                 a.status === 'ACTIVE' 
@@ -2742,7 +2893,7 @@ export default function SuperAdminPage() {
                           <h4 className="text-white font-bold text-xs">AI Sommelier & Concierge Engine</h4>
                           <p className="text-[10px] text-[#A69984]/60 mt-1">Enable or disable client-side chat widgets and AI recommended dining suggestions across all tenant checkouts.</p>
                         </div>
-                        <button 
+                        <button type="button" 
                           onClick={() => {
                             setGlobalFeatures(prev => ({ ...prev, aiConcierge: !prev.aiConcierge }));
                             triggerToast(`AI Concierge feature status changed.`, 'success');
@@ -2759,7 +2910,7 @@ export default function SuperAdminPage() {
                           <h4 className="text-white font-bold text-xs">Guest Self-Checkout Terminal Authorization</h4>
                           <p className="text-[10px] text-[#A69984]/60 mt-1">Allow guests to check out directly from their mobile device digital receipts without cashier station interactions.</p>
                         </div>
-                        <button 
+                        <button type="button" 
                           onClick={() => {
                             setGlobalFeatures(prev => ({ ...prev, selfCheckout: !prev.selfCheckout }));
                             triggerToast(`Self-Checkout feature status changed.`, 'success');
@@ -2776,7 +2927,7 @@ export default function SuperAdminPage() {
                           <h4 className="text-white font-bold text-xs">Offline Mode Node Synchronizations</h4>
                           <p className="text-[10px] text-[#A69984]/60 mt-1">Enable local database replication when network is disconnected. (Beta)</p>
                         </div>
-                        <button 
+                        <button type="button" 
                           onClick={() => {
                             setGlobalFeatures(prev => ({ ...prev, offlineMode: !prev.offlineMode }));
                             triggerToast(`Offline Mode status changed.`, 'success');
@@ -2799,7 +2950,8 @@ export default function SuperAdminPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Backup Interval</label>
-                        <select 
+                        <select
+                          aria-label="Backup interval"
                           value={globalFeatures.backupInterval}
                           onChange={(e) => {
                             setGlobalFeatures(prev => ({ ...prev, backupInterval: e.target.value }));
@@ -2815,7 +2967,8 @@ export default function SuperAdminPage() {
 
                       <div>
                         <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Max Snapshot Retention</label>
-                        <select 
+                        <select
+                          aria-label="Backup retention"
                           value={globalFeatures.backupRetention}
                           onChange={(e) => {
                             setGlobalFeatures(prev => ({ ...prev, backupRetention: parseInt(e.target.value) }));
@@ -2831,14 +2984,14 @@ export default function SuperAdminPage() {
                     </div>
 
                     <div className="pt-2 flex flex-wrap gap-4">
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Generating encrypted SQL schema & seed snapshot...', 'info')}
                         className="px-4 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-2"
                       >
                         <span className="material-symbols-outlined text-sm">download</span>
                         Download SQL Snapshot
                       </button>
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Initiating platform restore sequence from latest snapshot...', 'info')}
                         className="px-4 py-2.5 border border-white/10 hover:border-white/20 text-[#A69984] text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center gap-2"
                       >
@@ -2855,7 +3008,7 @@ export default function SuperAdminPage() {
                   <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6 min-h-[400px]`}>
                     <div className="flex justify-between items-center select-none border-b border-white/5 pb-4">
                       <h3 className="font-serif text-base text-white font-bold tracking-wide">Audit Trail</h3>
-                      <button 
+                      <button type="button" 
                         onClick={() => { setAuditLogs([]); triggerToast('Logs cleared.', 'info'); }}
                         className="text-[9px] text-rose-400 hover:text-rose-300 font-bold uppercase tracking-widest cursor-pointer"
                       >
@@ -3327,7 +3480,7 @@ export default function SuperAdminPage() {
                       <h3 className="text-white font-bold text-sm tracking-wide">Top Tenants by Revenue</h3>
                       <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">Ranked by lifetime gross revenue · {activeTenants} active accounts</p>
                     </div>
-                    <button
+                    <button type="button"
                       onClick={() => { setActiveTab('locations'); }}
                       className="text-[10px] font-bold uppercase tracking-widest text-[#ffe2ab] border border-[#ffe2ab]/20 px-4 py-2 rounded-xl hover:bg-[#ffe2ab]/5 transition-colors cursor-pointer"
                     >
@@ -3393,7 +3546,7 @@ export default function SuperAdminPage() {
                 </div>
                 
                 <div className="flex gap-3">
-                  <button 
+                  <button type="button" 
                     onClick={() => triggerToast('Fetching latest tickets...', 'info')}
                     className="p-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] rounded-xl cursor-pointer flex items-center justify-center"
                   >
@@ -3405,7 +3558,7 @@ export default function SuperAdminPage() {
               {/* Status Filter Cards Row */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6 font-sans select-none">
                 {/* Total */}
-                <button 
+                <button type="button" 
                   onClick={() => setTicketFilterStatus('ALL')}
                   className={`border rounded-2xl p-5 text-left transition-all ${
                     ticketFilterStatus === 'ALL' ? 'bg-[#ffc53d]/5 border-[#ffc53d]/30 text-white' : `${theme.cardBg} ${theme.cardHover}`
@@ -3415,7 +3568,7 @@ export default function SuperAdminPage() {
                   <h4 className="text-2xl font-bold mt-1.5">{tickets.length} Tickets</h4>
                 </button>
                 {/* Open */}
-                <button 
+                <button type="button" 
                   onClick={() => setTicketFilterStatus('OPEN')}
                   className={`border rounded-2xl p-5 text-left transition-all ${
                     ticketFilterStatus === 'OPEN' ? 'bg-rose-500/5 border-rose-500/30 text-white' : `${theme.cardBg} ${theme.cardHover}`
@@ -3428,7 +3581,7 @@ export default function SuperAdminPage() {
                   <h4 className="text-2xl font-bold text-rose-400 mt-1.5">{tickets.filter(t => t.status === 'OPEN').length} Tickets</h4>
                 </button>
                 {/* In Progress */}
-                <button 
+                <button type="button" 
                   onClick={() => setTicketFilterStatus('IN_PROGRESS')}
                   className={`border rounded-2xl p-5 text-left transition-all ${
                     ticketFilterStatus === 'IN_PROGRESS' ? 'bg-amber-500/5 border-amber-500/30 text-white' : `${theme.cardBg} ${theme.cardHover}`
@@ -3438,7 +3591,7 @@ export default function SuperAdminPage() {
                   <h4 className="text-2xl font-bold text-amber-400 mt-1.5">{tickets.filter(t => t.status === 'IN_PROGRESS').length} Tickets</h4>
                 </button>
                 {/* Resolved */}
-                <button 
+                <button type="button" 
                   onClick={() => setTicketFilterStatus('RESOLVED')}
                   className={`border rounded-2xl p-5 text-left transition-all ${
                     ticketFilterStatus === 'RESOLVED' ? 'bg-emerald-500/5 border-emerald-500/30 text-white' : `${theme.cardBg} ${theme.cardHover}`
@@ -3459,7 +3612,8 @@ export default function SuperAdminPage() {
                       <h3 className="font-serif text-base text-white font-bold tracking-wide">Support Desk Tickets</h3>
                       
                       {/* Ticket Type filter dropdown */}
-                      <select 
+                      <select
+                        aria-label="Ticket type filter"
                         value={ticketFilterType}
                         onChange={(e) => setTicketFilterType(e.target.value as any)}
                         className="bg-[#0e0e0d] border border-white/10 hover:border-white/20 text-[#e5e2e1] text-[11px] font-bold py-1.5 px-3 rounded-lg cursor-pointer focus:outline-none"
@@ -3515,7 +3669,7 @@ export default function SuperAdminPage() {
                                   {t.status.replace('_', ' ')}
                                 </span>
 
-                                <button 
+                                <button type="button" 
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleTicketDelete(t.id);
@@ -3589,16 +3743,14 @@ export default function SuperAdminPage() {
                             
                             <div className="flex gap-3 pt-2">
                               {selectedTicket.status !== 'IN_PROGRESS' && (
-                                <button
-                                  type="button"
+                                <button type="button"
                                   onClick={() => handleTicketStatusChange(selectedTicket.id, 'IN_PROGRESS')}
                                   className="px-4 py-3 border border-white/10 hover:border-white/20 text-[#A69984] font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
                                 >
                                   Investigate
                                 </button>
                               )}
-                              <button
-                                type="submit"
+                              <button type="button"
                                 className="flex-grow py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center shadow-md"
                               >
                                 Send Response & Resolve
@@ -3630,98 +3782,144 @@ export default function SuperAdminPage() {
       {/* MODAL: ADD NEW AMBASSADOR */}
       {showAddAmbassadorModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
-          <div className="bg-[#161513] border border-white/10 w-full max-w-[520px] p-8 rounded-2xl shadow-2xl relative font-sans">
-            {/* Close */}
-            <button
-              onClick={() => { setShowAddAmbassadorModal(false); setNewAmbassadorData({ name: '', email: '', phone: '', code: '' }); }}
-              className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-xl">close</span>
-            </button>
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[560px] rounded-2xl shadow-2xl relative font-sans max-h-[92vh] flex flex-col">
 
-            <div className="mb-7">
+            {/* Sticky header */}
+            <div className="p-8 pb-4 flex-shrink-0">
+              <button type="button"
+                onClick={() => { setShowAddAmbassadorModal(false); setNewAmbassadorData({ name: '', email: '', phone: '', code: '', bankName: '', accountHolder: '', accountNumber: '', routingNumber: '' }); }}
+                className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
               <div className="w-11 h-11 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/20 flex items-center justify-center mb-4">
                 <span className="material-symbols-outlined text-[#ffc53d] text-xl">person_add</span>
               </div>
               <h2 className="font-serif text-2xl font-bold text-white tracking-wide">Register Ambassador</h2>
-              <p className="text-[11px] text-[#A69984]/60 font-semibold mt-1.5">Add a new partner to the referral program and generate their unique referral code.</p>
+              <p className="text-[11px] text-[#A69984]/60 font-semibold mt-1.5">
+                Add a new partner to the referral program. Bank details are required for payout processing.
+              </p>
             </div>
 
-            <form onSubmit={handleAddAmbassador} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Full Name *</label>
-                  <input
-                    type="text" required
-                    placeholder="e.g. Sarah Johnson"
-                    value={newAmbassadorData.name}
-                    onChange={e => setNewAmbassadorData(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="+1 555 000 0000"
-                    value={newAmbassadorData.phone}
-                    onChange={e => setNewAmbassadorData(prev => ({ ...prev, phone: e.target.value }))}
-                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                  />
+            <form onSubmit={handleAddAmbassador} className="overflow-y-auto px-8 pb-8 space-y-5 flex-1">
+
+              {/* Personal Info */}
+              <div>
+                <div className="text-[9.5px] text-[#ffe2ab]/60 font-bold uppercase tracking-widest border-l-2 border-[#ffc53d]/40 pl-2.5 mb-3">Partner Details</div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Full Name *</label>
+                      <input type="text" required placeholder="e.g. Sarah Johnson"
+                        value={newAmbassadorData.name}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Phone Number</label>
+                      <input type="tel" placeholder="+1 555 000 0000"
+                        value={newAmbassadorData.phone}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, phone: e.target.value }))}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Email Address *</label>
+                    <input type="email" required placeholder="e.g. sarah@restaurant.com"
+                      value={newAmbassadorData.email}
+                      onChange={e => setNewAmbassadorData(prev => ({ ...prev, email: e.target.value }))}
+                      className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Referral Code (auto-generated if blank)</label>
+                    <div className="flex gap-2">
+                      <input type="text"
+                        placeholder={newAmbassadorData.name ? generateReferralCode(newAmbassadorData.name) : 'e.g. SARAH421'}
+                        value={newAmbassadorData.code}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                        className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
+                      />
+                      <button type="button"
+                        onClick={() => setNewAmbassadorData(prev => ({ ...prev, code: generateReferralCode(prev.name || 'AMB') }))}
+                        className="px-3 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <span className="material-symbols-outlined text-sm">shuffle</span>
+                        Generate
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Payout Bank Details */}
               <div>
-                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Email Address *</label>
-                <input
-                  type="email" required
-                  placeholder="e.g. sarah@restaurant.com"
-                  value={newAmbassadorData.email}
-                  onChange={e => setNewAmbassadorData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Referral Code (auto-generated if blank)</label>
-                <div className="flex gap-3">
-                  <input
-                    type="text"
-                    placeholder={newAmbassadorData.name ? generateReferralCode(newAmbassadorData.name) : 'e.g. SARAH421'}
-                    value={newAmbassadorData.code}
-                    onChange={e => setNewAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
-                    className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setNewAmbassadorData(prev => ({ ...prev, code: generateReferralCode(prev.name || 'AMB') }))}
-                    className="px-4 py-3 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined text-sm">shuffle</span>
-                    Generate
-                  </button>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[9.5px] text-[#ffe2ab]/60 font-bold uppercase tracking-widest border-l-2 border-[#ffc53d]/40 pl-2.5">Payout Bank Details</div>
+                  <span className="text-[9px] text-[#A69984]/40 font-medium">Required for payout processing</span>
+                </div>
+                <div className="bg-[#0e0e0d]/60 border border-white/[0.06] rounded-xl p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Bank Name</label>
+                      <input type="text" placeholder="e.g. JPMorgan Chase"
+                        value={newAmbassadorData.bankName}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, bankName: e.target.value }))}
+                        className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Account Holder Name</label>
+                      <input type="text" placeholder="e.g. Sarah Johnson LLC"
+                        value={newAmbassadorData.accountHolder}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, accountHolder: e.target.value }))}
+                        className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Account Number / IBAN</label>
+                      <input type="text" placeholder="Full account number"
+                        value={newAmbassadorData.accountNumber}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                        className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40 font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Routing / SWIFT / BIC</label>
+                      <input type="text" placeholder="e.g. 021000021"
+                        value={newAmbassadorData.routingNumber}
+                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                        className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40 font-mono"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-[#A69984]/35 font-medium leading-relaxed">
+                    Account numbers are masked before storage. Bank details can be edited later from the ambassador's profile card.
+                  </p>
                 </div>
               </div>
 
               {/* Reward preview */}
-              <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 rounded-xl p-4 flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#ffc53d] text-base">info</span>
+              <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 rounded-xl p-4 flex items-start gap-3">
+                <span className="material-symbols-outlined text-[#ffc53d] text-base flex-shrink-0 mt-0.5">info</span>
                 <p className="text-[10px] text-[#ffe2ab]/80 font-semibold leading-relaxed">
-                  This ambassador will earn <strong className="text-[#ffc53d]">${referralConfig.rewardPerSignup}</strong> per subscription signup + <strong className="text-[#ffc53d]">{referralConfig.commissionRate}%</strong> commission. Min payout: <strong className="text-[#ffc53d]">${referralConfig.minPayoutThreshold}</strong>.
+                  This ambassador will earn <strong className="text-[#ffc53d]">${referralConfig.rewardPerSignup}</strong> per signup + <strong className="text-[#ffc53d]">{referralConfig.commissionRate}%</strong> commission on first payment. Min payout threshold: <strong className="text-[#ffc53d]">${referralConfig.minPayoutThreshold}</strong>.
                 </p>
               </div>
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => { setShowAddAmbassadorModal(false); setNewAmbassadorData({ name: '', email: '', phone: '', code: '' }); }}
+              <div className="flex gap-3">
+                <button type="button"
+                  onClick={() => { setShowAddAmbassadorModal(false); setNewAmbassadorData({ name: '', email: '', phone: '', code: '', bankName: '', accountHolder: '', accountNumber: '', routingNumber: '' }); }}
                   className="flex-1 py-3 border border-white/10 hover:border-white/20 text-[#A69984] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2"
+                <button type="submit"
+                  className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-md"
                 >
                   <span className="material-symbols-outlined text-sm">check</span>
                   Register Ambassador
@@ -3732,12 +3930,183 @@ export default function SuperAdminPage() {
         </div>
       )}
 
+      {/* MODAL: EDIT AMBASSADOR BANK DETAILS */}
+      {showEditBankModal && editBankTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            <button type="button"
+              onClick={() => { setShowEditBankModal(false); setEditBankTarget(null); }}
+              className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-emerald-400 text-xl">account_balance</span>
+              </div>
+              <div>
+                <h2 className="font-serif text-xl font-bold text-white tracking-wide">Edit Bank Details</h2>
+                <p className="text-[10.5px] text-[#A69984]/55 font-semibold mt-0.5">
+                  Ambassador: <span className="text-white">{editBankTarget.name}</span>
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-5 flex items-start gap-3 bg-sky-500/8 border border-sky-500/20 rounded-xl p-4">
+              <span className="material-symbols-outlined text-sky-400 text-base flex-shrink-0 mt-0.5">lock</span>
+              <p className="text-sky-300 text-[10px] font-medium leading-relaxed">
+                Bank details are masked on save. Account numbers show only the last 4 digits. All changes are logged in the audit trail.
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveEditBank} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Bank Name *</label>
+                  <input type="text" required placeholder="e.g. JPMorgan Chase"
+                    value={editBankData.bankName}
+                    onChange={e => setEditBankData(prev => ({ ...prev, bankName: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Account Holder *</label>
+                  <input type="text" required placeholder="Legal account holder name"
+                    value={editBankData.accountHolder}
+                    onChange={e => setEditBankData(prev => ({ ...prev, accountHolder: e.target.value }))}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">
+                  Account Number / IBAN
+                  {editBankTarget.bank.accountNumber && (
+                    <span className="ml-2 text-[#A69984]/40 normal-case font-normal">
+                      (current: {editBankTarget.bank.accountNumber})
+                    </span>
+                  )}
+                </label>
+                <input type="text" placeholder="Leave blank to keep existing number"
+                  value={editBankData.accountNumber}
+                  onChange={e => setEditBankData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
+                />
+                <p className="text-[9px] text-[#A69984]/35 mt-1 font-medium">Will be masked on save — only last 4 digits stored visibly.</p>
+              </div>
+              <div>
+                <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Routing Number / SWIFT / BIC *</label>
+                <input type="text" required placeholder="e.g. 021000021 or CHASUS33"
+                  value={editBankData.routingNumber}
+                  onChange={e => setEditBankData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button"
+                  onClick={() => { setShowEditBankModal(false); setEditBankTarget(null); }}
+                  className="flex-1 py-3 border border-white/10 hover:border-white/20 text-[#A69984] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="flex-1 py-3 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  Save Bank Details
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: QR POSTER */}
+      {showQrModal && qrModalAmbassador && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[440px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            <button type="button"
+              onClick={() => { setShowQrModal(false); setQrModalAmbassador(null); }}
+              className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span>
+            </button>
+
+            <div className="text-center mb-6">
+              <h2 className="font-serif text-xl font-bold text-white tracking-wide">Referral Poster</h2>
+              <p className="text-[10.5px] text-[#A69984]/55 font-semibold mt-1">
+                {qrModalAmbassador.name} · Code: <span className="text-[#ffc53d] font-mono">{qrModalAmbassador.code}</span>
+              </p>
+            </div>
+
+            {/* Stylised referral card */}
+            <div className="bg-gradient-to-br from-[#1a1812] to-[#0e0e0d] border border-[#ffc53d]/20 rounded-2xl p-6 text-center space-y-4 mb-6">
+              <div className="flex justify-center">
+                {/* QR grid placeholder (visual representation) */}
+                <div className="w-28 h-28 bg-[#ffc53d]/8 border border-[#ffc53d]/20 rounded-xl flex items-center justify-center relative overflow-hidden">
+                  <div className="grid grid-cols-7 gap-[2px] opacity-60">
+                    {Array.from({ length: 49 }, (_, i) => (
+                      <div key={i} className={`w-3 h-3 rounded-[1px] ${Math.random() > 0.45 ? 'bg-[#ffc53d]' : 'bg-transparent'}`} />
+                    ))}
+                  </div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-[#1a1812] rounded-md px-2 py-1">
+                      <span className="material-symbols-outlined text-[#ffc53d] text-base">qr_code_2</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest mb-1">Referral Code</div>
+                <div className="font-mono font-black text-[#ffc53d] text-2xl tracking-[0.15em]">{qrModalAmbassador.code}</div>
+              </div>
+              <div className="bg-[#0e0e0d]/70 border border-white/[0.06] rounded-xl p-3">
+                <div className="text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-widest mb-1">Sign-Up Link</div>
+                <div className="text-[10px] text-[#A69984]/70 font-mono break-all">{referralConfig.referralBaseUrl}{qrModalAmbassador.code}</div>
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <button type="button"
+                onClick={() => {
+                  const link = `${referralConfig.referralBaseUrl}${qrModalAmbassador.code}`;
+                  navigator.clipboard?.writeText(link);
+                  triggerToast('Referral link copied to clipboard!', 'success');
+                }}
+                className="w-full py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">content_copy</span>
+                Copy Referral Link
+              </button>
+              <button type="button"
+                onClick={() => {
+                  navigator.clipboard?.writeText(qrModalAmbassador.code);
+                  triggerToast(`Code ${qrModalAmbassador.code} copied!`, 'success');
+                }}
+                className="w-full py-3 bg-white/5 border border-white/10 hover:border-white/20 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">tag</span>
+                Copy Code Only
+              </button>
+              <button type="button"
+                onClick={() => { window.print(); }}
+                className="w-full py-3 bg-white/5 border border-white/10 hover:border-white/20 text-[#A69984] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">print</span>
+                Print Poster
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 1: ADD NEW BUSINESS TENANT */}
       {showAddTenantModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
           <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
             
-            <button 
+            <button type="button" 
               onClick={() => setShowAddTenantModal(false)}
               className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
             >
@@ -3775,6 +4144,7 @@ export default function SuperAdminPage() {
               <div>
                 <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Subscribed Plan</label>
                 <select
+                  aria-label="Subscribed plan"
                   value={newTenantData.plan}
                   onChange={(e) => setNewTenantData(prev => ({ ...prev, plan: e.target.value as Tenant['plan'] }))}
                   className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
@@ -3786,15 +4156,13 @@ export default function SuperAdminPage() {
               </div>
 
               <div className="pt-4 flex gap-4">
-                <button 
-                  type="button" 
+                <button type="button" 
                   onClick={() => setShowAddTenantModal(false)}
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button type="button" 
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
                 >
                   Create Tenant
@@ -3810,7 +4178,7 @@ export default function SuperAdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
           <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
             
-            <button 
+            <button type="button" 
               onClick={() => setShowAddAdminModal(false)}
               className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
             >
@@ -3848,6 +4216,7 @@ export default function SuperAdminPage() {
               <div>
                 <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Linked Restaurant (Tenant)</label>
                 <select
+                  aria-label="Linked restaurant tenant"
                   value={newAdminData.tenant}
                   onChange={(e) => setNewAdminData(prev => ({ ...prev, tenant: e.target.value }))}
                   required
@@ -3861,15 +4230,13 @@ export default function SuperAdminPage() {
               </div>
 
               <div className="pt-4 flex gap-4">
-                <button 
-                  type="button" 
+                <button type="button" 
                   onClick={() => setShowAddAdminModal(false)}
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button type="button" 
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
                 >
                   Create Admin
@@ -3882,96 +4249,166 @@ export default function SuperAdminPage() {
 
       {/* MODAL 3: PASSCODE RESET FORM FOR ISSUE HANDLING */}
       {/* MODAL: PROCESS REFERRAL PAYOUT */}
-      {showPayoutModal && payoutTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
-          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
-            <button
-              onClick={() => { setShowPayoutModal(false); setPayoutTarget(null); setPayoutAmount(''); setPayoutNote(''); }}
-              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
+      {showPayoutModal && payoutTarget && (() => {
+        const hasBankDetails = !!(payoutTarget.bank.bankName && payoutTarget.bank.accountHolder && payoutTarget.bank.accountNumber);
+        const belowThreshold = payoutTarget.pendingRewards < referralConfig.minPayoutThreshold;
+        const canPayout = hasBankDetails && !belowThreshold && payoutTarget.pendingRewards > 0;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-sm p-4 animate-fade-in duration-300">
+            <div className="bg-[#161513] border border-white/10 w-full max-w-[520px] p-8 rounded-2xl shadow-2xl relative font-sans">
+              <button type="button"
+                onClick={() => { setShowPayoutModal(false); setPayoutTarget(null); setPayoutAmount(''); setPayoutNote(''); }}
+                className="absolute top-5 right-5 text-[#A69984]/50 hover:text-white transition-colors"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
 
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/15 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#ffc53d]">payments</span>
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-11 h-11 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/20 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-[#ffc53d] text-xl">payments</span>
+                </div>
+                <div>
+                  <h3 className="font-serif text-white font-bold text-xl leading-tight">Process Payout</h3>
+                  <p className="text-[10.5px] text-[#A69984]/60 font-semibold mt-0.5">
+                    Ambassador: <span className="text-white">{payoutTarget.name}</span> · {payoutTarget.email}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="font-serif text-white font-bold text-xl leading-tight">Process Payout</h3>
-                <p className="text-[10px] text-[#A69984]/55 font-semibold">Ambassador: <span className="text-white">{payoutTarget.name}</span></p>
-              </div>
-            </div>
 
-            {/* Masked bank info */}
-            <div className="my-5 p-4 bg-white/[0.025] border border-white/5 rounded-xl space-y-1">
-              <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-2 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[11px]">account_balance</span>
-                Destination Account
-              </p>
-              <p className="text-white font-bold text-sm">{payoutTarget.bank.bankName || '—'}</p>
-              <p className="text-[#A69984]/65 text-xs">Account: •••• •••• {(payoutTarget.bank.accountNumber || '').slice(-4) || '——'}</p>
-              <p className="text-[#A69984]/65 text-xs">Routing: ••••{(payoutTarget.bank.routingNumber || '').slice(-3) || '——'}</p>
-              <p className="text-[#A69984]/65 text-xs">Account Holder: {payoutTarget.bank.accountHolder || '—'}</p>
-            </div>
+              {/* No bank details warning */}
+              {!hasBankDetails && (
+                <div className="mb-5 flex items-start gap-3 bg-amber-500/8 border border-amber-500/25 rounded-xl p-4">
+                  <span className="material-symbols-outlined text-amber-400 text-lg flex-shrink-0 mt-0.5">warning</span>
+                  <div>
+                    <p className="text-amber-300 font-bold text-xs">Bank Details Not On File</p>
+                    <p className="text-[#A69984]/60 text-[10.5px] font-medium mt-1 leading-relaxed">
+                      This ambassador has not provided payout bank details. Ask them to register via the <span className="text-[#ffc53d]">Partner Portal</span>, or add their bank details below before processing this payout.
+                    </p>
+                    <button type="button"
+                      onClick={() => { setShowPayoutModal(false); handleOpenEditBank(payoutTarget); }}
+                      className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm">edit</span>
+                      Add Bank Details Now
+                    </button>
+                  </div>
+                </div>
+              )}
 
-            <form onSubmit={handleProcessPayout} className="space-y-4">
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Payout Amount (USD)</label>
-                <div className="relative">
-                  <span className="absolute left-4 top-3.5 text-[#A69984]/50 text-xs font-bold">$</span>
+              {/* Below minimum payout threshold warning */}
+              {hasBankDetails && belowThreshold && (
+                <div className="mb-5 flex items-start gap-3 bg-sky-500/8 border border-sky-500/20 rounded-xl p-4">
+                  <span className="material-symbols-outlined text-sky-400 text-base flex-shrink-0 mt-0.5">info</span>
+                  <p className="text-sky-300 text-[10.5px] font-medium leading-relaxed">
+                    Pending balance <span className="font-bold text-white">${payoutTarget.pendingRewards.toFixed(2)}</span> is below the minimum payout threshold of <span className="font-bold text-white">${referralConfig.minPayoutThreshold}</span>. You can still process a manual override payout below.
+                  </p>
+                </div>
+              )}
+
+              {/* Bank destination card */}
+              {hasBankDetails && (
+                <div className="mb-5 p-4 bg-white/[0.03] border border-white/[0.07] rounded-xl">
+                  <div className="flex justify-between items-start">
+                    <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[11px]">account_balance</span>
+                      Destination Bank Account
+                    </p>
+                    <button type="button"
+                      onClick={() => { setShowPayoutModal(false); handleOpenEditBank(payoutTarget); }}
+                      className="text-[9px] text-[#ffe2ab]/60 hover:text-[#ffc53d] font-bold uppercase tracking-wider flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[11px]">edit</span>
+                      Edit
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                    <div>
+                      <div className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">Bank</div>
+                      <div className="text-white font-bold mt-0.5">{payoutTarget.bank.bankName}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">Account Holder</div>
+                      <div className="text-white font-bold mt-0.5">{payoutTarget.bank.accountHolder}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">Account Number</div>
+                      <div className="text-[#A69984]/80 font-mono mt-0.5">{payoutTarget.bank.accountNumber || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">Routing / SWIFT</div>
+                      <div className="text-[#A69984]/80 font-mono mt-0.5">{payoutTarget.bank.routingNumber || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Payout form */}
+              <form onSubmit={handleProcessPayout} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Payout Amount (USD)</label>
+                    <div className="relative">
+                      <span className="absolute left-3.5 top-3 text-[#A69984]/50 text-xs font-bold">$</span>
+                      <input
+                        type="number" step="0.01" min="0.01" required
+                        placeholder="0.00"
+                        aria-label="Payout amount"
+                        value={payoutAmount}
+                        onChange={e => setPayoutAmount(e.target.value)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-7 pr-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col justify-end gap-1 pb-1">
+                    <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-wider">Pending Balance</div>
+                    <div className="text-amber-400 font-bold text-lg font-serif">${payoutTarget.pendingRewards.toFixed(2)}</div>
+                    <div className="text-[9px] text-[#A69984]/35 font-semibold">Paid out: ${payoutTarget.paidRewards.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Reference Note (Optional)</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    required
-                    placeholder="100.00"
-                    value={payoutAmount}
-                    onChange={(e) => setPayoutAmount(e.target.value)}
-                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-8 pr-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                    type="text"
+                    placeholder="e.g. Q2 2026 referral reward disbursement"
+                    aria-label="Payout reference note"
+                    value={payoutNote}
+                    onChange={e => setPayoutNote(e.target.value)}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
-                <p className="text-[10px] text-amber-400/70 font-semibold mt-1.5">
-                  Pending available: <span className="font-bold">${payoutTarget.pendingRewards.toFixed(2)}</span>
-                </p>
-              </div>
 
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Note (Optional)</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Q2 referral reward"
-                  value={payoutNote}
-                  onChange={(e) => setPayoutNote(e.target.value)}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                />
-              </div>
-
-              <div className="pt-2 flex gap-4">
-                <button
-                  type="button"
-                  onClick={() => { setShowPayoutModal(false); setPayoutTarget(null); setPayoutAmount(''); setPayoutNote(''); }}
-                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md flex items-center justify-center gap-2"
-                >
-                  <span className="material-symbols-outlined text-sm">payments</span>
-                  Confirm Payout
-                </button>
-              </div>
-            </form>
+                <div className="pt-1 flex gap-3">
+                  <button type="button"
+                    onClick={() => { setShowPayoutModal(false); setPayoutTarget(null); setPayoutAmount(''); setPayoutNote(''); }}
+                    className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button type="button"
+                    disabled={!canPayout}
+                    className={`flex-1 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                      canPayout
+                        ? 'bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] cursor-pointer shadow-md'
+                        : 'bg-white/5 text-[#A69984]/30 cursor-not-allowed border border-white/5'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-sm">payments</span>
+                    {!hasBankDetails ? 'Bank Details Required' : 'Confirm Payout'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {showResetPasswordModal && selectedAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
           <div className="bg-[#161513] border border-white/10 w-full max-w-[440px] p-8 rounded-2xl shadow-2xl relative font-sans">
             
-            <button 
+            <button type="button"
               onClick={() => { setShowResetPasswordModal(false); setSelectedAdmin(null); }}
               className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
             >
@@ -3988,10 +4425,11 @@ export default function SuperAdminPage() {
                 <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">New Administrative Password</label>
                 <div className="relative">
                   <span className="material-symbols-outlined text-[#A69984]/40 text-sm absolute left-4 top-3.5">lock</span>
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     required
-                    placeholder="••••••••"
+                    aria-label="New administrative password"
+                    placeholder="Min. 8 characters"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -4003,10 +4441,11 @@ export default function SuperAdminPage() {
                 <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Confirm New Password</label>
                 <div className="relative">
                   <span className="material-symbols-outlined text-[#A69984]/40 text-sm absolute left-4 top-3.5">lock</span>
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     required
-                    placeholder="••••••••"
+                    aria-label="Confirm new password"
+                    placeholder="Re-enter password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -4015,15 +4454,13 @@ export default function SuperAdminPage() {
               </div>
 
               <div className="pt-4 flex gap-4">
-                <button 
-                  type="button" 
+                <button type="button" 
                   onClick={() => { setShowResetPasswordModal(false); setSelectedAdmin(null); }}
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button type="button" 
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
                 >
                   Save Passcode
@@ -4039,7 +4476,7 @@ export default function SuperAdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300 select-none">
           <div className="bg-[#161513] border border-white/10 w-full max-w-[640px] p-8 rounded-2xl shadow-2xl relative font-sans">
             
-            <button 
+            <button type="button"
               onClick={() => { setShowPlanEditorModal(false); setEditingPlan(null); }}
               className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
             >
@@ -4058,6 +4495,8 @@ export default function SuperAdminPage() {
                     <input 
                       type="text" 
                       required
+                      aria-label="Plan name"
+                      placeholder="e.g. Enterprise Growth"
                       value={editingPlan.name}
                       onChange={(e) => setEditingPlan(prev => prev ? { ...prev, name: e.target.value } : null)}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -4068,6 +4507,8 @@ export default function SuperAdminPage() {
                     <input 
                       type="number" 
                       required
+                      aria-label="Monthly price USD"
+                      placeholder="299"
                       value={editingPlan.monthlyPrice}
                       onChange={(e) => setEditingPlan(prev => prev ? { ...prev, monthlyPrice: parseInt(e.target.value) || 0 } : null)}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -4081,6 +4522,8 @@ export default function SuperAdminPage() {
                     <input 
                       type="number" 
                       required
+                      aria-label="Terminals limit"
+                      placeholder="12"
                       value={editingPlan.terminalsLimit}
                       onChange={(e) => setEditingPlan(prev => prev ? { ...prev, terminalsLimit: parseInt(e.target.value) || 0 } : null)}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -4091,6 +4534,8 @@ export default function SuperAdminPage() {
                     <input 
                       type="number" 
                       required
+                      aria-label="Storage allocation GB"
+                      placeholder="100"
                       value={editingPlan.storageLimitGB}
                       onChange={(e) => setEditingPlan(prev => prev ? { ...prev, storageLimitGB: parseInt(e.target.value) || 0 } : null)}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -4142,15 +4587,13 @@ export default function SuperAdminPage() {
                 </div>
 
                 <div className="pt-4 flex gap-4">
-                  <button 
-                    type="button" 
+                  <button type="button" 
                     onClick={() => setEditingPlan(null)}
                     className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
                     Back to Plans
                   </button>
-                  <button 
-                    type="submit" 
+                  <button type="button" 
                     className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
                   >
                     Save Changes
@@ -4181,7 +4624,7 @@ export default function SuperAdminPage() {
                           <td className="py-4 px-4 text-center text-[#e5e2e1]/80">{p.terminalsLimit === 999 ? 'Unlimited' : p.terminalsLimit}</td>
                           <td className="py-4 px-4 text-center text-[#e5e2e1]/80">{p.storageLimitGB} GB</td>
                           <td className="py-4 px-4 text-right">
-                            <button 
+                            <button type="button" 
                               onClick={() => setEditingPlan(p)}
                               className="text-[10px] border border-white/10 hover:border-white/20 text-[#ffe2ab] px-3.5 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
                             >
@@ -4195,7 +4638,7 @@ export default function SuperAdminPage() {
                 </div>
                 
                 <div className="pt-2 flex justify-end">
-                  <button 
+                  <button type="button" 
                     onClick={() => { setShowPlanEditorModal(false); }}
                     className="px-6 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
                   >
@@ -4225,7 +4668,7 @@ export default function SuperAdminPage() {
                   Secure Admin Terminal: admin@dinepos-core
                 </span>
               </div>
-              <button 
+              <button type="button" 
                 onClick={() => { setShowTerminalModal(false); }}
                 className="text-[#A69984]/50 hover:text-white transition-colors"
               >

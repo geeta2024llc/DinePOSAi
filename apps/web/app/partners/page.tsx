@@ -617,6 +617,27 @@ export default function PartnersPage() {
               </button>
             </div>
 
+            {/* Bank Details Missing Warning Banner */}
+            {(!currentUser.bankName || !currentUser.accountNumber || !currentUser.accountHolder) && (
+              <div className="flex items-start gap-4 bg-amber-500/8 border border-amber-500/25 rounded-2xl p-5">
+                <span className="material-symbols-outlined text-amber-400 text-2xl flex-shrink-0 mt-0.5">account_balance</span>
+                <div className="flex-1">
+                  <p className="text-amber-300 font-bold text-sm">Bank Details Required for Payout</p>
+                  <p className="text-[#A69984]/70 text-[11.5px] font-medium mt-1 leading-relaxed">
+                    You have not yet added payout bank details to your ambassador account. The platform admin cannot process your reward transfers until your bank coordinates are on file.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleStartEditBank}
+                    className="mt-3 flex items-center gap-2 px-4 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">edit</span>
+                    Add Bank Details Now
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Referral Code & Stats Row */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch font-sans">
               
@@ -849,12 +870,22 @@ export default function PartnersPage() {
                         </div>
                       </div>
 
-                      <div className="p-4 bg-[#ffc53d]/5 border border-[#ffc53d]/10 rounded-xl flex gap-3 items-start font-semibold text-[10.5px]">
-                        <span className="material-symbols-outlined text-[#ffc53d] text-base shrink-0 mt-0.5">verified_user</span>
-                        <p className="text-[#A69984]/70 leading-normal">
-                          Bank payout coordinates are verified and encrypted. Payout requests are initiated by the system administrator upon successful referral conversions.
-                        </p>
-                      </div>
+                      {currentUser.bankName && currentUser.accountHolder ? (
+                        <div className="p-4 bg-[#ffc53d]/5 border border-[#ffc53d]/10 rounded-xl flex gap-3 items-start font-semibold text-[10.5px]">
+                          <span className="material-symbols-outlined text-[#ffc53d] text-base shrink-0 mt-0.5">verified_user</span>
+                          <p className="text-[#A69984]/70 leading-normal">
+                            Bank payout coordinates are on file. Reward transfers are processed by the platform administrator within 3 business days of approval.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-rose-500/8 border border-rose-500/20 rounded-xl flex gap-3 items-start font-semibold text-[10.5px]">
+                          <span className="material-symbols-outlined text-rose-400 text-base shrink-0 mt-0.5">warning</span>
+                          <div>
+                            <p className="text-rose-300 font-bold text-xs mb-1">No bank account on file</p>
+                            <p className="text-[#A69984]/60 leading-normal">Payout transfers cannot be processed until you provide valid bank coordinates. Please click <strong className="text-white">Edit Details</strong> above to add them.</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

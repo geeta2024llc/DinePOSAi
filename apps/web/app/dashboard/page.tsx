@@ -298,6 +298,27 @@ const translations: Record<string, Record<string, string>> = {
     taxBasisDesc: "Choose whether tax is calculated on top of subtotal (Pre-tax) or included in pricing (Post-tax).",
     subtotalInclusive: "Subtotal (Tax Incl.)",
     includedTax: "Included Tax (8%)",
+    analyticsTitle: "Business Analytics",
+    analyticsDesc: "Revenue, orders, staff performance and menu insights for your establishment.",
+    analyticsRange: "Date Range",
+    analyticsToday: "Today",
+    analyticsWeek: "This Week",
+    analyticsMonth: "This Month",
+    analytics30: "Last 30 Days",
+    analyticsRevenue: "Gross Revenue",
+    analyticsOrders: "Total Orders",
+    analyticsAvgCheck: "Avg. Check",
+    analyticsCovers: "Covers Served",
+    analyticsRevTrend: "Revenue Trend",
+    analyticsOrderTypes: "Orders by Type",
+    analyticsPeakHours: "Peak Hour Distribution",
+    analyticsTopItems: "Top Menu Items by Revenue",
+    analyticsStaffPerf: "Staff Performance",
+    analyticsPayMethods: "Payment Method Breakdown",
+    analyticsDineIn: "Dine-in",
+    analyticsTakeaway: "Takeaway",
+    analyticsDelivery: "Delivery",
+    analyticsExport: "Export Report",
   },
   ja: {
     adminConsole: "管理コンソール",
@@ -440,6 +461,27 @@ const translations: Record<string, Record<string, string>> = {
     taxBasisDesc: "消費税を小計に追加加算する（外税）か、商品の販売価格に含める（内税）かを選択します。",
     subtotalInclusive: "小計 (税込)",
     includedTax: "内消費税 (8%)",
+    analyticsTitle: "ビジネス分析",
+    analyticsDesc: "売上・注文・スタッフパフォーマンスとメニューのインサイト。",
+    analyticsRange: "期間",
+    analyticsToday: "本日",
+    analyticsWeek: "今週",
+    analyticsMonth: "今月",
+    analytics30: "過去30日",
+    analyticsRevenue: "総売上",
+    analyticsOrders: "総注文数",
+    analyticsAvgCheck: "平均客単価",
+    analyticsCovers: "来客数",
+    analyticsRevTrend: "売上推移",
+    analyticsOrderTypes: "注文タイプ別",
+    analyticsPeakHours: "ピーク時間帯",
+    analyticsTopItems: "売上上位メニュー",
+    analyticsStaffPerf: "スタッフ別パフォーマンス",
+    analyticsPayMethods: "決済方法の内訳",
+    analyticsDineIn: "店内",
+    analyticsTakeaway: "テイクアウト",
+    analyticsDelivery: "デリバリー",
+    analyticsExport: "レポート出力",
   },
   zh: {
     adminConsole: "管理控制台",
@@ -582,6 +624,27 @@ const translations: Record<string, Record<string, string>> = {
     taxBasisDesc: "选择税金是在小计之外加收（税前）还是已包含在价格中（税后）。",
     subtotalInclusive: "小计（含税）",
     includedTax: "含税额 (8%)",
+    analyticsTitle: "业务分析",
+    analyticsDesc: "餐厅的收入、订单、员工绩效和菜单洞察。",
+    analyticsRange: "日期范围",
+    analyticsToday: "今天",
+    analyticsWeek: "本周",
+    analyticsMonth: "本月",
+    analytics30: "过去30天",
+    analyticsRevenue: "总收入",
+    analyticsOrders: "总订单数",
+    analyticsAvgCheck: "平均消费",
+    analyticsCovers: "接待人数",
+    analyticsRevTrend: "收入趋势",
+    analyticsOrderTypes: "订单类型",
+    analyticsPeakHours: "高峰时段分布",
+    analyticsTopItems: "热销菜品",
+    analyticsStaffPerf: "员工绩效",
+    analyticsPayMethods: "支付方式分布",
+    analyticsDineIn: "堂食",
+    analyticsTakeaway: "外带",
+    analyticsDelivery: "外卖",
+    analyticsExport: "导出报告",
   },
   ko: {
     adminConsole: "관리 콘솔",
@@ -724,6 +787,27 @@ const translations: Record<string, Record<string, string>> = {
     taxBasisDesc: "세금을 소계에 추가 적용할지(세전) 가격에 포함할지(세후) 선택합니다.",
     subtotalInclusive: "소계 (세금 포함)",
     includedTax: "포함 세금 (8%)",
+    analyticsTitle: "비즈니스 분석",
+    analyticsDesc: "매출, 주문, 직원 성과 및 메뉴 인사이트.",
+    analyticsRange: "기간",
+    analyticsToday: "오늘",
+    analyticsWeek: "이번 주",
+    analyticsMonth: "이번 달",
+    analytics30: "최근 30일",
+    analyticsRevenue: "총 매출",
+    analyticsOrders: "총 주문 수",
+    analyticsAvgCheck: "평균 결제액",
+    analyticsCovers: "방문 고객 수",
+    analyticsRevTrend: "매출 추이",
+    analyticsOrderTypes: "주문 유형별",
+    analyticsPeakHours: "피크 시간대",
+    analyticsTopItems: "인기 메뉴",
+    analyticsStaffPerf: "직원별 성과",
+    analyticsPayMethods: "결제 수단 현황",
+    analyticsDineIn: "매장",
+    analyticsTakeaway: "포장",
+    analyticsDelivery: "배달",
+    analyticsExport: "보고서 내보내기",
   }
 };
 
@@ -734,7 +818,8 @@ export default function DashboardPage() {
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
 
   // Sidebar tab selection state - defaults to operations (Operations Console) matching target mockup
-  const [activeTab, setActiveTab] = useState<'general' | 'operations' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'operations' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu' | 'analytics'>('general');
+  const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | '30days'>('week');
 
   // Staff Directory States
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
@@ -1481,7 +1566,7 @@ export default function DashboardPage() {
           {/* Navigation Links */}
           <nav className="space-y-2 font-sans border-r-0">
             {/* General */}
-            <button
+            <button type="button"
               onClick={() => setActiveTab('general')}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'general'
@@ -1493,7 +1578,7 @@ export default function DashboardPage() {
               <span>{tr.general}</span>
             </button>
             {/* Payments */}
-            <button
+            <button type="button"
               onClick={() => setActiveTab('payments')}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'payments'
@@ -1505,7 +1590,7 @@ export default function DashboardPage() {
               <span>{tr.payments}</span>
             </button>
             {/* Hardware */}
-            <button
+            <button type="button"
               onClick={() => setActiveTab('hardware')}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'hardware'
@@ -1517,7 +1602,7 @@ export default function DashboardPage() {
               <span>{tr.hardware}</span>
             </button>
             {/* Staff */}
-            <button
+            <button type="button"
               onClick={() => setActiveTab('staff')}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'staff'
@@ -1529,7 +1614,7 @@ export default function DashboardPage() {
               <span>{tr.staff}</span>
             </button>
             {/* Security */}
-            <button
+            <button type="button"
               onClick={() => setActiveTab('security')}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'security'
@@ -1541,7 +1626,7 @@ export default function DashboardPage() {
               <span>{tr.security}</span>
             </button>
             {/* Menu Editor */}
-            <button
+            <button type="button"
               onClick={() => setActiveTab('menu')}
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'menu'
@@ -1552,12 +1637,24 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-lg leading-none">restaurant_menu</span>
               <span>{tr.menuEditor}</span>
             </button>
+            {/* Analytics */}
+            <button type="button"
+              onClick={() => setActiveTab('analytics')}
+              className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeTab === 'analytics'
+                  ? `${t.accentBg} ${t.accentText} rounded-xl`
+                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg leading-none">bar_chart</span>
+              <span>Analytics</span>
+            </button>
           </nav>
         </div>
         
         {/* Save Changes button */}
         <div className="pt-6 font-sans space-y-3">
-          <button 
+          <button type="button" 
             onClick={() => handleSaveChanges()}
             className={`w-full ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-bold py-3 rounded-xl uppercase tracking-wider text-xs transition-colors shadow-lg cursor-pointer`}
           >
@@ -1591,7 +1688,7 @@ export default function DashboardPage() {
           
           {/* Quick config search and user actions */}
           <div className="flex items-center gap-5">
-            <button 
+            <button type="button" 
               onClick={() => triggerToast('No new notifications.', 'info')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${t.border} hover:border-[#ffe2ab]/20 rounded-xl text-white transition-colors cursor-pointer select-none relative`}
             >
@@ -1599,7 +1696,7 @@ export default function DashboardPage() {
               <span className="absolute top-3.5 right-3.5 w-1 h-1 bg-rose-500 rounded-full"></span>
             </button>
 
-            <button 
+            <button type="button" 
               onClick={() => setActiveTab('operations')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border rounded-xl transition-colors cursor-pointer select-none ${
                 activeTab === 'operations' 
@@ -1620,7 +1717,7 @@ export default function DashboardPage() {
               ] as const).map((lang, i) => (
                 <React.Fragment key={lang.code}>
                   {i > 0 && <div className={`w-px h-4 bg-white/10`}></div>}
-                  <button
+                  <button type="button"
                     onClick={() => handleLanguageChange(lang.code)}
                     className={`px-2.5 py-2.5 text-[9.5px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
                       language === lang.code ? `${t.accentBg} ${t.accentText}` : `${t.textMuted} hover:text-white`
@@ -1633,7 +1730,7 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            <button 
+            <button type="button" 
               onClick={() => triggerToast('Loading help documentation...', 'info')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${t.border} hover:border-white/10 rounded-xl text-white transition-colors cursor-pointer select-none`}
             >
@@ -1718,6 +1815,7 @@ export default function DashboardPage() {
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>Physical Address</label>
                         <input 
                           type="text" 
+                          aria-label="Business address"
                           value={businessAddress}
                           onChange={(e) => setBusinessAddress(e.target.value)}
                           placeholder="Physical Address..."
@@ -1727,7 +1825,7 @@ export default function DashboardPage() {
 
                       {/* Save Profile button */}
                       <div className="flex justify-end pt-2 select-none">
-                        <button
+                        <button type="button"
                           onClick={() => triggerToast('General Profile configurations saved successfully!', 'success')}
                           className={`px-5 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}
                         >
@@ -1760,7 +1858,7 @@ export default function DashboardPage() {
                             Email report to managers
                           </p>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => {
                             setEndOfDaySummary(!endOfDaySummary);
                             triggerToast(`End-of-Day Summary email routing ${!endOfDaySummary ? 'activated' : 'deactivated'}.`, 'info');
@@ -1779,7 +1877,7 @@ export default function DashboardPage() {
                             Real-time terminal push
                           </p>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => {
                             setCriticalVoidAlerts(!criticalVoidAlerts);
                             triggerToast(`Critical void alert routing ${!criticalVoidAlerts ? 'activated' : 'deactivated'}.`, 'info');
@@ -1798,7 +1896,7 @@ export default function DashboardPage() {
                             Alert all active stations
                           </p>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => {
                             setItemBroadcast86(!itemBroadcast86);
                             triggerToast(`86'd items real-time broadcasting ${!itemBroadcast86 ? 'activated' : 'deactivated'}.`, 'info');
@@ -1830,7 +1928,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <button
+                  <button type="button"
                     onClick={() => triggerToast('Opening Thermal Printer registration wizard...', 'info')}
                     className={`border ${t.accentLightBorder} hover:bg-[#ffe2ab]/5 ${t.accent} px-4 py-2 rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center gap-1.5 select-none`}
                   >
@@ -2026,6 +2124,7 @@ export default function DashboardPage() {
                         <label className="block text-[#A69984]/70 text-[9.5px] font-bold uppercase tracking-wider mb-2">Establishment Name</label>
                         <input 
                           type="text" 
+                          aria-label="Establishment name"
                           value={establishmentName}
                           onChange={(e) => setEstablishmentName(e.target.value)}
                           placeholder="DinePosAi"
@@ -2036,6 +2135,7 @@ export default function DashboardPage() {
                         <label className="block text-[#A69984]/70 text-[9.5px] font-bold uppercase tracking-wider mb-2">Business Address</label>
                         <input 
                           type="text" 
+                          aria-label="Business address"
                           value={businessAddress}
                           onChange={(e) => setBusinessAddress(e.target.value)}
                           placeholder="Address..."
@@ -2051,7 +2151,7 @@ export default function DashboardPage() {
                           Include restaurant logo at the top
                         </p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowLogo(!showLogo)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showLogo ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
@@ -2071,7 +2171,7 @@ export default function DashboardPage() {
                       <div className="max-w-[75%]">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-1">Table Number</h4>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowTableNumber(!showTableNumber)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showTableNumber ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
@@ -2084,7 +2184,7 @@ export default function DashboardPage() {
                       <div className="max-w-[75%]">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-1">Server Name</h4>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowServerName(!showServerName)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showServerName ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
@@ -2097,7 +2197,7 @@ export default function DashboardPage() {
                       <div className="max-w-[75%]">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-1">Order Timestamp</h4>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowOrderTimestamp(!showOrderTimestamp)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showOrderTimestamp ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
@@ -2130,7 +2230,7 @@ export default function DashboardPage() {
                           Include gratuity line automatically
                         </p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowServiceCharge(!showServiceCharge)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showServiceCharge ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
@@ -2162,7 +2262,7 @@ export default function DashboardPage() {
                           Link customers to digital survey
                         </p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => setShowQrCode(!showQrCode)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showQrCode ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
@@ -2192,7 +2292,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={() => setShowAddEmployeeModal(true)}
                   className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none"
                 >
@@ -2264,7 +2364,7 @@ export default function DashboardPage() {
                       
                       {/* Filter Tabs */}
                       <div className={`flex items-center gap-1.5 ${t.inputBg} p-1 rounded-xl border ${t.border}`}>
-                        <button
+                        <button type="button"
                           onClick={() => setStaffRoleFilter('all')}
                           className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                             staffRoleFilter === 'all'
@@ -2274,7 +2374,7 @@ export default function DashboardPage() {
                         >
                           All Roles
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => setStaffRoleFilter('foh')}
                           className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                             staffRoleFilter === 'foh'
@@ -2284,7 +2384,7 @@ export default function DashboardPage() {
                         >
                           Front of House
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => setStaffRoleFilter('kitchen')}
                           className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                             staffRoleFilter === 'kitchen'
@@ -2303,7 +2403,7 @@ export default function DashboardPage() {
           <div className={`${t.cardBgOpaque} border w-[420px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
             <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
               <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Pair New Device</h3>
-              <button 
+              <button type="button" 
                 onClick={() => setShowPairDeviceModal(false)}
                 className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
               >
@@ -2345,6 +2445,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Type</label>
                 <div className="relative">
                   <select
+                    aria-label="Device type"
                     value={newDevice.type}
                     onChange={(e) => setNewDevice({...newDevice, type: e.target.value})}
                     className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
@@ -2362,6 +2463,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Name</label>
                 <input 
                   type="text" 
+                  aria-label="Device name"
                   value={newDevice.name}
                   onChange={(e) => setNewDevice({...newDevice, name: e.target.value})}
                   placeholder="e.g. Bar Printer Left"
@@ -2375,6 +2477,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>IP Address (Optional)</label>
                 <input 
                   type="text" 
+                  aria-label="IP address"
                   value={newDevice.ipAddress}
                   onChange={(e) => setNewDevice({...newDevice, ipAddress: e.target.value})}
                   placeholder="e.g. 192.168.1.110"
@@ -2383,15 +2486,13 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <button 
-                  type="button"
+                <button type="button" 
                   onClick={() => setShowPairDeviceModal(false)}
                   className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit"
+                <button type="submit"
                   className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
                 >
                   Pair Device
@@ -2491,7 +2592,7 @@ export default function DashboardPage() {
 
                     {/* View All Staff bottom action */}
                     <div className={`p-4 border-t ${t.border} ${t.inputBg}/30 text-center select-none`}>
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Loading complete personnel list...', 'info')}
                         className={`text-[10px] ${t.accent} hover:opacity-80 uppercase font-bold tracking-widest inline-flex items-center gap-1 transition-colors cursor-pointer`}
                       >
@@ -2515,9 +2616,9 @@ export default function DashboardPage() {
                     </div>
 
                     <div className={`flex justify-between items-center ${t.inputBg}/50 py-2.5 px-4 border ${t.border} rounded-xl text-xs select-none`}>
-                      <button onClick={() => triggerToast('Previous day...', 'info')} className={`${t.textMuted} hover:${t.text} font-bold`}>{"<"}</button>
+                      <button type="button" onClick={() => triggerToast('Previous day...', 'info')} className={`${t.textMuted} hover:${t.text} font-bold`}>{"<"}</button>
                       <span className={`${t.text} font-bold tracking-wider font-mono`}>Today, Oct 24</span>
-                      <button onClick={() => triggerToast('Next day...', 'info')} className={`${t.textMuted} hover:${t.text} font-bold`}>{">"}</button>
+                      <button type="button" onClick={() => triggerToast('Next day...', 'info')} className={`${t.textMuted} hover:${t.text} font-bold`}>{">"}</button>
                     </div>
 
                     <div className="space-y-4">
@@ -2582,7 +2683,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={() => triggerToast('Opening scheduler dashboard...', 'info')}
                       className={`w-full py-3 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                     >
@@ -2657,7 +2758,7 @@ export default function DashboardPage() {
                   
                   {/* Timeline selector */}
                   <div className={`flex items-center gap-1 ${t.inputBg} p-1 rounded-xl border ${t.border}`}>
-                    <button
+                    <button type="button"
                       onClick={() => setTimelineTab('timeline')}
                       className={`px-4 py-1.5 text-[9.5px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                         timelineTab === 'timeline'
@@ -2667,7 +2768,7 @@ export default function DashboardPage() {
                     >
                       Timeline
                     </button>
-                    <button
+                    <button type="button"
                       onClick={() => setTimelineTab('month')}
                       className={`px-4 py-1.5 text-[9.5px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                         timelineTab === 'month'
@@ -2759,7 +2860,7 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="space-y-3 font-sans select-none">
-                    <button
+                    <button type="button"
                       onClick={() => triggerToast('Opening Managers Role permissions...', 'info')}
                       className={`w-full flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} hover:${t.borderStrong} rounded-xl transition-all cursor-pointer text-left font-sans font-bold`}
                     >
@@ -2767,7 +2868,7 @@ export default function DashboardPage() {
                       <span className={`material-symbols-outlined ${t.accent} text-sm`}>chevron_right</span>
                     </button>
 
-                    <button
+                    <button type="button"
                       onClick={() => triggerToast('Opening Waitstaff Role permissions...', 'info')}
                       className={`w-full flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} hover:${t.borderStrong} rounded-xl transition-all cursor-pointer text-left font-sans font-bold`}
                     >
@@ -2775,7 +2876,7 @@ export default function DashboardPage() {
                       <span className={`material-symbols-outlined ${t.accent} text-sm`}>chevron_right</span>
                     </button>
 
-                    <button
+                    <button type="button"
                       onClick={() => triggerToast('Opening Kitchen Role permissions...', 'info')}
                       className={`w-full flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} hover:${t.borderStrong} rounded-xl transition-all cursor-pointer text-left font-sans font-bold`}
                     >
@@ -2804,7 +2905,7 @@ export default function DashboardPage() {
                         <span className={`px-2 py-0.5 ${t.tagAdmin} font-bold text-[8px] uppercase tracking-wider rounded`}>
                           Admin Only
                         </span>
-                        <button onClick={() => triggerToast('Receipt permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => triggerToast('Receipt permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -2817,7 +2918,7 @@ export default function DashboardPage() {
                         <span className={`px-2 py-0.5 ${t.tagManager} font-bold text-[8px] uppercase tracking-wider rounded`}>
                           Manager+
                         </span>
-                        <button onClick={() => triggerToast('Void permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => triggerToast('Void permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -2830,7 +2931,7 @@ export default function DashboardPage() {
                         <span className={`px-2 py-0.5 ${t.tagStaff} font-bold text-[8px] uppercase tracking-wider rounded`}>
                           Full Staff
                         </span>
-                        <button onClick={() => triggerToast('Inventory permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => triggerToast('Inventory permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -2859,7 +2960,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Download Statements trigger */}
-                <button
+                <button type="button"
                   onClick={() => triggerToast('Compiling financial statements download...', 'success')}
                   className={`bg-transparent border ${t.buttonOutline} px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none`}
                 >
@@ -2908,13 +3009,13 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="flex items-center gap-3 pt-6 z-10 select-none">
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Opening subscription plan switcher...', 'info')}
                         className={`bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 shadow-md cursor-pointer`}
                       >
                         {tr.changePlan}
                       </button>
-                      <button 
+                      <button type="button" 
                         onClick={() => triggerToast('Opening add-ons marketplace...', 'info')}
                         className={`bg-transparent border ${t.buttonOutline} font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer`}
                       >
@@ -2930,7 +3031,7 @@ export default function DashboardPage() {
                     <div className="space-y-4">
                       <div className="flex justify-between items-center select-none">
                         <h3 className={`font-serif text-sm ${t.text} font-bold tracking-wide`}>{tr.paymentMethod}</h3>
-                        <button 
+                        <button type="button" 
                           onClick={() => triggerToast('Opening payment edit forms...', 'info')}
                           className="text-[9.5px] text-[#ffe2ab] font-bold tracking-widest hover:text-white uppercase transition-colors cursor-pointer"
                         >
@@ -2958,7 +3059,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={() => triggerToast('Opening payment method adder...', 'info')}
                       className={`w-full py-3 bg-transparent border border-dashed ${t.borderStrong} hover:border-white/20 text-[#A69984] font-sans font-bold text-[9.5px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-4`}
                     >
@@ -3002,7 +3103,7 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading invoice preview...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -3022,7 +3123,7 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading receipt...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -3042,7 +3143,7 @@ export default function DashboardPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4.5 text-center">
-                          <button 
+                          <button type="button" 
                             onClick={() => triggerToast('Downloading receipt...', 'success')}
                             className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
                           >
@@ -3083,7 +3184,7 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={() => setShowPairDeviceModal(true)}
                   className="text-[#ffe2ab] hover:text-[#ffdca0] px-4 py-2 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none"
                 >
@@ -3130,7 +3231,7 @@ export default function DashboardPage() {
                 <div className={`${t.cardBg} border rounded-2xl p-7 shadow-xl space-y-4`}>
                   <div className={`flex justify-between items-center border-b ${t.border} pb-3 select-none`}>
                     <h3 className={`text-[10px] font-sans font-bold uppercase tracking-wider ${t.textMuted}`}>ACTIVE DIAGNOSTICS</h3>
-                    <button 
+                    <button type="button" 
                       onClick={() => triggerToast('Refreshing hardware diagnostics...', 'info')}
                       className={`${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
                     >
@@ -3161,7 +3262,7 @@ export default function DashboardPage() {
                             </p>
                             <div className="flex gap-4 mt-2.5">
                               {alert.updateBtn ? (
-                                <button 
+                                <button type="button" 
                                   onClick={() => handleStartRouterUpdate(alert.id)}
                                   disabled={routerUpdateProgress !== null}
                                   className={`text-[9.5px] font-bold ${t.accent} hover:opacity-85 uppercase tracking-wider transition-colors cursor-pointer select-none disabled:opacity-50`}
@@ -3170,7 +3271,7 @@ export default function DashboardPage() {
                                 </button>
                               ) : (
                                 <>
-                                  <button 
+                                  <button type="button" 
                                     onClick={() => {
                                       triggerToast('Diagnostic log acknowledged.', 'success');
                                       setActiveAlerts(activeAlerts.filter(a => a.id !== alert.id));
@@ -3179,7 +3280,7 @@ export default function DashboardPage() {
                                   >
                                     Acknowledge
                                   </button>
-                                  <button 
+                                  <button type="button" 
                                     onClick={() => triggerToast('Initializing remote print calibration diagnostic...', 'info')}
                                     className={`text-[9.5px] font-bold ${t.accent} hover:opacity-85 uppercase tracking-wider transition-colors cursor-pointer select-none`}
                                   >
@@ -3244,7 +3345,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <button 
+                        <button type="button" 
                           onClick={() => triggerToast(`Loading Terminal settings console for ${dev.name}...`, 'info')}
                           className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                         >
@@ -3291,7 +3392,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <button 
+                        <button type="button" 
                           onClick={() => handleRunPrinterTest(dev.id, dev.name)}
                           disabled={printingDevices[dev.id]}
                           className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none disabled:opacity-50 flex items-center justify-center gap-2`}
@@ -3338,7 +3439,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
 
-                        <button 
+                        <button type="button" 
                           onClick={() => triggerToast(`Opening settings for KDS ${dev.name}...`, 'info')}
                           className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                         >
@@ -3381,7 +3482,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={() => triggerToast('Sending manual kick signal to Cash Drawer 01... Drawer kicked open!', 'success')}
                       className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                     >
@@ -3403,7 +3504,7 @@ export default function DashboardPage() {
                           <span className={`text-[11px] font-bold ${t.text}`}>Open on Cash Payment</span>
                           <p className={`text-[9px] ${t.textMutedLight} font-semibold mt-0.5`}>Kick drawer automatically on checkout</p>
                         </div>
-                        <button 
+                        <button type="button" 
                           onClick={() => {
                             setOpenOnCash(!openOnCash);
                             triggerToast(`Auto drawer kick on cash ${!openOnCash ? 'enabled' : 'disabled'}.`, 'info');
@@ -3420,7 +3521,7 @@ export default function DashboardPage() {
                           <span className={`text-[11px] font-bold ${t.text}`}>Manager Approval Required</span>
                           <p className={`text-[9px] ${t.textMutedLight} font-semibold mt-0.5`}>Require supervisor pin for manual opening</p>
                         </div>
-                        <button 
+                        <button type="button" 
                           onClick={() => {
                             setRequireManagerPin(!requireManagerPin);
                             triggerToast(`Manager approval for manual drawer opening ${!requireManagerPin ? 'enabled' : 'disabled'}.`, 'info');
@@ -3465,6 +3566,7 @@ export default function DashboardPage() {
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>{tr.restaurantName}</label>
                         <input 
                           type="text" 
+                          aria-label="Establishment name"
                           value={establishmentName}
                           onChange={(e) => setEstablishmentName(e.target.value)}
                           className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
@@ -3494,6 +3596,7 @@ export default function DashboardPage() {
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>{tr.businessAddress}</label>
                         <textarea 
                           rows={3}
+                          aria-label="Business address"
                           value={businessAddress}
                           onChange={(e) => setBusinessAddress(e.target.value)}
                           className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium resize-none leading-relaxed`}
@@ -3508,7 +3611,7 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                       
                       {/* Theme: Midnight Black */}
-                      <button 
+                      <button type="button" 
                         onClick={() => handleGlobalAestheticChange('Midnight Black')}
                         className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Midnight Black' ? `${t.accentLightBorder} bg-[#ffe2ab]/5` : 'border-transparent hover:bg-white/[0.02]'}`}
                       >
@@ -3519,7 +3622,7 @@ export default function DashboardPage() {
                       </button>
 
                       {/* Theme: Pristine White */}
-                      <button 
+                      <button type="button" 
                         onClick={() => handleGlobalAestheticChange('Pristine White')}
                         className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Pristine White' ? 'border-[#cfa426] bg-[#cfa426]/5' : 'border-transparent hover:bg-black/[0.02]'}`}
                       >
@@ -3530,7 +3633,7 @@ export default function DashboardPage() {
                       </button>
 
                       {/* Theme: Bordeaux Reserve */}
-                      <button 
+                      <button type="button" 
                         onClick={() => handleGlobalAestheticChange('Bordeaux Reserve')}
                         className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Bordeaux Reserve' ? 'border-[#e5a09b] bg-[#e5a09b]/5' : 'border-transparent hover:bg-white/[0.02]'}`}
                       >
@@ -3541,7 +3644,7 @@ export default function DashboardPage() {
                       </button>
 
                       {/* Theme: Deep Teal */}
-                      <button 
+                      <button type="button" 
                         onClick={() => handleGlobalAestheticChange('Deep Teal')}
                         className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Deep Teal' ? 'border-[#48e5ec] bg-[#48e5ec]/5' : 'border-transparent hover:bg-white/[0.02]'}`}
                       >
@@ -3552,7 +3655,7 @@ export default function DashboardPage() {
                       </button>
 
                       {/* Theme: Custom Palette */}
-                      <button 
+                      <button type="button" 
                         onClick={() => handleGlobalAestheticChange('Custom Palette')}
                         className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Custom Palette' ? 'border-[var(--custom-accent)] bg-[var(--custom-accent)]/5' : 'border-transparent hover:bg-white/[0.02]'}`}
                       >
@@ -3575,7 +3678,7 @@ export default function DashboardPage() {
                           
                           {/* Curated Presets */}
                           <div className="flex flex-wrap gap-2">
-                            <button 
+                            <button type="button" 
                               onClick={() => {
                                 updateCustomBg('#061417');
                                 updateCustomCardBg('#0b2024');
@@ -3587,7 +3690,7 @@ export default function DashboardPage() {
                             >
                               Forest Emerald
                             </button>
-                            <button 
+                            <button type="button" 
                               onClick={() => {
                                 updateCustomBg('#0f0d1a');
                                 updateCustomCardBg('#161326');
@@ -3599,7 +3702,7 @@ export default function DashboardPage() {
                             >
                               Royal Orchid
                             </button>
-                            <button 
+                            <button type="button" 
                               onClick={() => {
                                 updateCustomBg('#1a0f0f');
                                 updateCustomCardBg('#261313');
@@ -3725,7 +3828,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showLogo}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showLogoDesc}</span>
                         </div>
-                        <button onClick={() => setShowLogo(!showLogo)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showLogo ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowLogo(!showLogo)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showLogo ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showLogo ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3736,7 +3839,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showTaxId}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showTaxIdDesc}</span>
                         </div>
-                        <button onClick={() => setShowTaxId(!showTaxId)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showTaxId ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowTaxId(!showTaxId)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showTaxId ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showTaxId ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3747,7 +3850,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showServer}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showServerDesc}</span>
                         </div>
-                        <button onClick={() => setShowServerName(!showServerName)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServerName ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowServerName(!showServerName)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServerName ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showServerName ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3758,7 +3861,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showTable}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showTableDesc}</span>
                         </div>
-                        <button onClick={() => setShowTableNumber(!showTableNumber)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showTableNumber ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowTableNumber(!showTableNumber)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showTableNumber ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showTableNumber ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3769,7 +3872,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showTimestamp}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showTimestampDesc}</span>
                         </div>
-                        <button onClick={() => setShowOrderTimestamp(!showOrderTimestamp)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showOrderTimestamp ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowOrderTimestamp(!showOrderTimestamp)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showOrderTimestamp ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showOrderTimestamp ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3780,7 +3883,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showFeedbackQr}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showFeedbackQrDesc}</span>
                         </div>
-                        <button onClick={() => setShowQrCode(!showQrCode)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showQrCode ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowQrCode(!showQrCode)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showQrCode ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showQrCode ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3791,7 +3894,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showSocial}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showSocialDesc}</span>
                         </div>
-                        <button onClick={() => setShowSocialMedia(!showSocialMedia)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showSocialMedia ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowSocialMedia(!showSocialMedia)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showSocialMedia ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showSocialMedia ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3802,7 +3905,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.includeServiceCharge}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.includeServiceChargeDesc}</span>
                         </div>
-                        <button onClick={() => setShowServiceCharge(!showServiceCharge)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServiceCharge ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowServiceCharge(!showServiceCharge)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServiceCharge ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showServiceCharge ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3814,7 +3917,7 @@ export default function DashboardPage() {
                           <h4 className="text-xs font-bold text-white">{tr.showCustomFooter}</h4>
                           <p className={`text-[9.5px] ${t.textMutedDark}`}>{tr.showCustomFooterDesc}</p>
                         </div>
-                        <button onClick={() => setShowCustomFooter(!showCustomFooter)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showCustomFooter ? t.accentBg : 'bg-white/20'}`}>
+                        <button type="button" onClick={() => setShowCustomFooter(!showCustomFooter)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showCustomFooter ? t.accentBg : 'bg-white/20'}`}>
                           <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showCustomFooter ? 'translate-x-4' : 'translate-x-0'}`}></div>
                         </button>
                       </div>
@@ -3847,7 +3950,7 @@ export default function DashboardPage() {
                             { code: 'zh', flag: '🇨🇳', label: tr.langZh },
                             { code: 'ko', flag: '🇰🇷', label: tr.langKo },
                           ] as const).map(lang => (
-                            <button
+                            <button type="button"
                               key={lang.code}
                               onClick={() => handleLanguageChange(lang.code)}
                               className={`flex items-center gap-2.5 py-3 px-4 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
@@ -3875,7 +3978,7 @@ export default function DashboardPage() {
                             { code: 'CNY', symbol: '¥', name: 'Yuan' },
                             { code: 'KRW', symbol: '₩', name: 'Won' },
                           ] as const).map(cur => (
-                            <button
+                            <button type="button"
                               key={cur.code}
                               onClick={() => handleCurrencyChange(cur.code)}
                               className={`flex flex-col items-center py-3 px-2 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
@@ -3902,7 +4005,7 @@ export default function DashboardPage() {
                       <div>
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>{tr.taxBasisLabel}</label>
                         <div className="flex gap-3">
-                          <button
+                          <button type="button"
                             onClick={() => handleTaxTypeChange('pre-tax')}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
                               taxType === 'pre-tax'
@@ -3913,7 +4016,7 @@ export default function DashboardPage() {
                             <span className="material-symbols-outlined text-sm">add_circle</span>
                             <span>{tr.preTaxLabel}</span>
                           </button>
-                          <button
+                          <button type="button"
                             onClick={() => handleTaxTypeChange('post-tax')}
                             className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border font-sans font-bold text-xs tracking-wider transition-all cursor-pointer ${
                               taxType === 'post-tax'
@@ -3972,7 +4075,7 @@ export default function DashboardPage() {
                           {['Seafood', 'GF', 'Veg', 'Non-Veg'].map(tag => {
                             const isExcluded = digitalMenuConfig.excludedTags.includes(tag);
                             return (
-                              <button
+                              <button type="button"
                                 key={tag}
                                 onClick={() => {
                                   const newTags = isExcluded
@@ -4008,7 +4111,7 @@ export default function DashboardPage() {
                             <h4 className="text-xs font-bold text-white">{tr.enableAIConcierge}</h4>
                             <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>{tr.enableAIConciergeDesc}</p>
                           </div>
-                          <button 
+                          <button type="button" 
                             onClick={() => updateDigitalMenuConfig({ showAIConcierge: !digitalMenuConfig.showAIConcierge })} 
                             className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${digitalMenuConfig.showAIConcierge ? t.accentBg : 'bg-white/20'}`}
                           >
@@ -4022,7 +4125,7 @@ export default function DashboardPage() {
                             <h4 className="text-xs font-bold text-white">{tr.enableSelfCheckout}</h4>
                             <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>{tr.enableSelfCheckoutDesc}</p>
                           </div>
-                          <button 
+                          <button type="button" 
                             onClick={() => updateDigitalMenuConfig({ enableSelfCheckout: !digitalMenuConfig.enableSelfCheckout })} 
                             className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${digitalMenuConfig.enableSelfCheckout ? t.accentBg : 'bg-white/20'}`}
                           >
@@ -4225,7 +4328,7 @@ export default function DashboardPage() {
                             <td className="px-4 py-4 font-bold text-white">Refund Completed Orders</td>
                             {['Manager', 'Server', 'Bartender', 'Cook'].map(role => (
                               <td key={role} className="px-2 py-4 text-center">
-                                <button 
+                                <button type="button" 
                                   onClick={() => togglePermission(role, 'refundOrders')}
                                   className={`w-4 h-4 rounded border transition-colors inline-flex items-center justify-center ${securityPermissions[role]?.['refundOrders'] ? `${t.accentBg} ${t.accentLightBorder}` : 'border-white/20 hover:border-white/40 bg-[#0e0e0d]'}`}
                                 >
@@ -4242,7 +4345,7 @@ export default function DashboardPage() {
                             <td className="px-4 py-4 font-bold text-white">Comp Dishes / Drinks (100% off)</td>
                             {['Manager', 'Server', 'Bartender', 'Cook'].map(role => (
                               <td key={role} className="px-2 py-4 text-center">
-                                <button 
+                                <button type="button" 
                                   onClick={() => togglePermission(role, 'compDishes')}
                                   className={`w-4 h-4 rounded border transition-colors inline-flex items-center justify-center ${securityPermissions[role]?.['compDishes'] ? `${t.accentBg} ${t.accentLightBorder}` : 'border-white/20 hover:border-white/40 bg-[#0e0e0d]'}`}
                                 >
@@ -4259,7 +4362,7 @@ export default function DashboardPage() {
                             <td className="px-4 py-4 font-bold text-white">Void Active Checks</td>
                             {['Manager', 'Server', 'Bartender', 'Cook'].map(role => (
                               <td key={role} className="px-2 py-4 text-center">
-                                <button 
+                                <button type="button" 
                                   onClick={() => togglePermission(role, 'voidItems')}
                                   className={`w-4 h-4 rounded border transition-colors inline-flex items-center justify-center ${securityPermissions[role]?.['voidItems'] ? `${t.accentBg} ${t.accentLightBorder}` : 'border-white/20 hover:border-white/40 bg-[#0e0e0d]'}`}
                                 >
@@ -4276,7 +4379,7 @@ export default function DashboardPage() {
                             <td className="px-4 py-4 font-bold text-white">Reopen Closed Business Days</td>
                             {['Manager', 'Server', 'Bartender', 'Cook'].map(role => (
                               <td key={role} className="px-2 py-4 text-center">
-                                <button 
+                                <button type="button" 
                                   onClick={() => togglePermission(role, 'reopenDays')}
                                   className={`w-4 h-4 rounded border transition-colors inline-flex items-center justify-center ${securityPermissions[role]?.['reopenDays'] ? `${t.accentBg} ${t.accentLightBorder}` : 'border-white/20 hover:border-white/40 bg-[#0e0e0d]'}`}
                                 >
@@ -4293,7 +4396,7 @@ export default function DashboardPage() {
                             <td className="px-4 py-4 font-bold text-white">Modify Core Menu & Pricing</td>
                             {['Manager', 'Server', 'Bartender', 'Cook'].map(role => (
                               <td key={role} className="px-2 py-4 text-center">
-                                <button 
+                                <button type="button" 
                                   onClick={() => togglePermission(role, 'editMenu')}
                                   className={`w-4 h-4 rounded border transition-colors inline-flex items-center justify-center ${securityPermissions[role]?.['editMenu'] ? `${t.accentBg} ${t.accentLightBorder}` : 'border-white/20 hover:border-white/40 bg-[#0e0e0d]'}`}
                                 >
@@ -4320,6 +4423,7 @@ export default function DashboardPage() {
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2`}>Employee PIN Length</label>
                         <div className="relative">
                           <select
+                            aria-label="Passcode length"
                             value={passcodeLength}
                             onChange={(e) => {
                               setPasscodeLength(e.target.value);
@@ -4344,6 +4448,7 @@ export default function DashboardPage() {
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2`}>Terminal Idle Auto-Logout</label>
                         <div className="relative">
                           <select
+                            aria-label="Session timeout"
                             value={sessionTimeout}
                             onChange={(e) => {
                               setSessionTimeout(e.target.value);
@@ -4381,7 +4486,7 @@ export default function DashboardPage() {
                           <span className={`material-symbols-outlined ${t.accent} text-lg`}>lock_open</span>
                           <h3 className={`${t.text} font-serif text-sm font-bold tracking-wide`}>Admin Audit Trail</h3>
                         </div>
-                        <button 
+                        <button type="button" 
                           onClick={() => {
                             setAuditLogs([]);
                             triggerToast('Administrative logs cleared.', 'info');
@@ -4423,7 +4528,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
 
-                    <button 
+                    <button type="button" 
                       onClick={() => triggerToast('Exporting secure system audit logs cryptographically...', 'success')}
                       className={`w-full py-3 ${t.buttonOutline} border rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer mt-5`}
                     >
@@ -4453,7 +4558,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setEditingCategory(null);
                       setCategoryFormName('');
@@ -4465,7 +4570,7 @@ export default function DashboardPage() {
                     <span className="material-symbols-outlined text-sm font-bold">folder_open</span>
                     {tr.manageCats}
                   </button>
-                  <button
+                  <button type="button"
                     onClick={() => {
                       setEditingMenuItem(null);
                       setMenuFormName('');
@@ -4611,14 +4716,14 @@ export default function DashboardPage() {
                               </td>
                               <td className="px-6 py-4 align-middle">
                                 <div className="flex items-center justify-center gap-2">
-                                  <button
+                                  <button type="button"
                                     onClick={() => handleToggleSpecial(item)}
                                     className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${item.category === 'special' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : `${t.borderStrong} hover:border-amber-500/20 text-[#A69984] hover:text-amber-400`} cursor-pointer`}
                                     title={item.category === 'special' ? "Remove from Specials" : "Make Special Dish"}
                                   >
                                     <span className={`material-symbols-outlined text-[15px] ${item.category === 'special' ? 'fill-amber-400' : ''}`}>auto_awesome</span>
                                   </button>
-                                  <button
+                                  <button type="button"
                                     onClick={() => {
                                       setEditingMenuItem(item);
                                       setMenuFormName(item.name);
@@ -4635,7 +4740,7 @@ export default function DashboardPage() {
                                   >
                                     <span className="material-symbols-outlined text-[15px]">edit</span>
                                   </button>
-                                  <button
+                                  <button type="button"
                                     onClick={() => handleDeleteMenuItem(item.id)}
                                     className={`w-8 h-8 rounded-lg flex items-center justify-center bg-transparent border ${t.borderStrong} hover:border-red-500/20 text-[#A69984] hover:text-red-400 transition-colors cursor-pointer`}
                                     title="Delete Item"
@@ -4661,15 +4766,404 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* ═══════════════════════════════════════════════════════════
+               TAB: ANALYTICS
+          ═══════════════════════════════════════════════════════════ */}
+          {activeTab === 'analytics' && (() => {
+            // ── Mock dataset keyed by range ──────────────────────────
+            const datasets = {
+              today: {
+                revenue: 8420, orders: 64, covers: 148, avgCheck: 131.56,
+                revTrend: [320, 490, 870, 1240, 1580, 1320, 880, 640, 510, 300, 120, 150],
+                trendLabels: ['11a','12p','1p','2p','3p','4p','5p','6p','7p','8p','9p','10p'],
+                dineIn: 68, takeaway: 22, delivery: 10,
+                peakHours: [12, 28, 64, 100, 88, 52, 76, 96, 80, 44, 20, 10],
+              },
+              week: {
+                revenue: 52840, orders: 398, covers: 912, avgCheck: 132.77,
+                revTrend: [6200, 7800, 5900, 8100, 9400, 7600, 7840],
+                trendLabels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+                dineIn: 65, takeaway: 24, delivery: 11,
+                peakHours: [8, 22, 58, 100, 84, 46, 72, 94, 76, 40, 18, 8],
+              },
+              month: {
+                revenue: 214600, orders: 1612, covers: 3740, avgCheck: 133.12,
+                revTrend: [7200, 8100, 6800, 9200, 7600, 8900, 7400, 8600, 9800, 7100, 8200, 9600,
+                           7800, 8400, 6900, 9100, 8300, 7500, 9400, 8700, 7200, 8000, 9300, 7600,
+                           8500, 7100, 9700, 8200, 7900, 8600],
+                trendLabels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
+                dineIn: 64, takeaway: 25, delivery: 11,
+                peakHours: [7, 20, 55, 100, 82, 44, 68, 92, 74, 38, 16, 7],
+              },
+              '30days': {
+                revenue: 198400, orders: 1490, covers: 3420, avgCheck: 133.15,
+                revTrend: [7100, 7900, 6700, 9000, 7500, 8700, 7300, 8500, 9700, 7000, 8100, 9500,
+                           7700, 8300, 6800, 9000, 8200, 7400, 9300, 8600, 7100, 7900, 9200, 7500,
+                           8400, 7000, 9600, 8100, 7800, 8500],
+                trendLabels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
+                dineIn: 63, takeaway: 26, delivery: 11,
+                peakHours: [6, 19, 53, 98, 80, 43, 66, 90, 72, 36, 15, 6],
+              },
+            };
+            const d = datasets[analyticsRange];
+            const trendMax = Math.max(...d.revTrend, 1);
+            const peakMax = Math.max(...d.peakHours, 1);
+
+            const topItems = [
+              { name: 'Wagyu Ribeye 12oz', category: 'Mains', sold: 142, revenue: 20590 },
+              { name: 'Truffle Risotto', category: 'Mains', sold: 198, revenue: 15048 },
+              { name: 'Dom Pérignon 2012', category: 'Beverages', sold: 48, revenue: 14880 },
+              { name: 'Seared Scallops', category: 'Starters', sold: 214, revenue: 9202 },
+              { name: 'Burrata Salad', category: 'Starters', sold: 176, revenue: 5808 },
+              { name: 'Crème Brûlée', category: 'Desserts', sold: 230, revenue: 5290 },
+              { name: 'Old Fashioned', category: 'Cocktails', sold: 310, revenue: 4960 },
+              { name: 'Sourdough & Butter', category: 'Sides', sold: 412, revenue: 3708 },
+            ];
+            const itemRevMax = Math.max(...topItems.map(i => i.revenue), 1);
+
+            const staffData = [
+              { name: 'Elena Rodriguez', role: 'Head Sommelier', orders: 84, revenue: 18420, rating: 4.9, covers: 196 },
+              { name: 'Sarah Jenkins', role: "Maître D'", orders: 72, revenue: 15680, rating: 5.0, covers: 168 },
+              { name: 'Marcus Chen', role: 'Sous Chef', orders: 96, revenue: 14200, rating: 4.8, covers: 0 },
+              { name: 'James Park', role: 'Server', orders: 68, revenue: 11940, rating: 4.7, covers: 152 },
+              { name: 'Amara Osei', role: 'Bartender', orders: 112, revenue: 9800, rating: 4.8, covers: 0 },
+            ];
+
+            const payMethods = [
+              { label: 'Card', pct: 68, color: 'bg-sky-400', textColor: 'text-sky-400', amount: Math.round(d.revenue * 0.68) },
+              { label: 'Cash', pct: 19, color: 'bg-amber-400', textColor: 'text-amber-400', amount: Math.round(d.revenue * 0.19) },
+              { label: 'QR / Digital', pct: 13, color: 'bg-violet-400', textColor: 'text-violet-400', amount: Math.round(d.revenue * 0.13) },
+            ];
+
+            const rangeOpts: { key: typeof analyticsRange; label: string }[] = [
+              { key: 'today', label: tr.analyticsToday },
+              { key: 'week', label: tr.analyticsWeek },
+              { key: 'month', label: tr.analyticsMonth },
+              { key: '30days', label: tr.analytics30 },
+            ];
+
+            return (
+              <div className="space-y-8 font-sans animate-fade-in duration-300">
+
+                {/* ── Header ── */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h1 className={`font-serif text-[38px] font-bold ${t.text} tracking-wide leading-none`}>
+                      {tr.analyticsTitle}
+                    </h1>
+                    <p className={`${t.textMuted} text-[12.5px] font-semibold mt-2 leading-relaxed`}>
+                      {tr.analyticsDesc}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* Range selector */}
+                    <div className={`flex gap-1 ${t.cardBgOpaque} border ${t.border} rounded-xl p-1`}>
+                      {rangeOpts.map(r => (
+                        <button type="button"
+                          key={r.key}
+                          onClick={() => setAnalyticsRange(r.key)}
+                          className={`px-3.5 py-2 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            analyticsRange === r.key
+                              ? `${t.accentBg} ${t.accentText}`
+                              : `${t.textMuted} hover:text-white`
+                          }`}
+                        >
+                          {r.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button type="button"
+                      onClick={() => {}}
+                      className={`flex items-center gap-2 px-4 py-2.5 border ${t.border} ${t.textMuted} hover:${t.text} rounded-xl text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer`}
+                    >
+                      <span className="material-symbols-outlined text-sm">download</span>
+                      {tr.analyticsExport}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ── KPI Cards ── */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+                  {[
+                    { label: tr.analyticsRevenue, value: `${formatCurrency(d.revenue)}`, sub: analyticsRange === 'today' ? 'vs $7,840 yesterday' : '+8.3% vs prior period', icon: 'payments', color: t.accent, trend: true },
+                    { label: tr.analyticsOrders, value: d.orders.toLocaleString(), sub: `${(d.orders / (analyticsRange === 'today' ? 1 : analyticsRange === 'week' ? 7 : 30)).toFixed(1)} orders/day avg`, icon: 'receipt_long', color: 'text-sky-400', trend: true },
+                    { label: tr.analyticsAvgCheck, value: `${formatCurrency(d.avgCheck)}`, sub: 'per cover incl. gratuity', icon: 'person', color: 'text-emerald-400', trend: false },
+                    { label: tr.analyticsCovers, value: d.covers.toLocaleString(), sub: `${(d.covers / (analyticsRange === 'today' ? 1 : analyticsRange === 'week' ? 7 : 30)).toFixed(0)} covers/day avg`, icon: 'groups', color: 'text-violet-400', trend: false },
+                  ].map(kpi => (
+                    <div key={kpi.label} className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-6 flex flex-col justify-between min-h-[130px] shadow-lg`}>
+                      <div className="flex justify-between items-start">
+                        <span className={`font-bold text-[9.5px] ${t.textMuted} uppercase tracking-widest leading-none`}>{kpi.label}</span>
+                        <span className={`material-symbols-outlined text-lg ${kpi.color}`}>{kpi.icon}</span>
+                      </div>
+                      <div className="mt-3">
+                        <div className={`font-serif text-[28px] font-bold ${kpi.color} leading-none tracking-tight`}>{kpi.value}</div>
+                        <div className={`text-[10px] font-semibold mt-1.5 flex items-center gap-1 ${kpi.trend ? 'text-emerald-400' : t.textMuted}`}>
+                          {kpi.trend && <span className="material-symbols-outlined text-xs">arrow_upward</span>}
+                          {kpi.sub}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* ── Revenue Trend ── */}
+                <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsRevTrend}</h3>
+                      <p className={`${t.textMuted} text-[10px] font-semibold mt-0.5`}>
+                        {formatCurrency(d.revenue)} total · {d.trendLabels.length} data points
+                      </p>
+                    </div>
+                    <span className={`material-symbols-outlined text-xl ${t.accent}`}>show_chart</span>
+                  </div>
+                  <div className="flex items-end gap-1.5 h-[100px]">
+                    {d.revTrend.map((val, i) => {
+                      const pct = (val / trendMax) * 100;
+                      const isLast = i === d.revTrend.length - 1;
+                      const isHigh = val === trendMax;
+                      return (
+                        <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+                          <div className="w-full relative flex items-end justify-center" style={{ height: '82px' }}>
+                            <div
+                              className={`w-full rounded-t-lg transition-all duration-700 ${isLast ? t.accentBg : isHigh ? `${t.accentBg} opacity-60` : 'bg-white/10 group-hover:bg-white/15'}`}
+                              style={{ height: `${Math.max(pct, 4)}%` }}
+                            />
+                          </div>
+                          {d.trendLabels.length <= 12 && (
+                            <span className={`text-[7.5px] ${t.textMutedLight} font-bold uppercase leading-none`}>{d.trendLabels[i]}</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* ── Orders by Type + Peak Hours ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                  {/* Orders by Type */}
+                  <div className={`lg:col-span-5 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsOrderTypes}</h3>
+                      <span className={`material-symbols-outlined text-xl text-violet-400`}>donut_large</span>
+                    </div>
+                    <div className="space-y-4">
+                      {[
+                        { label: tr.analyticsDineIn, pct: d.dineIn, color: 'bg-amber-400', textColor: t.accent },
+                        { label: tr.analyticsTakeaway, pct: d.takeaway, color: 'bg-sky-400', textColor: 'text-sky-400' },
+                        { label: tr.analyticsDelivery, pct: d.delivery, color: 'bg-violet-400', textColor: 'text-violet-400' },
+                      ].map(row => (
+                        <div key={row.label}>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${row.color}`} />
+                              <span className={`text-[11px] ${t.text} font-semibold`}>{row.label}</span>
+                            </div>
+                            <span className={`text-[11px] font-bold ${row.textColor}`}>{row.pct}%</span>
+                          </div>
+                          <div className={`w-full ${t.inputBg} rounded-full h-2`}>
+                            <div className={`${row.color} h-2 rounded-full transition-all duration-700`} style={{ width: `${row.pct}%` }} />
+                          </div>
+                          <div className={`text-[9px] ${t.textMuted} font-semibold mt-1`}>
+                            {Math.round(d.orders * row.pct / 100)} orders
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {/* Donut visual */}
+                    <div className="mt-6 pt-5 border-t border-white/5 flex items-center gap-6">
+                      <div className="relative w-[64px] h-[64px] flex-shrink-0">
+                        <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
+                          <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10"/>
+                          <circle cx="32" cy="32" r="24" fill="none" stroke="#ffc53d" strokeWidth="10"
+                            strokeDasharray={`${(d.dineIn / 100) * 150.8} 150.8`} strokeLinecap="butt"/>
+                          <circle cx="32" cy="32" r="24" fill="none" stroke="#38bdf8" strokeWidth="10"
+                            strokeDasharray={`${(d.takeaway / 100) * 150.8} 150.8`}
+                            strokeDashoffset={`-${(d.dineIn / 100) * 150.8}`} strokeLinecap="butt"/>
+                          <circle cx="32" cy="32" r="24" fill="none" stroke="#a78bfa" strokeWidth="10"
+                            strokeDasharray={`${(d.delivery / 100) * 150.8} 150.8`}
+                            strokeDashoffset={`-${((d.dineIn + d.takeaway) / 100) * 150.8}`} strokeLinecap="butt"/>
+                        </svg>
+                      </div>
+                      <div className="text-[10px] font-semibold space-y-1.5">
+                        <div className={`${t.textMuted}`}>Total orders this period</div>
+                        <div className={`font-serif text-2xl font-bold ${t.text}`}>{d.orders.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Peak Hours */}
+                  <div className={`lg:col-span-7 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsPeakHours}</h3>
+                        <p className={`${t.textMuted} text-[10px] font-semibold mt-0.5`}>Normalised order volume by hour of day</p>
+                      </div>
+                      <span className="material-symbols-outlined text-xl text-emerald-400">schedule</span>
+                    </div>
+                    <div className="flex items-end gap-1 h-[90px]">
+                      {d.peakHours.map((val, i) => {
+                        const pct = (val / peakMax) * 100;
+                        const hour = 11 + i;
+                        const label = hour <= 12 ? `${hour}a` : `${hour - 12}p`;
+                        const isLunch = i >= 1 && i <= 3;
+                        const isDinner = i >= 6 && i <= 8;
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
+                            <div className="w-full" style={{ height: '72px', display: 'flex', alignItems: 'flex-end' }}>
+                              <div
+                                className={`w-full rounded-t-md transition-all duration-700 ${
+                                  isLunch ? 'bg-amber-400/70' : isDinner ? `${t.accentBg} opacity-80` : 'bg-white/10 group-hover:bg-white/15'
+                                }`}
+                                style={{ height: `${Math.max(pct, 3)}%` }}
+                              />
+                            </div>
+                            <span className={`text-[7px] ${t.textMutedLight} font-bold uppercase`}>{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-6 text-[10px] font-semibold">
+                      <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400/70 inline-block"/><span className={t.textMuted}>Lunch rush</span></div>
+                      <div className="flex items-center gap-1.5"><span className={`w-2.5 h-2.5 rounded-sm ${t.accentBg} opacity-80 inline-block`}/><span className={t.textMuted}>Dinner service</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Top Menu Items ── */}
+                <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl overflow-hidden shadow-lg`}>
+                  <div className={`px-7 py-5 border-b ${t.border} flex justify-between items-center`}>
+                    <div>
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsTopItems}</h3>
+                      <p className={`${t.textMuted} text-[10px] font-semibold mt-0.5`}>Ranked by gross revenue · all categories</p>
+                    </div>
+                    <span className={`material-symbols-outlined text-xl ${t.accent}`}>restaurant_menu</span>
+                  </div>
+                  <div className="divide-y divide-white/[0.04]">
+                    {topItems.map((item, idx) => (
+                      <div key={item.name} className={`px-7 py-4 flex items-center gap-5 hover:bg-white/[0.015] transition-colors`}>
+                        <span className={`font-serif text-lg font-bold w-6 text-right flex-shrink-0 ${idx === 0 ? t.accent : t.textMuted}`}>
+                          {idx + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`${t.text} font-bold text-[12.5px] truncate`}>{item.name}</div>
+                          <div className={`${t.textMuted} text-[9.5px] font-semibold mt-0.5`}>{item.category} · {item.sold} sold</div>
+                          <div className={`w-full mt-2 ${t.inputBg} rounded-full h-1.5`}>
+                            <div
+                              className={`h-1.5 rounded-full transition-all duration-700 ${idx === 0 ? t.accentBg : 'bg-white/20'}`}
+                              style={{ width: `${(item.revenue / itemRevMax) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className={`font-serif font-bold text-sm flex-shrink-0 ${idx === 0 ? t.accent : t.text}`}>
+                          {formatCurrency(item.revenue)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* ── Staff + Payment Methods ── */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                  {/* Staff Performance */}
+                  <div className={`lg:col-span-8 ${t.cardBgOpaque} border ${t.border} rounded-2xl overflow-hidden shadow-lg`}>
+                    <div className={`px-7 py-5 border-b ${t.border} flex justify-between items-center`}>
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsStaffPerf}</h3>
+                      <span className="material-symbols-outlined text-xl text-emerald-400">badge</span>
+                    </div>
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className={`border-b ${t.border}`}>
+                          {['Staff Member', 'Orders', 'Revenue', 'Avg Rating', 'Covers'].map(h => (
+                            <th key={h} className={`px-5 py-3 text-[9px] ${t.textMuted} font-bold uppercase tracking-widest`}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/[0.04]">
+                        {staffData.map((s, i) => (
+                          <tr key={s.name} className="hover:bg-white/[0.015] transition-colors">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-black ${i === 0 ? `${t.accentBg} ${t.accentText}` : 'bg-white/5 text-white/50'}`}>
+                                  {s.name.split(' ').map(n => n[0]).join('')}
+                                </div>
+                                <div>
+                                  <div className={`${t.text} font-bold text-[11.5px]`}>{s.name}</div>
+                                  <div className={`${t.textMuted} text-[9.5px] font-semibold`}>{s.role}</div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className={`px-5 py-4 ${t.text} font-bold text-sm`}>{s.orders}</td>
+                            <td className={`px-5 py-4 font-bold text-sm ${t.accent}`}>{formatCurrency(s.revenue)}</td>
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-1.5">
+                                <span className="material-symbols-outlined text-amber-400 text-sm">star</span>
+                                <span className={`${t.text} font-bold text-sm`}>{s.rating.toFixed(1)}</span>
+                              </div>
+                            </td>
+                            <td className={`px-5 py-4 ${t.textMuted} font-semibold text-sm`}>
+                              {s.covers > 0 ? s.covers : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Payment Methods */}
+                  <div className={`lg:col-span-4 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsPayMethods}</h3>
+                      <span className="material-symbols-outlined text-xl text-sky-400">credit_card</span>
+                    </div>
+                    <div className="space-y-5">
+                      {payMethods.map(pm => (
+                        <div key={pm.label}>
+                          <div className="flex justify-between items-center mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-2 h-2 rounded-full ${pm.color}`} />
+                              <span className={`text-[11px] ${t.text} font-semibold`}>{pm.label}</span>
+                            </div>
+                            <span className={`text-[11px] font-bold ${pm.textColor}`}>{pm.pct}%</span>
+                          </div>
+                          <div className={`w-full ${t.inputBg} rounded-full h-2`}>
+                            <div className={`${pm.color} h-2 rounded-full transition-all duration-700`} style={{ width: `${pm.pct}%` }} />
+                          </div>
+                          <div className={`text-[9px] ${t.textMuted} font-semibold mt-1`}>{formatCurrency(pm.amount)}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className={`mt-6 pt-5 border-t ${t.border} space-y-3`}>
+                      {[
+                        { label: 'Avg transaction', val: formatCurrency(d.revenue / d.orders) },
+                        { label: 'Largest transaction', val: formatCurrency(482) },
+                        { label: 'Refunds issued', val: formatCurrency(124) },
+                      ].map(stat => (
+                        <div key={stat.label} className="flex justify-between items-center">
+                          <span className={`text-[10px] ${t.textMuted} font-semibold`}>{stat.label}</span>
+                          <span className={`text-[11px] ${t.text} font-bold`}>{stat.val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            );
+          })()}
+
           {/* Fallback Placeholder tab for other sections */}
-          {activeTab !== 'operations' && activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && (
+          {activeTab !== 'operations' && activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && activeTab !== 'analytics' && (
             <div className={`text-center py-36 select-none border border-dashed ${t.border} rounded-2xl ${t.inputBg}/30`}>
               <span className={`material-symbols-outlined text-5xl ${t.accent} opacity-40 motion-safe:animate-pulse font-light mb-4 block`}>construction</span>
               <h3 className={`font-serif text-xl ${t.text} mb-2 tracking-wide capitalize`}>{activeTab} Dashboard Panel</h3>
               <p className={`font-sans text-xs font-semibold max-w-sm mx-auto ${t.textMuted}`}>
                 Auditing tools and administrative controls for {activeTab} parameters are currently being synchronized.
               </p>
-              <button 
+              <button type="button" 
                 onClick={() => setActiveTab('operations')}
                 className={`mt-6 px-5 py-2.5 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer`}
               >
@@ -4686,7 +5180,7 @@ export default function DashboardPage() {
           <div className={`${t.cardBgOpaque} border w-[380px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
             <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
               <h3 className={`font-serif text-base ${t.accent} font-bold tracking-wide`}>Edit Shift</h3>
-              <button 
+              <button type="button" 
                 onClick={() => setEditingShift(null)}
                 className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
               >
@@ -4708,6 +5202,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Shift Time</label>
                 <div className="relative">
                   <select
+                    aria-label="Shift time"
                     value={rosterShifts[editingShift.employee]?.[editingShift.day] || 'OFF'}
                     onChange={(e) => {
                       const newTime = e.target.value;
@@ -4747,7 +5242,7 @@ export default function DashboardPage() {
             </div>
             
             <div className="pt-2">
-              <button 
+              <button type="button" 
                 onClick={() => setEditingShift(null)}
                 className={`w-full py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
               >
@@ -4763,7 +5258,7 @@ export default function DashboardPage() {
           <div className={`${t.cardBgOpaque} border w-[420px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up font-sans`}>
             <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
               <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Add New Employee</h3>
-              <button 
+              <button type="button" 
                 onClick={() => setShowAddEmployeeModal(false)}
                 className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
               >
@@ -4814,6 +5309,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Role</label>
                 <div className="relative">
                   <select
+                    aria-label="Employee role"
                     value={newEmployee.role}
                     onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
                     className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
@@ -4835,6 +5331,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Status</label>
                 <div className="relative">
                   <select
+                    aria-label="Employee status"
                     value={newEmployee.status}
                     onChange={(e) => setNewEmployee({...newEmployee, status: e.target.value})}
                     className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
@@ -4852,6 +5349,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Initial Rating</label>
                 <div className="relative">
                   <select
+                    aria-label="Initial rating"
                     value={newEmployee.performance}
                     onChange={(e) => setNewEmployee({...newEmployee, performance: parseFloat(e.target.value)})}
                     className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
@@ -4866,15 +5364,13 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex gap-4 pt-4">
-                <button 
-                  type="button"
+                <button type="button"
                   onClick={() => setShowAddEmployeeModal(false)}
                   className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit"
+                <button type="submit"
                   className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
                 >
                   Add Employee
@@ -4892,7 +5388,7 @@ export default function DashboardPage() {
               <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>
                 {editingMenuItem ? 'Edit Menu Item' : 'Add New Menu Item'}
               </h3>
-              <button 
+              <button type="button" 
                 onClick={() => {
                   setShowMenuAddEditModal(false);
                   setEditingMenuItem(null);
@@ -4922,6 +5418,7 @@ export default function DashboardPage() {
                 <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-1.5`}>Category</label>
                 <div className="relative">
                   <select
+                    aria-label="Menu category"
                     value={menuFormCategory}
                     onChange={(e) => setMenuFormCategory(e.target.value)}
                     className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none capitalize`}
@@ -5029,8 +5526,7 @@ export default function DashboardPage() {
                   </div>
                   
                   {menuFormImage && (
-                    <button 
-                      type="button"
+                    <button type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMenuFormImage('/images/wagyu_beef_tartare.png');
@@ -5063,9 +5559,8 @@ export default function DashboardPage() {
                   {['GF', 'Veg', 'Non-Veg', 'Seafood'].map(tag => {
                     const hasTag = menuFormTags.includes(tag);
                     return (
-                      <button
+                      <button type="button"
                         key={tag}
-                        type="button"
                         onClick={() => {
                           if (hasTag) {
                             setMenuFormTags(menuFormTags.filter(t => t !== tag));
@@ -5088,8 +5583,7 @@ export default function DashboardPage() {
 
               {/* Footer controls */}
               <div className="flex gap-4 pt-4">
-                <button 
-                  type="button"
+                <button type="button"
                   onClick={() => {
                     setShowMenuAddEditModal(false);
                     setEditingMenuItem(null);
@@ -5098,8 +5592,7 @@ export default function DashboardPage() {
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit"
+                <button type="submit"
                   className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
                 >
                   {editingMenuItem ? 'Save Changes' : 'Add Item'}
@@ -5118,7 +5611,7 @@ export default function DashboardPage() {
               <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>
                 Manage Menu Categories
               </h3>
-              <button 
+              <button type="button" 
                 onClick={() => {
                   setShowCategoryManagerModal(false);
                   setEditingCategory(null);
@@ -5151,8 +5644,7 @@ export default function DashboardPage() {
                 
                 <div className="flex gap-2">
                   {editingCategory && (
-                    <button 
-                      type="button"
+                    <button type="button"
                       onClick={() => {
                         setEditingCategory(null);
                         setCategoryFormName('');
@@ -5163,8 +5655,7 @@ export default function DashboardPage() {
                       Cancel
                     </button>
                   )}
-                  <button 
-                    type="submit"
+                  <button type="submit"
                     className={`flex-1 py-2.5 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} text-[10px] uppercase tracking-wider font-bold rounded-xl transition-all cursor-pointer text-center shadow-md`}
                   >
                     {editingCategory ? 'Save' : 'Add Category'}
@@ -5181,9 +5672,8 @@ export default function DashboardPage() {
                   ].map(iconName => {
                     const isSelected = categoryFormIcon === iconName;
                     return (
-                      <button
+                      <button type="button"
                         key={iconName}
-                        type="button"
                         onClick={() => setCategoryFormIcon(iconName)}
                         className={`w-8 h-8 rounded-lg flex items-center justify-center border transition-all cursor-pointer ${
                           isSelected 
@@ -5218,8 +5708,7 @@ export default function DashboardPage() {
                     </div>
                     
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
+                      <button type="button"
                         onClick={() => {
                           setEditingCategory(cat);
                           setCategoryFormName(cat.name);
@@ -5230,8 +5719,7 @@ export default function DashboardPage() {
                       >
                         <span className="material-symbols-outlined text-[13px]">edit</span>
                       </button>
-                      <button
-                        type="button"
+                      <button type="button"
                         onClick={() => handleDeleteCategory(cat.id)}
                         className={`w-7 h-7 rounded-md flex items-center justify-center bg-transparent border ${t.borderStrong} hover:border-red-500/20 text-[#A69984] hover:text-red-400 transition-colors cursor-pointer`}
                         title="Delete Category"
