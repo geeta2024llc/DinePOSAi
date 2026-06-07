@@ -40,13 +40,10 @@ interface Referral {
   name: string;
   email: string;
   phone: string;
-  bankName: string;
-  accountHolder: string;
-  accountNumber: string;
-  routingCode: string;
+  bank: { bankName: string; accountHolder: string; accountNumber: string; routingNumber: string; };
   code: string;
   status: 'ACTIVE' | 'SUSPENDED';
-  joined: string;
+  joinedDate: string;
   paidRewards: number;
   pendingRewards: number;
   invitedBusinesses: InvitedBusiness[];
@@ -134,13 +131,10 @@ export default function PartnersPage() {
           name: 'Eric Ripert',
           email: 'chef@lebernardin.com',
           phone: '+1 (212) 555-8821',
-          bankName: 'JPMorgan Chase',
-          accountHolder: 'Le Bernardin LLC',
-          accountNumber: '••••••••8291',
-          routingCode: '021000021',
+          bank: { bankName: 'JPMorgan Chase', accountHolder: 'Le Bernardin LLC', accountNumber: '••••••••8291', routingNumber: '021000021' },
           code: 'REF-ERIC-77',
           status: 'ACTIVE',
-          joined: '2024-03-12',
+          joinedDate: '2024-03-12',
           paidRewards: 300,
           pendingRewards: 150,
           invitedBusinesses: [
@@ -153,13 +147,10 @@ export default function PartnersPage() {
           name: 'Ana Ros',
           email: 'ana@hisafranko.com',
           phone: '+386 41 555 120',
-          bankName: 'Nova Ljubljanska Banka',
-          accountHolder: 'Hisa Franko d.o.o.',
-          accountNumber: '••••••••9012',
-          routingCode: 'LJUBSI2X',
+          bank: { bankName: 'Nova Ljubljanska Banka', accountHolder: 'Hisa Franko d.o.o.', accountNumber: '••••••••9012', routingNumber: 'LJUBSI2X' },
           code: 'REF-ANA-88',
           status: 'ACTIVE',
-          joined: '2025-09-02',
+          joinedDate: '2025-09-02',
           paidRewards: 0,
           pendingRewards: 100,
           invitedBusinesses: [
@@ -171,13 +162,10 @@ export default function PartnersPage() {
           name: 'Pierre Gagnaire',
           email: 'pierre@lumiere.com',
           phone: '+33 1 44 39 54 54',
-          bankName: 'Société Générale',
-          accountHolder: 'Gagnaire SA',
-          accountNumber: '••••••••4567',
-          routingCode: 'SOGEFRPPXXX',
+          bank: { bankName: 'Société Générale', accountHolder: 'Gagnaire SA', accountNumber: '••••••••4567', routingNumber: 'SOGEFRPPXXX' },
           code: 'REF-PIERRE-99',
           status: 'ACTIVE',
-          joined: '2023-11-05',
+          joinedDate: '2023-11-05',
           paidRewards: 400,
           pendingRewards: 0,
           invitedBusinesses: [
@@ -240,13 +228,10 @@ export default function PartnersPage() {
       name: regName,
       email: regEmail,
       phone: regPhone,
-      bankName: regBankName,
-      accountHolder: regAccountHolder,
-      accountNumber: regAccountNumber.replace(/.(?=.{4})/g, '•'), // mask for security
-      routingCode: regRoutingCode,
+      bank: { bankName: regBankName, accountHolder: regAccountHolder, accountNumber: regAccountNumber.replace(/.(?=.{4})/g, '•'), routingNumber: regRoutingCode },
       code: referralCode,
       status: 'ACTIVE',
-      joined: new Date().toISOString().split('T')[0],
+      joinedDate: new Date().toISOString().split('T')[0],
       paidRewards: 0,
       pendingRewards: 0,
       invitedBusinesses: []
@@ -274,10 +259,10 @@ export default function PartnersPage() {
   // Open Edit Bank details
   const handleStartEditBank = () => {
     if (!currentUser) return;
-    setEditBankName(currentUser.bankName);
-    setEditAccountHolder(currentUser.accountHolder);
-    setEditAccountNumber(currentUser.accountNumber);
-    setEditRoutingCode(currentUser.routingCode);
+    setEditBankName(currentUser.bank.bankName);
+    setEditAccountHolder(currentUser.bank.accountHolder);
+    setEditAccountNumber(currentUser.bank.accountNumber);
+    setEditRoutingCode(currentUser.bank.routingNumber);
     setIsEditingBank(true);
   };
 
@@ -293,10 +278,7 @@ export default function PartnersPage() {
 
     const updated = {
       ...currentUser,
-      bankName: editBankName,
-      accountHolder: editAccountHolder,
-      accountNumber: newNumber,
-      routingCode: editRoutingCode
+      bank: { bankName: editBankName, accountHolder: editAccountHolder, accountNumber: newNumber, routingNumber: editRoutingCode }
     };
 
     const updatedList = referrals.map(r => r.id === currentUser.id ? updated : r);
@@ -604,7 +586,7 @@ export default function PartnersPage() {
                   Partner Dashboard
                 </h1>
                 <p className="font-sans text-xs text-[#A69984]/65 leading-relaxed font-semibold mt-2">
-                  Ambassador Account: <span className="text-white">{currentUser.name}</span> • Joined {new Date(currentUser.joined).toLocaleDateString()}
+                  Ambassador Account: <span className="text-white">{currentUser.name}</span> • Joined {new Date(currentUser.joinedDate).toLocaleDateString()}
                 </p>
               </div>
 
@@ -618,7 +600,7 @@ export default function PartnersPage() {
             </div>
 
             {/* Bank Details Missing Warning Banner */}
-            {(!currentUser.bankName || !currentUser.accountNumber || !currentUser.accountHolder) && (
+            {(!currentUser.bank.bankName || !currentUser.bank.accountNumber || !currentUser.bank.accountHolder) && (
               <div className="flex items-start gap-4 bg-amber-500/8 border border-amber-500/25 rounded-2xl p-5">
                 <span className="material-symbols-outlined text-amber-400 text-2xl flex-shrink-0 mt-0.5">account_balance</span>
                 <div className="flex-1">
@@ -852,25 +834,25 @@ export default function PartnersPage() {
                       <div className="p-4 bg-[#0e0e0d]/50 border border-white/5 rounded-xl space-y-3 font-semibold">
                         <div>
                           <span className="text-[9.5px] text-[#A69984]/50 block uppercase font-bold">Bank Name</span>
-                          <span className="text-white text-sm mt-0.5 block">{currentUser.bankName}</span>
+                          <span className="text-white text-sm mt-0.5 block">{currentUser.bank.bankName}</span>
                         </div>
                         <div>
                           <span className="text-[9.5px] text-[#A69984]/50 block uppercase font-bold">Account Holder</span>
-                          <span className="text-white text-sm mt-0.5 block">{currentUser.accountHolder}</span>
+                          <span className="text-white text-sm mt-0.5 block">{currentUser.bank.accountHolder}</span>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-[9.5px] text-[#A69984]/50 block uppercase font-bold">Account Number</span>
-                            <span className="text-white font-mono mt-0.5 block">{currentUser.accountNumber}</span>
+                            <span className="text-white font-mono mt-0.5 block">{currentUser.bank.accountNumber}</span>
                           </div>
                           <div>
                             <span className="text-[9.5px] text-[#A69984]/50 block uppercase font-bold">Routing Code</span>
-                            <span className="text-white font-mono mt-0.5 block">{currentUser.routingCode}</span>
+                            <span className="text-white font-mono mt-0.5 block">{currentUser.bank.routingNumber}</span>
                           </div>
                         </div>
                       </div>
 
-                      {currentUser.bankName && currentUser.accountHolder ? (
+                      {currentUser.bank.bankName && currentUser.bank.accountHolder ? (
                         <div className="p-4 bg-[#ffc53d]/5 border border-[#ffc53d]/10 rounded-xl flex gap-3 items-start font-semibold text-[10.5px]">
                           <span className="material-symbols-outlined text-[#ffc53d] text-base shrink-0 mt-0.5">verified_user</span>
                           <p className="text-[#A69984]/70 leading-normal">

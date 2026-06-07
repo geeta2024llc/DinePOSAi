@@ -334,6 +334,21 @@ export default function CheckoutPage() {
       triggerToast('Tendered amount is less than total due!', 'info');
       return;
     }
+    if (paymentMethod === 'card') {
+      const rawNumber = cardNumber.replace(/\s/g, '');
+      if (!/^\d{16}$/.test(rawNumber)) {
+        triggerToast('Enter a valid 16-digit card number.', 'info'); return;
+      }
+      if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+        triggerToast('Enter expiry in MM/YY format.', 'info'); return;
+      }
+      if (!/^\d{3,4}$/.test(cvc)) {
+        triggerToast('Enter a valid CVC (3–4 digits).', 'info'); return;
+      }
+      if (!cardName.trim()) {
+        triggerToast('Enter the name on the card.', 'info'); return;
+      }
+    }
     setIsProcessing(true);
     setProcessingStep(1);
     

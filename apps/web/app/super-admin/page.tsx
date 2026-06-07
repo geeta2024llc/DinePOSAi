@@ -290,6 +290,13 @@ export default function SuperAdminPage() {
     backupInterval: 'daily',
     backupRetention: 10
   });
+  useEffect(() => {
+    const stored = localStorage.getItem('dinepos_global_features');
+    if (stored) setGlobalFeatures(JSON.parse(stored));
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('dinepos_global_features', JSON.stringify(globalFeatures));
+  }, [globalFeatures]);
 
   // Referral ambassador state
   interface ReferralBusiness {
@@ -923,6 +930,10 @@ export default function SuperAdminPage() {
     if (!payoutTarget || !payoutAmount) return;
     const amount = parseFloat(payoutAmount);
     if (isNaN(amount) || amount <= 0) { triggerToast('Invalid payout amount.', 'info'); return; }
+    if (amount > payoutTarget.pendingRewards) {
+      triggerToast(`Amount exceeds pending balance of $${payoutTarget.pendingRewards.toFixed(2)}.`, 'info');
+      return;
+    }
 
     const updated = ambassadors.map(a => a.id === payoutTarget.id
       ? { ...a, pendingRewards: Math.max(0, a.pendingRewards - amount), paidRewards: a.paidRewards + amount }
@@ -4373,7 +4384,7 @@ export default function SuperAdminPage() {
                                   Investigate
                                 </button>
                               )}
-                              <button type="button"
+                              <button type="submit"
                                 className="flex-grow py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center shadow-md"
                               >
                                 Send Response & Resolve

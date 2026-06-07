@@ -2,7 +2,10 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole, ApiResponse } from '@dineposai/shared-types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secure-jwt-secret-key-12345';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Server will not start.');
+}
 
 export interface AuthenticatedRequest extends Request {
   user?: {
@@ -20,7 +23,7 @@ export const requireAuth = (
   next: NextFunction
 ) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
@@ -37,14 +40,14 @@ export const requireAuth = (
       role: UserRole;
       email: string;
     };
-    
+
     req.user = decoded;
     next();
   } catch (error: any) {
     return res.status(401).json({
       success: false,
-      error: error.name === 'TokenExpiredError' 
-        ? 'Session expired. Please re-authenticate.' 
+      error: error.name === 'TokenExpiredError'
+        ? 'Session expired. Please re-authenticate.'
         : 'Invalid token. Session terminated.'
     });
   }

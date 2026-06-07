@@ -1267,7 +1267,7 @@ export default function DashboardPage() {
     setTaxType(newTaxType);
     localStorage.setItem('dinepos_tax_type', newTaxType);
     if (typeof window !== 'undefined') {
-      window.dispatchEvent(new Event('storage'));
+      window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_tax_type', newValue: newTaxType }));
     }
     triggerToast(newTaxType === 'pre-tax' ? 'Tax mode changed to Pre-tax (Exclusive).' : 'Tax mode changed to Post-tax (Inclusive).', 'success');
   };
@@ -1534,16 +1534,17 @@ export default function DashboardPage() {
 
   return (
     <div className={`flex w-full min-h-screen ${t.bg} ${t.text} font-sans antialiased overflow-x-hidden select-none`}>
-      {/* Inject custom theme CSS variables dynamically */}
-      <style dangerouslySetInnerHTML={{ __html: `
-        :root {
-          --custom-bg: ${customBg};
-          --custom-card-bg: ${customCardBg};
-          --custom-accent: ${customAccent};
-          --custom-text: ${customText};
-          --custom-text-muted: ${customTextMuted};
-        }
-      `}} />
+      {/* Inject custom theme CSS variables dynamically — values are sanitized to hex only */}
+      <style dangerouslySetInnerHTML={{ __html: (() => {
+        const safeHex = (v: string) => /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : '#000000';
+        return `:root {
+          --custom-bg: ${safeHex(customBg)};
+          --custom-card-bg: ${safeHex(customCardBg)};
+          --custom-accent: ${safeHex(customAccent)};
+          --custom-text: ${safeHex(customText)};
+          --custom-text-muted: ${safeHex(customTextMuted)};
+        }`;
+      })() }} />
       
       {/* LEFT SIDEBAR PANEL (ADMIN CONSOLE CONTEXT) */}
       <aside className={`w-[280px] ${t.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20`}>

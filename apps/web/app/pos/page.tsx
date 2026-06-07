@@ -117,16 +117,14 @@ export default function PosPage() {
     }, 3000);
   };
 
-  // Find active selected ticket
-  const selectedTicket = tickets.find(t => t.id === selectedTicketId) || tickets[0];
+  // Find active selected ticket — may be undefined when all tickets are paid
+  const selectedTicket = tickets.find(t => t.id === selectedTicketId) ?? tickets[0];
 
-  // Bill calculations
-  const subtotal = selectedTicket.items.reduce((acc, item) => acc + item.price, 0);
-  const tax = taxType === 'pre-tax' 
-    ? subtotal * selectedTicket.taxRate 
-    : subtotal - (subtotal / (1 + selectedTicket.taxRate));
-  const gratuity = subtotal * selectedTicket.gratuityRate;
-  const grandTotal = taxType === 'pre-tax' ? subtotal + tax + gratuity : subtotal + gratuity;
+  // Bill calculations — only computed when a ticket is present
+  const subtotal    = selectedTicket ? selectedTicket.items.reduce((acc, item) => acc + item.price, 0) : 0;
+  const tax         = selectedTicket ? (taxType === 'pre-tax' ? subtotal * selectedTicket.taxRate : subtotal - (subtotal / (1 + selectedTicket.taxRate))) : 0;
+  const gratuity    = selectedTicket ? subtotal * selectedTicket.gratuityRate : 0;
+  const grandTotal  = selectedTicket ? (taxType === 'pre-tax' ? subtotal + tax + gratuity : subtotal + gratuity) : 0;
 
   // Process transaction logic
   const handleProcessPayment = () => {
@@ -135,15 +133,13 @@ export default function PosPage() {
     
     setTimeout(() => {
       setIsProcessing(false);
-      // Remove paid ticket from active list
-      setTickets(prev => prev.filter(t => t.id !== selectedTicket.id));
       triggerToast(`Payment validated! ${selectedTicket.tableNumber} ticket closed.`);
-      
-      // Auto select next ticket if list not empty
-      const remaining = tickets.filter(t => t.id !== selectedTicket.id);
-      if (remaining.length > 0) {
-        setSelectedTicketId(remaining[0].id);
-      }
+      // Remove paid ticket and auto-select next using latest state (avoids stale closure)
+      setTickets(prev => {
+        const remaining = prev.filter(t => t.id !== selectedTicket.id);
+        if (remaining.length > 0) setSelectedTicketId(remaining[0].id);
+        return remaining;
+      });
     }, 2000);
   };
 

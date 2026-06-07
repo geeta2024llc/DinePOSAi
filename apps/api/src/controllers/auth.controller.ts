@@ -1,13 +1,32 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { supabase } from '../utils/supabase.js';
 import { ApiResponse, UserRole } from '@dineposai/shared-types';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secure-jwt-secret-key-12345';
-const ACCESS_TOKEN_EXPIRY = '30m'; // 30 minutes
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Server will not start.');
+}
+
+const ACCESS_TOKEN_EXPIRY = '30m';
 const REFRESH_TOKEN_EXPIRY = 7 * 24 * 60 * 60; // 7 days in seconds
+
+// Country → timezone / currency defaults
+const COUNTRY_DEFAULTS: Record<string, { timezone: string; currency: string }> = {
+  'Japan':          { timezone: 'Asia/Tokyo',       currency: 'JPY' },
+  'United States':  { timezone: 'America/New_York',  currency: 'USD' },
+  'United Kingdom': { timezone: 'Europe/London',     currency: 'GBP' },
+  'France':         { timezone: 'Europe/Paris',      currency: 'EUR' },
+  'Germany':        { timezone: 'Europe/Berlin',     currency: 'EUR' },
+  'Australia':      { timezone: 'Australia/Sydney',  currency: 'AUD' },
+  'Canada':         { timezone: 'America/Toronto',   currency: 'CAD' },
+  'Singapore':      { timezone: 'Asia/Singapore',    currency: 'SGD' },
+  'South Korea':    { timezone: 'Asia/Seoul',        currency: 'KRW' },
+  'China':          { timezone: 'Asia/Shanghai',     currency: 'CNY' },
+};
 
 // Input Validation Schemas
 export const signupSchema = z.object({
@@ -33,17 +52,21 @@ const generateAccessToken = (user: { id: string; tenant_id: string; role: string
   );
 };
 
+// Helper: hash a token before persisting
+const hashToken = (token: string) =>
+  crypto.createHash('sha256').update(token).digest('hex');
+
 // 1. SIGNUP CONTROLLER (Tenant Creator)
 export const signup = async (req: Request, res: Response<ApiResponse>) => {
   const { businessName, name, email, password, country } = req.body;
 
   try {
-    // Check if email already exists
+    // Check if email already exists (use maybeSingle to avoid 406 on no-row)
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
       .eq('email', email)
-      .single();
+      .maybeSingle();
 
     if (existingUser) {
       return res.status(400).json({
@@ -52,20 +75,24 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
       });
     }
 
-    // Step A: Hash Password
+    // Hash Password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Step B: Create Tenant Record
+    // Resolve timezone and currency from provided country
+    const resolvedCountry = country || 'Japan';
+    const { timezone, currency } = COUNTRY_DEFAULTS[resolvedCountry] ?? { timezone: 'UTC', currency: 'USD' };
+
+    // Create Tenant Record
     const trialEnds = new Date();
-    trialEnds.setDate(trialEnds.getDate() + 14); // 14-day trial
+    trialEnds.setDate(trialEnds.getDate() + 14);
 
     const { data: tenant, error: tenantErr } = await supabase
       .from('tenants')
       .insert({
         name: businessName,
-        country: country || 'Japan',
-        timezone: 'Asia/Tokyo',
-        currency: 'JPY',
+        country: resolvedCountry,
+        timezone,
+        currency,
         tax_type: 'NONE',
         tax_rate: 0.00,
         plan: 'TRIAL',
@@ -78,11 +105,11 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
     if (tenantErr || !tenant) {
       return res.status(500).json({
         success: false,
-        error: `Tenant provisioning failed: ${tenantErr?.message}`
+        error: 'Tenant provisioning failed. Please try again.'
       });
     }
 
-    // Step C: Create Admin User (Role: MANAGER)
+    // Create Admin User (Role: MANAGER)
     const { data: user, error: userErr } = await supabase
       .from('users')
       .insert({
@@ -97,14 +124,12 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
       .single();
 
     if (userErr || !user) {
-      // In a real production system we should rollback tenant creation, but this is a sample flow
       return res.status(500).json({
         success: false,
-        error: `User provisioning failed: ${userErr?.message}`
+        error: 'User provisioning failed. Please try again.'
       });
     }
 
-    // Success response
     res.status(201).json({
       success: true,
       data: {
@@ -117,7 +142,7 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: error.message || 'Internal registration error.'
+      error: 'Internal registration error.'
     });
   }
 };
@@ -127,7 +152,7 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
   const { email, password, deviceId } = req.body;
 
   try {
-    // Step A: Find user by email
+    // Find user by email
     const { data: user, error } = await supabase
       .from('users')
       .select('*, tenants!inner(*)')
@@ -141,24 +166,7 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
       });
     }
 
-    // Check if user is active
-    if (!user.is_active) {
-      return res.status(403).json({
-        success: false,
-        error: 'Your account is suspended. Please contact your restaurant manager.'
-      });
-    }
-
-    // Check if tenant is active
-    const tenant = user.tenants;
-    if (tenant.status !== 'ACTIVE') {
-      return res.status(403).json({
-        success: false,
-        error: `Restaurant workspace is ${tenant.status.toLowerCase()}. Please contact system support.`
-      });
-    }
-
-    // Step B: Verify Password
+    // Verify password FIRST — before revealing any account-state information
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       return res.status(401).json({
@@ -167,22 +175,32 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
       });
     }
 
-    // Step C: Single active session enforcement
-    // Delete any old session for this user to enforce single session limit
-    await supabase
-      .from('sessions')
-      .delete()
-      .eq('user_id', user.id);
+    // Now safe to check account and tenant status
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        error: 'Your account is suspended. Please contact your restaurant manager.'
+      });
+    }
+
+    const tenant = user.tenants;
+    if (!tenant || tenant.status !== 'ACTIVE') {
+      return res.status(403).json({
+        success: false,
+        error: 'Restaurant workspace is unavailable. Please contact system support.'
+      });
+    }
+
+    // Delete any existing sessions for this user (single-session enforcement)
+    await supabase.from('sessions').delete().eq('user_id', user.id);
 
     // Generate tokens
     const accessToken = generateAccessToken(user);
-    const refreshToken = jwt.sign(
-      { id: user.id },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
 
-    // Save session in database
+    // Store a SHA-256 hash of the refresh token — raw token is never persisted
+    const refreshTokenHash = hashToken(refreshToken);
+
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
@@ -192,7 +210,7 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
         user_id: user.id,
         tenant_id: user.tenant_id,
         device_id: deviceId,
-        refresh_token: refreshToken,
+        refresh_token: refreshTokenHash,
         ip_address: req.ip,
         user_agent: req.headers['user-agent'] || null,
         expires_at: expiresAt.toISOString(),
@@ -201,17 +219,14 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
     if (sessionErr) {
       return res.status(500).json({
         success: false,
-        error: `Session setup failed: ${sessionErr.message}`
+        error: 'Session setup failed. Please try again.'
       });
     }
 
-    // Update last login
-    await supabase
-      .from('users')
-      .update({ last_login: new Date().toISOString() })
-      .eq('id', user.id);
+    // Update last login timestamp
+    await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', user.id);
 
-    // Set refresh token in httpOnly cookie
+    // Set refresh token in httpOnly cookie (raw token, not the hash)
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -219,7 +234,6 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
     });
 
-    // Return access token
     res.json({
       success: true,
       data: {
@@ -243,7 +257,7 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
   } catch (error: any) {
     res.status(500).json({
       success: false,
-      error: error.message || 'Internal login error.'
+      error: 'Internal login error.'
     });
   }
 };
