@@ -36,6 +36,14 @@ interface DisplayCartItem {
   details?: string[];
 }
 
+const CHECKOUT_PROMOS: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
+  'DINE10':  { type: 'percent', value: 10, label: '10% Off' },
+  'DINE20':  { type: 'percent', value: 20, label: '20% Off' },
+  'VIP50':   { type: 'fixed',   value: 50, label: '$50 Off (VIP)' },
+  'HAPPY15': { type: 'percent', value: 15, label: '15% Happy Hour' },
+  'CHEF25':  { type: 'percent', value: 25, label: "25% Chef's Special" },
+};
+
 const itemModifiersConfig: { [itemId: string]: { title: string; options: { name: string; price?: number }[]; type: 'single' | 'multiple' }[] } = {
   'spec-1': [
     { title: 'Steak Doneness', type: 'single', options: [{ name: 'Rare' }, { name: 'Medium Rare' }, { name: 'Medium' }, { name: 'Well Done' }] },
@@ -102,6 +110,12 @@ export default function CheckoutPage() {
   });
 
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
+
+  // Promo code / discount
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: 'percent' | 'fixed'; value: number; label: string } | null>(null);
+  const [promoError, setPromoError] = useState('');
+
   const [exclusionsConfig, setExclusionsConfig] = useState({
     maxPrice: 40,
     excludedTags: ['Seafood'],
@@ -248,15 +262,32 @@ export default function CheckoutPage() {
 
   // Calculations
   const subtotal = getDisplayItems().reduce((acc, item) => acc + item.price, 0);
-  const taxRate = 0.08875; // 8.875% tax matching mockup
-  const tax = taxType === 'pre-tax' 
-    ? subtotal * taxRate 
+  const taxRate = 0.08875;
+  const tax = taxType === 'pre-tax'
+    ? subtotal * taxRate
     : subtotal - (subtotal / (1 + taxRate));
-  const autoGratuityRate = 0.20; // 20% auto gratuity matching mockup
+  const autoGratuityRate = 0.20;
   const autoGratuity = subtotal * autoGratuityRate;
-  const total = taxType === 'pre-tax' 
-    ? subtotal + tax + autoGratuity 
-    : subtotal + autoGratuity;
+  const promoDiscountAmount = appliedPromo
+    ? appliedPromo.type === 'percent'
+      ? subtotal * (appliedPromo.value / 100)
+      : Math.min(appliedPromo.value, subtotal)
+    : 0;
+  const total = taxType === 'pre-tax'
+    ? Math.max(0, subtotal + tax + autoGratuity - promoDiscountAmount)
+    : Math.max(0, subtotal + autoGratuity - promoDiscountAmount);
+
+  const handleApplyPromo = () => {
+    const code = promoInput.toUpperCase().trim();
+    const promo = CHECKOUT_PROMOS[code];
+    if (!promo) {
+      setPromoError('Invalid code. Try: DINE10, VIP50, HAPPY15');
+      return;
+    }
+    setAppliedPromo({ code, ...promo });
+    setPromoError('');
+    triggerToast(`Promo "${code}" applied — ${promo.label}`, 'success');
+  };
 
   // Dynamic guest totals calculation for Split By Item
   const guestTotals = useMemo(() => {
@@ -479,15 +510,76 @@ export default function CheckoutPage() {
                     <span>Auto-Gratuity (20%)</span>
                     <span className="text-white/80 font-bold font-mono">${autoGratuity.toFixed(2)}</span>
                   </div>
+                  {promoDiscountAmount > 0 && appliedPromo && (
+                    <div className="flex justify-between items-center text-emerald-400">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-[11px]">sell</span>
+                        {appliedPromo.code} ({appliedPromo.label})
+                      </span>
+                      <span className="font-bold font-mono">−${promoDiscountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
                 </div>
 
+                {/* Promo code input */}
+                {!appliedPromo ? (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoInput}
+                        onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
+                        placeholder="PROMO CODE"
+                        className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-[10px] text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors font-mono tracking-widest"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyPromo}
+                        className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#ffe2ab]/30 text-[#ffe2ab] rounded-xl font-bold text-[9px] uppercase tracking-wider cursor-pointer transition-all"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-rose-400 text-[9px] font-bold pl-1">{promoError}</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      {Object.keys(CHECKOUT_PROMOS).slice(0, 4).map(code => (
+                        <button
+                          key={code}
+                          type="button"
+                          onClick={() => { setPromoInput(code); setPromoError(''); }}
+                          className="px-2 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/20 rounded-md text-[8.5px] font-bold font-mono tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all"
+                        >
+                          {code}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2.5 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm text-emerald-400">sell</span>
+                      <span className="text-emerald-400 font-bold text-[9.5px] uppercase tracking-wider">{appliedPromo.code} — {appliedPromo.label}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => { setAppliedPromo(null); setPromoInput(''); }}
+                      className="text-emerald-400/50 hover:text-rose-400 cursor-pointer transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Dotted split */}
-                <div className="border-t border-dashed border-white/5 pt-4"></div>
+                <div className="border-t border-dashed border-white/5 pt-2"></div>
 
                 {/* Total Due */}
                 <div className="flex justify-between items-baseline select-none">
                   <span className="text-xs text-[#A69984] font-bold uppercase tracking-wider">TOTAL DUE</span>
-                  <span className="text-[34px] font-bold text-[#ffe2ab] font-serif tracking-wider">
+                  <span className="text-[30px] font-bold text-[#ffe2ab] font-serif tracking-wider">
                     ${total.toFixed(2)}
                   </span>
                 </div>
@@ -819,12 +911,13 @@ export default function CheckoutPage() {
                       >
                         <span className="material-symbols-outlined text-sm font-bold">remove</span>
                       </button>
-                      <input 
+                      <input
                         type="range"
                         min="2"
                         max="10"
                         value={guestCount}
                         onChange={(e) => setGuestCount(parseInt(e.target.value, 10))}
+                        aria-label="Number of guests"
                         className="flex-grow accent-[#ffe2ab]"
                       />
                       <button 
