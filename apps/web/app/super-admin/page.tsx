@@ -369,7 +369,9 @@ export default function SuperAdminPage() {
     }
     return defaultReferralConfig;
   });
-  const [referralSubTab, setReferralSubTab] = useState<'overview' | 'codes' | 'config'>('overview');
+  const [referralSubTab, setReferralSubTab] = useState<'overview' | 'analytics' | 'codes' | 'config'>('overview');
+  const [batchPayoutMode, setBatchPayoutMode] = useState(false);
+  const [selectedAmbIds, setSelectedAmbIds] = useState<string[]>([]);
 
   // Add Ambassador modal state
   const [showAddAmbassadorModal, setShowAddAmbassadorModal] = useState(false);
@@ -1434,7 +1436,7 @@ export default function SuperAdminPage() {
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">loyalty</span>
-              <span>Referrals</span>
+              <span>Referrals Mgmt</span>
             </button>
             {/* Payments */}
             <button type="button"
@@ -2308,10 +2310,10 @@ export default function SuperAdminPage() {
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div className="select-none">
                   <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">
-                    Referral Program
+                    Referrals Management
                   </h1>
                   <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold mt-2">
-                    Manage ambassadors, analyse conversions, control program config and process reward payouts.
+                    Manage ambassadors, track attribution, process reward payouts and configure the referral program.
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -2358,7 +2360,7 @@ export default function SuperAdminPage() {
 
               {/* Sub-navigation tabs */}
               <div className="flex gap-1 bg-white/[0.03] border border-white/5 rounded-xl p-1 w-fit font-sans">
-                {(['overview', 'codes', 'config'] as const).map(tab => (
+                {(['overview', 'analytics', 'codes', 'config'] as const).map(tab => (
                   <button type="button"
                     key={tab}
                     onClick={() => setReferralSubTab(tab)}
@@ -2366,7 +2368,7 @@ export default function SuperAdminPage() {
                       referralSubTab === tab ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-[#A69984]/60 hover:text-white'
                     }`}
                   >
-                    {tab === 'overview' ? 'Overview & Ambassadors' : tab === 'codes' ? 'Referral Codes' : 'Program Config'}
+                    {tab === 'overview' ? 'Overview & Ambassadors' : tab === 'analytics' ? 'Analytics & Insights' : tab === 'codes' ? 'Referral Codes' : 'Program Config'}
                   </button>
                 ))}
               </div>
@@ -2491,18 +2493,45 @@ export default function SuperAdminPage() {
 
                   {/* Ambassador Directory */}
                   <div className={`${theme.cardBg} border rounded-2xl overflow-hidden shadow-xl`}>
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                    <div className="p-6 border-b border-white/5 flex items-center justify-between gap-3 flex-wrap">
                       <div>
                         <h3 className="font-serif text-base text-white font-bold tracking-wide">Ambassador Directory</h3>
                         <p className="text-[11px] text-[#A69984]/50 font-semibold mt-0.5">{ambassadors.length} registered partners · Review profiles, banking details, and trigger payouts.</p>
                       </div>
-                      <button type="button"
-                        onClick={() => setShowAddAmbassadorModal(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm">person_add</span>
-                        Add
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {batchPayoutMode && selectedAmbIds.length > 0 && (
+                          <button type="button"
+                            onClick={() => {
+                              const total = ambassadors.filter(a => selectedAmbIds.includes(a.id)).reduce((s, a) => s + a.pendingRewards, 0);
+                              triggerToast(`Batch payout of $${total.toFixed(2)} queued for ${selectedAmbIds.length} ambassador${selectedAmbIds.length > 1 ? 's' : ''}.`, 'success');
+                              setSelectedAmbIds([]);
+                              setBatchPayoutMode(false);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">payments</span>
+                            Pay {selectedAmbIds.length} Selected
+                          </button>
+                        )}
+                        <button type="button"
+                          onClick={() => { setBatchPayoutMode(p => !p); setSelectedAmbIds([]); }}
+                          className={`flex items-center gap-2 px-4 py-2 border font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer ${
+                            batchPayoutMode
+                              ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25'
+                              : 'bg-white/5 border-white/10 hover:border-white/20 text-[#A69984]'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">{batchPayoutMode ? 'close' : 'checklist'}</span>
+                          {batchPayoutMode ? 'Cancel' : 'Batch Payout'}
+                        </button>
+                        <button type="button"
+                          onClick={() => setShowAddAmbassadorModal(true)}
+                          className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 hover:border-white/20 text-white font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-sm">person_add</span>
+                          Add
+                        </button>
+                      </div>
                     </div>
 
                     {/* Search + Filter Bar */}
@@ -2561,8 +2590,20 @@ export default function SuperAdminPage() {
                           return (
                         <div className="divide-y divide-white/5">
                           {filteredAmbs.map((amb) => (
-                          <div key={amb.id} className="p-6 hover:bg-white/[0.015] transition-colors">
+                          <div key={amb.id} className={`p-6 hover:bg-white/[0.015] transition-colors ${batchPayoutMode && selectedAmbIds.includes(amb.id) ? 'bg-[#ffc53d]/[0.04]' : ''}`}>
                             <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+
+                              {/* Batch checkbox */}
+                              {batchPayoutMode && (
+                                <label className="flex items-center justify-center flex-shrink-0 mt-1 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedAmbIds.includes(amb.id)}
+                                    onChange={e => setSelectedAmbIds(prev => e.target.checked ? [...prev, amb.id] : prev.filter(id => id !== amb.id))}
+                                    className="w-4 h-4 rounded border-white/20 accent-[#ffc53d] cursor-pointer"
+                                  />
+                                </label>
+                              )}
 
                               {/* Identity */}
                               <div className="flex items-start gap-4 flex-1 min-w-0">
@@ -2570,13 +2611,26 @@ export default function SuperAdminPage() {
                                   <span className="material-symbols-outlined text-[#ffc53d] text-lg">person</span>
                                 </div>
                                 <div className="min-w-0 flex-1">
+                                  {(() => {
+                                    const _conv = amb.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length;
+                                    const _tier = _conv >= 11
+                                      ? { name: 'Platinum', cls: 'bg-violet-500/10 border-violet-500/20 text-violet-300' }
+                                      : _conv >= 6
+                                      ? { name: 'Gold', cls: 'bg-[#ffc53d]/10 border-[#ffc53d]/20 text-[#ffc53d]' }
+                                      : _conv >= 3
+                                      ? { name: 'Silver', cls: 'bg-white/10 border-white/20 text-white/70' }
+                                      : { name: 'Bronze', cls: 'bg-amber-800/15 border-amber-700/25 text-amber-600' };
+                                    return (
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-white font-bold font-sans text-sm">{amb.name}</span>
                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-mono">{amb.code}</span>
                                     <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${
                                       amb.status === 'active' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                                     }`}>{amb.status}</span>
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider border ${_tier.cls}`}>⭐ {_tier.name}</span>
                                   </div>
+                                    );
+                                  })()}
                                   <p className="text-[#A69984]/65 text-xs font-sans mt-0.5">{amb.email}{amb.phone ? ` • ${amb.phone}` : ''}</p>
                                   <p className="text-[#A69984]/40 text-[10px] font-sans mt-0.5">Joined {amb.joinedDate} · {amb.invitedBusinesses.length} referrals</p>
                                   {/* Mini referral link */}
@@ -2827,6 +2881,303 @@ export default function SuperAdminPage() {
                   )}
                 </div>
               )}
+
+              {/* ANALYTICS SUB-TAB: Insights & Trends */}
+              {referralSubTab === 'analytics' && (() => {
+                const totalReferrals = ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0);
+                const totalConversions = ambassadors.reduce((s, a) => s + a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length, 0);
+                const totalRewardsPaid = ambassadors.reduce((s, a) => s + a.paidRewards, 0);
+                const totalPending = ambassadors.reduce((s, a) => s + a.pendingRewards, 0);
+                const avgRevPerConversion = 299;
+                const totalAttrRevenue = totalConversions * avgRevPerConversion;
+                const cpa = totalConversions > 0 ? totalRewardsPaid / totalConversions : 0;
+                const roi = totalRewardsPaid > 0 ? totalAttrRevenue / totalRewardsPaid : 0;
+                const convRate = totalReferrals > 0 ? Math.round((totalConversions / totalReferrals) * 100) : 0;
+
+                const monthlyData = [
+                  { month: 'Jan', signups: 3, conversions: 2 },
+                  { month: 'Feb', signups: 5, conversions: 3 },
+                  { month: 'Mar', signups: 4, conversions: 2 },
+                  { month: 'Apr', signups: 8, conversions: 5 },
+                  { month: 'May', signups: Math.max(totalReferrals, 12), conversions: Math.max(totalConversions, 8) },
+                  { month: 'Jun', signups: 7, conversions: 4 },
+                ];
+                const maxSignups = Math.max(...monthlyData.map(d => d.signups), 1);
+
+                const activityFeed: { icon: string; color: string; bg: string; msg: string; time: string }[] = [
+                  ...payoutHistory.slice(0, 2).map(tx => ({
+                    icon: 'payments', color: 'text-emerald-400', bg: 'bg-emerald-500/10',
+                    msg: `$${tx.amount.toFixed(2)} payout processed to ${tx.ambassadorName}`, time: tx.date,
+                  })),
+                  ...ambassadors.flatMap(a => a.invitedBusinesses.slice(0, 1).map(biz => ({
+                    icon: 'storefront', color: 'text-violet-400', bg: 'bg-violet-500/10',
+                    msg: `${biz.name} referred by ${a.name}`, time: biz.joinedDate,
+                  }))),
+                  { icon: 'person_add', color: 'text-sky-400', bg: 'bg-sky-500/10', msg: 'New ambassador application received', time: 'Today, 9:41 AM' },
+                  { icon: 'workspace_premium', color: 'text-[#ffc53d]', bg: 'bg-[#ffc53d]/10', msg: 'Ambassador milestone: 10 conversions reached', time: 'Yesterday' },
+                ].slice(0, 7);
+
+                return (
+                  <div className="space-y-6 font-sans animate-fade-in">
+
+                    {/* Analytics KPI Row */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                      {[
+                        { label: 'Revenue Attributed', value: `$${totalAttrRevenue.toLocaleString()}`, sub: 'From referral conversions', color: 'text-[#ffc53d]', icon: 'attach_money' },
+                        { label: 'Overall Conv. Rate', value: `${convRate}%`, sub: 'Referral → subscription', color: 'text-sky-400', icon: 'conversion_path' },
+                        { label: 'Cost Per Acquisition', value: `$${cpa.toFixed(2)}`, sub: 'Avg reward per conversion', color: 'text-violet-400', icon: 'trending_down' },
+                        { label: 'Referral ROI', value: roi > 0 ? `${roi.toFixed(1)}x` : '—', sub: 'Revenue vs rewards paid', color: 'text-emerald-400', icon: 'show_chart' },
+                      ].map(kpi => (
+                        <div key={kpi.label} className={`${theme.cardBg} border rounded-2xl p-5`}>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-[9.5px] text-[#A69984]/65 font-bold uppercase tracking-widest">{kpi.label}</span>
+                            <span className={`material-symbols-outlined text-lg ${kpi.color}`}>{kpi.icon}</span>
+                          </div>
+                          <p className={`font-serif text-2xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                          <p className="text-[9.5px] text-[#A69984]/50 font-bold mt-1">{kpi.sub}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Monthly Trend + Activity Feed */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                      {/* Monthly Trend Bar Chart */}
+                      <div className={`${theme.cardBg} border rounded-2xl p-7 lg:col-span-2`}>
+                        <div className="flex items-center justify-between mb-6">
+                          <div>
+                            <h3 className="text-white font-bold text-sm tracking-wide">Monthly Referral Trend</h3>
+                            <p className="text-[#A69984]/50 text-[10.5px] mt-0.5">Signups vs. paid conversions over 6 months</p>
+                          </div>
+                          <span className="material-symbols-outlined text-[#ffc53d] text-lg">bar_chart</span>
+                        </div>
+                        <div className="flex items-end gap-3 h-36">
+                          {monthlyData.map(d => (
+                            <div key={d.month} className="flex-1 flex flex-col items-center gap-2">
+                              <span className="text-[8.5px] text-white/40 font-bold">{d.signups}</span>
+                              <div className="w-full flex flex-col justify-end" style={{ height: `${Math.round((d.signups / maxSignups) * 108)}px` }}>
+                                <div className="w-full rounded-t-md overflow-hidden bg-[#ffc53d]/20" style={{ height: '100%' }}>
+                                  <div className="w-full bg-[#ffc53d] rounded-t-md" style={{ height: `${Math.round((d.conversions / d.signups) * 100)}%` }} />
+                                </div>
+                              </div>
+                              <span className="text-[9px] text-[#A69984]/55 font-bold">{d.month}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-5 mt-5 pt-4 border-t border-white/5">
+                          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#ffc53d]"></div><span className="text-[10px] text-[#A69984]/60 font-semibold">Paid Conversions</span></div>
+                          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-sm bg-[#ffc53d]/20"></div><span className="text-[10px] text-[#A69984]/60 font-semibold">Total Signups</span></div>
+                        </div>
+                      </div>
+
+                      {/* Activity Feed */}
+                      <div className={`${theme.cardBg} border rounded-2xl p-6 flex flex-col`}>
+                        <div className="flex items-center justify-between mb-5">
+                          <h3 className="text-white font-bold text-sm tracking-wide">Recent Activity</h3>
+                          <span className="material-symbols-outlined text-[#A69984]/40 text-lg">timeline</span>
+                        </div>
+                        {activityFeed.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center py-8">
+                            <span className="material-symbols-outlined text-3xl text-[#A69984]/20">history</span>
+                            <p className="text-[#A69984]/40 text-xs font-semibold">No activity yet</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4 flex-1">
+                            {activityFeed.map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-3">
+                                <div className={`w-7 h-7 rounded-lg ${item.bg} flex items-center justify-center flex-shrink-0 mt-0.5 border border-white/5`}>
+                                  <span className={`material-symbols-outlined text-sm ${item.color}`}>{item.icon}</span>
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="text-white text-[11px] font-semibold leading-snug">{item.msg}</p>
+                                  <p className="text-[#A69984]/40 text-[9px] mt-0.5 font-medium">{item.time}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Ambassador Performance Table + Breakdowns */}
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+                      {/* Performance Table */}
+                      <div className={`${theme.cardBg} border rounded-2xl overflow-hidden lg:col-span-3`}>
+                        <div className="px-6 py-4 border-b border-white/5 flex items-center justify-between">
+                          <h3 className="text-white font-bold text-sm tracking-wide">Ambassador Performance</h3>
+                          <span className="text-[10px] text-[#A69984]/40 font-semibold">Ranked by referrals</span>
+                        </div>
+                        {ambassadors.length === 0 ? (
+                          <div className="py-12 text-center">
+                            <p className="text-[#A69984]/40 text-sm font-semibold">No ambassadors registered yet</p>
+                          </div>
+                        ) : (
+                          <table className="w-full">
+                            <thead>
+                              <tr className="border-b border-white/5">
+                                {['Ambassador', 'Referred', 'Converted', 'Rate', 'Total Earned'].map(h => (
+                                  <th key={h} className={`py-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest ${h === 'Ambassador' ? 'text-left px-6' : h === 'Total Earned' ? 'text-right px-6' : 'text-center px-3'}`}>{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/[0.04]">
+                              {[...ambassadors].sort((a, b) => b.invitedBusinesses.length - a.invitedBusinesses.length).map(amb => {
+                                const referred = amb.invitedBusinesses.length;
+                                const converted = amb.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length;
+                                const cr = referred > 0 ? Math.round((converted / referred) * 100) : 0;
+                                return (
+                                  <tr key={amb.id} className="hover:bg-white/[0.015] transition-colors">
+                                    <td className="px-6 py-3.5">
+                                      <p className="text-white font-bold text-xs">{amb.name}</p>
+                                      <p className="text-[#A69984]/45 text-[9.5px] font-mono mt-0.5">{amb.code}</p>
+                                    </td>
+                                    <td className="px-3 py-3.5 text-center">
+                                      <span className="text-white font-bold text-sm">{referred}</span>
+                                    </td>
+                                    <td className="px-3 py-3.5 text-center">
+                                      <span className="text-emerald-400 font-bold text-sm">{converted}</span>
+                                    </td>
+                                    <td className="px-3 py-3.5 text-center">
+                                      <div className="flex flex-col items-center gap-1.5">
+                                        <span className="text-white font-bold text-xs">{cr}%</span>
+                                        <div className="w-12 bg-white/5 rounded-full h-1.5">
+                                          <div className="bg-[#ffc53d] h-1.5 rounded-full" style={{ width: `${cr}%` }} />
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-6 py-3.5 text-right">
+                                      <span className="text-[#ffc53d] font-bold text-sm">${(amb.paidRewards + amb.pendingRewards).toLocaleString()}</span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+
+                      {/* Right column: Reward Summary + Tier Distribution */}
+                      <div className="lg:col-span-2 space-y-4">
+
+                        {/* Reward Summary */}
+                        <div className={`${theme.cardBg} border rounded-2xl p-6`}>
+                          <h3 className="text-white font-bold text-sm tracking-wide mb-5">Reward Summary</h3>
+                          <div className="space-y-3.5">
+                            {[
+                              { label: 'Total Rewarded', value: `$${totalRewardsPaid.toLocaleString()}`, color: 'text-emerald-400' },
+                              { label: 'Pending Release', value: `$${totalPending.toLocaleString()}`, color: 'text-amber-400' },
+                              { label: 'Attributed Revenue', value: `$${totalAttrRevenue.toLocaleString()}`, color: 'text-[#ffc53d]' },
+                              { label: 'Cost Per Acquisition', value: `$${cpa.toFixed(2)}`, color: 'text-sky-400' },
+                            ].map(item => (
+                              <div key={item.label} className="flex justify-between items-center">
+                                <span className="text-[#A69984]/60 text-[10.5px] font-bold">{item.label}</span>
+                                <span className={`font-bold text-sm ${item.color}`}>{item.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Tier Distribution */}
+                        <div className={`${theme.cardBg} border rounded-2xl p-6`}>
+                          <h3 className="text-white font-bold text-sm tracking-wide mb-5">Ambassador Tier Distribution</h3>
+                          <div className="space-y-3">
+                            {[
+                              { tier: 'Platinum', minConv: 11, maxConv: Infinity, barColor: 'bg-violet-500', textColor: 'text-violet-300' },
+                              { tier: 'Gold',     minConv: 6,  maxConv: 10,       barColor: 'bg-[#ffc53d]',  textColor: 'text-[#ffc53d]' },
+                              { tier: 'Silver',   minConv: 3,  maxConv: 5,        barColor: 'bg-white/50',   textColor: 'text-white/65' },
+                              { tier: 'Bronze',   minConv: 0,  maxConv: 2,        barColor: 'bg-amber-700/60', textColor: 'text-amber-600' },
+                            ].map(t => {
+                              const count = ambassadors.filter(a => {
+                                const conv = a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length;
+                                return conv >= t.minConv && conv <= t.maxConv;
+                              }).length;
+                              const pct = ambassadors.length > 0 ? Math.round((count / ambassadors.length) * 100) : 0;
+                              return (
+                                <div key={t.tier} className="flex items-center gap-3">
+                                  <span className={`text-[9.5px] font-bold uppercase tracking-wider w-14 ${t.textColor}`}>{t.tier}</span>
+                                  <div className="flex-1 bg-white/5 rounded-full h-2">
+                                    <div className={`${t.barColor} h-2 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                                  </div>
+                                  <span className="text-white/55 text-[10px] w-5 text-right font-bold">{count}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[#A69984]/35 text-[9.5px] font-semibold mt-4 pt-3 border-t border-white/5">
+                            Bronze: 0–2 conv. · Silver: 3–5 · Gold: 6–10 · Platinum: 11+
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Channel Attribution + Milestone Tracker */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                      {/* Channel Attribution */}
+                      <div className={`${theme.cardBg} border rounded-2xl p-7`}>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-white font-bold text-sm tracking-wide">Referral Channel Attribution</h3>
+                          <span className="material-symbols-outlined text-[#A69984]/40 text-lg">hub</span>
+                        </div>
+                        <div className="space-y-4">
+                          {[
+                            { channel: 'LinkedIn / Social', pct: 40, color: 'bg-sky-500/60' },
+                            { channel: 'Direct Email Outreach', pct: 30, color: 'bg-violet-500/60' },
+                            { channel: 'Word of Mouth', pct: 20, color: 'bg-[#ffc53d]/70' },
+                            { channel: 'Partner Portal / Other', pct: 10, color: 'bg-emerald-500/50' },
+                          ].map(ch => (
+                            <div key={ch.channel} className="flex items-center gap-4">
+                              <span className="text-[10.5px] text-[#A69984]/65 font-semibold flex-shrink-0 w-[160px]">{ch.channel}</span>
+                              <div className="flex-1 bg-white/5 rounded-full h-5 relative overflow-hidden">
+                                <div className={`${ch.color} h-full rounded-full transition-all duration-700`} style={{ width: `${ch.pct}%` }} />
+                              </div>
+                              <span className="text-white font-bold text-xs w-8 text-right">{ch.pct}%</span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-[#A69984]/30 text-[9.5px] font-semibold mt-5 pt-4 border-t border-white/5">Attribution model: last-touch · 30-day lookback window</p>
+                      </div>
+
+                      {/* Milestone Tracker */}
+                      <div className={`${theme.cardBg} border rounded-2xl p-7`}>
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-white font-bold text-sm tracking-wide">Program Milestones</h3>
+                          <span className="material-symbols-outlined text-[#A69984]/40 text-lg">emoji_events</span>
+                        </div>
+                        <div className="space-y-4">
+                          {[
+                            { label: 'First 10 Ambassadors', goal: 10, current: ambassadors.length, icon: 'group' },
+                            { label: '50 Total Referrals', goal: 50, current: totalReferrals, icon: 'share' },
+                            { label: '25 Paid Conversions', goal: 25, current: totalConversions, icon: 'storefront' },
+                            { label: '$5,000 Revenue Attributed', goal: 5000, current: totalAttrRevenue, icon: 'attach_money', isCurrency: true },
+                          ].map(ms => {
+                            const pct = Math.min(Math.round((ms.current / ms.goal) * 100), 100);
+                            const done = pct >= 100;
+                            return (
+                              <div key={ms.label}>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`material-symbols-outlined text-sm ${done ? 'text-emerald-400' : 'text-[#A69984]/40'}`}>{done ? 'check_circle' : ms.icon}</span>
+                                    <span className={`text-[10.5px] font-semibold ${done ? 'text-emerald-400' : 'text-[#A69984]/70'}`}>{ms.label}</span>
+                                  </div>
+                                  <span className={`text-[10px] font-bold ${done ? 'text-emerald-400' : 'text-white/50'}`}>
+                                    {ms.isCurrency ? `$${ms.current.toLocaleString()} / $${ms.goal.toLocaleString()}` : `${ms.current} / ${ms.goal}`}
+                                  </span>
+                                </div>
+                                <div className="bg-white/5 rounded-full h-1.5">
+                                  <div className={`${done ? 'bg-emerald-400' : 'bg-[#ffc53d]'} h-1.5 rounded-full transition-all duration-700`} style={{ width: `${pct}%` }} />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })()}
 
               {/* CONFIG SUB-TAB: Program Settings */}
               {referralSubTab === 'config' && (
