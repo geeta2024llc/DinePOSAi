@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { migrateCart } from '../cartUtils';
+import { usePrinter } from '../../printerContext';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
   'spec-1': { name: 'Gold Leaf A5 Wagyu Ribeye', price: 185, category: 'special', description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal.' },
@@ -25,6 +27,7 @@ interface CartItem {
   quantity: number;
   modifiers: string[];
   course: 'starter' | 'main' | 'dessert' | 'drinks';
+  notes?: string;
 }
 
 const itemModifiersConfig: { [itemId: string]: { title: string; options: { name: string; price?: number }[]; type: 'single' | 'multiple' }[] } = {
@@ -55,15 +58,19 @@ export default function ReceiptPreviewPage() {
   const [activeTab, setActiveTab] = useState<'invoice' | 'receipt'>('receipt');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
+  const [diningOption, setDiningOption] = useState<'dine-in' | 'takeaway' | 'delivery'>('dine-in');
+  const [taxRateDineIn, setTaxRateDineIn] = useState(0.10);
+  const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.08);
+  const [taxRateDelivery, setTaxRateDelivery] = useState(0.08);
 
   // Dynamic receipt states
   const [cart, setCart] = useState<{ [cartKey: string]: CartItem }>({});
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  const { config: printerConfig, status: printerStatus, logs: printerLogs, printReceipt: dispatchPrintReceipt, setConfig: setPrinterConfig } = usePrinter();
+
   // Bluetooth print console logs states
-  const [bluetoothLog, setBluetoothLog] = useState<string[]>([]);
-  const [isBluetoothConnecting, setIsBluetoothConnecting] = useState(false);
   const [isBluetoothModalOpen, setIsBluetoothModalOpen] = useState(false);
 
   useEffect(() => {
@@ -72,6 +79,17 @@ export default function ReceiptPreviewPage() {
       if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
         setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
       }
+      const savedDiningOption = localStorage.getItem('dinepos_dining_option');
+      if (savedDiningOption === 'dine-in' || savedDiningOption === 'takeaway' || savedDiningOption === 'delivery') {
+        setDiningOption(savedDiningOption);
+      }
+      const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
+      const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
+      const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
+
+      if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
+      if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
+      if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
     }
   }, []);
 
@@ -82,38 +100,46 @@ export default function ReceiptPreviewPage() {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
       }
+      if (e.key === 'dinepos_dining_option' && e.newValue) {
+        if (e.newValue === 'dine-in' || e.newValue === 'takeaway' || e.newValue === 'delivery') {
+          setDiningOption(e.newValue);
+        }
+      }
+      if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
+        setTaxRateDineIn(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
+        setTaxRateTakeaway(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
+        setTaxRateDelivery(parseFloat(e.newValue) / 100);
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const migrateCart = (savedCartData: any): { [cartKey: string]: CartItem } => {
-    if (!savedCartData) return {};
-    try {
-      const parsed = typeof savedCartData === 'string' ? JSON.parse(savedCartData) : savedCartData;
-      const migrated: { [cartKey: string]: CartItem } = {};
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (typeof value === 'number') {
-          const course = key.startsWith('start-') ? 'starter' : key.startsWith('dess-') ? 'dessert' : key.startsWith('drink-') ? 'drinks' : 'main';
-          const newKey = `${key}--${course}`;
-          migrated[newKey] = {
-            itemId: key,
-            quantity: value,
-            modifiers: [],
-            course: course
-          };
-        } else if (value && typeof value === 'object' && 'itemId' in (value as any)) {
-          migrated[key] = value as CartItem;
-        }
-      });
-      return migrated;
-    } catch (e) {
-      console.error('Cart migration failed:', e);
-      return {};
-    }
-  };
+  // migrateCart helper is imported from cartUtils
 
   useEffect(() => {
+    // Load dynamic menu items registry from localStorage
+    const savedMenu = localStorage.getItem('dinepos_menu_items');
+    if (savedMenu) {
+      try {
+        const parsed = JSON.parse(savedMenu);
+        parsed.forEach((item: any) => {
+          menuItemsRegistry[item.id] = {
+            name: item.name,
+            price: item.price,
+            category: item.category,
+            description: item.description
+          };
+        });
+      } catch (e) {
+        console.error('Failed to parse dynamic menu registry:', e);
+      }
+    }
+
     // Load placed order or cart contents
     const savedOrder = localStorage.getItem('dinepos_placed_order') || localStorage.getItem('dinepos_cart');
     if (savedOrder) {
@@ -154,14 +180,68 @@ export default function ReceiptPreviewPage() {
         return acc + singlePrice * ci.quantity;
       }, 0);
 
-  const taxRate = 0.08875;
+  const taxRate = diningOption === 'takeaway'
+    ? taxRateTakeaway
+    : diningOption === 'delivery'
+      ? taxRateDelivery
+      : taxRateDineIn;
   const tax = taxType === 'pre-tax' ? subtotal * taxRate : subtotal - (subtotal / (1 + taxRate));
-  const serviceCharge = isCartEmpty ? 74.00 : subtotal * 0.10; // 10% Service Gratuity
+  const serviceCharge = isCartEmpty ? 148.00 : subtotal * 0.20; // 20% Auto-Gratuity aligned with checkout
   const total = taxType === 'pre-tax' ? subtotal + tax + serviceCharge : subtotal + serviceCharge;
 
-  const handleDirectPrint = () => {
-    if (typeof window !== 'undefined') {
-      window.print();
+  const formatPrintData = () => {
+    const items = isCartEmpty
+      ? [
+          { name: "Tasting Menu - Chef's Reserve", quantity: 2, price: 295.00, course: 'main' },
+          { name: "Vintage Champagne Upgrade", quantity: 1, price: 150.00, course: 'drinks' }
+        ]
+      : Object.entries(cart).map(([key, ci]) => {
+          const item = menuItemsRegistry[ci.itemId];
+          let modifierExtra = 0;
+          ci.modifiers.forEach(modName => {
+            const configs = itemModifiersConfig[ci.itemId] || [];
+            for (const config of configs) {
+              const opt = config.options.find(o => o.name === modName);
+              if (opt?.price) {
+                modifierExtra += opt.price;
+              }
+            }
+          });
+          return {
+            name: item ? item.name : 'Unknown Item',
+            quantity: ci.quantity,
+            price: (item ? item.price : 0) + modifierExtra,
+            modifiers: ci.modifiers,
+            notes: ci.notes,
+            course: ci.course
+          };
+        });
+
+    return {
+      tableNumber,
+      orderId: 'DP-88392',
+      items,
+      subtotal,
+      taxRate,
+      tax,
+      taxType,
+      serviceCharge,
+      total,
+      isPaid: activeTab === 'receipt',
+      paymentMethod: 'Credit Card',
+      authCode: '4242'
+    };
+  };
+
+  const handleDirectPrint = async () => {
+    try {
+      await dispatchPrintReceipt({
+        ...formatPrintData(),
+        // Force browser print for direct print button
+      });
+      triggerToast('Direct Print completed.');
+    } catch (e: any) {
+      triggerToast(`Print failed: ${e.message || e}`);
     }
   };
 
@@ -203,85 +283,13 @@ export default function ReceiptPreviewPage() {
   };
 
   const handleBluetoothPrint = async () => {
-    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
-    if (!nav || !nav.bluetooth) {
-      triggerToast('Web Bluetooth is not supported. Please use Chrome/Edge or trigger Direct Print.');
-      return;
-    }
-    
     setIsBluetoothModalOpen(true);
-    setIsBluetoothConnecting(true);
-    setBluetoothLog(['Initializing Bluetooth print stack...', 'Searching for printer devices...']);
-
     try {
-      const device = await nav.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
-      });
-      
-      setBluetoothLog(prev => [...prev, `Found Printer: ${device.name || 'Thermal printer'}`, 'Connecting to GATT server...']);
-      const server = await device.gatt?.connect();
-      
-      setBluetoothLog(prev => [
-        ...prev, 
-        'Connected to GATT server successfully.', 
-        'Resolving print characteristic...',
-        'GATT Primary Service established (0x18F0).',
-        'Characteristics resolved. Encoding ESC/POS packet stream...'
-      ]);
-
-      const encoder = new TextEncoder();
-      const escInit = new Uint8Array([0x1b, 0x40]);
-      const escCut = new Uint8Array([0x1d, 0x56, 0x42, 0x00]);
-      
-      const receiptText = 
-        `\n\n      DinePosAi\n` + 
-        `   Aura Hospitality\n` + 
-        `========================\n` + 
-        `Table: ${tableNumber}\n` +
-        `Order ID: #DP-88392\n` +
-        `------------------------\n` +
-        (isCartEmpty 
-          ? `Tasting Menu x2   $590.00\nChampagne x1      $150.00\n`
-          : Object.entries(cart).map(([key, ci]) => {
-              const item = menuItemsRegistry[ci.itemId];
-              let modifierExtra = 0;
-              ci.modifiers.forEach(modName => {
-                const configs = itemModifiersConfig[ci.itemId] || [];
-                for (const config of configs) {
-                  const opt = config.options.find(o => o.name === modName);
-                  if (opt?.price) {
-                    modifierExtra += opt.price;
-                  }
-                }
-              });
-              const itemPrice = ((item ? item.price : 0) + modifierExtra) * ci.quantity;
-              let detailsStr = '';
-              if (ci.modifiers.length > 0) {
-                detailsStr = `  (${ci.modifiers.join(', ')})\n`;
-              }
-              detailsStr += `  [Course: ${ci.course.toUpperCase()}]\n`;
-              return `${(item ? item.name : 'Item').slice(0,14).padEnd(14)} x${ci.quantity} $${itemPrice.toFixed(2)}\n${detailsStr}`;
-            }).join('')
-        ) +
-        `------------------------\n` +
-        `Subtotal:        $${subtotal.toFixed(2)}\n` +
-        `Tax:             $${tax.toFixed(2)}\n` +
-        `Service Fee:     $${serviceCharge.toFixed(2)}\n` +
-        `Total:           $${total.toFixed(2)}\n` +
-        `========================\n\n\n\n`;
-
-      setBluetoothLog(prev => [...prev, `ESC/POS byte size: ${escInit.length + encoder.encode(receiptText).length + escCut.length} bytes.`, 'Transmitting data...']);
-      
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      setBluetoothLog(prev => [...prev, '✓ Transmitted successfully.', 'Connection closed.']);
-      setIsBluetoothConnecting(false);
-      triggerToast('Receipt printed successfully!');
+      // Temporarily change context config to bluetooth if needed, or print with current active printer
+      await dispatchPrintReceipt(formatPrintData());
+      triggerToast('Print job dispatched.');
     } catch (e: any) {
-      console.error(e);
-      setBluetoothLog(prev => [...prev, `❌ Bluetooth connection failed: ${e.message || e}`]);
-      setIsBluetoothConnecting(false);
+      triggerToast(`Connection error: ${e.message || e}`);
     }
   };
 
@@ -439,6 +447,12 @@ export default function ReceiptPreviewPage() {
                           {ci.modifiers.join(', ')}
                         </div>
                       )}
+                      {ci.notes && (
+                        <div className="text-[9px] text-[#666] font-sans italic mt-1 flex items-start gap-1">
+                          <span className="material-symbols-outlined text-[11px] shrink-0 select-none">edit_note</span>
+                          <span>"{ci.notes}"</span>
+                        </div>
+                      )}
                       <div className="text-[9px] text-[#666] font-semibold mt-1 flex gap-2 items-center">
                         <span>x{ci.quantity} @ ${singlePrice.toFixed(2)} each</span>
                         <span className="uppercase text-[8px] bg-gray-100 px-1 rounded text-[#888] font-extrabold font-sans">[{ci.course}]</span>
@@ -459,11 +473,11 @@ export default function ReceiptPreviewPage() {
             <span className="text-black font-bold">${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span>{taxType === 'post-tax' ? 'Included Tax' : 'Sales Tax'} (8.875%)</span>
+            <span>{taxType === 'post-tax' ? 'Included Tax' : 'Sales Tax'} ({(taxRate * 100).toFixed(1)}%)</span>
             <span className="text-black font-bold">${tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span>Service Charge (10%)</span>
+            <span>Auto-Gratuity (20%)</span>
             <span className="text-black font-bold">${serviceCharge.toFixed(2)}</span>
           </div>
         </div>
@@ -564,7 +578,7 @@ export default function ReceiptPreviewPage() {
         </div>
       )}
 
-      {/* BLUETOOTH PRINTER DIAGNOSTICS CONSOLE OVERLAY */}
+      {/* PRINTER DIAGNOSTICS CONSOLE OVERLAY */}
       {isBluetoothModalOpen && (
         <div className="fixed inset-0 w-screen h-screen bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 select-none">
           <div className="bg-[#161513] border border-white/10 p-6 sm:p-8 rounded-2xl max-w-md w-full shadow-2xl space-y-6">
@@ -572,12 +586,12 @@ export default function ReceiptPreviewPage() {
             {/* Header */}
             <div className="flex justify-between items-center border-b border-white/5 pb-4">
               <div className="flex items-center gap-2">
-                <span className={`material-symbols-outlined text-xl text-[#ffe2ab] ${isBluetoothConnecting ? 'animate-spin' : ''}`}>bluetooth</span>
-                <h3 className="font-serif text-lg text-white font-medium">Bluetooth Printer Terminal</h3>
+                <span className={`material-symbols-outlined text-xl text-[#ffe2ab] ${printerStatus === 'connecting' ? 'animate-spin' : ''}`}>print</span>
+                <h3 className="font-serif text-lg text-white font-medium">Printer Connection Terminal</h3>
               </div>
               <button 
                 onClick={() => setIsBluetoothModalOpen(false)}
-                disabled={isBluetoothConnecting}
+                disabled={printerStatus === 'connecting'}
                 className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-[#A69984] hover:text-white hover:bg-white/10 transition-colors disabled:opacity-35 disabled:cursor-not-allowed cursor-pointer"
               >
                 <span className="material-symbols-outlined text-lg leading-none">close</span>
@@ -586,7 +600,7 @@ export default function ReceiptPreviewPage() {
 
             {/* Diagnostic Logs console */}
             <div className="bg-black/90 border border-white/5 rounded-xl p-5 h-[200px] overflow-y-auto font-mono text-[10.5px] text-[#ffe2ab]/85 space-y-2 select-text">
-              {bluetoothLog.map((logLine, idx) => (
+              {printerLogs.map((logLine, idx) => (
                 <div key={idx} className="leading-relaxed">
                   <span className="text-[#A69984]/50 mr-2">&gt;</span>
                   {logLine}
@@ -598,10 +612,10 @@ export default function ReceiptPreviewPage() {
             <div className="flex justify-end gap-3 font-sans pt-2">
               <button 
                 onClick={() => setIsBluetoothModalOpen(false)}
-                disabled={isBluetoothConnecting}
+                disabled={printerStatus === 'connecting'}
                 className="px-5 py-2.5 bg-white/5 hover:bg-white/10 disabled:opacity-35 disabled:cursor-not-allowed text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
               >
-                Close Connection
+                Close Terminal
               </button>
             </div>
 

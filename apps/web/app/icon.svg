@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Rounded dark background -->
+  <rect width="32" height="32" rx="8" fill="#0e0e0d" />
+  <!-- Stylized gold D -->
+  <path d="M9 8h6c4.418 0 8 3.582 8 8s-3.582 8-8 8H9V8zm2 2v12h4c3.314 0 6-2.686 6-6s-2.686-6-6-6h-4z" fill="#ffe2ab" />
+  <!-- AI sparkle/star in gold -->
+  <path d="M23 7l1 2.5L26.5 10 24 11l-1 2.5-1-2.5-2.5-1 2.5-1z" fill="#ffe2ab" />
+</svg>

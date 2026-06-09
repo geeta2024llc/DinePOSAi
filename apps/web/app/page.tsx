@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
@@ -14,6 +16,7 @@ export default function HomePage() {
             alt="Luxury restaurant dark mood lighting" 
             className="w-full h-full object-cover opacity-30" 
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi" 
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/80 to-transparent"></div>
         </div>
@@ -58,6 +61,7 @@ export default function HomePage() {
                   alt="Sleek point of sale tablet mock" 
                   className="w-full h-full object-cover" 
                   src="https://lh3.googleusercontent.com/aida-public/AB6AXuB_9hW0-Bn5U_Gzfsc5vJk-zOi7qxniua5UktAA96RYKvjwM9qig_LtKHUoXbIY_NdBJ4U9IgjA0RVHzPrNnIYmAaC6q60uAHS_EfbpoxYAge_XxziJs8r8LTcCK24PNHyF3lSI_6WcA7un9-7lx7SueI-rmj7zlNv2UoFyaEwIkTNVBC_O_dFSQQLXsf6MVKKgU6Frp6huK88BJdQd0WU-N9OBozDLtkYvAbeKAGsA6wWv5Cm1oSt9Zk9dnUW-5oBfDgRaorImwhnd" 
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
               </div>
               <div className="relative z-10 w-full md:w-2/3 flex flex-col h-full justify-between">
@@ -364,6 +368,7 @@ export default function HomePage() {
                     alt="Julian Rossi" 
                     className="w-12 h-12 rounded-full object-cover grayscale opacity-80 border border-outline/30" 
                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m" 
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
                   />
                   <div>
                     <div className="font-title-md text-on-surface text-base font-semibold">Julian Rossi</div>

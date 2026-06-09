@@ -109,6 +109,7 @@ export default function AmbassadorLoginPage() {
           alt="Luxury restaurant interior"
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi"
           className="w-full h-full object-cover opacity-20 scale-105 blur-[6px]"
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,18,16,0.45)_0%,rgba(10,9,8,0.97)_100%)]"></div>
       </div>

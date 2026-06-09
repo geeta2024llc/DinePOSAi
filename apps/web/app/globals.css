@@ -59,13 +59,41 @@
   --font-body-md: 'Inter', sans-serif;
 
   /* Spacing Variables */
-  --spacing-xs: 0.5rem;
-  --spacing-sm: 1rem;
-  --spacing-md: 1.5rem;
-  --spacing-lg: 2rem;
-  --spacing-xl: 4rem;
+  --spacing-custom-xs: 0.5rem;
+  --spacing-custom-sm: 1rem;
+  --spacing-custom-md: 1.5rem;
+  --spacing-custom-lg: 2rem;
+  --spacing-custom-xl: 4rem;
   --spacing-margin-desktop: 2rem;
   --spacing-gutter: 1.5rem;
+}
+
+:root {
+  --color-primary: #ffe2ab;
+  --color-primary-dark: #cc9d31;
+  --color-background: #131313;
+  --color-text-primary: #e5e2e1;
+  --color-text-secondary: #a69984;
+  --color-border: rgba(156, 143, 120, 0.1);
+  --color-surface: #131313;
+  --color-warning: #fb923c;
+  --color-success: #10b981;
+  --color-error: #ffb4ab;
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 body {
@@ -73,6 +101,28 @@ body {
   color: #e5e2e1;
   font-family: 'Inter', sans-serif;
 }
+
+/* Custom spacing utilities to resolve Tailwind v4 max-w-* scale conflicts */
+@utility mb-xs { margin-bottom: 0.5rem; }
+@utility mb-sm { margin-bottom: 1rem; }
+@utility mb-md { margin-bottom: 1.5rem; }
+@utility mb-lg { margin-bottom: 2rem; }
+@utility mb-xl { margin-bottom: 4rem; }
+
+@utility mt-md { margin-top: 1.5rem; }
+@utility mt-lg { margin-top: 2rem; }
+
+@utility py-xs { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+@utility py-sm { padding-top: 1rem; padding-bottom: 1rem; }
+@utility py-xl { padding-top: 4rem; padding-bottom: 4rem; }
+
+@utility px-md { padding-left: 1.5rem; padding-right: 1.5rem; }
+@utility px-lg { padding-left: 2rem; padding-right: 2rem; }
+
+@utility gap-xs { gap: 0.5rem; }
+@utility gap-md { gap: 1.5rem; }
+@utility gap-lg { gap: 2rem; }
+@utility gap-xl { gap: 4rem; }
 
 .glass-panel {
   background: rgba(30, 30, 30, 0.4);
@@ -131,6 +181,11 @@ body {
 }
 
 /* Custom thin scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 226, 171, 0.15) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -148,3 +203,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 226, 171, 0.28);
 }
+
+/* Utility to hide scrollbar */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+

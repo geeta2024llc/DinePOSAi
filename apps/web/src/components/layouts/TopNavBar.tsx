@@ -2,9 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function TopNavBar() {
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
+
+  useEffect(() => {
+    setScrolled(false);
+  }, [pathname]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -14,6 +20,7 @@ export default function TopNavBar() {
         setScrolled(false);
       }
     };
+    handleScroll(); // Check initially on mount
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);

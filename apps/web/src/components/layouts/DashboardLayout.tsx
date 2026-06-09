@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { Menu, LayoutDashboard, Settings, Users, LogOut } from 'lucide-react';
 import styles from './DashboardLayout.module.css';
 
@@ -15,22 +16,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, titl
           DinePosAI
         </div>
         <nav className={styles.nav}>
-          <a href="/dashboard" className={`${styles.navItem} ${styles.active}`}>
+          <Link href="/dashboard" className={`${styles.navItem} ${styles.active}`}>
             <LayoutDashboard size={20} />
             <span>Overview</span>
-          </a>
-          <a href="/dashboard/menu" className={styles.navItem}>
+          </Link>
+          <Link href="/dashboard/menu" className={styles.navItem}>
             <Menu size={20} />
             <span>Menu</span>
-          </a>
-          <a href="/dashboard/staff" className={styles.navItem}>
+          </Link>
+          <Link href="/dashboard/staff" className={styles.navItem}>
             <Users size={20} />
             <span>Staff</span>
-          </a>
-          <a href="/dashboard/settings" className={styles.navItem}>
+          </Link>
+          <Link href="/dashboard/settings" className={styles.navItem}>
             <Settings size={20} />
             <span>Settings</span>
-          </a>
+          </Link>
         </nav>
         <div className={styles.logoutWrapper}>
           <button className={styles.logoutButton}>

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { migrateCart, generateCartKey } from './cartUtils';
 
 type SpicyLevel = 'Mild' | 'Normal' | 'Hot' | 'Super Hot';
 
@@ -22,6 +23,7 @@ interface CartItem {
   quantity: number;
   modifiers: string[];
   course: 'starter' | 'main' | 'dessert' | 'drinks';
+  notes?: string;
 }
 
 const menuItems: MenuItem[] = [
@@ -45,6 +47,27 @@ const menuItems: MenuItem[] = [
     image: '/images/caviar_oysters.png',
     tags: ['Seafood', 'Non-Veg'],
     allergens: ['Shellfish']
+  },
+  // Combos
+  {
+    id: 'combo-1',
+    name: 'Imperial Signature Combo',
+    category: 'combos',
+    price: 120,
+    description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.',
+    image: '/images/wagyu_ribeye.png',
+    tags: ['Non-Veg'],
+    allergens: ['Dairy', 'Gluten']
+  },
+  {
+    id: 'combo-2',
+    name: 'Royal Vegetarian Tasting Set',
+    category: 'combos',
+    price: 75,
+    description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.',
+    image: '/images/mushroom_risotto.png',
+    tags: ['Veg', 'GF'],
+    allergens: ['Dairy']
   },
   // Starters
   {
@@ -155,11 +178,51 @@ const menuItems: MenuItem[] = [
   }
 ];
 
-const spicyMeta: Record<SpicyLevel, { textColor: string; bg: string; border: string }> = {
-  'Mild':      { textColor: 'text-yellow-400',  bg: 'bg-yellow-400/10',  border: 'border-yellow-400/25' },
-  'Normal':    { textColor: 'text-orange-400',  bg: 'bg-orange-400/10',  border: 'border-orange-400/25' },
-  'Hot':       { textColor: 'text-orange-500',  bg: 'bg-orange-500/10',  border: 'border-orange-500/25' },
-  'Super Hot': { textColor: 'text-red-500',     bg: 'bg-red-500/10',     border: 'border-red-500/25'    },
+const spicyMeta: Record<SpicyLevel, { 
+  textColor: string; 
+  bg: string; 
+  border: string; 
+  glow: string;
+  flames: number; 
+  label: string; 
+  subtitle: string; 
+}> = {
+  'Mild': { 
+    textColor: 'text-amber-400', 
+    bg: 'bg-amber-500/10', 
+    border: 'border-amber-500/20', 
+    glow: 'shadow-[0_0_15px_rgba(245,158,11,0.15)]',
+    flames: 1, 
+    label: 'Mild', 
+    subtitle: 'A subtle, fragrant warmth' 
+  },
+  'Normal': { 
+    textColor: 'text-orange-400', 
+    bg: 'bg-orange-500/10', 
+    border: 'border-orange-500/20', 
+    glow: 'shadow-[0_0_15px_rgba(249,115,22,0.15)]',
+    flames: 2, 
+    label: 'Balanced', 
+    subtitle: 'Chef recommended standard' 
+  },
+  'Hot': { 
+    textColor: 'text-rose-400', 
+    bg: 'bg-rose-500/10', 
+    border: 'border-rose-500/20', 
+    glow: 'shadow-[0_0_15px_rgba(244,63,94,0.15)]',
+    flames: 3, 
+    label: 'Assertive', 
+    subtitle: 'A bold, mouth-coating heat' 
+  },
+  'Super Hot': { 
+    textColor: 'text-red-500', 
+    bg: 'bg-red-600/10', 
+    border: 'border-red-600/20', 
+    glow: 'shadow-[0_0_20px_rgba(220,38,38,0.25)]',
+    flames: 4, 
+    label: 'Fiery Imperial', 
+    subtitle: 'Intense heat for connoisseurs' 
+  }
 };
 
 const itemModifiersConfig: { [itemId: string]: { title: string; options: { name: string; price?: number }[]; type: 'single' | 'multiple' }[] } = {
@@ -204,7 +267,17 @@ export default function DigitalMenuPage() {
   const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
   const [activeCategory, setActiveCategory] = useState<string>('starters');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [diningOption, setDiningOption] = useState<'all' | 'dine-in' | 'takeaway' | 'delivery'>('all');
+  const [selectedSpicyLevel, setSelectedSpicyLevel] = useState<SpicyLevel>('Normal');
+
+
+
+  const [diningOption, setDiningOption] = useState<'all' | 'dine-in' | 'takeaway' | 'delivery'>('dine-in');
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_dining_option', diningOption);
+      window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_dining_option', newValue: diningOption }));
+    }
+  }, [diningOption]);
   const [dietaryOption, setDietaryOption] = useState<'all' | 'veg' | 'non-veg'>('all');
   const [tableNumber, setTableNumber] = useState(12);
   const [isTableDropdownOpen, setIsTableDropdownOpen] = useState(false);
@@ -217,12 +290,21 @@ export default function DigitalMenuPage() {
     excludedTags: string[];
     showAIConcierge: boolean;
     enableSelfCheckout: boolean;
+    customerTableNumber?: number;
   }>({
     maxPrice: 40,
     excludedTags: ['Seafood'],
     showAIConcierge: true,
-    enableSelfCheckout: true
+    enableSelfCheckout: true,
+    customerTableNumber: 12
   });
+
+  const [userRole, setUserRole] = useState<'customer' | 'waiter'>('customer');
+  const [showAdminAuthModal, setShowAdminAuthModal] = useState(false);
+  const [adminEmailInput, setAdminEmailInput] = useState('');
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [adminAuthError, setAdminAuthError] = useState('');
+  const [isTableTemporarilyUnlocked, setIsTableTemporarilyUnlocked] = useState(false);
   
   // Cart State
   const [cart, setCart] = useState<{ [cartKey: string]: CartItem }>({
@@ -234,8 +316,16 @@ export default function DigitalMenuPage() {
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Allergen exclusion filters
-  const [allergenExclusions, setAllergenExclusions] = useState<string[]>([]);
+  const activeCategoryRef = useRef(activeCategory);
+  useEffect(() => {
+    activeCategoryRef.current = activeCategory;
+  }, [activeCategory]);
+
+  // Special Instructions (Notes) States
+  const [dishNotes, setDishNotes] = useState<string>('');
+  const [showNotesInput, setShowNotesInput] = useState<boolean>(false);
+  const [customizerNotes, setCustomizerNotes] = useState<string>('');
+  const [showCustomizerNotesInput, setShowCustomizerNotesInput] = useState<boolean>(false);
 
   // Spicy level filter
   const [spicyFilter, setSpicyFilter] = useState<'all' | SpicyLevel>('all');
@@ -244,6 +334,47 @@ export default function DigitalMenuPage() {
   const [selectedCustomizingItem, setSelectedCustomizingItem] = useState<MenuItem | null>(null);
   const [selectedModifiers, setSelectedModifiers] = useState<string[]>([]);
   const [selectedCustomCourse, setSelectedCustomCourse] = useState<'starter' | 'main' | 'dessert' | 'drinks'>('main');
+
+  useEffect(() => {
+    if (selectedItem) {
+      setSelectedSpicyLevel(selectedItem.spicyLevel || 'Normal');
+      setDishNotes('');
+      setShowNotesInput(false);
+    }
+  }, [selectedItem]);
+
+  useEffect(() => {
+    if (selectedCustomizingItem) {
+      setCustomizerNotes('');
+      setShowCustomizerNotesInput(false);
+    }
+  }, [selectedCustomizingItem]);
+
+  // Handle ESC key to close active modals in stack order
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedCustomizingItem) {
+          setSelectedCustomizingItem(null);
+        } else if (selectedItem) {
+          setSelectedItem(null);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItem, selectedCustomizingItem]);
+
+
+
+  // Reset selectedModifiers and customizerNotes when customizing item is closed
+  useEffect(() => {
+    if (!selectedCustomizingItem) {
+      setSelectedModifiers([]);
+      setCustomizerNotes('');
+      setShowCustomizerNotesInput(false);
+    }
+  }, [selectedCustomizingItem]);
 
   // Language / currency state (synced with admin dashboard via localStorage)
   const [language, setLanguage] = useState<'en' | 'ja'>('en');
@@ -264,38 +395,36 @@ export default function DigitalMenuPage() {
     return `$${val.toFixed(2)}`;
   };
 
-  // Cart Schema Migration Helper
-  const migrateCart = (savedCartData: any): { [cartKey: string]: CartItem } => {
-    if (!savedCartData) return {};
-    try {
-      const parsed = typeof savedCartData === 'string' ? JSON.parse(savedCartData) : savedCartData;
-      const migrated: { [cartKey: string]: CartItem } = {};
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (typeof value === 'number') {
-          const course = key.startsWith('start-') ? 'starter' : key.startsWith('dess-') ? 'dessert' : key.startsWith('drink-') ? 'drinks' : 'main';
-          const newKey = `${key}--${course}`;
-          migrated[newKey] = {
-            itemId: key,
-            quantity: value,
-            modifiers: [],
-            course: course
-          };
-        } else if (value && typeof value === 'object' && 'itemId' in (value as any)) {
-          migrated[key] = value as CartItem;
+  const cartPairings = useMemo(() => {
+    const pairings: Array<{ parentItemName: string; id: string; name: string; price: number; image: string; desc: string }> = [];
+    const cartItemIds = Object.values(cart).map(ci => ci.itemId);
+    
+    Object.values(cart).forEach(cartItem => {
+      const pairing = drinkPairings[cartItem.itemId];
+      if (pairing && !cartItemIds.includes(pairing.id)) {
+        if (!pairings.some(p => p.id === pairing.id)) {
+          const parentItem = items.find(m => m.id === cartItem.itemId);
+          pairings.push({
+            parentItemName: parentItem ? parentItem.name : 'your dish',
+            ...pairing
+          });
         }
-      });
-      return migrated;
-    } catch (e) {
-      console.error('Cart migration failed:', e);
-      return {};
-    }
-  };
+      }
+    });
+    return pairings;
+  }, [cart, items]);
+
+  // migrateCart helper is imported from cartUtils
 
   // Load cart, table number, menu items, and categories from localStorage on mount
   useEffect(() => {
     const savedCart = localStorage.getItem('dinepos_cart');
     if (savedCart) {
       setCart(migrateCart(savedCart));
+    }
+    const savedDiningOption = localStorage.getItem('dinepos_dining_option');
+    if (savedDiningOption === 'all' || savedDiningOption === 'dine-in' || savedDiningOption === 'takeaway' || savedDiningOption === 'delivery') {
+      setDiningOption(savedDiningOption as any);
     }
     const savedTable = localStorage.getItem('dinepos_table_number');
     if (savedTable) {
@@ -317,7 +446,34 @@ export default function DigitalMenuPage() {
     const savedMenu = localStorage.getItem('dinepos_menu_items');
     if (savedMenu) {
       try {
-        setItems(JSON.parse(savedMenu));
+        let loadedItems = JSON.parse(savedMenu);
+        if (!loadedItems.some((item: any) => item.category === 'combos')) {
+          const defaultCombos = [
+            {
+              id: 'combo-1',
+              name: 'Imperial Signature Combo',
+              category: 'combos',
+              price: 120,
+              description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.',
+              image: '/images/wagyu_ribeye.png',
+              tags: ['Non-Veg'],
+              allergens: ['Dairy', 'Gluten']
+            },
+            {
+              id: 'combo-2',
+              name: 'Royal Vegetarian Tasting Set',
+              category: 'combos',
+              price: 75,
+              description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.',
+              image: '/images/mushroom_risotto.png',
+              tags: ['Veg', 'GF'],
+              allergens: ['Dairy']
+            }
+          ];
+          loadedItems = [...loadedItems, ...defaultCombos];
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
+        }
+        setItems(loadedItems);
       } catch (e) {
         console.error('Failed to parse saved menu:', e);
       }
@@ -327,6 +483,7 @@ export default function DigitalMenuPage() {
 
     const defaultCategories = [
       { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
+      { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' },
       { id: 'starters', name: 'Starters', icon: 'restaurant' },
       { id: 'mains', name: 'Main Course', icon: 'restaurant_menu' },
       { id: 'desserts', name: 'Desserts', icon: 'icecream' },
@@ -337,6 +494,19 @@ export default function DigitalMenuPage() {
     if (savedCategories) {
       try {
         loadedCategories = JSON.parse(savedCategories);
+        // Clean up or migrate old name if present in localStorage
+        loadedCategories = loadedCategories.map((c: any) => 
+          c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
+        );
+        if (!loadedCategories.some((c: any) => c.id === 'combos')) {
+          const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
+          if (specIdx !== -1) {
+            loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+          } else {
+            loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+          }
+        }
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
       } catch (e) {
         console.error('Failed to parse saved categories:', e);
       }
@@ -348,6 +518,14 @@ export default function DigitalMenuPage() {
       setActiveCategory(loadedCategories[0].id);
     }
     
+    // Determine active role from logged in email
+    const loggedInEmail = localStorage.getItem('dinepos_logged_in_email');
+    if (loggedInEmail === 'waiter@dinepos.ai') {
+      setUserRole('waiter');
+    } else {
+      setUserRole('customer');
+    }
+
     setIsLoaded(true);
 
     // Load language preference from localStorage
@@ -359,7 +537,18 @@ export default function DigitalMenuPage() {
     if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
       setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
     }
+    const savedOrderSubmitted = localStorage.getItem('dinepos_order_submitted');
+    if (savedOrderSubmitted === 'true') {
+      setOrderSubmitted(true);
+    }
   }, []);
+
+  // Sync Customer Role Table Number dynamically when config loads or updates
+  useEffect(() => {
+    if (userRole === 'customer' && exclusionsConfig.customerTableNumber !== undefined) {
+      setTableNumber(exclusionsConfig.customerTableNumber);
+    }
+  }, [userRole, exclusionsConfig.customerTableNumber]);
 
   // Sync menu items and categories in real-time across browser tabs/windows
   useEffect(() => {
@@ -378,7 +567,7 @@ export default function DigitalMenuPage() {
         try {
           const newCats = JSON.parse(e.newValue);
           setCategories(newCats);
-          if (newCats.length > 0 && !newCats.some((c: any) => c.id === activeCategory)) {
+          if (newCats.length > 0 && !newCats.some((c: any) => c.id === activeCategoryRef.current)) {
             setActiveCategory(newCats[0].id);
           }
         } catch (err) {
@@ -409,7 +598,7 @@ export default function DigitalMenuPage() {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, [activeCategory]);
+  }, []);
 
   // Save cart to localStorage when it changes
   useEffect(() => {
@@ -433,6 +622,18 @@ export default function DigitalMenuPage() {
   ]);
   const [isAILoading, setIsAILoading] = useState(false);
 
+  // Lock body scroll when modal/drawer is open
+  useEffect(() => {
+    if (selectedItem || selectedCustomizingItem || isAIChatOpen || isCartOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [selectedItem, selectedCustomizingItem, isAIChatOpen, isCartOpen]);
+
   // Dietary and category labels mapping
   const categoryHeaders = useMemo(() => {
     const headers: Record<string, string> = {};
@@ -451,30 +652,38 @@ export default function DigitalMenuPage() {
   };
 
   // Structured cart operations
-  const addItemToCartStructured = (itemId: string, quantity: number, modifiers: string[], course: 'starter' | 'main' | 'dessert' | 'drinks') => {
-    const key = `${itemId}-${modifiers.slice().sort().join(',')}-${course}`;
+  const addItemToCartStructured = (itemId: string, quantity: number, modifiers: string[], course: 'starter' | 'main' | 'dessert' | 'drinks', notes?: string) => {
+    const key = generateCartKey(itemId, modifiers, course, notes);
+    const existing = cart[key];
+    if (existing && existing.quantity + quantity > 10) {
+      triggerPairingToast(`Maximum limit of 10 reached for this item.`);
+      return;
+    }
     setCart(prev => {
-      const existing = prev[key];
-      if (existing) {
+      const currentVal = prev[key];
+      if (currentVal) {
         return {
           ...prev,
-          [key]: { ...existing, quantity: existing.quantity + quantity }
+          [key]: { ...currentVal, quantity: currentVal.quantity + quantity }
         };
       } else {
         return {
           ...prev,
-          [key]: { itemId, quantity, modifiers, course }
+          [key]: { itemId, quantity, modifiers, course, notes }
         };
       }
     });
   };
 
-  const addToCart = (id: string) => {
+  const addToCart = (id: string, notesParam?: string) => {
     const hasMods = !!itemModifiersConfig[id];
     const itemObj = items.find(m => m.id === id);
     
     if (hasMods && itemObj) {
-      setSelectedCustomizingItem(itemObj);
+      // Close the dish detail modal first so the customizer doesn't render on top of it
+      // (both are fixed-position; stacking them causes the customizer to appear as a sliver)
+      setSelectedItem(null);
+
       const initialMods: string[] = [];
       const configs = itemModifiersConfig[id] || [];
       configs.forEach(conf => {
@@ -482,11 +691,25 @@ export default function DigitalMenuPage() {
           initialMods.push(conf.options[0].name);
         }
       });
+      if (itemObj.category !== 'drinks' && itemObj.category !== 'desserts') {
+        initialMods.push(`Spice: ${selectedSpicyLevel}`);
+      }
       setSelectedModifiers(initialMods);
       setSelectedCustomCourse(getDefaultCourse(id));
+      setCustomizerNotes(notesParam || dishNotes || '');
+      setShowCustomizerNotesInput(!!(notesParam || dishNotes));
+      // Open customizer after clearing the detail modal
+      setSelectedCustomizingItem(itemObj);
+    } else if (itemObj) {
+      const modifiers = itemObj.category !== 'drinks' && itemObj.category !== 'desserts' 
+        ? [`Spice: ${selectedSpicyLevel}`] 
+        : [];
+      addItemToCartStructured(id, 1, modifiers, getDefaultCourse(id), notesParam || dishNotes);
+      // Also close the detail modal after a direct add so the user sees the cart update
+      setSelectedItem(null);
+      triggerPairingToast(`${itemObj.name} added to cart!`);
     } else {
-      addItemToCartStructured(id, 1, [], getDefaultCourse(id));
-      triggerPairingToast(`${itemObj ? itemObj.name : 'Item'} added to cart!`);
+      triggerPairingToast(`Error: Selection not found in menu.`);
     }
   };
 
@@ -552,13 +775,12 @@ export default function DigitalMenuPage() {
         if (dietaryOption === 'non-veg' && !item.tags.includes('Non-Veg')) return false;
       }
 
-      // Allergen exclusions check
-      if (item.allergens && item.allergens.some(alg => allergenExclusions.includes(alg))) {
+
+
+      // Spicy filter check
+      if (spicyFilter !== 'all' && item.spicyLevel !== spicyFilter) {
         return false;
       }
-
-      // Spicy level filter
-      if (spicyFilter !== 'all' && item.spicyLevel !== spicyFilter) return false;
 
       // Search match
       if (searchQuery) {
@@ -568,7 +790,7 @@ export default function DigitalMenuPage() {
 
       return true;
     });
-  }, [activeCategory, diningOption, dietaryOption, allergenExclusions, spicyFilter, searchQuery, items]);
+  }, [activeCategory, diningOption, dietaryOption, spicyFilter, searchQuery, items]);
 
   // AI response engine
   const handleAISubmit = (e?: React.FormEvent) => {
@@ -634,7 +856,7 @@ export default function DigitalMenuPage() {
       const updated = { ...prev };
       delete updated[cartKey];
       
-      const newKey = `${existing.itemId}-${existing.modifiers.slice().sort().join(',')}-${newCourse}`;
+      const newKey = generateCartKey(existing.itemId, existing.modifiers, newCourse, existing.notes);
       if (updated[newKey]) {
         updated[newKey] = { ...updated[newKey], quantity: updated[newKey].quantity + existing.quantity };
       } else {
@@ -648,17 +870,32 @@ export default function DigitalMenuPage() {
     setTableNumber(num);
     localStorage.setItem('dinepos_table_number', num.toString());
     setIsTableDropdownOpen(false);
+    if (userRole === 'customer') {
+      setIsTableTemporarilyUnlocked(false);
+    }
   };
 
   const handlePlaceOrder = () => {
+    // Validate cart integrity: check if all items in cart exist in menuItems list
+    const invalidItems = Object.values(cart).filter(ci => !items.some(m => m.id === ci.itemId));
+    if (invalidItems.length > 0) {
+      triggerPairingToast("Cart contains unavailable items. Please review your selections.");
+      return;
+    }
     setIsCartOpen(false);
     setOrderSubmitted(true);
+    localStorage.setItem('dinepos_order_submitted', 'true');
     // Save order selections in localStorage
     localStorage.setItem('dinepos_placed_order', JSON.stringify(cart));
     // Clear cart on successful order
     setTimeout(() => {
       setCart({});
     }, 500);
+  };
+
+  const handleDismissOrderSubmitted = () => {
+    setOrderSubmitted(false);
+    localStorage.removeItem('dinepos_order_submitted');
   };
 
   const handleCallWaiter = () => {
@@ -690,8 +927,10 @@ export default function DigitalMenuPage() {
               <div className="font-sans text-[11px] text-[#A69984]/60 select-none">Main Dining Room</div>
             </div>
             <button 
+              type="button"
               onClick={() => setIsMobileSidebarOpen(false)}
               className="lg:hidden w-8 h-8 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-[#A69984] hover:text-white"
+              aria-label="Close sidebar"
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
@@ -702,7 +941,7 @@ export default function DigitalMenuPage() {
             {categories.map(cat => (
               <button 
                 key={cat.id}
-                onClick={() => { setActiveCategory(cat.id); setDiningOption('all'); setDietaryOption('all'); setIsMobileSidebarOpen(false); }}
+                onClick={() => { setActiveCategory(cat.id); setDiningOption('dine-in'); setDietaryOption('all'); setSpicyFilter('all'); setIsMobileSidebarOpen(false); }}
                 className={`flex items-center gap-4 w-full px-4 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all duration-300 ${activeCategory === cat.id ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_12px_rgba(255,226,171,0.15)]' : 'text-[#A69984]/80 hover:text-white hover:bg-white/5'}`}
               >
                 <span className="material-symbols-outlined text-lg leading-none">{cat.icon || 'restaurant_menu'}</span>
@@ -761,30 +1000,42 @@ export default function DigitalMenuPage() {
           {/* Center Segmented Filter Controls (Desktop Only) */}
           <div className="hidden lg:flex items-center gap-4 select-none">
             {/* Dining Options Capsule */}
-            <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-0.5">
+            <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-1">
               <button
                 type="button"
                 onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
-                className={`flex-1 min-w-[76px] px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'dine-in' ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_14px_rgba(255,226,171,0.35)]' : 'text-[#A69984]/80 hover:text-[#ffe2ab] hover:bg-[#ffe2ab]/10'}`}
+                className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
+                  diningOption === 'dine-in'
+                    ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_14px_rgba(255,226,171,0.35)] px-4 gap-1.5'
+                    : 'text-[#A69984]/80 hover:text-[#ffe2ab] hover:bg-[#ffe2ab]/10'
+                }`}
               >
                 <span className="material-symbols-outlined text-[15px] leading-none">restaurant</span>
-                <span className="hidden xs:inline">Dine-in</span>
+                {diningOption === 'dine-in' && <span className="animate-fade-in whitespace-nowrap">Dine-in</span>}
               </button>
               <button
                 type="button"
                 onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
-                className={`flex-1 min-w-[76px] px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'takeaway' ? 'bg-[#38bdf8] text-[#0c4a6e] shadow-[0_4px_14px_rgba(56,189,248,0.35)]' : 'text-[#A69984]/80 hover:text-[#38bdf8] hover:bg-[#38bdf8]/10'}`}
+                className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
+                  diningOption === 'takeaway'
+                    ? 'bg-[#38bdf8] text-[#0c4a6e] shadow-[0_4px_14px_rgba(56,189,248,0.35)] px-4 gap-1.5'
+                    : 'text-[#A69984]/80 hover:text-[#38bdf8] hover:bg-[#38bdf8]/10'
+                }`}
               >
                 <span className="material-symbols-outlined text-[15px] leading-none">takeout_dining</span>
-                <span className="hidden xs:inline">Takeaway</span>
+                {diningOption === 'takeaway' && <span className="animate-fade-in whitespace-nowrap">Takeaway</span>}
               </button>
               <button
                 type="button"
                 onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
-                className={`flex-1 min-w-[76px] px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'delivery' ? 'bg-[#fb923c] text-[#7c2d12] shadow-[0_4px_14px_rgba(251,146,60,0.35)]' : 'text-[#A69984]/80 hover:text-[#fb923c] hover:bg-[#fb923c]/10'}`}
+                className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
+                  diningOption === 'delivery'
+                    ? 'bg-[#fb923c] text-[#7c2d12] shadow-[0_4px_14px_rgba(251,146,60,0.35)] px-4 gap-1.5'
+                    : 'text-[#A69984]/80 hover:text-[#fb923c] hover:bg-[#fb923c]/10'
+                }`}
               >
                 <span className="material-symbols-outlined text-[15px] leading-none">moped</span>
-                <span className="hidden xs:inline">Delivery</span>
+                {diningOption === 'delivery' && <span className="animate-fade-in whitespace-nowrap">Delivery</span>}
               </button>
             </div>
 
@@ -809,67 +1060,34 @@ export default function DigitalMenuPage() {
               </button>
             </div>
 
-            {/* Elegant Spacing Divider */}
-            <span className="text-white/10 font-light select-none">|</span>
 
-            {/* Allergen Exclusions Capsule */}
-            <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-0.5 items-center">
-              <span className="text-[9px] uppercase font-bold text-[#A69984]/50 px-2.5 tracking-wider">Exclude:</span>
-              {['Gluten', 'Dairy', 'Shellfish', 'Nuts'].map(alg => {
-                const isExcluded = allergenExclusions.includes(alg);
-                return (
-                  <button 
-                    key={alg}
-                    onClick={() => {
-                      setAllergenExclusions(prev => 
-                        isExcluded ? prev.filter(a => a !== alg) : [...prev, alg]
-                      );
-                    }}
-                    className={`px-3 py-1.5 rounded-full font-sans text-[10px] uppercase tracking-wider font-bold transition-all duration-300 flex items-center gap-1 cursor-pointer ${isExcluded ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'text-[#A69984]/80 hover:text-white hover:bg-white/5'}`}
-                  >
-                    {alg}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Elegant Spacing Divider */}
-            <span className="text-white/10 font-light select-none">|</span>
-
-            {/* Spicy Level Filter Capsule */}
-            <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-0.5 items-center">
-              <span className="text-[9px] uppercase font-bold text-[#A69984]/50 px-2.5 tracking-wider">Spice:</span>
-              {(['Mild', 'Normal', 'Hot', 'Super Hot'] as SpicyLevel[]).map(level => {
-                const m = spicyMeta[level];
-                const isActive = spicyFilter === level;
-                return (
-                  <button
-                    type="button"
-                    key={level}
-                    onClick={() => setSpicyFilter(isActive ? 'all' : level)}
-                    className={`px-3 py-1.5 rounded-full font-sans text-[10px] uppercase tracking-wider font-bold transition-all duration-300 flex items-center gap-1 cursor-pointer ${isActive ? `${m.bg} ${m.textColor} border ${m.border}` : 'text-[#A69984]/80 hover:text-white hover:bg-white/5'}`}
-                  >
-                    <span className={`material-symbols-outlined text-[12px] leading-none ${isActive ? m.textColor : ''}`}>local_fire_department</span>
-                    {level}
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
           {/* Right Side Buttons (Table Dropdown and Search Button) */}
           <div className="flex items-center gap-2 sm:gap-4 relative">
             <button 
-              onClick={() => setIsTableDropdownOpen(!isTableDropdownOpen)}
-              className="flex items-center gap-1.5 sm:gap-3 px-3 sm:px-5 py-2.5 bg-transparent border border-[#A69984]/25 rounded-xl text-white text-[11px] sm:text-xs font-sans font-semibold tracking-wider hover:border-[#ffe2ab]/30 transition-all select-none cursor-pointer"
+              onClick={() => {
+                if (userRole === 'waiter' || isTableTemporarilyUnlocked) {
+                  setIsTableDropdownOpen(!isTableDropdownOpen);
+                } else {
+                  setAdminEmailInput('');
+                  setAdminPasswordInput('');
+                  setAdminAuthError('');
+                  setShowAdminAuthModal(true);
+                }
+              }}
+              className={`flex items-center gap-1.5 sm:gap-3 px-3 sm:px-5 py-2.5 bg-transparent border border-[#A69984]/25 rounded-xl text-white text-[11px] sm:text-xs font-sans font-semibold tracking-wider hover:border-[#ffe2ab]/30 transition-all select-none cursor-pointer`}
+              title={userRole === 'customer' && !isTableTemporarilyUnlocked ? "Table number is fixed. Click to authenticate." : "Change table number"}
             >
               <span className="material-symbols-outlined text-base sm:text-lg leading-none text-[#ffe2ab]">table_restaurant</span>
               <span className="hidden xs:inline">Table</span> {tableNumber}
-              <span className="material-symbols-outlined text-[14px] sm:text-[16px] leading-none text-[#A69984]/50">expand_more</span>
+              {(userRole === 'waiter' || isTableTemporarilyUnlocked) && (
+                <span className="material-symbols-outlined text-[14px] sm:text-[16px] leading-none text-[#A69984]/50">expand_more</span>
+              )}
             </button>
 
             {/* Table Dropdown Menu */}
-            {isTableDropdownOpen && (
+            {isTableDropdownOpen && (userRole === 'waiter' || isTableTemporarilyUnlocked) && (
               <div className="absolute top-[52px] left-0 bg-[#161513] border border-white/10 rounded-xl p-3 shadow-2xl z-50 grid grid-cols-3 sm:grid-cols-4 gap-2 w-[180px] sm:w-[220px]">
                 {Array.from({ length: 16 }, (_, i) => i + 1).map(num => (
                   <button
@@ -923,24 +1141,36 @@ export default function DigitalMenuPage() {
               <div className="flex bg-[#12110f] border border-white/5 rounded-xl p-1 gap-1">
                 <button 
                   onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
-                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'dine-in' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-[#A69984]/80'}`}
+                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
+                    diningOption === 'dine-in' 
+                      ? 'bg-[#ffe2ab] text-[#402d00] gap-1.5 px-3' 
+                      : 'text-[#A69984]/80 px-2'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[13px]">restaurant</span>
-                  Dine-in
+                  {diningOption === 'dine-in' && <span className="animate-fade-in whitespace-nowrap">Dine-in</span>}
                 </button>
                 <button 
                   onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
-                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'takeaway' ? 'bg-[#38bdf8] text-[#0c4a6e]' : 'text-[#A69984]/80'}`}
+                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
+                    diningOption === 'takeaway' 
+                      ? 'bg-[#38bdf8] text-[#0c4a6e] gap-1.5 px-3' 
+                      : 'text-[#A69984]/80 px-2'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[13px]">takeout_dining</span>
-                  Takeaway
+                  {diningOption === 'takeaway' && <span className="animate-fade-in whitespace-nowrap">Takeaway</span>}
                 </button>
                 <button 
                   onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
-                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${diningOption === 'delivery' ? 'bg-[#fb923c] text-[#7c2d12]' : 'text-[#A69984]/80'}`}
+                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
+                    diningOption === 'delivery' 
+                      ? 'bg-[#fb923c] text-[#7c2d12] gap-1.5 px-3' 
+                      : 'text-[#A69984]/80 px-2'
+                  }`}
                 >
                   <span className="material-symbols-outlined text-[13px]">moped</span>
-                  Delivery
+                  {diningOption === 'delivery' && <span className="animate-fade-in whitespace-nowrap">Delivery</span>}
                 </button>
               </div>
             </div>
@@ -966,29 +1196,7 @@ export default function DigitalMenuPage() {
               </div>
             </div>
 
-            {/* Allergen Exclusions Segment */}
-            <div className="space-y-1.5">
-              <label className="block text-[9px] uppercase font-bold text-[#A69984]/50 tracking-wider">Exclude Allergens</label>
-              <div className="grid grid-cols-2 gap-2">
-                {['Gluten', 'Dairy', 'Shellfish', 'Nuts'].map(alg => {
-                  const isExcluded = allergenExclusions.includes(alg);
-                  return (
-                    <button 
-                      key={alg}
-                      onClick={() => {
-                        setAllergenExclusions(prev => 
-                          isExcluded ? prev.filter(a => a !== alg) : [...prev, alg]
-                        );
-                      }}
-                      className={`py-2 px-3 rounded-xl font-sans text-[10px] uppercase tracking-wider font-bold transition-all flex items-center justify-between border cursor-pointer ${isExcluded ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-[#12110f] border-white/5 text-[#A69984]/80'}`}
-                    >
-                      <span>{alg}</span>
-                      {isExcluded && <span className="material-symbols-outlined text-[12px] text-red-400">check_circle</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+
 
             {/* Spicy Level Filter */}
             <div className="space-y-1.5">
@@ -1022,7 +1230,7 @@ export default function DigitalMenuPage() {
           
 
           {filteredItems.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-8">
               {filteredItems.map(item => {
                 const qty = Object.values(cart).filter(ci => ci.itemId === item.id).reduce((sum, ci) => sum + ci.quantity, 0);
                 return (
@@ -1084,7 +1292,7 @@ export default function DigitalMenuPage() {
                         <div className="select-none">
                           {qty === 0 ? (
                             <button 
-                              onClick={(e) => { e.stopPropagation(); addToCart(item.id); }}
+                              onClick={(e) => { e.stopPropagation(); setSelectedItem(item); }}
                               className="w-10 h-10 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl flex items-center justify-center transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] cursor-pointer shadow-md"
                             >
                               <span className="material-symbols-outlined font-black text-lg">add</span>
@@ -1135,7 +1343,7 @@ export default function DigitalMenuPage() {
         )}
 
         {/* Bottom Sticky Order Bar */}
-        <div className="absolute bottom-0 left-0 w-full bg-[#161513] border-t border-white/5 px-4 sm:px-10 py-4 sm:py-5 flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between z-30 shadow-[0_-12px_40px_rgba(0,0,0,0.8)] select-none">
+        <div className="absolute bottom-0 left-0 w-full bg-[#161513] border-t border-white/5 px-4 sm:px-10 py-4 sm:py-5 flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between z-30 shadow-[0_-12px_40px_rgba(0,0,0,0.8)] select-none xl:hidden">
           <div className="flex items-center justify-between w-full sm:w-auto gap-8 sm:gap-16">
             <div>
               <div className="font-sans text-[9px] text-[#A69984]/40 font-bold uppercase tracking-[0.2em] mb-0.5 sm:mb-1">Current Table</div>
@@ -1161,9 +1369,165 @@ export default function DigitalMenuPage() {
 
       </main>
 
+      {/* Right Side: Selections Sidebar (Desktop Only) */}
+      <aside className="hidden xl:flex w-[380px] border-l border-white/5 bg-[#0a0a09] h-full flex-col justify-between flex-shrink-0 z-30 p-6 sm:p-8">
+        <div className="flex flex-col h-[calc(100vh-280px)] overflow-hidden">
+          <div className="mb-8 shrink-0">
+            <h3 className="font-serif text-2xl text-white font-medium tracking-wide">Your Selections</h3>
+            <p className="text-[#A69984]/60 font-sans text-xs mt-1">Review items for Table {tableNumber}</p>
+          </div>
+
+          {/* Cart List */}
+          <div className="flex-1 overflow-y-auto pr-1 space-y-4 scrollbar-hide">
+            {Object.keys(cart).length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+                <span className="material-symbols-outlined text-4xl text-[#A69984]/20">receipt_long</span>
+                <p className="text-[#A69984]/40 font-sans text-xs max-w-[200px] leading-relaxed select-none">
+                  Your order list is empty. Add culinary selections from the menu.
+                </p>
+              </div>
+            ) : (
+              <>
+                {Object.entries(cart).map(([cartKey, cartItem]) => {
+                  const item = items.find(m => m.id === cartItem.itemId);
+                  if (!item) return null;
+
+                  let modifierExtra = 0;
+                  cartItem.modifiers.forEach(modName => {
+                    const configs = itemModifiersConfig[cartItem.itemId] || [];
+                    for (const config of configs) {
+                      const opt = config.options.find(o => o.name === modName);
+                      if (opt?.price) {
+                        modifierExtra += opt.price;
+                      }
+                    }
+                  });
+                  const singlePrice = item.price + modifierExtra;
+
+                  return (
+                    <div key={cartKey} className="flex flex-col gap-3 p-4 bg-[#12110f]/90 border border-white/5 rounded-xl animate-fade-in">
+                      <div className="flex justify-between items-start">
+                        <div className="max-w-[65%]">
+                          <div className="font-serif text-sm text-white font-medium tracking-wide leading-tight">{item.name}</div>
+                          {cartItem.modifiers.length > 0 && (
+                            <div className="text-[10px] text-[#ffe2ab]/75 font-sans mt-1 italic leading-tight">
+                              {cartItem.modifiers.join(', ')}
+                            </div>
+                          )}
+                          {cartItem.notes && (
+                            <div className="text-[10px] text-[#A69984]/80 font-sans mt-1 flex items-start gap-1 leading-tight">
+                              <span className="material-symbols-outlined text-[12px] text-[#ffe2ab]/80 shrink-0 select-none">edit_note</span>
+                              <span className="italic">"{cartItem.notes}"</span>
+                            </div>
+                          )}
+                          <div className="text-[#A69984]/50 text-[10.5px] font-bold font-sans mt-1.5">
+                            {formatCurrency(singlePrice)} each
+                          </div>
+                        </div>
+                        {/* Quantity Adjuster & Total Price */}
+                        <div className="flex flex-col items-end gap-2.5 shrink-0 select-none">
+                          <div className="flex items-center gap-2 border border-white/10 rounded-full p-1 bg-[#161513]">
+                            <button 
+                              onClick={() => decrementQuantity(cartKey)}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[10px] leading-none">remove</span>
+                            </button>
+                            <span className="font-sans font-bold text-white text-[11px] select-none w-3.5 text-center leading-none">{cartItem.quantity}</span>
+                            <button 
+                              onClick={() => incrementQuantity(cartKey)}
+                              className="w-6 h-6 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-[10px] leading-none">add</span>
+                            </button>
+                          </div>
+                          <span className="text-white font-serif text-xs font-bold leading-none">
+                            {formatCurrency(singlePrice * cartItem.quantity)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Recommended Beverage Pairings */}
+                {cartPairings.length > 0 && (
+                  <div className="mt-6 border-t border-white/5 pt-6 space-y-4">
+                    <div className="flex items-center gap-2 text-[#ffe2ab]">
+                      <span className="material-symbols-outlined text-[16px] text-[#ffe2ab] select-none">local_bar</span>
+                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] font-sans select-none">
+                        Sommelier Recommended Pairings
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {cartPairings.map(pairing => (
+                        <div 
+                          key={pairing.id} 
+                          className="p-3 bg-gradient-to-r from-[#1a1917] to-[#121110] border border-[#ffe2ab]/15 rounded-xl flex gap-3 items-center justify-between shadow-md"
+                        >
+                          <div className="flex gap-3 items-center min-w-0">
+                            <img 
+                              src={pairing.image} 
+                              alt={pairing.name} 
+                              className="w-11 h-11 object-cover rounded-lg shrink-0 border border-white/10 select-none" 
+                            />
+                            <div className="min-w-0">
+                              <div className="font-serif text-xs text-white font-semibold truncate leading-snug">{pairing.name}</div>
+                              <div className="text-[9.5px] text-[#ffe2ab]/75 font-sans mt-0.5 truncate font-medium">
+                                Pairs beautifully with {pairing.parentItemName}
+                              </div>
+                              <div className="text-[#ffe2ab] text-[10px] font-serif font-bold mt-1">
+                                {formatCurrency(pairing.price)}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => addToCart(pairing.id)}
+                            className="w-8 h-8 rounded-full bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] flex items-center justify-center transition-all duration-300 shadow-[0_2px_10px_rgba(255,226,171,0.15)] hover:scale-[1.05] cursor-pointer shrink-0"
+                            title="Add recommended pairing"
+                            aria-label={`Add pairing ${pairing.name}`}
+                          >
+                            <span className="material-symbols-outlined text-[14px] font-black leading-none">add</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Bottom summary and place order */}
+        <div className="border-t border-white/5 pt-6 space-y-4 font-sans select-none shrink-0">
+          <div className="flex justify-between text-xs text-[#A69984]/60 font-semibold uppercase tracking-wider">
+            <span>{taxType === 'post-tax' ? 'Subtotal (Tax Incl.)' : 'Subtotal'}</span>
+            <span>{formatCurrency(cartTotalPrice)}</span>
+          </div>
+          <div className="flex justify-between text-xs text-[#A69984]/60 font-semibold uppercase tracking-wider border-b border-white/5 pb-4">
+            <span>{taxType === 'post-tax' ? 'Included Taxes & Service (10%)' : 'Taxes & Service (10%)'}</span>
+            <span>{formatCurrency(taxType === 'post-tax' ? (cartTotalPrice - (cartTotalPrice / 1.1)) : (cartTotalPrice * 0.1))}</span>
+          </div>
+          <div className="flex justify-between text-base font-bold text-white">
+            <span className="font-serif">Total Charge</span>
+            <span className="text-[#ffe2ab]">{formatCurrency(taxType === 'post-tax' ? cartTotalPrice : (cartTotalPrice * 1.1))}</span>
+          </div>
+          
+          <button 
+            disabled={cartTotalItems === 0}
+            onClick={handlePlaceOrder}
+            className="w-full py-4 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 disabled:cursor-not-allowed text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_24px_rgba(255,226,171,0.15)] flex items-center justify-center gap-2 cursor-pointer mt-4"
+          >
+            Transmit Order to Kitchen
+            <span className="material-symbols-outlined text-sm font-black">restaurant_menu</span>
+          </button>
+        </div>
+      </aside>
+
       {/* CALL WAITER FLOATING TOAST */}
       {showWaiterToast && (
-        <div className="fixed top-8 right-8 z-50 bg-[#161513] border border-[#ffe2ab]/20 text-[#ffe2ab] px-5 py-4 rounded-xl shadow-2xl flex items-center gap-4 animate-slide-in duration-300">
+        <div className="fixed top-8 right-8 z-[100] bg-[#161513] border border-[#ffe2ab]/20 text-[#ffe2ab] px-5 py-4 rounded-xl shadow-2xl flex items-center gap-4 animate-slide-in duration-300">
           <span className="material-symbols-outlined text-2xl animate-bounce">notifications_active</span>
           <div>
             <div className="font-sans font-bold text-xs uppercase tracking-wider text-white">Waiter Dispatched</div>
@@ -1174,7 +1538,7 @@ export default function DigitalMenuPage() {
 
       {/* PAIRING ADDED TOAST */}
       {pairingToast.show && (
-        <div className="fixed top-8 right-8 z-50 bg-[#161513] border border-[#ffe2ab]/20 text-[#ffe2ab] px-5 py-4 rounded-xl shadow-2xl flex items-center gap-4 animate-slide-in duration-300">
+        <div className="fixed top-8 right-8 z-[100] bg-[#161513] border border-[#ffe2ab]/20 text-[#ffe2ab] px-5 py-4 rounded-xl shadow-2xl flex items-center gap-4 animate-slide-in duration-300">
           <span className="material-symbols-outlined text-2xl text-[#ffe2ab] animate-bounce">check_circle</span>
           <div>
             <div className="font-sans font-bold text-xs uppercase tracking-wider text-white">Pairing Added</div>
@@ -1198,6 +1562,7 @@ export default function DigitalMenuPage() {
                 <button 
                   onClick={() => setIsCartOpen(false)}
                   className="w-9 h-9 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-[#A69984] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  aria-label="Close cart"
                 >
                   <span className="material-symbols-outlined text-lg leading-none">close</span>
                 </button>
@@ -1231,51 +1596,87 @@ export default function DigitalMenuPage() {
                               {cartItem.modifiers.join(', ')}
                             </div>
                           )}
+                          {cartItem.notes && (
+                            <div className="text-[10px] text-[#A69984]/80 font-sans mt-1 flex items-start gap-1 leading-tight">
+                              <span className="material-symbols-outlined text-[12px] text-[#ffe2ab]/80 shrink-0 select-none">edit_note</span>
+                              <span className="italic">"{cartItem.notes}"</span>
+                            </div>
+                          )}
                           <div className="text-[#A69984]/50 text-[10.5px] font-bold font-sans mt-1.5">
                             {formatCurrency(singlePrice)} each
                           </div>
                         </div>
                         
-                        {/* Quantity adjuster inside drawer */}
-                        <div className="flex items-center gap-2.5 border border-white/10 rounded-full p-1 bg-[#161513] shrink-0">
-                          <button 
-                            onClick={() => decrementQuantity(cartKey)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-xs leading-none">remove</span>
-                          </button>
-                          <span className="font-sans font-bold text-white text-xs select-none w-4 text-center leading-none">{cartItem.quantity}</span>
-                          <button 
-                            onClick={() => incrementQuantity(cartKey)}
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-xs leading-none">add</span>
-                          </button>
+                        {/* Quantity adjuster & Total price inside drawer */}
+                        <div className="flex flex-col items-end gap-2.5 shrink-0 select-none">
+                          <div className="flex items-center gap-2.5 border border-white/10 rounded-full p-1 bg-[#161513]">
+                            <button 
+                              onClick={() => decrementQuantity(cartKey)}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-xs leading-none">remove</span>
+                            </button>
+                            <span className="font-sans font-bold text-white text-xs select-none w-4 text-center leading-none">{cartItem.quantity}</span>
+                            <button 
+                              onClick={() => incrementQuantity(cartKey)}
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-xs leading-none">add</span>
+                            </button>
+                          </div>
+                          <span className="text-white font-serif text-xs font-bold leading-none">
+                            {formatCurrency(singlePrice * cartItem.quantity)}
+                          </span>
                         </div>
-                      </div>
-
-                      {/* Course Assignment Dropdown */}
-                      <div className="border-t border-white/5 pt-2.5 flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-[9px] uppercase font-bold text-[#A69984]/40 tracking-wider font-sans">Route To:</span>
-                          <select 
-                            value={cartItem.course} 
-                            onChange={(e) => updateItemCourse(cartKey, e.target.value as any)}
-                            className="bg-[#161513] border border-white/10 rounded px-2 py-0.5 text-[9.5px] font-bold text-[#ffe2ab] focus:outline-none focus:border-[#ffe2ab]/40 uppercase tracking-wide cursor-pointer font-sans"
-                          >
-                            <option value="starter">Starter</option>
-                            <option value="main">Main Course</option>
-                            <option value="dessert">Dessert</option>
-                            <option value="drinks">Drinks</option>
-                          </select>
-                        </div>
-                        <span className="text-white font-serif text-xs font-bold shrink-0">
-                          {formatCurrency(singlePrice * cartItem.quantity)}
-                        </span>
                       </div>
                     </div>
                   );
                 })}
+
+                {/* Recommended Beverage Pairings */}
+                {Object.keys(cart).length > 0 && cartPairings.length > 0 && (
+                  <div className="mt-6 border-t border-white/5 pt-6 space-y-4">
+                    <div className="flex items-center gap-2 text-[#ffe2ab]">
+                      <span className="material-symbols-outlined text-[16px] text-[#ffe2ab] select-none">local_bar</span>
+                      <span className="text-[10px] uppercase font-bold tracking-[0.2em] font-sans select-none">
+                        Sommelier Recommended Pairings
+                      </span>
+                    </div>
+                    <div className="space-y-3">
+                      {cartPairings.map(pairing => (
+                        <div 
+                          key={pairing.id} 
+                          className="p-3 bg-gradient-to-r from-[#1a1917] to-[#121110] border border-[#ffe2ab]/15 rounded-xl flex gap-3 items-center justify-between shadow-md"
+                        >
+                          <div className="flex gap-3 items-center min-w-0">
+                            <img 
+                              src={pairing.image} 
+                              alt={pairing.name} 
+                              className="w-11 h-11 object-cover rounded-lg shrink-0 border border-white/10 select-none" 
+                            />
+                            <div className="min-w-0">
+                              <div className="font-serif text-xs text-white font-semibold truncate leading-snug">{pairing.name}</div>
+                              <div className="text-[9.5px] text-[#ffe2ab]/75 font-sans mt-0.5 truncate font-medium">
+                                Pairs beautifully with {pairing.parentItemName}
+                              </div>
+                              <div className="text-[#ffe2ab] text-[10px] font-serif font-bold mt-1">
+                                {formatCurrency(pairing.price)}
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => addToCart(pairing.id)}
+                            className="w-8 h-8 rounded-full bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] flex items-center justify-center transition-all duration-300 shadow-[0_2px_10px_rgba(255,226,171,0.15)] hover:scale-[1.05] cursor-pointer shrink-0"
+                            title="Add recommended pairing"
+                            aria-label={`Add pairing ${pairing.name}`}
+                          >
+                            <span className="material-symbols-outlined text-[14px] font-black leading-none">add</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1310,18 +1711,19 @@ export default function DigitalMenuPage() {
       {selectedItem && (() => {
         const detailQty = Object.values(cart).filter(ci => ci.itemId === selectedItem.id).reduce((sum, ci) => sum + ci.quantity, 0);
         return (
-          <div className="fixed inset-0 w-screen h-screen bg-black/95 backdrop-blur-xl flex items-center justify-center z-50 p-4 sm:p-10 flex-none select-none animate-fade-in">
+          <div className="fixed inset-0 w-screen h-screen bg-black/95 backdrop-blur-xl flex items-center justify-center z-50 p-4 sm:p-10 select-none animate-fade-in">
             <div className="bg-[#161513] border border-[#ffe2ab]/20 rounded-2xl max-w-4xl w-full shadow-[0_0_50px_rgba(255,226,171,0.15)] overflow-hidden relative flex flex-col md:flex-row max-h-[90vh] md:max-h-[600px] animate-fade-in">
               {/* Close Button */}
               <button 
                 onClick={() => setSelectedItem(null)}
                 className="absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#A69984] hover:text-white hover:bg-white/10 transition-all cursor-pointer z-50"
+                aria-label="Close details modal"
               >
                 <span className="material-symbols-outlined text-lg leading-none">close</span>
               </button>
 
               {/* Left Column: Image */}
-              <div className="md:w-1/2 h-[240px] md:h-auto relative overflow-hidden bg-[#0c0c0b]">
+              <div className="md:w-2/5 h-[240px] md:h-auto relative overflow-hidden bg-[#0c0c0b]">
                 <img 
                   src={selectedItem.image} 
                   alt={selectedItem.name} 
@@ -1331,7 +1733,7 @@ export default function DigitalMenuPage() {
               </div>
 
               {/* Right Column: Gastronomy Details & Pairing */}
-              <div className="md:w-1/2 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto max-h-[55vh] md:max-h-[600px] scrollbar-hide">
+              <div className="md:w-3/5 p-6 sm:p-8 flex flex-col justify-between overflow-y-auto max-h-[55vh] md:max-h-[600px] scrollbar-hide">
                 <div className="space-y-6">
                   {/* Headers */}
                   <div>
@@ -1375,44 +1777,96 @@ export default function DigitalMenuPage() {
                     </p>
                   </div>
 
-                  {/* Sommelier Recommended Beverage Pairing */}
-                  {drinkPairings[selectedItem.id] && (() => {
-                    const pairing = drinkPairings[selectedItem.id];
-                    return (
-                      <div className="border-t border-white/5 pt-6 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-lg text-[#ffe2ab]">local_bar</span>
-                          <span className="text-[10px] uppercase font-bold text-[#A69984]/50 tracking-[0.2em] font-sans">
-                            Sommelier Recommended Pairing
-                          </span>
+                  {/* Spice Level Selector */}
+                  {selectedItem.category !== 'drinks' && selectedItem.category !== 'desserts' && (
+                    <div className="border-t border-white/5 pt-4">
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="material-symbols-outlined text-sm text-[#ffe2ab] select-none">local_fire_department</span>
+                          <span className="text-[10px] uppercase font-bold text-[#A69984]/50 tracking-[0.15em] font-sans select-none">Spice Level</span>
                         </div>
-                        
-                        <div className="bg-gradient-to-r from-[#ffe2ab]/5 to-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 transition-all rounded-xl p-4 flex gap-4 items-center">
-                          <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-black border border-white/10">
-                            <img src={pairing.image} alt={pairing.name} className="w-full h-full object-cover select-none" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex justify-between items-baseline mb-0.5">
-                              <h4 className="font-serif text-xs font-bold text-white tracking-wide truncate pr-2">{pairing.name}</h4>
-                              <span className="font-sans font-bold text-xs text-[#ffe2ab] shrink-0">{formatCurrency(pairing.price)}</span>
-                            </div>
-                            <p className="font-sans text-[#A69984]/70 text-[10px] leading-relaxed truncate">
-                              {pairing.desc}
-                            </p>
-                          </div>
-                          <button
-                            onClick={() => {
-                              addToCart(pairing.id);
-                              triggerPairingToast(`${pairing.name} added to cart!`);
-                            }}
-                            className="w-8 h-8 rounded-lg bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] flex items-center justify-center transition-all cursor-pointer shadow-md flex-shrink-0"
-                          >
-                            <span className="material-symbols-outlined text-sm font-black">add</span>
-                          </button>
+                        {/* Live flame indicator badge */}
+                        <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-extrabold font-sans uppercase tracking-wider ${spicyMeta[selectedSpicyLevel].bg} ${spicyMeta[selectedSpicyLevel].border} ${spicyMeta[selectedSpicyLevel].textColor}`}>
+                          {Array.from({ length: spicyMeta[selectedSpicyLevel].flames }).map((_, i) => (
+                            <span key={i} className={`material-symbols-outlined text-[9px] leading-none ${spicyMeta[selectedSpicyLevel].textColor}`}>local_fire_department</span>
+                          ))}
+                          <span>{selectedSpicyLevel === 'Normal' ? 'Balanced' : spicyMeta[selectedSpicyLevel].label}</span>
                         </div>
                       </div>
-                    );
-                  })()}
+
+                      {/* 4-segment pill controller */}
+                      <div className="grid grid-cols-4 bg-[#0a0a09] border border-white/5 rounded-xl p-1 gap-1 font-sans select-none">
+                        {(['Mild', 'Normal', 'Hot', 'Super Hot'] as SpicyLevel[]).map(level => {
+                          const m = spicyMeta[level];
+                          const isActive = selectedSpicyLevel === level;
+                          return (
+                            <button
+                              type="button"
+                              key={level}
+                              onClick={() => setSelectedSpicyLevel(level)}
+                              className={`py-2 rounded-lg text-[9px] font-bold uppercase tracking-wider text-center transition-all cursor-pointer ${
+                                isActive
+                                  ? `${m.bg} border ${m.border} ${m.textColor} shadow-sm`
+                                  : 'text-[#A69984]/40 hover:text-white/80 hover:bg-white/5 border border-transparent'
+                              }`}
+                            >
+                              {level === 'Super Hot' ? 'Fiery' : level === 'Normal' ? 'Blnd' : m.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Chef Notes Customization */}
+                  <div className="border-t border-white/5 pt-4">
+                    {!showNotesInput ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowNotesInput(true)}
+                        className="flex items-center justify-between w-full text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-lg text-[#ffe2ab] select-none group-hover:scale-105 transition-transform">edit_note</span>
+                          <span className="text-[10px] uppercase font-bold text-[#A69984]/50 group-hover:text-white/85 transition-colors tracking-[0.2em] font-sans select-none">
+                            Special Instructions
+                          </span>
+                        </div>
+                        <span className="text-[#ffe2ab]/80 group-hover:text-[#ffe2ab] text-[10px] font-sans font-bold uppercase tracking-wider">
+                          + Add Notes
+                        </span>
+                      </button>
+                    ) : (
+                      <div className="space-y-2 animate-fade-in">
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-lg text-[#ffe2ab] select-none">edit_note</span>
+                            <span className="text-[10px] uppercase font-bold text-[#A69984]/50 tracking-[0.2em] font-sans select-none">
+                              Special Instructions
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNotesInput(false);
+                              setDishNotes('');
+                            }}
+                            className="text-rose-400/70 hover:text-rose-400 text-[9px] font-sans font-semibold uppercase tracking-wider cursor-pointer"
+                          >
+                            Cancel & Clear
+                          </button>
+                        </div>
+                        
+                        <textarea
+                          value={dishNotes}
+                          onChange={(e) => setDishNotes(e.target.value)}
+                          placeholder="E.g., No onions, sauce on the side, extra garlic..."
+                          rows={2}
+                          className="w-full bg-[#12110f]/90 border border-white/10 rounded-xl p-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-all font-sans resize-none font-medium"
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 {/* Order Controls */}
@@ -1429,7 +1883,7 @@ export default function DigitalMenuPage() {
                   <div className="flex items-center gap-3">
                     {detailQty === 0 ? (
                       <button 
-                        onClick={() => addToCart(selectedItem.id)}
+                        onClick={() => addToCart(selectedItem.id, dishNotes)}
                         className="px-6 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer"
                       >
                         Add to Order
@@ -1446,7 +1900,7 @@ export default function DigitalMenuPage() {
                           {detailQty}
                         </span>
                         <button 
-                          onClick={() => addToCart(selectedItem.id)}
+                          onClick={() => addToCart(selectedItem.id, dishNotes)}
                           className="w-7 h-7 rounded-full flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 transition-colors border border-white/5 cursor-pointer"
                         >
                           <span className="material-symbols-outlined text-xs">add</span>
@@ -1463,7 +1917,7 @@ export default function DigitalMenuPage() {
 
       {/* ORDER SUBMITTED CONFIRMATION MODAL */}
       {orderSubmitted && (
-        <div className="fixed inset-0 w-screen h-screen bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 flex-none">
+        <div className="fixed inset-0 w-screen h-screen bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4">
           <div className="bg-[#161513] border border-[#ffe2ab]/20 p-6 sm:p-10 rounded-2xl max-w-md w-full shadow-2xl text-center relative select-none">
             <span className="material-symbols-outlined text-6xl text-[#ffe2ab] mb-4 font-light motion-safe:animate-pulse">check_circle</span>
             <h3 className="font-serif text-2xl text-white mb-2 font-medium tracking-wide">Order Handed to Kitchen</h3>
@@ -1491,14 +1945,14 @@ export default function DigitalMenuPage() {
             <div className="flex flex-col gap-3">
               <Link 
                 href="/menu/order-status"
-                onClick={() => setOrderSubmitted(false)}
+                onClick={handleDismissOrderSubmitted}
                 className="w-full py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer text-center"
               >
                 Track Cooking Status
                 <span className="material-symbols-outlined text-sm font-black">hourglass_empty</span>
               </Link>
               <button 
-                onClick={() => setOrderSubmitted(false)}
+                onClick={handleDismissOrderSubmitted}
                 className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-lg font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
               >
                 Back to Digital Menu
@@ -1510,7 +1964,7 @@ export default function DigitalMenuPage() {
 
       {/* AI CULINARY CONCIERGE DRAWER OVERLAY */}
       {isAIChatOpen && (
-        <div className="fixed inset-0 w-screen h-screen bg-black/85 backdrop-blur-md flex justify-end z-50 flex-none select-none">
+        <div className="fixed inset-0 w-screen h-screen bg-black/85 backdrop-blur-md flex justify-end z-50 select-none">
           <div className="bg-[#161513]/98 backdrop-blur-xl border-l border-[#ffe2ab]/20 w-full sm:max-w-[460px] h-full p-6 sm:p-8 flex flex-col justify-between shadow-[0_0_50px_rgba(255,226,171,0.15)] animate-slide-in">
             
             {/* Header */}
@@ -1604,35 +2058,44 @@ export default function DigitalMenuPage() {
 
       {/* ITEM CUSTOMIZATION MODAL */}
       {selectedCustomizingItem && (
-        <div className="fixed inset-0 w-screen h-screen bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 select-none">
-          <div className="bg-[#161513] border border-[#ffe2ab]/20 p-6 sm:p-8 rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden flex flex-col justify-between max-h-[90vh]">
-            
-            {/* Modal Header */}
-            <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
-              <div>
-                <span className="text-[9px] uppercase font-bold text-[#ffe2ab] tracking-widest font-sans">Customize Selection</span>
-                <h3 className="font-serif text-xl text-white font-medium mt-1">{selectedCustomizingItem.name}</h3>
-                <p className="text-[10px] text-[#A69984]/50 font-sans mt-0.5">Base Price: {formatCurrency(selectedCustomizingItem.price)}</p>
-              </div>
-              <button 
+        <div className="fixed inset-0 w-screen h-screen bg-black/92 backdrop-blur-xl flex items-center justify-center z-50 p-4 sm:p-8 select-none animate-fade-in">
+          <div className="bg-[#161513] border border-[#ffe2ab]/20 rounded-2xl max-w-lg w-full shadow-[0_0_50px_rgba(255,226,171,0.12)] overflow-hidden flex flex-col max-h-[92vh]">
+
+            {/* Hero image strip */}
+            <div className="relative w-full h-[160px] overflow-hidden shrink-0 bg-[#0c0c0b]">
+              <img
+                src={selectedCustomizingItem.image}
+                alt={selectedCustomizingItem.name}
+                className="w-full h-full object-cover select-none"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#161513] via-[#161513]/60 to-transparent" />
+              {/* Close button over image */}
+              <button
                 onClick={() => setSelectedCustomizingItem(null)}
-                className="w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-[#A69984] hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-[#A69984] hover:text-white hover:bg-white/10 transition-all cursor-pointer z-10"
               >
                 <span className="material-symbols-outlined text-lg leading-none">close</span>
               </button>
+              {/* Title overlay */}
+              <div className="absolute bottom-0 left-0 p-5">
+                <span className="text-[9px] uppercase font-bold text-[#ffe2ab] tracking-widest font-sans block mb-0.5">Customize Your Order</span>
+                <h3 className="font-serif text-xl text-white font-medium leading-tight">{selectedCustomizingItem.name}</h3>
+                <p className="text-[10px] text-[#A69984]/70 font-sans mt-0.5">Base: {formatCurrency(selectedCustomizingItem.price)}</p>
+              </div>
             </div>
 
-            {/* Customizer Option Sets */}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-6 mb-6">
-              
+            {/* Scrollable body */}
+            <div className="flex-1 overflow-y-auto px-6 pt-5 pb-2 space-y-6 scrollbar-hide">
+
               {/* Modifier Config Groups */}
               {itemModifiersConfig[selectedCustomizingItem.id]?.map((group, gIdx) => (
-                <div key={gIdx} className="space-y-3">
-                  <label className="block text-[#A69984]/70 text-[10px] font-bold uppercase tracking-wider font-sans">
-                    {group.title} {group.type === 'single' ? '(Select One)' : '(Select Multiple)'}
-                  </label>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div key={gIdx} className="space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[9px] uppercase font-extrabold text-[#A69984]/60 tracking-[0.15em] font-sans">{group.title}</span>
+                    <span className="text-[9px] text-[#ffe2ab]/50 font-sans font-bold">{group.type === 'single' ? '· Pick one' : '· Pick any'}</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {group.options.map((opt, oIdx) => {
                       const isSelected = selectedModifiers.includes(opt.name);
                       return (
@@ -1646,16 +2109,27 @@ export default function DigitalMenuPage() {
                                 opt.name
                               ]);
                             } else {
-                              setSelectedModifiers(prev => 
+                              setSelectedModifiers(prev =>
                                 isSelected ? prev.filter(name => name !== opt.name) : [...prev, opt.name]
                               );
                             }
                           }}
-                          className={`p-3 rounded-xl border text-left flex justify-between items-center transition-all cursor-pointer font-sans ${isSelected ? 'bg-[#ffe2ab]/10 border-[#ffe2ab] text-[#ffe2ab]' : 'bg-[#0a0a09]/50 border-white/5 text-[#A69984]/80 hover:border-white/15'}`}
+                          className={`p-3 rounded-xl border text-left flex items-center justify-between gap-2 transition-all duration-200 cursor-pointer font-sans ${
+                            isSelected
+                              ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/60 shadow-[0_0_12px_rgba(255,226,171,0.08)]'
+                              : 'bg-[#0e0e0d] border-white/5 hover:border-white/15 hover:bg-white/[0.02]'
+                          }`}
                         >
-                          <span className="text-xs font-semibold leading-snug">{opt.name}</span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                              isSelected ? 'bg-[#ffe2ab] border-[#ffe2ab]' : 'border-white/20'
+                            }`}>
+                              {isSelected && <span className="material-symbols-outlined text-[10px] text-[#402d00] leading-none font-black">check</span>}
+                            </div>
+                            <span className={`text-xs font-semibold leading-snug truncate ${isSelected ? 'text-[#ffe2ab]' : 'text-[#A69984]/80'}`}>{opt.name}</span>
+                          </div>
                           {opt.price && (
-                            <span className="text-[10.5px] font-bold text-[#ffe2ab]">+{formatCurrency(opt.price)}</span>
+                            <span className={`text-[10px] font-bold shrink-0 ${isSelected ? 'text-[#ffe2ab]' : 'text-[#A69984]/50'}`}>+{formatCurrency(opt.price)}</span>
                           )}
                         </button>
                       );
@@ -1665,46 +2139,166 @@ export default function DigitalMenuPage() {
               ))}
 
               {/* Course Routing Selector */}
-              <div className="space-y-3 border-t border-white/5 pt-5">
-                <label className="block text-[#A69984]/70 text-[10px] font-bold uppercase tracking-wider font-sans">
-                  Course Assignment
-                </label>
+              <div className="space-y-2.5 border-t border-white/5 pt-5">
+                <span className="text-[9px] uppercase font-extrabold text-[#A69984]/60 tracking-[0.15em] font-sans block">Course Timing</span>
                 <div className="grid grid-cols-4 bg-[#0e0e0d] border border-white/5 rounded-xl p-1 gap-1 font-sans">
                   {(['starter', 'main', 'dessert', 'drinks'] as const).map(c => (
                     <button
                       key={c}
                       onClick={() => setSelectedCustomCourse(c)}
-                      className={`py-2 px-2.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider transition-all cursor-pointer text-center ${selectedCustomCourse === c ? 'bg-white/5 text-white' : 'text-[#A69984]/40 hover:text-white'}`}
+                      className={`py-2 px-1 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer text-center ${
+                        selectedCustomCourse === c
+                          ? 'bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 text-[#ffe2ab]'
+                          : 'text-[#A69984]/40 hover:text-white border border-transparent'
+                      }`}
                     >
-                      {c === 'main' ? 'Main Course' : c}
+                      {c === 'main' ? 'Main' : c}
                     </button>
                   ))}
                 </div>
               </div>
 
+              {/* Special Instructions */}
+              <div className="border-t border-white/5 pt-4 pb-1">
+                {!showCustomizerNotesInput ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomizerNotesInput(true)}
+                    className="flex items-center justify-between w-full text-left cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-base text-[#ffe2ab] select-none group-hover:scale-105 transition-transform">edit_note</span>
+                      <span className="text-[10px] uppercase font-bold text-[#A69984]/50 group-hover:text-white/85 transition-colors tracking-[0.15em] font-sans select-none">
+                        Special Instructions
+                      </span>
+                    </div>
+                    <span className="text-[#ffe2ab]/70 group-hover:text-[#ffe2ab] text-[10px] font-sans font-bold uppercase tracking-wider">
+                      + Add Notes
+                    </span>
+                  </button>
+                ) : (
+                  <div className="space-y-2 animate-fade-in">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-base text-[#ffe2ab] select-none">edit_note</span>
+                        <span className="text-[10px] uppercase font-bold text-[#A69984]/50 tracking-[0.15em] font-sans select-none">Special Instructions</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { setShowCustomizerNotesInput(false); setCustomizerNotes(''); }}
+                        className="text-rose-400/60 hover:text-rose-400 text-[9px] font-sans font-semibold uppercase tracking-wider cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <textarea
+                      value={customizerNotes}
+                      onChange={(e) => setCustomizerNotes(e.target.value)}
+                      placeholder="E.g., No onions, sauce on the side, extra garlic..."
+                      rows={2}
+                      className="w-full bg-[#12110f]/90 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-all font-sans resize-none font-medium"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="border-t border-white/5 pt-4 flex gap-4 shrink-0 font-sans">
+            {/* Footer actions */}
+            <div className="px-6 pb-6 pt-4 border-t border-white/5 flex gap-3 shrink-0 font-sans">
               <button
                 onClick={() => setSelectedCustomizingItem(null)}
-                className="flex-1 py-3.5 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer"
+                className="px-5 py-3.5 bg-white/5 hover:bg-white/10 text-[#A69984] hover:text-white rounded-xl font-bold text-[10px] uppercase tracking-widest transition-colors cursor-pointer shrink-0"
               >
                 Cancel
               </button>
               <button
                 onClick={() => {
-                  addItemToCartStructured(selectedCustomizingItem.id, 1, selectedModifiers, selectedCustomCourse);
+                  addItemToCartStructured(selectedCustomizingItem.id, 1, selectedModifiers, selectedCustomCourse, customizerNotes);
                   setSelectedCustomizingItem(null);
                   triggerPairingToast(`${selectedCustomizingItem.name} customized and added!`);
                 }}
-                className="flex-grow py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                className="flex-1 py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all cursor-pointer shadow-[0_4px_20px_rgba(255,226,171,0.15)] hover:scale-[1.01]"
               >
+                <span className="material-symbols-outlined text-sm font-black leading-none">add_shopping_cart</span>
                 Add to Order
-                <span className="material-symbols-outlined text-sm font-black">add</span>
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Administrative Table Unlock Modal */}
+      {showAdminAuthModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 select-none font-sans animate-fade-in">
+          <div className="bg-[#161513] border border-white/10 rounded-2xl p-8 w-full max-w-[380px] shadow-2xl relative">
+            
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mx-auto mb-3">
+                <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
+              </div>
+              <h3 className="text-white font-bold text-base tracking-wide">Admin Access Required</h3>
+              <p className="text-[#A69984]/60 text-xs mt-1 leading-relaxed">Enter Owner Admin credentials to temporarily unlock the table assignment.</p>
+            </div>
+
+            {adminAuthError && (
+              <div className="mb-4 p-2.5 bg-rose-950/45 border border-rose-500/20 text-rose-300 text-[11px] rounded-lg text-center animate-shake">
+                {adminAuthError}
+              </div>
+            )}
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const emailLower = adminEmailInput.toLowerCase().trim();
+              if (emailLower === 'admin@dinepos.ai' && adminPasswordInput === 'admin123') {
+                setIsTableTemporarilyUnlocked(true);
+                setShowAdminAuthModal(false);
+                setIsTableDropdownOpen(true);
+              } else {
+                setAdminAuthError('Invalid administrator credentials.');
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Admin Email</label>
+                <input 
+                  type="email" 
+                  required
+                  value={adminEmailInput}
+                  onChange={(e) => setAdminEmailInput(e.target.value)}
+                  className="w-full bg-[#12110f]/90 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-all font-medium"
+                  placeholder="admin@dinepos.ai"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Admin Password</label>
+                <input 
+                  type="password" 
+                  required
+                  value={adminPasswordInput}
+                  onChange={(e) => setAdminPasswordInput(e.target.value)}
+                  className="w-full bg-[#12110f]/90 border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-all font-medium"
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setShowAdminAuthModal(false)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-[#A69984] hover:text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center font-sans"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] font-sans"
+                >
+                  Unlock
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

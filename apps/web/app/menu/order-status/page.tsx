@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { migrateCart, CartItem } from '../cartUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
   'spec-1': { name: 'Gold Leaf A5 Wagyu Ribeye', price: 185, category: 'special', description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal.' },
@@ -20,13 +21,41 @@ const menuItemsRegistry: { [id: string]: { name: string; price: number; category
   'rec-2': { name: 'Opus One', price: 450, category: 'drinks', description: '2018 Napa Valley. Elegant structure, cassis, refined tannins.' }
 };
 
+const itemModifiersConfig: { [itemId: string]: { title: string; options: { name: string; price?: number }[]; type: 'single' | 'multiple' }[] } = {
+  'spec-1': [
+    { title: 'Steak Doneness', type: 'single', options: [{ name: 'Rare' }, { name: 'Medium Rare' }, { name: 'Medium' }, { name: 'Well Done' }] },
+    { title: 'Premium Add-ons', type: 'multiple', options: [{ name: 'Shaved Black Truffle', price: 15 }, { name: 'Extra 24k Gold Leaf', price: 20 }] }
+  ],
+  'main-3': [
+    { title: 'Steak Doneness', type: 'single', options: [{ name: 'Rare' }, { name: 'Medium Rare' }, { name: 'Medium' }, { name: 'Well Done' }] },
+    { title: 'Premium Add-ons', type: 'multiple', options: [{ name: 'Extra Truffle Butter', price: 5 }, { name: 'Lobster Tail', price: 25 }] }
+  ],
+  'main-2': [
+    { title: 'Preparation Style', type: 'single', options: [{ name: 'Crispy Skin (Standard)' }, { name: 'Steamed Ginger Style' }] },
+    { title: 'Add-ons', type: 'multiple', options: [{ name: 'Extra Citrus Beurre Blanc', price: 3 }] }
+  ],
+  'drink-1': [
+    { title: 'Ice Preference', type: 'single', options: [{ name: 'Spherical Gold Ice Sphere' }, { name: 'Large Clear Cube' }, { name: 'No Ice' }] }
+  ],
+  'drink-2': [
+    { title: 'Preparation', type: 'single', options: [{ name: 'Chilled Crystal Coupette' }, { name: 'On the Rocks' }] }
+  ],
+  'dess-1': [
+    { title: 'Gelato Flavor', type: 'single', options: [{ name: 'Tahitian Vanilla Bean' }, { name: 'Dark Chocolate Gelato' }] }
+  ]
+};
+
 export default function OrderStatusPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [activeStep, setActiveStep] = useState(2); // 1 = Received, 2 = Cooking, 3 = Plating, 4 = Ready
   
-  const [placedOrder, setPlacedOrder] = useState<{ [itemId: string]: number }>({});
+  const [placedOrder, setPlacedOrder] = useState<{ [cartKey: string]: CartItem }>({});
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [diningOption, setDiningOption] = useState<'dine-in' | 'takeaway' | 'delivery'>('dine-in');
+  const [taxRateDineIn, setTaxRateDineIn] = useState(0.10);
+  const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.08);
+  const [taxRateDelivery, setTaxRateDelivery] = useState(0.08);
   const [exclusionsConfig, setExclusionsConfig] = useState({
     maxPrice: 40,
     excludedTags: ['Seafood'],
@@ -34,15 +63,56 @@ export default function OrderStatusPage() {
     enableSelfCheckout: true
   });
 
+  const [fallbackList, setFallbackList] = useState([
+    {
+      id: 'item-1',
+      name: 'A5 Wagyu Striploin',
+      details: 'Qty: x1 • Medium Rare • Truffle Butter',
+      status: 'Cooking',
+      statusType: 'active',
+      icon: 'restaurant'
+    },
+    {
+      id: 'item-2',
+      name: 'Château Margaux 2015',
+      details: 'Qty: x1 • Glass • Decanted',
+      status: 'Prepared',
+      statusType: 'completed',
+      icon: 'wine_bar'
+    },
+    {
+      id: 'item-3',
+      name: 'Valrhona Chocolate Sphere',
+      details: 'Qty: x1 • Hold for dessert',
+      status: 'Pending',
+      statusType: 'pending',
+      icon: 'cookie'
+    }
+  ]);
+
+  const [editingItemData, setEditingItemData] = useState<{ id: string; name: string; quantity: number; notes: string } | null>(null);
+
   useEffect(() => {
     const savedOrder = localStorage.getItem('dinepos_placed_order');
     if (savedOrder) {
       try {
-        setPlacedOrder(JSON.parse(savedOrder));
+        setPlacedOrder(migrateCart(savedOrder));
       } catch (e) {
         console.error('Failed to parse placed order:', e);
       }
     }
+    const savedDiningOption = localStorage.getItem('dinepos_dining_option');
+    if (savedDiningOption === 'dine-in' || savedDiningOption === 'takeaway' || savedDiningOption === 'delivery') {
+      setDiningOption(savedDiningOption);
+    }
+    const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
+    const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
+    const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
+
+    if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
+    if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
+    if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
+
     const savedTable = localStorage.getItem('dinepos_table_number');
     if (savedTable) {
       setTableNumber(parseInt(savedTable, 10) || 12);
@@ -75,6 +145,20 @@ export default function OrderStatusPage() {
           console.error('Failed to parse storage exclusions config updates:', err);
         }
       }
+      if (e.key === 'dinepos_dining_option' && e.newValue) {
+        if (e.newValue === 'dine-in' || e.newValue === 'takeaway' || e.newValue === 'delivery') {
+          setDiningOption(e.newValue);
+        }
+      }
+      if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
+        setTaxRateDineIn(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
+        setTaxRateTakeaway(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
+        setTaxRateDelivery(parseFloat(e.newValue) / 100);
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -85,12 +169,27 @@ export default function OrderStatusPage() {
   // Calculations for receipt
   let subtotal = 740;
   if (!isOrderEmpty) {
-    subtotal = Object.entries(placedOrder).reduce((acc, [id, qty]) => {
-      const item = menuItemsRegistry[id];
-      return acc + (item ? item.price * qty : 0);
+    subtotal = Object.values(placedOrder).reduce((acc, ci) => {
+      const item = menuItemsRegistry[ci.itemId];
+      let modifierExtra = 0;
+      ci.modifiers.forEach(modName => {
+        const configs = itemModifiersConfig[ci.itemId] || [];
+        for (const config of configs) {
+          const opt = config.options.find(o => o.name === modName);
+          if (opt?.price) {
+            modifierExtra += opt.price;
+          }
+        }
+      });
+      const singlePrice = (item ? item.price : 0) + modifierExtra;
+      return acc + (singlePrice * ci.quantity);
     }, 0);
   }
-  const taxRate = 0.18;
+  const taxRate = diningOption === 'takeaway'
+    ? taxRateTakeaway
+    : diningOption === 'delivery'
+      ? taxRateDelivery
+      : taxRateDineIn;
   const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
@@ -145,16 +244,94 @@ export default function OrderStatusPage() {
       return { status: 'Pending', statusType: 'pending' };
     }
   };
+  const handleDeletePendingItem = (itemId: string) => {
+    if (isOrderEmpty) {
+      setFallbackList(prev => prev.filter(item => item.id !== itemId));
+    } else {
+      setPlacedOrder(prev => {
+        const updated = { ...prev };
+        delete updated[itemId];
+        localStorage.setItem('dinepos_placed_order', JSON.stringify(updated));
+        return updated;
+      });
+    }
+  };
+
+  const handleEditPendingItem = (itemId: string) => {
+    if (isOrderEmpty) {
+      const item = fallbackList.find(i => i.id === itemId);
+      if (item) {
+        const qtyMatch = item.details.match(/Qty:\s*x(\d+)/);
+        const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+        const noteMatch = item.details.match(/Note:\s*"([^"]+)"/);
+        const notes = noteMatch ? noteMatch[1] : '';
+        setEditingItemData({ id: itemId, name: item.name, quantity: qty, notes });
+      }
+    } else {
+      const ci = placedOrder[itemId];
+      if (ci) {
+        const item = menuItemsRegistry[ci.itemId];
+        setEditingItemData({
+          id: itemId,
+          name: item ? item.name : 'Gourmet Selection',
+          quantity: ci.quantity,
+          notes: ci.notes || ''
+        });
+      }
+    }
+  };
+
+  const handleSavePendingItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItemData) return;
+
+    if (isOrderEmpty) {
+      setFallbackList(prev => prev.map(item => {
+        if (item.id === editingItemData.id) {
+          let details = `Qty: x${editingItemData.quantity}`;
+          if (editingItemData.notes) {
+            details += ` • "${editingItemData.notes}"`;
+          }
+          return {
+            ...item,
+            details
+          };
+        }
+        return item;
+      }));
+    } else {
+      setPlacedOrder(prev => {
+        const updated = { ...prev };
+        if (updated[editingItemData.id]) {
+          updated[editingItemData.id] = {
+            ...updated[editingItemData.id],
+            quantity: editingItemData.quantity,
+            notes: editingItemData.notes
+          };
+          localStorage.setItem('dinepos_placed_order', JSON.stringify(updated));
+        }
+        return updated;
+      });
+    }
+    setEditingItemData(null);
+  };
 
   const selectionItems = isOrderEmpty
-    ? fallbackItems
-    : Object.entries(placedOrder).map(([id, qty], idx) => {
-        const registryItem = menuItemsRegistry[id];
+    ? fallbackList
+    : Object.entries(placedOrder).map(([key, ci], idx) => {
+        const registryItem = menuItemsRegistry[ci.itemId];
         const statusInfo = getStatusInfo(idx, Object.keys(placedOrder).length);
+        let detailsStr = `Qty: x${ci.quantity}`;
+        if (ci.modifiers && ci.modifiers.length > 0) {
+          detailsStr += ` • ${ci.modifiers.join(', ')}`;
+        }
+        if (ci.notes) {
+          detailsStr += ` • "${ci.notes}"`;
+        }
         return {
-          id: id,
+          id: key,
           name: registryItem ? registryItem.name : 'Gourmet Selection',
-          details: `Qty: x${qty} • Prepared fresh`,
+          details: detailsStr,
           status: statusInfo.status,
           statusType: statusInfo.statusType,
           icon: getItemIcon(registryItem ? registryItem.category : 'mains')
@@ -331,13 +508,15 @@ export default function OrderStatusPage() {
               </div>
               
               {/* Steak Image (visual mockup placeholder mirroring fine dining atmosphere) */}
-              <div className="h-[120px] w-full relative overflow-hidden">
+              <div className="h-[120px] w-full relative overflow-hidden bg-white/5 flex items-center justify-center text-white/10">
+                <span className="material-symbols-outlined text-4xl absolute">restaurant</span>
                 <img 
                   src="https://images.unsplash.com/photo-1544025162-8111142154ea?q=80&w=600&auto=format&fit=crop"
                   alt="Chef cooking steak"
-                  className="w-full h-full object-cover grayscale brightness-75 select-none"
+                  className="w-full h-full object-cover grayscale brightness-75 select-none relative z-10"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#161513] via-transparent to-transparent"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-[#161513] via-transparent to-transparent z-20"></div>
               </div>
 
               <div className="p-6 pt-1 font-serif text-[13.5px] italic text-[#A69984]/90 leading-relaxed select-none">
@@ -375,8 +554,28 @@ export default function OrderStatusPage() {
                     </div>
                   </div>
 
-                  {/* Status Badge */}
-                  <div>
+                  {/* Status Badge & Actions */}
+                  <div className="flex items-center gap-3">
+                    {item.statusType === 'pending' && (
+                      <div className="flex items-center gap-2 border-r border-white/5 pr-4 mr-1">
+                        <button
+                          type="button"
+                          onClick={() => handleEditPendingItem(item.id)}
+                          className="w-8 h-8 rounded-lg bg-white/5 hover:bg-[#ffe2ab]/10 border border-white/10 hover:border-[#ffe2ab]/20 text-[#ffe2ab] flex items-center justify-center transition-colors cursor-pointer"
+                          title="Edit Order Item"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePendingItem(item.id)}
+                          className="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
+                          title="Cancel & Delete Order Item"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">delete</span>
+                        </button>
+                      </div>
+                    )}
                     {item.statusType === 'active' && (
                       <span className="inline-flex items-center px-3 py-1 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 rounded-lg text-[10.5px] text-[#ffe2ab] font-sans font-bold uppercase tracking-widest shadow-[0_0_12px_rgba(255,226,171,0.05)] select-none">
                         Cooking
@@ -403,24 +602,34 @@ export default function OrderStatusPage() {
         </div>
 
         {/* Bottom Actions Sticky Bar */}
-        <div className="absolute bottom-0 left-0 w-full bg-[#161513] border-t border-white/5 px-10 py-5 flex items-center justify-end gap-4 z-30 shadow-[0_-12px_40px_rgba(0,0,0,0.8)] select-none">
-          <button 
-            onClick={() => setShowReceipt(true)}
-            className="flex items-center gap-2.5 bg-transparent border border-[#A69984]/25 hover:border-[#ffe2ab]/40 px-6 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-widest text-white transition-all cursor-pointer"
+        <div className="absolute bottom-0 left-0 w-full bg-[#161513] border-t border-white/5 px-10 py-5 flex items-center justify-between gap-4 z-30 shadow-[0_-12px_40px_rgba(0,0,0,0.8)] select-none">
+          <Link 
+            href="/menu"
+            className="flex items-center gap-2 text-xs font-sans font-bold uppercase tracking-widest text-[#ffe2ab] hover:text-[#ffdca0] transition-colors"
           >
-            <span className="material-symbols-outlined text-base">receipt_long</span>
-            View Receipt
-          </button>
+            <span className="material-symbols-outlined text-base">menu_book</span>
+            Return to Menu
+          </Link>
           
-          {exclusionsConfig.enableSelfCheckout && (
-            <Link 
-              href="/menu/checkout"
-              className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-8 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-widest flex items-center gap-2.5 transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:scale-[1.01] cursor-pointer"
+          <div className="flex gap-4">
+            <button 
+              onClick={() => setShowReceipt(true)}
+              className="flex items-center gap-2.5 bg-transparent border border-[#A69984]/25 hover:border-[#ffe2ab]/40 px-6 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-widest text-white transition-all cursor-pointer"
             >
-              <span className="material-symbols-outlined text-base">credit_card</span>
-              Self Checkout
-            </Link>
-          )}
+              <span className="material-symbols-outlined text-base">receipt_long</span>
+              View Receipt
+            </button>
+            
+            {exclusionsConfig.enableSelfCheckout && (
+              <Link 
+                href="/menu/checkout"
+                className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-8 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-widest flex items-center gap-2.5 transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:scale-[1.01] cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">credit_card</span>
+                Self Checkout
+              </Link>
+            )}
+          </div>
         </div>
 
       </main>
@@ -470,18 +679,37 @@ export default function OrderStatusPage() {
                     </div>
                   </>
                 ) : (
-                  Object.entries(placedOrder).map(([id, qty], idx) => {
-                    const registryItem = menuItemsRegistry[id];
+                  Object.entries(placedOrder).map(([key, ci], idx) => {
+                    const registryItem = menuItemsRegistry[ci.itemId];
                     if (!registryItem) return null;
+                    
+                    let modifierExtra = 0;
+                    ci.modifiers.forEach(modName => {
+                      const configs = itemModifiersConfig[ci.itemId] || [];
+                      for (const config of configs) {
+                        const opt = config.options.find(o => o.name === modName);
+                        if (opt?.price) {
+                          modifierExtra += opt.price;
+                        }
+                      }
+                    });
+                    const singlePrice = registryItem.price + modifierExtra;
+                    const itemTotal = singlePrice * ci.quantity;
+
                     return (
-                      <div key={id} className={`flex justify-between items-start py-1 ${idx > 0 ? 'border-t border-white/5 pt-4' : ''}`}>
+                      <div key={key} className={`flex justify-between items-start py-1 ${idx > 0 ? 'border-t border-white/5 pt-4' : ''}`}>
                         <div className="max-w-[70%]">
                           <div className="font-serif text-sm text-white font-medium tracking-wide">{registryItem.name}</div>
-                          <div className="text-[#A69984]/50 text-[11px] mt-1 font-semibold">{registryItem.description}</div>
+                          {ci.modifiers.length > 0 && (
+                            <div className="text-[#ffe2ab]/75 text-[10px] font-sans mt-0.5 italic">{ci.modifiers.join(', ')}</div>
+                          )}
+                          {ci.notes && (
+                            <div className="text-[#A69984]/50 text-[10px] font-sans mt-0.5 italic">Note: "{ci.notes}"</div>
+                          )}
                         </div>
                         <div className="text-right">
-                          <div className="text-white text-xs font-bold font-sans">x{qty}</div>
-                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">${(registryItem.price * qty).toFixed(2)}</div>
+                          <div className="text-white text-xs font-bold font-sans">x{ci.quantity}</div>
+                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">${itemTotal.toFixed(2)}</div>
                         </div>
                       </div>
                     );
@@ -497,7 +725,7 @@ export default function OrderStatusPage() {
                 <span>${subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-xs text-[#A69984]/60 font-bold uppercase tracking-wider border-b border-white/5 pb-4">
-                <span>Taxes & Fees (18%)</span>
+                <span>Taxes & Fees ({(taxRate * 100).toFixed(1)}%)</span>
                 <span>${tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-base font-bold text-white pt-2">
@@ -519,6 +747,76 @@ export default function OrderStatusPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Pending Item Modal */}
+      {editingItemData && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[100] p-4 font-sans select-none animate-fade-in">
+          <div className="bg-[#161513] border border-white/10 rounded-2xl p-8 w-full max-w-[380px] shadow-2xl">
+            
+            {/* Header */}
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-full bg-[#ffe2ab]/10 border border-[#ffe2ab]/20 flex items-center justify-center text-[#ffe2ab] mx-auto mb-3">
+                <span className="material-symbols-outlined text-xl">edit_document</span>
+              </div>
+              <h3 className="text-white font-bold text-base tracking-wide">Edit Pending Item</h3>
+              <p className="text-[#A69984]/60 text-xs mt-1 leading-relaxed">{editingItemData.name}</p>
+            </div>
+
+            <form onSubmit={handleSavePendingItem} className="space-y-4">
+              {/* Quantity */}
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Quantity</label>
+                <div className="flex items-center gap-3">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingItemData(prev => prev ? { ...prev, quantity: Math.max(1, prev.quantity - 1) } : null)}
+                    className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">remove</span>
+                  </button>
+                  <span className="flex-1 text-center font-bold text-white text-sm font-mono">{editingItemData.quantity}</span>
+                  <button 
+                    type="button"
+                    onClick={() => setEditingItemData(prev => prev ? { ...prev, quantity: Math.min(10, prev.quantity + 1) } : null)}
+                    className="w-10 h-10 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Special Instructions */}
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Special Instructions</label>
+                <textarea 
+                  value={editingItemData.notes}
+                  onChange={(e) => setEditingItemData(prev => prev ? { ...prev, notes: e.target.value } : null)}
+                  className="w-full bg-[#12110f]/90 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-all font-sans resize-none font-medium"
+                  placeholder="E.g., Extra sauce, no ice, hold for dessert..."
+                  rows={2}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setEditingItemData(null)}
+                  className="flex-1 py-3 bg-white/5 hover:bg-white/10 text-[#A69984] hover:text-white font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center font-sans"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  className="flex-1 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] font-sans"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

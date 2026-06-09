@@ -50,7 +50,7 @@
 
 .navItem.active {
   background-color: var(--color-primary);
-  color: #fff;
+  color: #402d00;
 }
 
 .logoutWrapper {

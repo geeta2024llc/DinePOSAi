@@ -825,6 +825,7 @@ export default function DashboardPage() {
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [staffRoleFilter, setStaffRoleFilter] = useState<'all' | 'foh' | 'kitchen'>('all');
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   const [timelineTab, setTimelineTab] = useState<'timeline' | 'month'>('timeline');
   const [staffMembers, setStaffMembers] = useState([
     {
@@ -946,6 +947,51 @@ export default function DashboardPage() {
   const [paypalEnabled, setPaypalEnabled] = useState(true);
   const [cashEnabled, setCashEnabled] = useState(true);
 
+  // Stripe Account Linking States
+  const [activeAdminEmail, setActiveAdminEmail] = useState('admin@dinepos.ai');
+  const [stripeAccountIdInput, setStripeAccountIdInput] = useState('');
+  const [linkedStripeAccount, setLinkedStripeAccount] = useState<string | null>(null);
+
+  const linkStripeAccount = () => {
+    if (!stripeAccountIdInput.trim()) {
+      triggerToast('Please enter a valid Stripe Account ID.', 'info');
+      return;
+    }
+    const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
+    let connections: Record<string, { stripeAccountId: string; linkedAt: string }> = {};
+    if (connectionsStr) {
+      try {
+        connections = JSON.parse(connectionsStr);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    connections[activeAdminEmail] = {
+      stripeAccountId: stripeAccountIdInput.trim(),
+      linkedAt: new Date().toISOString()
+    };
+    localStorage.setItem('dinepos_stripe_connections', JSON.stringify(connections));
+    setLinkedStripeAccount(stripeAccountIdInput.trim());
+    triggerToast(`Successfully linked Stripe account ${stripeAccountIdInput.trim()}`, 'success');
+  };
+
+  const disconnectStripeAccount = () => {
+    const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
+    let connections: Record<string, { stripeAccountId: string; linkedAt: string }> = {};
+    if (connectionsStr) {
+      try {
+        connections = JSON.parse(connectionsStr);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    delete connections[activeAdminEmail];
+    localStorage.setItem('dinepos_stripe_connections', JSON.stringify(connections));
+    setLinkedStripeAccount(null);
+    setStripeAccountIdInput('');
+    triggerToast('Stripe account disconnected.', 'info');
+  };
+
   // KDS Configuration States (preserved for KDS tab)
   const [currentStation, setCurrentStation] = useState('Grill & Sauté');
   const [relaxedThreshold, setRelaxedThreshold] = useState(10);
@@ -979,6 +1025,9 @@ export default function DashboardPage() {
   const [showServerName, setShowServerName] = useState(true);
   const [showOrderTimestamp, setShowOrderTimestamp] = useState(true);
   const [taxId, setTaxId] = useState('GB123456789');
+  const [taxRateDineIn, setTaxRateDineIn] = useState(10.0);
+  const [taxRateTakeaway, setTaxRateTakeaway] = useState(8.0);
+  const [taxRateDelivery, setTaxRateDelivery] = useState(8.0);
   const [showServiceCharge, setShowServiceCharge] = useState(true);
   const [thankYouMessage, setThankYouMessage] = useState('Thank you for dining with us at DinePosAi! We hope to see you again soon.');
   const [showQrCode, setShowQrCode] = useState(true);
@@ -996,7 +1045,8 @@ export default function DashboardPage() {
     maxPrice: 40,
     excludedTags: ['Seafood'],
     showAIConcierge: true,
-    enableSelfCheckout: true
+    enableSelfCheckout: true,
+    customerTableNumber: 12
   });
 
   // Load custom theme from localStorage on mount
@@ -1011,6 +1061,9 @@ export default function DashboardPage() {
       const savedLang = localStorage.getItem('dinepos_language');
       const savedTaxType = localStorage.getItem('dinepos_tax_type');
       const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
+      const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
+      const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
+      const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
 
       if (savedBg) setCustomBg(savedBg);
       if (savedCardBg) setCustomCardBg(savedCardBg);
@@ -1024,6 +1077,9 @@ export default function DashboardPage() {
       if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
         setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
       }
+      if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn));
+      if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway));
+      if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery));
       if (savedExclusions) {
         try {
           const parsed = JSON.parse(savedExclusions);
@@ -1034,6 +1090,37 @@ export default function DashboardPage() {
         } catch (e) {
           console.error('Failed to parse exclusions config:', e);
         }
+      }
+
+      // Load active admin info and Stripe connection
+      const activeEmail = localStorage.getItem('dinepos_logged_in_email') || 'admin@dinepos.ai';
+      setActiveAdminEmail(activeEmail);
+      
+      const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
+      let connections: Record<string, { stripeAccountId: string; linkedAt: string }> = {};
+      if (connectionsStr) {
+        try {
+          connections = JSON.parse(connectionsStr);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Pre-link default admin account for out-of-the-box functionality
+      if (!connections['admin@dinepos.ai']) {
+        connections['admin@dinepos.ai'] = {
+          stripeAccountId: 'acct_1x9u82HfdK72',
+          linkedAt: new Date().toISOString()
+        };
+        localStorage.setItem('dinepos_stripe_connections', JSON.stringify(connections));
+      }
+
+      if (connections[activeEmail]) {
+        setLinkedStripeAccount(connections[activeEmail].stripeAccountId);
+        setStripeAccountIdInput(connections[activeEmail].stripeAccountId);
+      } else {
+        setLinkedStripeAccount(null);
+        setStripeAccountIdInput('');
       }
     }
   }, []);
@@ -1146,6 +1233,8 @@ export default function DashboardPage() {
     const defaultMenuItems = [
       { id: 'spec-1', name: 'Gold Leaf A5 Wagyu Ribeye', category: 'special', price: 185, cost: 65, description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal, brushed with truffle glaze, adorned with 24k gold leaf.', image: '/images/wagyu_ribeye.png', tags: ['GF', 'Non-Veg'] },
       { id: 'spec-2', name: 'Beluga Caviar & Oysters', category: 'special', price: 95, cost: 35, description: 'Six freshly shucked Kumamoto oysters topped with Beluga caviar, champagne mignonette, and gold flakes.', image: '/images/caviar_oysters.png', tags: ['Seafood', 'Non-Veg'] },
+      { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, cost: 40, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
+      { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, cost: 20, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] },
       { id: 'start-1', name: 'Wagyu Beef Tartare', category: 'starters', price: 38, cost: 12, description: 'Hand-cut A5 Wagyu, quail egg yolk, cornichons, shallots, Dijon emulsion, served with toasted brioche points.', image: '/images/wagyu_beef_tartare.png', tags: ['Non-Veg'] },
       { id: 'start-2', name: 'Truffle Burrata Salad', category: 'starters', price: 26, cost: 7, description: 'Creamy Italian burrata, heirloom cherry tomatoes, fresh basil, aged balsamic, shaved black winter truffle.', image: '/images/truffle_burrata_salad.png', tags: ['Veg', 'GF'] },
       { id: 'start-3', name: 'Pan-Seared Jumbo Scallops', category: 'starters', price: 42, cost: 14, description: 'Pan-seared jumbo scallops, sweet pea purée, crispy pancetta, meyer lemon beurre blanc.', image: '/images/pan_seared_scallops.png', tags: ['Seafood', 'Non-Veg'] },
@@ -1161,7 +1250,16 @@ export default function DashboardPage() {
     const savedMenu = localStorage.getItem('dinepos_menu_items');
     if (savedMenu) {
       try {
-        setMenuItemsList(JSON.parse(savedMenu));
+        let loadedItems = JSON.parse(savedMenu);
+        if (!loadedItems.some((item: any) => item.category === 'combos')) {
+          const defaultCombos = [
+            { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, cost: 40, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
+            { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, cost: 20, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] }
+          ];
+          loadedItems = [...loadedItems, ...defaultCombos];
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
+        }
+        setMenuItemsList(loadedItems);
       } catch (e) {
         console.error('Failed to parse menu items:', e);
         setMenuItemsList(defaultMenuItems);
@@ -1173,6 +1271,7 @@ export default function DashboardPage() {
 
     const defaultCategories = [
       { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
+      { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' },
       { id: 'starters', name: 'Starters', icon: 'restaurant' },
       { id: 'mains', name: 'Main Course', icon: 'restaurant_menu' },
       { id: 'desserts', name: 'Desserts', icon: 'icecream' },
@@ -1181,7 +1280,20 @@ export default function DashboardPage() {
     const savedCategories = localStorage.getItem('dinepos_menu_categories');
     if (savedCategories) {
       try {
-        setCategories(JSON.parse(savedCategories));
+        let loadedCategories = JSON.parse(savedCategories);
+        loadedCategories = loadedCategories.map((c: any) => 
+          c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
+        );
+        if (!loadedCategories.some((c: any) => c.id === 'combos')) {
+          const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
+          if (specIdx !== -1) {
+            loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+          } else {
+            loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+          }
+        }
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
+        setCategories(loadedCategories);
       } catch (e) {
         console.error('Failed to parse saved categories:', e);
         setCategories(defaultCategories);
@@ -1217,6 +1329,15 @@ export default function DashboardPage() {
         if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
+      }
+      if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
+        setTaxRateDineIn(parseFloat(e.newValue));
+      }
+      if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
+        setTaxRateTakeaway(parseFloat(e.newValue));
+      }
+      if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
+        setTaxRateDelivery(parseFloat(e.newValue));
       }
       if (e.key === 'dinepos_exclusions_config' && e.newValue) {
         try {
@@ -1261,6 +1382,30 @@ export default function DashboardPage() {
     localStorage.setItem('dinepos_currency', newCurrency);
     const cnames: Record<string, string> = { USD: 'USD ($)', JPY: 'JPY (¥)', EUR: 'EUR (€)', GBP: 'GBP (£)', CNY: 'CNY (¥)', KRW: 'KRW (₩)' };
     triggerToast(`Display currency changed to ${cnames[newCurrency]}.`, 'success');
+  };
+
+  const handleTaxRateDineInChange = (val: number) => {
+    setTaxRateDineIn(val);
+    localStorage.setItem('dinepos_tax_rate_dine_in', val.toString());
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_tax_rate_dine_in', newValue: val.toString() }));
+    }
+  };
+
+  const handleTaxRateTakeawayChange = (val: number) => {
+    setTaxRateTakeaway(val);
+    localStorage.setItem('dinepos_tax_rate_takeaway', val.toString());
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_tax_rate_takeaway', newValue: val.toString() }));
+    }
+  };
+
+  const handleTaxRateDeliveryChange = (val: number) => {
+    setTaxRateDelivery(val);
+    localStorage.setItem('dinepos_tax_rate_delivery', val.toString());
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_tax_rate_delivery', newValue: val.toString() }));
+    }
   };
 
   const handleTaxTypeChange = (newTaxType: 'pre-tax' | 'post-tax') => {
@@ -2509,9 +2654,11 @@ export default function DashboardPage() {
                       <table className="w-full text-left border-collapse">
                         <thead>
                           <tr className={`border-b ${t.border} ${t.inputBg}/50 text-[9.5px] font-bold ${t.textMuted} uppercase tracking-widest`}>
+                            <th className="px-6 py-4">EMPLOYEE</th>
                             <th className="px-6 py-4">ROLE</th>
                             <th className="px-6 py-4">STATUS</th>
                             <th className="px-6 py-4">PERFORMANCE</th>
+                            <th className="px-6 py-4 text-right">ACTIONS</th>
                           </tr>
                         </thead>
                         <tbody className={`divide-y ${t.divider} font-sans text-xs`}>
@@ -2557,7 +2704,7 @@ export default function DashboardPage() {
                                 <td className="px-6 py-4 align-middle">
                                   {member.status === 'ON_SHIFT' && (
                                     <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-400 font-bold text-[9px] uppercase tracking-wider rounded-full">
-                                      <span className="w-1 h-1 rounded-full bg-sky-400 motion-safe:animate-pulse"></span>
+                                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 motion-safe:animate-pulse"></span>
                                       + On Shift
                                     </span>
                                   )}
@@ -2583,6 +2730,40 @@ export default function DashboardPage() {
                                       ))}
                                     </div>
                                     <span className={`font-bold ${t.text} font-mono text-[10.5px]`}>{member.performance.toFixed(1)}</span>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 align-middle text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingEmployee(member);
+                                        setNewEmployee({
+                                          name: member.name,
+                                          role: member.role,
+                                          status: member.status,
+                                          performance: member.performance
+                                        });
+                                        setShowAddEmployeeModal(true);
+                                      }}
+                                      className={`p-1.5 rounded-lg hover:${t.cardHover} ${t.textMuted} hover:${t.accent} transition-colors cursor-pointer flex items-center justify-center`}
+                                      title="Edit Employee"
+                                    >
+                                      <span className="material-symbols-outlined text-base">edit</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (confirm(`Are you sure you want to delete ${member.name}?`)) {
+                                          setStaffMembers(staffMembers.filter(m => m.id !== member.id));
+                                          triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+                                        }
+                                      }}
+                                      className={`p-1.5 rounded-lg hover:${t.cardHover} ${t.textMuted} hover:text-red-400 transition-colors cursor-pointer flex items-center justify-center`}
+                                      title="Delete Employee"
+                                    >
+                                      <span className="material-symbols-outlined text-base">delete</span>
+                                    </button>
                                   </div>
                                 </td>
                               </tr>
@@ -3071,6 +3252,130 @@ export default function DashboardPage() {
                 </div>
               </div>
 
+              {/* Stripe Merchant Integration Card (Span 12) */}
+              <div className={`${t.cardBg} border rounded-2xl p-8 shadow-xl relative overflow-hidden font-sans`}>
+                <div className="absolute right-6 top-6 text-white/[0.02] pointer-events-none select-none">
+                  <span className="material-symbols-outlined text-[100px] leading-none">account_balance</span>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 select-none">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#635bff] animate-pulse"></span>
+                        <h3 className={`font-serif text-lg ${t.text} font-bold tracking-wide`}>Stripe Merchant Integration</h3>
+                      </div>
+                      <p className={`text-xs ${t.textMuted} mt-1.5 leading-relaxed max-w-3xl`}>
+                        Connect your restaurant's Stripe merchant account to process customer self-checkout payments. All transactions completed at customer tables will be automatically processed and routed to your linked Stripe account.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 select-none shrink-0">
+                      <span className={`text-[10px] font-bold ${t.textMuted} uppercase tracking-wider`}>Owner Account:</span>
+                      <div className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded-lg">
+                        <span className="material-symbols-outlined text-xs text-[#ffe2ab]">person</span>
+                        <span className="text-[11px] font-mono font-bold text-white/90">{activeAdminEmail}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={`border-t ${t.border} pt-6 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center`}>
+                    
+                    {/* Status Display Area */}
+                    <div className="lg:col-span-5 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-wider`}>Integration Status</span>
+                        {linkedStripeAccount ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 font-bold text-[9px] uppercase tracking-wider rounded-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            Connected
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/25 text-rose-400 font-bold text-[9px] uppercase tracking-wider rounded-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></span>
+                            Not Configured
+                          </span>
+                        )}
+                      </div>
+
+                      {linkedStripeAccount ? (
+                        <div className={`${t.inputBg}/45 border border-emerald-500/10 rounded-xl p-4 space-y-2.5`}>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className={`${t.textMuted}`}>Stripe Account ID:</span>
+                            <span className="font-mono font-bold text-white text-[12.5px] select-text">{linkedStripeAccount}</span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10.5px]">
+                            <span className={`${t.textMuted}`}>Linked On:</span>
+                            <span className="text-white/70 font-semibold">
+                              {(() => {
+                                const connStr = localStorage.getItem('dinepos_stripe_connections');
+                                if (connStr) {
+                                  try {
+                                    const connections = JSON.parse(connStr);
+                                    if (connections[activeAdminEmail]?.linkedAt) {
+                                      return new Date(connections[activeAdminEmail].linkedAt).toLocaleDateString(undefined, {
+                                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                      });
+                                    }
+                                  } catch (e) {}
+                                }
+                                return 'Just now';
+                              })()}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className={`text-[11px] ${t.textMutedLight} leading-relaxed font-medium`}>
+                          No Stripe account is connected for this Owner Admin. Customers will be unable to use self-checkout at their tables until an account is connected.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Linking Form Action Area */}
+                    <div className="lg:col-span-7">
+                      {linkedStripeAccount ? (
+                        <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-end">
+                          <p className={`text-[11px] ${t.textMuted} text-left sm:text-right max-w-sm font-semibold`}>
+                            Need to update your connection? Disconnect your current Stripe configuration to connect a new merchant account.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={disconnectStripeAccount}
+                            className="px-6 py-3.5 bg-rose-950/40 border border-rose-500/30 hover:bg-rose-950/60 text-rose-300 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 hover:scale-[1.01] cursor-pointer text-center whitespace-nowrap shrink-0"
+                          >
+                            Disconnect Stripe
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col sm:flex-row gap-4 items-end">
+                          <div className="flex-1 w-full space-y-2">
+                            <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider`}>Enter Stripe Account ID</label>
+                            <div className="relative">
+                              <span className="material-symbols-outlined absolute left-4 top-3 text-[#A69984]/40 text-lg leading-none">key</span>
+                              <input
+                                type="text"
+                                value={stripeAccountIdInput}
+                                onChange={(e) => setStripeAccountIdInput(e.target.value)}
+                                placeholder="acct_1x9u82HfdK72"
+                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-11 pr-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono`}
+                              />
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={linkStripeAccount}
+                            className="w-full sm:w-auto px-6 py-3.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 hover:scale-[1.01] cursor-pointer text-center whitespace-nowrap shrink-0"
+                          >
+                            Link Stripe Account
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
               {/* Invoices segment */}
               <div className={`${t.cardBg} border rounded-2xl shadow-xl overflow-hidden`}>
                 <div className={`p-6 border-b ${t.border} flex justify-between items-center select-none`}>
@@ -3185,13 +3490,22 @@ export default function DashboardPage() {
                   </p>
                 </div>
 
-                <button type="button"
-                  onClick={() => setShowPairDeviceModal(true)}
-                  className="text-[#ffe2ab] hover:text-[#ffdca0] px-4 py-2 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none"
-                >
-                  <span className="material-symbols-outlined text-base">add_circle</span>
-                  {tr.pairNewDevice}
-                </button>
+                <div className="flex gap-4 items-center">
+                  <Link
+                    href="/dashboard/printer-settings"
+                    className="text-[#ffe2ab] hover:text-[#ffdca0] px-4 py-2 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none border border-[#ffe2ab]/20 rounded-xl bg-white/5 hover:bg-white/10"
+                  >
+                    <span className="material-symbols-outlined text-base">print_connect</span>
+                    Printer Console
+                  </Link>
+                  <button type="button"
+                    onClick={() => setShowPairDeviceModal(true)}
+                    className="text-[#ffe2ab] hover:text-[#ffdca0] px-4 py-2 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none"
+                  >
+                    <span className="material-symbols-outlined text-base">add_circle</span>
+                    {tr.pairNewDevice}
+                  </button>
+                </div>
               </div>
 
               {/* Row 1: Fleet Health & Active Diagnostics */}
@@ -4034,6 +4348,86 @@ export default function DashboardPage() {
                         </p>
                       </div>
 
+                      {/* Dynamic Tax Rates by Dining Option */}
+                      <div className={`pt-4 border-t ${t.border}`}>
+                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>
+                          Tax Rates by Dining Option
+                        </label>
+                        <div className="space-y-4">
+                          {/* Dine-in */}
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 select-none">
+                              <span className={`material-symbols-outlined ${t.textMuted} text-base`}>local_dining</span>
+                              <span className={`text-xs font-semibold ${t.text}`}>Dine-in Tax Rate</span>
+                            </div>
+                            <div className="flex items-center gap-2 max-w-[120px]">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={taxRateDineIn}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleTaxRateDineInChange(val);
+                                }}
+                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs text-right ${t.text} font-mono font-medium focus:outline-none focus:border-[#ffe2ab]/40`}
+                              />
+                              <span className={`text-xs ${t.textMuted} font-bold`}>%</span>
+                            </div>
+                          </div>
+
+                          {/* Takeaway */}
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 select-none">
+                              <span className={`material-symbols-outlined ${t.textMuted} text-base`}>shopping_bag</span>
+                              <span className={`text-xs font-semibold ${t.text}`}>Takeaway Tax Rate</span>
+                            </div>
+                            <div className="flex items-center gap-2 max-w-[120px]">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={taxRateTakeaway}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleTaxRateTakeawayChange(val);
+                                }}
+                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs text-right ${t.text} font-mono font-medium focus:outline-none focus:border-[#ffe2ab]/40`}
+                              />
+                              <span className={`text-xs ${t.textMuted} font-bold`}>%</span>
+                            </div>
+                          </div>
+
+                          {/* Delivery */}
+                          <div className="flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-2 select-none">
+                              <span className={`material-symbols-outlined ${t.textMuted} text-base`}>moped</span>
+                              <span className={`text-xs font-semibold ${t.text}`}>Delivery Tax Rate</span>
+                            </div>
+                            <div className="flex items-center gap-2 max-w-[120px]">
+                              <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                max="100"
+                                value={taxRateDelivery}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleTaxRateDeliveryChange(val);
+                                }}
+                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs text-right ${t.text} font-mono font-medium focus:outline-none focus:border-[#ffe2ab]/40`}
+                              />
+                              <span className={`text-xs ${t.textMuted} font-bold`}>%</span>
+                            </div>
+                          </div>
+                        </div>
+                        <p className={`text-[9.5px] ${t.textMutedDark} font-medium mt-3 leading-relaxed`}>
+                          Adjust the tax rate percentage applied dynamically depending on the selected dining option at checkout.
+                        </p>
+                      </div>
+
                     </div>
                   </div>
 
@@ -4132,6 +4526,27 @@ export default function DashboardPage() {
                           >
                             <div className={`w-4 h-4 bg-white rounded-full transition-transform ${digitalMenuConfig.enableSelfCheckout ? 'translate-x-4' : 'translate-x-0'}`}></div>
                           </button>
+                        </div>
+
+                        {/* Fixed Customer Table Number */}
+                        <div className="flex items-center justify-between border-t border-white/5 pt-4">
+                          <div className="max-w-[70%] flex flex-col justify-center">
+                            <h4 className="text-xs font-bold text-white">Fixed Customer Table Number</h4>
+                            <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>Admin-controlled table assignment for guest users (Customer Role).</p>
+                          </div>
+                          <div className="relative">
+                            <select
+                              aria-label="Fixed Customer Table Number"
+                              value={digitalMenuConfig.customerTableNumber || 12}
+                              onChange={(e) => updateDigitalMenuConfig({ customerTableNumber: parseInt(e.target.value, 10) })}
+                              className={`w-[80px] bg-[#12110f] border border-white/10 rounded-lg py-1.5 px-3 text-white text-xs focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-semibold appearance-none`}
+                            >
+                              {Array.from({ length: 16 }, (_, i) => i + 1).map(num => (
+                                <option key={num} value={num}>T{num}</option>
+                              ))}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-2.5 top-2 text-[#A69984]/40 text-xs pointer-events-none">keyboard_arrow_down</span>
+                          </div>
                         </div>
                       </div>
 
@@ -5253,14 +5668,25 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-      {/* ADD EMPLOYEE MODAL */}
+      {/* ADD/EDIT EMPLOYEE MODAL */}
       {showAddEmployeeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in">
           <div className={`${t.cardBgOpaque} border w-[420px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up font-sans`}>
             <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
-              <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Add New Employee</h3>
+              <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>
+                {editingEmployee ? 'Edit Employee Details' : 'Add New Employee'}
+              </h3>
               <button type="button" 
-                onClick={() => setShowAddEmployeeModal(false)}
+                onClick={() => {
+                  setShowAddEmployeeModal(false);
+                  setEditingEmployee(null);
+                  setNewEmployee({
+                    name: '',
+                    role: 'Server',
+                    status: 'OFF_DUTY',
+                    performance: 5.0
+                  });
+                }}
                 className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
               >
                 <span className="material-symbols-outlined text-base">close</span>
@@ -5273,24 +5699,35 @@ export default function DashboardPage() {
                 triggerToast('Please enter an employee name.', 'info');
                 return;
               }
-              const newId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
-              const addedMember = {
-                id: newId,
-                name: newEmployee.name,
-                role: newEmployee.role,
-                status: newEmployee.status,
-                performance: newEmployee.performance,
-                avatar: ''
-              };
-              setStaffMembers([...staffMembers, addedMember]);
+              if (editingEmployee) {
+                const updatedMembers = staffMembers.map(member => 
+                  member.id === editingEmployee.id 
+                    ? { ...member, name: newEmployee.name, role: newEmployee.role, status: newEmployee.status, performance: newEmployee.performance }
+                    : member
+                );
+                setStaffMembers(updatedMembers);
+                triggerToast(`Successfully updated employee ${newEmployee.name}!`, 'success');
+              } else {
+                const newId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
+                const addedMember = {
+                  id: newId,
+                  name: newEmployee.name,
+                  role: newEmployee.role,
+                  status: newEmployee.status,
+                  performance: newEmployee.performance,
+                  avatar: ''
+                };
+                setStaffMembers([...staffMembers, addedMember]);
+                triggerToast(`Successfully added employee ${addedMember.name}!`, 'success');
+              }
               setShowAddEmployeeModal(false);
+              setEditingEmployee(null);
               setNewEmployee({
                 name: '',
                 role: 'Server',
                 status: 'OFF_DUTY',
                 performance: 5.0
               });
-              triggerToast(`Successfully added employee ${addedMember.name}!`, 'success');
             }} className="space-y-4">
               {/* Name */}
               <div>
@@ -5347,7 +5784,9 @@ export default function DashboardPage() {
 
               {/* Performance */}
               <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Initial Rating</label>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>
+                  {editingEmployee ? 'Rating' : 'Initial Rating'}
+                </label>
                 <div className="relative">
                   <select
                     aria-label="Initial rating"
@@ -5366,7 +5805,16 @@ export default function DashboardPage() {
 
               <div className="flex gap-4 pt-4">
                 <button type="button"
-                  onClick={() => setShowAddEmployeeModal(false)}
+                  onClick={() => {
+                    setShowAddEmployeeModal(false);
+                    setEditingEmployee(null);
+                    setNewEmployee({
+                      name: '',
+                      role: 'Server',
+                      status: 'OFF_DUTY',
+                      performance: 5.0
+                    });
+                  }}
                   className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
                 >
                   Cancel
@@ -5374,7 +5822,7 @@ export default function DashboardPage() {
                 <button type="submit"
                   className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
                 >
-                  Add Employee
+                  {editingEmployee ? 'Save Changes' : 'Add Employee'}
                 </button>
               </div>
             </form>

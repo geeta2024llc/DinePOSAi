@@ -4,11 +4,13 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+// NOTE: Plaintext credentials below are intentional for local demo environment and quick operational role switching/testing.
 const credentialsMap = {
   'super-admin': { email: 'superadmin@dinepos.ai', password: 'superadmin123', target: '/super-admin', label: 'Super Admin' },
   'admin': { email: 'admin@dinepos.ai', password: 'admin123', target: '/dashboard', label: 'Owner Admin' },
   'cashier': { email: 'cashier@dinepos.ai', password: 'cashier123', target: '/pos', label: 'Cashier Staff' },
   'kds': { email: 'kds@dinepos.ai', password: 'kds123', target: '/kds', label: 'KDS Staff' },
+  'waiter': { email: 'waiter@dinepos.ai', password: 'waiter123', target: '/menu', label: 'Waiter Menu' },
   'customer': { email: 'customer@dinepos.ai', password: 'customer123', target: '/menu', label: 'Customer Menu' },
 };
 
@@ -63,6 +65,9 @@ export default function LoginPage() {
     } else if (emailLower === 'kds@dinepos.ai' && password === 'kds123') {
       isValid = true;
       targetRoute = '/kds';
+    } else if (emailLower === 'waiter@dinepos.ai' && password === 'waiter123') {
+      isValid = true;
+      targetRoute = '/menu';
     } else if (emailLower === 'customer@dinepos.ai' && password === 'customer123') {
       isValid = true;
       targetRoute = '/menu';
@@ -78,11 +83,14 @@ export default function LoginPage() {
     // Simulate API delay for a high-end natural feedback experience
     setTimeout(() => {
       setIsLoading(false);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dinepos_logged_in_email', emailLower);
+      }
       router.push(targetRoute);
     }, 1200);
   };
 
-  const handleDemoLogin = (role: 'super-admin' | 'admin' | 'cashier' | 'customer' | 'kds') => {
+  const handleDemoLogin = (role: 'super-admin' | 'admin' | 'cashier' | 'customer' | 'kds' | 'waiter') => {
     const creds = credentialsMap[role];
     setSelectedRole(role);
     setEmail(creds.email);
@@ -92,6 +100,9 @@ export default function LoginPage() {
     
     setTimeout(() => {
       setIsLoading(false);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('dinepos_logged_in_email', creds.email);
+      }
       router.push(creds.target);
     }, 800);
   };
@@ -104,6 +115,7 @@ export default function LoginPage() {
           alt="Restaurant interior blurred background" 
           className="w-full h-full object-cover blur-[8px] opacity-35 scale-105 transform transition-all duration-700" 
           src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi" 
+          onError={(e) => { e.currentTarget.style.display = 'none'; }}
         />
         {/* Deep radial lighting centered behind the card, blending down to black */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(20,18,16,0.55)_0%,rgba(10,9,8,0.96)_100%)] z-1"></div>
@@ -147,7 +159,8 @@ export default function LoginPage() {
                 <option value="admin">Owner Admin (Business Console)</option>
                 <option value="cashier">Cashier Staff (Point of Sale)</option>
                 <option value="kds">KDS Staff (Kitchen Display)</option>
-                <option value="customer">Customer Guest (Digital Menu)</option>
+                <option value="waiter">Waiter Staff (Digital Menu)</option>
+                <option value="customer">Customer Guest (Fixed Table)</option>
               </select>
               <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-[#A69984]/40">
                 <span className="material-symbols-outlined text-lg leading-none">keyboard_arrow_down</span>
@@ -296,8 +309,17 @@ export default function LoginPage() {
             <button 
               type="button"
               disabled={isLoading}
+              onClick={() => handleDemoLogin('waiter')}
+              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span className="material-symbols-outlined text-xs">restaurant_menu</span>
+              Waiter Menu
+            </button>
+            <button 
+              type="button"
+              disabled={isLoading}
               onClick={() => handleDemoLogin('customer')}
-              className="col-span-2 bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-xs">menu_book</span>
               Customer Menu

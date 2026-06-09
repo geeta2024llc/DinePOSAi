@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import styles from './PublicLayout.module.css';
 
 export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -7,8 +8,8 @@ export const PublicLayout: React.FC<{ children: React.ReactNode }> = ({ children
       <header className={styles.header}>
         <div className={styles.logo}>DinePosAI</div>
         <nav className={styles.nav}>
-          <a href="/login" className={styles.link}>Sign In</a>
-          <a href="/register" className={styles.buttonLink}>Get Started</a>
+          <Link href="/login" className={styles.link}>Sign In</Link>
+          <Link href="/register" className={styles.buttonLink}>Get Started</Link>
         </nav>
       </header>
       <main className={styles.main}>

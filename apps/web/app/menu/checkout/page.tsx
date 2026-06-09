@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { migrateCart } from '../cartUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
   'spec-1': { name: 'Gold Leaf A5 Wagyu Ribeye', price: 185, category: 'special', description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal.' },
@@ -25,6 +26,7 @@ interface CartItem {
   quantity: number;
   modifiers: string[];
   course: 'starter' | 'main' | 'dessert' | 'drinks';
+  notes?: string;
 }
 
 interface DisplayCartItem {
@@ -33,6 +35,7 @@ interface DisplayCartItem {
   price: number;
   modifiers: string[];
   course: 'starter' | 'main' | 'dessert' | 'drinks';
+  notes?: string;
   details?: string[];
 }
 
@@ -75,12 +78,16 @@ export default function CheckoutPage() {
   const [email, setEmail] = useState('alexander.s@example.com');
   const [specialRequests, setSpecialRequests] = useState('Celebrating anniversary.');
 
-  // Payment Selection state: 'cash' | 'card' | 'digital'
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'digital'>('cash');
+  // Payment Selection state: 'stripe' (Self-checkout restricted to Stripe)
+  const [paymentMethod, setPaymentMethod] = useState<'stripe'>('stripe');
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
   const [cardName, setCardName] = useState('ALEXANDER STERLING');
+
+  // Stripe connection states
+  const [stripeLinked, setStripeLinked] = useState(false);
+  const [linkedStripeAccountId, setLinkedStripeAccountId] = useState('');
 
   // Keypad cash amount states (starts at $1000.00 like the mockup)
   const [tenderedAmount, setTenderedAmount] = useState('1000.00');
@@ -101,6 +108,7 @@ export default function CheckoutPage() {
   const [cart, setCart] = useState<{ [cartKey: string]: CartItem }>({});
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [orderId, setOrderId] = useState('DP-88392');
 
   // Toast notifications feedback
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'info' }>({
@@ -110,6 +118,10 @@ export default function CheckoutPage() {
   });
 
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
+  const [diningOption, setDiningOption] = useState<'dine-in' | 'takeaway' | 'delivery'>('dine-in');
+  const [taxRateDineIn, setTaxRateDineIn] = useState(0.10);
+  const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.08);
+  const [taxRateDelivery, setTaxRateDelivery] = useState(0.08);
 
   // Promo code / discount
   const [promoInput, setPromoInput] = useState('');
@@ -129,6 +141,17 @@ export default function CheckoutPage() {
       if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
         setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
       }
+      const savedDiningOption = localStorage.getItem('dinepos_dining_option');
+      if (savedDiningOption === 'dine-in' || savedDiningOption === 'takeaway' || savedDiningOption === 'delivery') {
+        setDiningOption(savedDiningOption);
+      }
+      const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
+      const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
+      const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
+
+      if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
+      if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
+      if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
       const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
       if (savedExclusions) {
         try {
@@ -141,6 +164,29 @@ export default function CheckoutPage() {
           console.error('Failed to parse exclusions config:', e);
         }
       }
+
+      // Check Stripe Account connection details
+      const activeEmail = localStorage.getItem('dinepos_logged_in_email') || 'admin@dinepos.ai';
+      const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
+      if (connectionsStr) {
+        try {
+          const connections = JSON.parse(connectionsStr);
+          if (connections[activeEmail] && connections[activeEmail].stripeAccountId) {
+            setStripeLinked(true);
+            setLinkedStripeAccountId(connections[activeEmail].stripeAccountId);
+          } else {
+            setStripeLinked(false);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      } else {
+        // Fallback for default demo config if nothing is stored in localStorage yet
+        if (activeEmail === 'admin@dinepos.ai') {
+          setStripeLinked(true);
+          setLinkedStripeAccountId('acct_1x9u82HfdK72');
+        }
+      }
     }
   }, []);
 
@@ -150,6 +196,20 @@ export default function CheckoutPage() {
         if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
+      }
+      if (e.key === 'dinepos_dining_option' && e.newValue) {
+        if (e.newValue === 'dine-in' || e.newValue === 'takeaway' || e.newValue === 'delivery') {
+          setDiningOption(e.newValue);
+        }
+      }
+      if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
+        setTaxRateDineIn(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
+        setTaxRateTakeaway(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
+        setTaxRateDelivery(parseFloat(e.newValue) / 100);
       }
       if (e.key === 'dinepos_exclusions_config' && e.newValue) {
         try {
@@ -174,31 +234,7 @@ export default function CheckoutPage() {
     }, 3000);
   };
 
-  const migrateCart = (savedCartData: any): { [cartKey: string]: CartItem } => {
-    if (!savedCartData) return {};
-    try {
-      const parsed = typeof savedCartData === 'string' ? JSON.parse(savedCartData) : savedCartData;
-      const migrated: { [cartKey: string]: CartItem } = {};
-      Object.entries(parsed).forEach(([key, value]) => {
-        if (typeof value === 'number') {
-          const course = key.startsWith('start-') ? 'starter' : key.startsWith('dess-') ? 'dessert' : key.startsWith('drink-') ? 'drinks' : 'main';
-          const newKey = `${key}--${course}`;
-          migrated[newKey] = {
-            itemId: key,
-            quantity: value,
-            modifiers: [],
-            course: course
-          };
-        } else if (value && typeof value === 'object' && 'itemId' in (value as any)) {
-          migrated[key] = value as CartItem;
-        }
-      });
-      return migrated;
-    } catch (e) {
-      console.error('Cart migration failed:', e);
-      return {};
-    }
-  };
+  // migrateCart helper is imported from cartUtils
 
   useEffect(() => {
     let loadedCart = {};
@@ -220,8 +256,82 @@ export default function CheckoutPage() {
     if (savedTable) {
       setTableNumber(parseInt(savedTable, 10) || 12);
     }
+
+    // Load dynamic menu items registry from localStorage
+    const savedMenu = localStorage.getItem('dinepos_menu_items');
+    if (savedMenu) {
+      try {
+        const parsed = JSON.parse(savedMenu);
+        parsed.forEach((item: any) => {
+          menuItemsRegistry[item.id] = {
+            name: item.name,
+            price: item.price,
+            category: item.category,
+            description: item.description
+          };
+        });
+      } catch (e) {
+        console.error('Failed to parse dynamic menu registry:', e);
+      }
+    }
+
+    // Load persistent Split Bill states
+    const savedAssignments = localStorage.getItem('dinepos_split_item_assignments');
+    if (savedAssignments) {
+      try {
+        setItemAssignments(JSON.parse(savedAssignments));
+      } catch (e) {}
+    }
+    const savedPaid = localStorage.getItem('dinepos_split_paid_guests');
+    if (savedPaid) {
+      try {
+        setPaidGuests(JSON.parse(savedPaid));
+      } catch (e) {}
+    }
+    const savedGuestCount = localStorage.getItem('dinepos_split_guest_count');
+    if (savedGuestCount) {
+      setGuestCount(parseInt(savedGuestCount, 10) || 2);
+    }
+    const savedMethod = localStorage.getItem('dinepos_split_method') as 'evenly' | 'by-item' | null;
+    if (savedMethod) {
+      setSplitMethod(savedMethod);
+    }
+
+    // Load dynamic order ID or generate one
+    let savedOrderId = localStorage.getItem('dinepos_order_id');
+    if (!savedOrderId) {
+      savedOrderId = `DP-${Math.floor(10000 + Math.random() * 90000)}`;
+      localStorage.setItem('dinepos_order_id', savedOrderId);
+    }
+    setOrderId(savedOrderId);
+
     setIsLoaded(true);
   }, []);
+
+  // Save Split Bill states to localStorage
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('dinepos_split_item_assignments', JSON.stringify(itemAssignments));
+    }
+  }, [itemAssignments, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('dinepos_split_paid_guests', JSON.stringify(paidGuests));
+    }
+  }, [paidGuests, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('dinepos_split_guest_count', guestCount.toString());
+    }
+  }, [guestCount, isLoaded]);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('dinepos_split_method', splitMethod);
+    }
+  }, [splitMethod, isLoaded]);
 
   const isCartEmpty = !isLoaded || Object.keys(cart).length === 0;
 
@@ -252,6 +362,7 @@ export default function CheckoutPage() {
         price: singlePrice * cartItem.quantity,
         modifiers: cartItem.modifiers,
         course: cartItem.course,
+        notes: cartItem.notes,
         details: item ? [
           ...(cartItem.modifiers.length > 0 ? [cartItem.modifiers.join(', ')] : []),
           `Course: ${cartItem.course.toUpperCase()}`
@@ -262,7 +373,11 @@ export default function CheckoutPage() {
 
   // Calculations
   const subtotal = getDisplayItems().reduce((acc, item) => acc + item.price, 0);
-  const taxRate = 0.08875;
+  const taxRate = diningOption === 'takeaway'
+    ? taxRateTakeaway
+    : diningOption === 'delivery'
+      ? taxRateDelivery
+      : taxRateDineIn;
   const tax = taxType === 'pre-tax'
     ? subtotal * taxRate
     : subtotal - (subtotal / (1 + taxRate));
@@ -361,24 +476,22 @@ export default function CheckoutPage() {
 
   const handleConfirmAndPay = (e: React.FormEvent) => {
     e.preventDefault();
-    if (paymentMethod === 'cash' && parsedTendered < total) {
-      triggerToast('Tendered amount is less than total due!', 'info');
+    if (!stripeLinked) {
+      triggerToast('Stripe payment integration is not configured. Unable to pay.', 'info');
       return;
     }
-    if (paymentMethod === 'card') {
-      const rawNumber = cardNumber.replace(/\s/g, '');
-      if (!/^\d{16}$/.test(rawNumber)) {
-        triggerToast('Enter a valid 16-digit card number.', 'info'); return;
-      }
-      if (!/^\d{2}\/\d{2}$/.test(expiry)) {
-        triggerToast('Enter expiry in MM/YY format.', 'info'); return;
-      }
-      if (!/^\d{3,4}$/.test(cvc)) {
-        triggerToast('Enter a valid CVC (3–4 digits).', 'info'); return;
-      }
-      if (!cardName.trim()) {
-        triggerToast('Enter the name on the card.', 'info'); return;
-      }
+    const rawNumber = cardNumber.replace(/\s/g, '');
+    if (!/^\d{16}$/.test(rawNumber)) {
+      triggerToast('Enter a valid 16-digit card number.', 'info'); return;
+    }
+    if (!/^\d{2}\/\d{2}$/.test(expiry)) {
+      triggerToast('Enter expiry in MM/YY format.', 'info'); return;
+    }
+    if (!/^\d{3,4}$/.test(cvc)) {
+      triggerToast('Enter a valid CVC (3–4 digits).', 'info'); return;
+    }
+    if (!cardName.trim()) {
+      triggerToast('Enter the name on the card.', 'info'); return;
     }
     setIsProcessing(true);
     setProcessingStep(1);
@@ -391,6 +504,8 @@ export default function CheckoutPage() {
         // Clean up cart and placed order upon successful payment validation
         localStorage.removeItem('dinepos_cart');
         localStorage.removeItem('dinepos_placed_order');
+        localStorage.removeItem('dinepos_split_item_assignments');
+        localStorage.removeItem('dinepos_split_paid_guests');
       }, 1200);
     }, 1000);
   };
@@ -418,12 +533,12 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0e0e0d] text-[#e5e2e1] font-sans antialiased overflow-x-hidden select-none flex flex-col justify-between">
+    <div className="h-screen lg:overflow-hidden overflow-y-auto bg-[#0e0e0d] text-[#e5e2e1] font-sans antialiased select-none flex flex-col justify-between">
       
-      <div className="flex-grow flex flex-col md:flex-row w-full min-h-screen">
+      <div className="flex-grow flex flex-col lg:flex-row w-full lg:h-full min-h-0">
         
         {/* LEFT COLUMN: ORDER DETAIL SIDEBAR (Span 4) */}
-        <aside className="w-full md:w-[380px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-10">
+        <aside className="w-full lg:w-[380px] bg-[#0a0a09] border-b lg:border-b-0 lg:border-r border-white/5 flex flex-col justify-between p-6 sm:p-8 flex-shrink-0 z-10 lg:h-screen lg:overflow-y-auto">
           {isCartEmpty ? (
             <div className="flex-grow flex flex-col items-center justify-center text-center py-20 space-y-4">
               <span className="material-symbols-outlined text-5xl text-[#A69984]/30 animate-pulse">shopping_basket</span>
@@ -437,21 +552,13 @@ export default function CheckoutPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <h2 className="font-serif text-[28px] font-bold text-white tracking-wide leading-tight">
-                      Order #1042
+                      Order #{orderId.replace('DP-', '')}
                     </h2>
                     <div className="flex items-center gap-1.5 text-xs text-[#ffe2ab]/80 font-bold uppercase tracking-wider mt-2 select-none">
                       <span className="material-symbols-outlined text-[15px] font-bold">restaurant</span>
                       Table {displayTableNumber} • 2 Guests
                     </div>
                   </div>
-
-                  {/* Profile icon */}
-                  <button 
-                    onClick={() => triggerToast('Viewing customer profile details...', 'info')}
-                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-lg leading-none">person_outline</span>
-                  </button>
                 </div>
 
                 {/* Dotted border line */}
@@ -482,6 +589,12 @@ export default function CheckoutPage() {
                                     {item.modifiers.join(', ')}
                                   </div>
                                 )}
+                                {item.notes && (
+                                  <div className="text-[10px] text-[#A69984]/70 font-sans tracking-wide leading-relaxed pl-4 flex items-start gap-1">
+                                    <span className="material-symbols-outlined text-[12px] text-[#ffe2ab]/80 shrink-0 select-none">edit_note</span>
+                                    <span className="italic">"{item.notes}"</span>
+                                  </div>
+                                )}
                               </div>
                               <div className="text-white/90 text-xs font-bold font-mono tracking-wider shrink-0">
                                 ${item.price.toFixed(2)}
@@ -503,7 +616,7 @@ export default function CheckoutPage() {
                     <span className="text-white/80 font-bold font-mono">${subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>{taxType === 'post-tax' ? 'Included Tax' : 'Tax'} (8.875%)</span>
+                    <span>{taxType === 'post-tax' ? 'Included Tax' : 'Tax'} ({(taxRate * 100).toFixed(1)}%)</span>
                     <span className="text-white/80 font-bold font-mono">${tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -544,18 +657,6 @@ export default function CheckoutPage() {
                     {promoError && (
                       <p className="text-rose-400 text-[9px] font-bold pl-1">{promoError}</p>
                     )}
-                    <div className="flex flex-wrap gap-1.5 pt-0.5">
-                      {Object.keys(CHECKOUT_PROMOS).slice(0, 4).map(code => (
-                        <button
-                          key={code}
-                          type="button"
-                          onClick={() => { setPromoInput(code); setPromoError(''); }}
-                          className="px-2 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/20 rounded-md text-[8.5px] font-bold font-mono tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all"
-                        >
-                          {code}
-                        </button>
-                      ))}
-                    </div>
                   </div>
                 ) : (
                   <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-3 py-2.5 animate-fade-in">
@@ -589,34 +690,19 @@ export default function CheckoutPage() {
         </aside>
 
         {/* RIGHT COLUMN: PAYMENT INTERFACE (Span 8) */}
-        <main className="flex-grow flex flex-col justify-between p-8 md:p-12 relative bg-[#0e0e0d]">
+        <main className="flex-grow flex flex-col justify-between p-4 sm:p-8 lg:p-12 relative bg-[#0e0e0d] min-w-0 lg:h-screen lg:overflow-y-auto">
           <div>
             {/* Top Toolbar Navigation */}
-            <div className="flex justify-between items-center select-none mb-8">
+            <div className="max-w-4xl mx-auto w-full flex justify-between items-center select-none mb-8">
               <Link 
                 href="/menu" 
                 className="inline-flex items-center gap-2 text-xs font-sans font-bold uppercase tracking-widest text-[#ffe2ab] hover:text-[#ffdca0] transition-colors"
               >
-                <span className="material-symbols-outlined text-[13px] font-black leading-none">arrow_back</span>
+                <svg className="w-3.5 h-3.5 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
                 Return to Table
               </Link>
-              
-              {/* Action utilities */}
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => setIsSplitOpen(true)}
-                  disabled={isCartEmpty}
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-[#A69984]/25 flex items-center justify-center text-white/70 hover:text-white hover:border-[#ffe2ab]/40 transition-colors disabled:opacity-20 disabled:cursor-not-allowed cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-lg leading-none">split_screen</span>
-                </button>
-                <button 
-                  onClick={() => triggerToast('Loading payment menu options...', 'info')}
-                  className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 cursor-pointer transition-colors"
-                >
-                  <span className="material-symbols-outlined text-lg leading-none">more_vert</span>
-                </button>
-              </div>
             </div>
 
             {isCartEmpty ? (
@@ -633,210 +719,299 @@ export default function CheckoutPage() {
                 <Link 
                   href="/menu"
                   className="px-8 py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.15)] inline-flex items-center gap-2 hover:scale-[1.01] cursor-pointer"
-                >
+>
                   <span className="material-symbols-outlined text-sm font-bold">restaurant_menu</span>
                   Go to Digital Menu
                 </Link>
               </div>
             ) : (
               <>
-                {/* Payment Method Switcher Tabs */}
-                <div className="grid grid-cols-3 bg-[#161513] border border-white/5 rounded-2xl p-1.5 gap-1.5 shadow-inner select-none max-w-xl mx-auto mb-10 font-sans">
-                  {(['cash', 'card', 'digital'] as const).map(method => (
-                    <button
-                      key={method}
-                      onClick={() => setPaymentMethod(method)}
-                      className={`flex items-center justify-center gap-2 py-3.5 rounded-xl text-[10.5px] font-bold uppercase tracking-widest transition-all cursor-pointer ${paymentMethod === method ? 'bg-white/5 border border-white/10 text-white shadow-md' : 'text-[#A69984]/50 hover:text-white'}`}
-                    >
-                      <span className="material-symbols-outlined text-base">
-                        {method === 'cash' ? 'payments' : method === 'card' ? 'credit_card' : 'tap_and_play'}
-                      </span>
-                      {method}
-                    </button>
-                  ))}
-                </div>
-
-            {/* Dynamic Payment Tab content panes */}
-            <div className="max-w-xl mx-auto">
-              
-              {/* TAB 1: CASH PAYMENT MODE */}
-              {paymentMethod === 'cash' && (
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start animate-fade-in duration-300">
-                  
-                  {/* Cash display & Change due (Left span 5) */}
-                  <div className="md:col-span-5 space-y-6 font-sans">
-                    
-                    {/* Amount Tendered field */}
-                    <div className="space-y-2.5">
-                      <label className="block text-[#A69984]/70 text-[9.5px] font-bold uppercase tracking-wider">Amount Tendered</label>
-                      <div className="w-full bg-black border border-[#ffe2ab]/40 rounded-xl px-4 py-4.5 flex items-center justify-center text-[#ffe2ab] shadow-inner select-none font-serif text-[28px] font-bold tracking-widest">
-                        <span className="mr-2 opacity-50">$</span>
-                        {parseFloat(tenderedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </div>
-                    </div>
-
-                    {/* Change Due field */}
-                    <div className="flex justify-between items-baseline select-none border-t border-white/5 pt-5 px-1 font-serif text-sm">
-                      <span className="text-[#A69984]/70">Change Due</span>
-                      <span className="text-white text-lg font-bold tracking-wide">
-                        ${changeDue.toFixed(2)}
-                      </span>
-                    </div>
-
-                    {/* Quick tender buttons */}
-                    <div className="grid grid-cols-2 gap-3 pt-2">
-                      {quickCashOptions.map((opt, oIdx) => (
-                        <button
-                          key={oIdx}
-                          onClick={() => setTenderedAmount(opt.value.toFixed(2))}
-                          className="py-3 bg-transparent border border-white/5 hover:border-white/15 text-white/95 hover:bg-white/[0.01] rounded-xl font-sans font-bold text-[10.5px] tracking-wide transition-all cursor-pointer select-none"
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-
-                  </div>
-
-                  {/* Numeric Keypad Panel (Right span 7) */}
-                  <div className="md:col-span-7 bg-[#161513] border border-white/5 rounded-2xl p-4.5 shadow-xl select-none">
-                    <div className="grid grid-cols-3 gap-2">
-                      
-                      {/* Rows 1-3 */}
-                      {(['1', '2', '3', '4', '5', '6', '7', '8', '9'] as const).map(num => (
-                        <button
-                          key={num}
-                          onClick={() => handleKeypress(num)}
-                          className="aspect-square bg-transparent hover:bg-white/[0.02] border border-white/5 active:bg-[#ffe2ab]/10 rounded-xl flex items-center justify-center text-white font-serif text-lg font-bold cursor-pointer transition-colors"
-                        >
-                          {num}
-                        </button>
-                      ))}
-
-                      {/* Row 4: Clear, 0, Backspace */}
-                      <button
-                        onClick={() => handleKeypress('CLEAR')}
-                        className="aspect-square bg-white/5 hover:bg-white/10 active:bg-white/25 rounded-xl flex items-center justify-center text-[#A69984] font-sans font-bold text-[9.5px] uppercase tracking-wider cursor-pointer transition-colors"
-                      >
-                        Clear
-                      </button>
-                      <button
-                        onClick={() => handleKeypress('0')}
-                        className="aspect-square bg-transparent hover:bg-white/[0.02] border border-white/5 active:bg-[#ffe2ab]/10 rounded-xl flex items-center justify-center text-white font-serif text-lg font-bold cursor-pointer transition-colors"
-                      >
-                        0
-                      </button>
-                      <button
-                        onClick={() => handleKeypress('backspace')}
-                        className="aspect-square bg-white/5 hover:bg-white/10 active:bg-white/25 rounded-xl flex items-center justify-center text-[#A69984] cursor-pointer transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-base">backspace</span>
-                      </button>
-
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* TAB 2: CREDIT CARD PAYMENT MODE */}
-              {paymentMethod === 'card' && (
-                <div className="bg-[#161513] border border-white/5 rounded-2xl p-7 shadow-xl space-y-5 animate-fade-in duration-300">
-                  <div className="space-y-4 font-sans select-none">
+                {/* Guest Information Section */}
+                <div className="max-w-2xl mx-auto w-full bg-[#161513] border border-white/5 rounded-2xl p-6 shadow-xl space-y-4 font-sans select-none mb-8">
+                  <h3 className="font-serif text-sm text-[#ffe2ab] uppercase font-bold tracking-wider">Guest Information</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Card Number</label>
-                      <div className="relative">
-                        <span className="material-symbols-outlined absolute left-4 top-3.5 text-[#A69984]/40 text-base">credit_card</span>
-                        <input 
-                          type="text" 
-                          maxLength={19}
-                          value={cardNumber}
-                          onChange={(e) => setCardNumber(e.target.value)}
-                          placeholder="0000 0000 0000 0000"
-                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-11 pr-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono tracking-widest"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Expiry</label>
-                        <input 
-                          type="text" 
-                          maxLength={5}
-                          value={expiry}
-                          onChange={(e) => setExpiry(e.target.value)}
-                          placeholder="MM/YY"
-                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Cvc</label>
-                        <input 
-                          type="password" 
-                          maxLength={3}
-                          value={cvc}
-                          onChange={(e) => setCvc(e.target.value)}
-                          placeholder="123"
-                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Cardholder Name</label>
+                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">First Name</label>
                       <input 
                         type="text" 
-                        value={cardName}
-                        onChange={(e) => setCardName(e.target.value)}
-                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium uppercase font-sans tracking-wide"
-                        placeholder="ALEXANDER STERLING"
+                        value={firstName}
+                        onChange={(e) => setFirstName(e.target.value)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
+                        placeholder="First Name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Last Name</label>
+                      <input 
+                        type="text" 
+                        value={lastName}
+                        onChange={(e) => setLastName(e.target.value)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
+                        placeholder="Last Name"
                       />
                     </div>
                   </div>
-                </div>
-              )}
-
-              {/* TAB 3: DIGITAL WALLET PAYMENT MODE */}
-              {paymentMethod === 'digital' && (
-                <div className="bg-[#161513] border border-white/5 rounded-2xl p-8 shadow-xl flex flex-col items-center justify-center text-center space-y-6 select-none animate-fade-in duration-300 min-h-[250px]">
-                  <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#ffe2ab] animate-pulse">
-                    <span className="material-symbols-outlined text-3xl font-light">tap_and_play</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Email Address</label>
+                      <input 
+                        type="email" 
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
+                        placeholder="alexander.s@example.com"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Special Requests</label>
+                      <input 
+                        type="text" 
+                        value={specialRequests}
+                        onChange={(e) => setSpecialRequests(e.target.value)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
+                        placeholder="e.g. Allergy details, table preferences"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="font-serif text-base text-white font-medium tracking-wide">Aura Pay & Digital Wallets</h4>
-                    <p className="text-[#A69984]/50 font-sans text-xs mt-2 leading-relaxed max-w-xs mx-auto">
-                      Scan the digital ticket with Apple Pay, Google Pay, or tap device against reader.
-                    </p>
+                      {/* Secure Checkout Badge */}
+                <div className="bg-[#12110f]/60 border border-white/5 rounded-2xl p-4 max-w-xl mx-auto mb-6 lg:mb-10 flex items-center justify-between font-sans select-none">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-2 h-2 rounded-full ${stripeLinked ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                    <div>
+                      <span className="text-[10.5px] font-bold text-white uppercase tracking-widest block">Secure Payment Gateway</span>
+                      <span className="text-[9.5px] text-[#A69984]/60 font-semibold block mt-0.5">
+                        {stripeLinked ? 'Encrypted transactions routed via Stripe' : 'Stripe payment integration not configured'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="p-3 bg-white rounded-xl shadow-md border border-white/10 animate-fade-in">
-                    {/* Simulated QR Code SVG */}
-                    <svg width="100" height="100" viewBox="0 0 24 24" fill="none" className="text-black">
-                      <rect x="1" y="1" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
-                      <rect x="2.5" y="2.5" width="3" height="3" fill="currentColor"/>
-                      <rect x="17" y="1" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
-                      <rect x="18.5" y="2.5" width="3" height="3" fill="currentColor"/>
-                      <rect x="1" y="17" width="6" height="6" stroke="currentColor" strokeWidth="1.5"/>
-                      <rect x="2.5" y="18.5" width="3" height="3" fill="currentColor"/>
-                      <rect x="9" y="1" width="2" height="2" fill="currentColor"/>
-                      <rect x="13" y="2" width="2" height="1" fill="currentColor"/>
-                      <rect x="9" y="9" width="3" height="3" fill="currentColor"/>
-                      <rect x="17" y="9" width="2" height="2" fill="currentColor"/>
-                      <rect x="9" y="17" width="2" height="2" fill="currentColor"/>
-                      <rect x="13" y="18" width="2" height="2" fill="currentColor"/>
-                      <rect x="18" y="17" width="4" height="4" fill="currentColor"/>
+                  <div className="flex items-center gap-1.5 px-3 py-1 bg-[#635bff]/10 border border-[#635bff]/25 rounded-lg text-[#ffe2ab] text-[10px] font-mono font-bold">
+                    <svg className="w-3.5 h-3.5 fill-[#635bff]" viewBox="0 0 24 24">
+                      <path d="M13.962 7.437c-1.3-.122-2.186.438-2.186 1.488 0 1.944 2.84 1.547 2.84 3.738 0 1.258-1.077 1.93-2.615 1.93a4.2 4.2 0 01-2.296-.642l.334-1.63a3.543 3.543 0 001.9.54c.767 0 1.15-.29 1.15-.756 0-1.928-2.844-1.489-2.844-3.69 0-1.282.969-1.948 2.502-1.948a3.914 3.914 0 011.966.495l-.337 1.63a3.023 3.023 0 00-1.665-.455zM4 2h16a2 2 0 012 2v16a2 2 0 01-2 2H4a2 2 0 01-2-2V4a2 2 0 012-2z"/>
                     </svg>
+                    {stripeLinked ? (linkedStripeAccountId ? linkedStripeAccountId.slice(0,12)+'...' : 'Stripe Active') : 'Stripe'}
                   </div>
                 </div>
-              )}
-            </div>
-          </>
-        )}
+
+                {/* Dynamic Payment Tab content panes */}
+                <div className="max-w-4xl mx-auto w-full">
+                  {!stripeLinked ? (
+                    <div className="max-w-xl mx-auto w-full">
+                      <div className="bg-[#161513]/90 border border-rose-500/20 rounded-2xl p-8 shadow-xl flex flex-col items-center justify-center text-center space-y-6 select-none animate-fade-in duration-300 min-h-[280px]">
+                        <div className="w-14 h-14 rounded-full bg-rose-500/5 border border-rose-500/20 flex items-center justify-center text-rose-400">
+                          <span className="material-symbols-outlined text-3xl">error</span>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="font-serif text-lg text-white font-medium tracking-wide">Checkout Temporarily Unavailable</h4>
+                          <p className="text-[#A69984]/70 font-sans text-xs mt-2 leading-relaxed max-w-md mx-auto">
+                            Customer self-checkout is restricted to card payments via Stripe. Currently, this restaurant does not have a linked Stripe merchant account connected.
+                          </p>
+                        </div>
+                        <div className="px-4 py-2.5 bg-rose-950/20 border border-rose-500/15 rounded-lg text-rose-300 text-[10.5px] font-sans font-semibold">
+                          Please contact restaurant staff to configure Stripe in the admin console.
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="max-w-xl mx-auto w-full space-y-6">
+                      {/* Premium Interactive Card Preview */}
+                      <div className="relative w-full h-[180px] rounded-2xl bg-gradient-to-tr from-[#14120f] via-[#221f1a] to-[#14120f] border border-[#ffe2ab]/20 p-6 flex flex-col justify-between shadow-[0_8px_30px_rgb(0,0,0,0.5)] overflow-hidden select-none">
+                        <div className="absolute -right-10 -top-10 w-40 h-40 bg-[#ffe2ab]/5 rounded-full blur-2xl pointer-events-none"></div>
+                        <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-white/5 rounded-full blur-2xl pointer-events-none"></div>
+                        
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="text-[8.5px] uppercase font-bold text-[#ffe2ab] tracking-[0.2em] font-sans">Aura Signature (Stripe)</span>
+                            <h4 className="font-serif text-xs text-white/50 tracking-wider uppercase">Table {displayTableNumber}</h4>
+                          </div>
+                          {/* Card Chip */}
+                          <div className="w-9 h-7 rounded-md bg-gradient-to-r from-amber-400/80 to-[#ffe2ab] border border-amber-300/30 flex flex-col justify-around p-1 shadow-inner">
+                            <div className="h-[1px] bg-black/20 w-full"></div>
+                            <div className="h-[1px] bg-black/20 w-full"></div>
+                            <div className="h-[1px] bg-black/20 w-full"></div>
+                          </div>
+                        </div>
+
+                        {/* Card Number */}
+                        <div className="font-mono text-white text-base tracking-[0.18em] my-4 drop-shadow-md select-text">
+                          {cardNumber || '•••• •••• •••• ••••'}
+                        </div>
+
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <span className="text-[7.5px] uppercase font-bold text-[#A69984]/40 tracking-wider block font-sans">Cardholder</span>
+                            <div className="font-sans text-[10.5px] text-white/90 font-bold uppercase tracking-wider truncate max-w-[180px]">
+                              {cardName || 'Alexander Sterling'}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-[7.5px] uppercase font-bold text-[#A69984]/40 tracking-wider block font-sans">Expires</span>
+                            <div className="font-mono text-[10.5px] text-white font-bold tracking-wider">
+                              {expiry || 'MM/YY'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card Inputs Form */}
+                      <div className="bg-[#161513] border border-white/5 rounded-2xl p-6 shadow-xl space-y-4 font-sans select-none">
+                        <div>
+                          <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Card Number</label>
+                          <div className="relative">
+                            <svg className="absolute left-4 top-3 w-4 h-4 text-[#A69984]/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <rect x={2} y={5} width={20} height={14} rx={2} />
+                              <line x1={2} y1={10} x2={22} y2={10} />
+                            </svg>
+                            <input 
+                              type="text" 
+                              maxLength={19}
+                              value={cardNumber}
+                              onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                let matches = val.match(/\d{4,16}/g);
+                                let match = matches && matches[0] || '';
+                                let parts = [];
+                                for (let i=0, len=match.length; i<len; i+=4) {
+                                  parts.push(match.substring(i, i+4));
+                                }
+                                if (parts.length > 0) {
+                                  setCardNumber(parts.join(' '));
+                                } else {
+                                  setCardNumber(val);
+                                }
+                              }}
+                              placeholder="0000 0000 0000 0000"
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-11 pr-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono tracking-widest"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Expiry</label>
+                            <input 
+                              type="text" 
+                              maxLength={5}
+                              value={expiry}
+                              onChange={(e) => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                if (val.length > 2) {
+                                  setExpiry(val.slice(0, 2) + '/' + val.slice(2, 4));
+                                } else {
+                                  setExpiry(val);
+                                }
+                              }}
+                              placeholder="MM/YY"
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono tracking-wider"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">CVC</label>
+                            <input 
+                              type="password" 
+                              maxLength={4}
+                              value={cvc}
+                              onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))}
+                              placeholder="•••"
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono tracking-widest"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Cardholder Name</label>
+                          <input 
+                            type="text" 
+                            value={cardName}
+                            onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium uppercase font-sans tracking-wide"
+                            placeholder="ALEXANDER STERLING"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Promo Code Input Block inside Main Payment column */}
+                      <div className="bg-[#161513]/80 border border-white/5 rounded-2xl p-6 shadow-xl space-y-4 font-sans select-none">
+                        <div className="flex justify-between items-center">
+                          <h4 className="font-serif text-[13px] text-[#ffe2ab] uppercase font-bold tracking-wider flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[16px]">sell</span>
+                            Promo Code / Discount
+                          </h4>
+                          {appliedPromo && (
+                            <button
+                              type="button"
+                              onClick={() => { setAppliedPromo(null); setPromoInput(''); }}
+                              className="text-rose-400 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-0.5 cursor-pointer transition-colors"
+                            >
+                              <span className="material-symbols-outlined text-xs">close</span> Remove
+                            </button>
+                          )}
+                        </div>
+
+                        {!appliedPromo ? (
+                          <div className="space-y-2">
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                value={promoInput}
+                                onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
+                                onKeyDown={(e) => e.key === 'Enter' && handleApplyPromo()}
+                                placeholder="ENTER PROMO CODE (e.g. DINE10, VIP50)"
+                                className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-mono tracking-widest"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleApplyPromo}
+                                className="px-5 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all"
+                              >
+                                Apply
+                              </button>
+                            </div>
+                            {promoError && (
+                              <p className="text-rose-400 text-[10px] font-semibold pl-1">{promoError}</p>
+                            )}
+                            {/* Promo Code suggestions/tips */}
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {Object.keys(CHECKOUT_PROMOS).slice(0, 4).map(code => (
+                                <button
+                                  key={code}
+                                  type="button"
+                                  onClick={() => { setPromoInput(code); setPromoError(''); }}
+                                  className="px-2.5 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/25 rounded-lg text-[9px] font-bold tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all font-mono"
+                                >
+                                  {code}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3.5 animate-fade-in">
+                            <div className="flex items-center gap-2">
+                              <span className="material-symbols-outlined text-sm text-emerald-400">check_circle</span>
+                              <div>
+                                <span className="text-emerald-400 font-bold text-[10px] uppercase tracking-wider block">
+                                  Promo applied: {appliedPromo.code}
+                                </span>
+                                <span className="text-[9.5px] text-[#A69984]/70 font-semibold block mt-0.5">
+                                  {appliedPromo.label}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="text-emerald-400 font-mono font-bold text-sm">
+                              −${promoDiscountAmount.toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div></div>
+              </>
+            )}
           </div>
 
           {/* Footer Action buttons row */}
           {!isCartEmpty && (
-            <div className="max-w-xl mx-auto w-full flex justify-end items-center gap-6 mt-12 border-t border-white/5 pt-8 select-none font-sans">
+            <div className="max-w-4xl mx-auto w-full flex justify-end items-center gap-6 mt-12 border-t border-white/5 pt-8 select-none font-sans">
               <Link 
                 href="/menu"
                 className="text-[#A69984] hover:text-white transition-colors text-xs font-bold uppercase tracking-wider cursor-pointer"
@@ -846,11 +1021,13 @@ export default function CheckoutPage() {
 
               <button 
                 onClick={handleConfirmAndPay}
-                disabled={isProcessing}
+                disabled={isProcessing || !stripeLinked}
                 className="px-8 py-4 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 disabled:cursor-not-allowed text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2.5 transition-all duration-300 shadow-[0_4px_24px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer"
               >
                 Confirm & Pay
-                <span className="material-symbols-outlined text-base font-black">check</span>
+                <svg className="w-4 h-4 text-current" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
               </button>
             </div>
           )}
@@ -1103,6 +1280,8 @@ export default function CheckoutPage() {
                       // Clear actual cart since it is fully paid!
                       localStorage.removeItem('dinepos_cart');
                       localStorage.removeItem('dinepos_placed_order');
+                      localStorage.removeItem('dinepos_split_item_assignments');
+                      localStorage.removeItem('dinepos_split_paid_guests');
                       triggerToast('Full ticket paid! Finalizing.');
                       setIsProcessing(true);
                       setProcessingStep(1);

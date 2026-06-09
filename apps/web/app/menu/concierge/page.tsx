@@ -3,6 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+interface CartItem {
+  itemId: string;
+  quantity: number;
+  modifiers: string[];
+  course: 'starter' | 'main' | 'dessert' | 'drinks';
+  notes?: string;
+}
+
 interface ChatMessage {
   id: string;
   sender: 'aura' | 'user';
@@ -136,22 +144,50 @@ export default function ConciergePage() {
   // Add recommendation item to order cart
   const handleAddToOrder = (itemId: string, itemName: string, price: number) => {
     const savedCart = localStorage.getItem('dinepos_cart');
-    let cart: { [key: string]: number } = {};
+    let cart: { [key: string]: CartItem } = {};
     if (savedCart) {
       try {
-        cart = JSON.parse(savedCart);
+        const parsed = JSON.parse(savedCart);
+        // Migrate legacy/number structure to structured CartItem mapping
+        Object.entries(parsed).forEach(([key, value]) => {
+          if (typeof value === 'number') {
+            const course = key.startsWith('start-') ? 'starter' : key.startsWith('dess-') ? 'dessert' : key.startsWith('drink-') ? 'drinks' : 'main';
+            const newKey = `${key}--${course}`;
+            cart[newKey] = {
+              itemId: key,
+              quantity: value,
+              modifiers: [],
+              course: course
+            };
+          } else if (value && typeof value === 'object' && 'itemId' in (value as any)) {
+            cart[key] = value as CartItem;
+          }
+        });
       } catch (e) {
         console.error('Failed to parse cart:', e);
       }
     }
-    cart[itemId] = (cart[itemId] || 0) + 1;
+
+    const course = itemId.startsWith('start-') ? 'starter' : itemId.startsWith('dess-') ? 'dessert' : (itemId.startsWith('drink-') || itemId.startsWith('rec-')) ? 'drinks' : 'main';
+    const cartKey = `${itemId}--${course}`;
+    if (cart[cartKey]) {
+      cart[cartKey].quantity += 1;
+    } else {
+      cart[cartKey] = {
+        itemId,
+        quantity: 1,
+        modifiers: [],
+        course
+      };
+    }
+
     localStorage.setItem('dinepos_cart', JSON.stringify(cart));
     triggerToast(`Added ${itemName} ($${price}) to Table ${tableNumber} order!`);
   };
 
   // Call Server Bell action
   const handleCallServer = () => {
-    triggerToast("Server dispatched to Table 12. Assistance is on the way.");
+    triggerToast(`Server dispatched to Table ${tableNumber}. Assistance is on the way.`);
   };
 
   // Submit suggestion button click

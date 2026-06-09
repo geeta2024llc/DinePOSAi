@@ -18,6 +18,7 @@ interface KdsTicket {
   id: string;
   tableNumber: string;
   isVip?: boolean;
+  onHold?: boolean;
   secondsElapsed: number;
   type: 'dine-in' | 'takeaway';
   status: 'pending' | 'cooking' | 'complete' | 'rejected';
@@ -91,6 +92,7 @@ const initialTickets: KdsTicket[] = [
   {
     id: 'ticket-4',
     tableNumber: 'Table 08',
+    onHold: true,
     secondsElapsed: 45, // 00:45
     type: 'dine-in',
     status: 'pending',
@@ -150,13 +152,14 @@ export default function KdsPage() {
   const [diningFilter, setDiningFilter] = useState<'all' | 'dine-in' | 'takeaway'>('all');
   const [statusTab, setStatusTab] = useState<'pending' | 'cooking' | 'complete' | 'rejected'>('pending');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Real-time elapsed clock timers
   useEffect(() => {
     const interval = setInterval(() => {
       setTickets(prev =>
         prev.map(t => {
-          if (t.status === 'pending' || t.status === 'cooking') {
+          if ((t.status === 'pending' || t.status === 'cooking') && !t.onHold) {
             return { ...t, secondsElapsed: t.secondsElapsed + 1 };
           }
           return t;
@@ -219,12 +222,7 @@ export default function KdsPage() {
   };
 
   const getCount = (status: KdsTicket['status']) => {
-    const baseCount = tickets.filter(t => t.status === status).length;
-    if (status === 'pending') return baseCount + 8; // Offset to match "12"
-    if (status === 'cooking') return baseCount + 6; // Offset to match "8"
-    if (status === 'complete') return baseCount + 44; // Offset to match "45"
-    if (status === 'rejected') return baseCount + 1; // Offset to match "2"
-    return baseCount;
+    return tickets.filter(t => t.status === status).length;
   };
 
   const filteredTickets = tickets.filter(t => {
@@ -236,8 +234,16 @@ export default function KdsPage() {
   return (
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative">
       
+      {/* MOBILE SIDEBAR BACKDROP */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className="w-[280px] h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-20">
+      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 h-full`}>
         <div>
           {/* Brand header */}
           <div className="p-8 pb-4">
@@ -289,20 +295,30 @@ export default function KdsPage() {
 
       {/* MAIN KITCHEN CONSOLE */}
       <main className="flex-1 flex flex-col h-full bg-[#11100e] relative overflow-hidden">
-        
-        {/* Top Header */}
-        <header className="flex items-center justify-between px-10 py-7 flex-shrink-0 bg-[#0e0e0d] border-b border-white/5 sticky top-0 z-40 select-none">
-          <div>
-            <h1 className="font-serif text-[28px] font-bold text-[#ffe2ab] tracking-wide leading-none">
-              Active Kitchen Feed
-            </h1>
-            <p className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.15em] mt-2.5">
-              • STATION: GRILL & SAUTÉ
-            </p>
+                {/* Top Header */}
+        <header className="flex items-center justify-between px-4 sm:px-10 py-5 sm:py-7 flex-shrink-0 bg-[#0e0e0d] border-b border-white/5 sticky top-0 z-40 select-none">
+          <div className="flex items-center gap-3">
+            {/* Hamburger button */}
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(true)}
+              className="lg:hidden w-9 h-9 flex items-center justify-center border border-white/10 rounded-xl text-white/70 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
+              aria-label="Open navigation"
+            >
+              <span className="material-symbols-outlined text-xl">menu</span>
+            </button>
+            <div>
+              <h1 className="font-serif text-xl sm:text-[28px] font-bold text-[#ffe2ab] tracking-wide leading-none">
+                Active Kitchen Feed
+              </h1>
+              <p className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.15em] mt-1.5 sm:mt-2.5">
+                • STATION: GRILL & SAUTÉ
+              </p>
+            </div>
           </div>
           
           {/* Legend Badges Capsule Container */}
-          <div className="flex bg-[#161513] border border-white/5 rounded-full px-4 py-2 gap-3.5 items-center text-[10px] font-sans font-bold text-[#A69984]/75 tracking-wider shadow-inner">
+          <div className="hidden md:flex bg-[#161513] border border-white/5 rounded-full px-4 py-2 gap-3.5 items-center text-[10px] font-sans font-bold text-[#A69984]/75 tracking-wider shadow-inner">
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>
               &lt;10m
@@ -321,7 +337,7 @@ export default function KdsPage() {
         </header>
 
         {/* Filter Toolbar Area */}
-        <div className="px-10 pt-8 pb-3 flex flex-col gap-6 select-none flex-shrink-0">
+        <div className="px-4 sm:px-10 pt-6 sm:pt-8 pb-3 flex flex-col gap-4 sm:gap-6 select-none flex-shrink-0">
           
           {/* Row 1: Segmented controls for Dining filters (raised design buttons) */}
           <div className="flex bg-[#12110f]/80 backdrop-blur-md border border-white/5 rounded-2xl p-1.5 gap-2 max-w-sm self-start shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
@@ -406,7 +422,7 @@ export default function KdsPage() {
         </div>
 
         {/* Scrollable Order Card Grid */}
-        <div className="flex-1 overflow-y-auto px-10 pb-32 pt-5">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-10 pb-32 pt-5">
           {filteredTickets.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
               {filteredTickets.map(ticket => {
@@ -423,7 +439,7 @@ export default function KdsPage() {
                   <div
                     key={ticket.id}
                     className={`bg-[#161513]/95 border rounded-2xl p-8 shadow-xl flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
-                      ticket.id === 'ticket-4' && ticket.status === 'pending'
+                      ticket.onHold && ticket.status === 'pending'
                         ? 'border-white/5 bg-[#12110f]/80'
                         : isOver15m && ticket.status === 'pending'
                           ? 'border-[#ef4444]/25 shadow-[0_4px_24px_rgba(239,68,68,0.06)]'
@@ -431,7 +447,7 @@ export default function KdsPage() {
                     }`}
                   >
                     {/* HOLD watermark stripe */}
-                    {ticket.id === 'ticket-4' && ticket.status === 'pending' && (
+                    {ticket.onHold && ticket.status === 'pending' && (
                       <div className="absolute inset-0 pointer-events-none z-10 flex items-start justify-end p-3">
                         <span className="bg-[#A69984]/15 border border-[#A69984]/20 text-[#A69984]/60 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg">
                           On Hold
@@ -440,7 +456,7 @@ export default function KdsPage() {
                     )}
                     
                     {/* Header Details */}
-                    <div className={ticket.id === 'ticket-4' && ticket.status === 'pending' ? 'opacity-50' : ''}>
+                    <div className={ticket.onHold && ticket.status === 'pending' ? 'opacity-50' : ''}>
                       <div className="flex justify-between items-center mb-7 select-none">
                         <div className="flex items-center gap-2.5">
                           <h3 className={`font-serif text-lg font-bold tracking-wide ${tableHeaderColor}`}>
@@ -518,7 +534,7 @@ export default function KdsPage() {
                             >
                               Initialize Cooking
                             </button>
-                          ) : ticket.id === 'ticket-4' ? (
+                          ) : ticket.onHold ? (
                             <button 
                               disabled 
                               className="w-full py-3.5 bg-white/5 border border-white/5 text-[#A69984]/30 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl cursor-not-allowed text-center"

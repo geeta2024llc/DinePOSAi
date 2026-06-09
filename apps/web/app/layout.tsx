@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { PrinterProvider } from './printerContext';
 
 export const metadata: Metadata = {
   title: 'DinePOS AI - Modern Hospitality Systems',
@@ -20,8 +21,11 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       </head>
       <body className="bg-surface-container-lowest text-on-surface antialiased overflow-x-hidden min-h-screen flex flex-col" suppressHydrationWarning>
-        {children}
+        <PrinterProvider>
+          {children}
+        </PrinterProvider>
       </body>
     </html>
   );
 }
+

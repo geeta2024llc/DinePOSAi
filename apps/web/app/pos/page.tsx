@@ -25,6 +25,7 @@ interface PosTicket {
   duration: string;
   isVip?: boolean;
   isSplit?: boolean;
+  needsPayment?: boolean;
   cardAmount: number; // Mapped mockup card amount
   guests: number;
   orderNumber: string;
@@ -40,6 +41,7 @@ const initialTickets: PosTicket[] = [
     serverName: 'Michael T.',
     duration: '45m',
     isVip: true,
+    needsPayment: true,
     cardAmount: 342.50,
     guests: 4,
     orderNumber: '#8492',
@@ -74,6 +76,7 @@ const initialTickets: PosTicket[] = [
     serverName: 'Alex D.',
     duration: '15m',
     isSplit: true,
+    needsPayment: true,
     cardAmount: 45.00,
     guests: 1,
     orderNumber: '#8495',
@@ -96,11 +99,18 @@ export default function PosPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
+  const [taxRateDineIn, setTaxRateDineIn] = useState(0.085);
+  const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.085);
+  const [taxRateDelivery, setTaxRateDelivery] = useState(0.085);
 
   // Responsive sidebar (mobile/tablet)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Mobile panel toggle — 'list' shows the orders list, 'detail' shows ticket
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+
+  // Checkout Modal State
+  const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'card' | 'cash' | 'digital'>('card');
 
   // Discount system
   const [discountVisible, setDiscountVisible] = useState(false);
@@ -116,6 +126,22 @@ export default function PosPage() {
       if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
         setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
       }
+      const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
+      const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
+      const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
+      if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
+      if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
+      if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
+
+      setTickets(prev => prev.map(t => {
+        if (t.tableNumber.toLowerCase().includes('takeaway')) {
+          return { ...t, taxRate: savedTaxRateTakeaway ? parseFloat(savedTaxRateTakeaway) / 100 : t.taxRate };
+        } else if (t.tableNumber.toLowerCase().includes('delivery')) {
+          return { ...t, taxRate: savedTaxRateDelivery ? parseFloat(savedTaxRateDelivery) / 100 : t.taxRate };
+        } else {
+          return { ...t, taxRate: savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : t.taxRate };
+        }
+      }));
     }
   }, []);
 
@@ -125,6 +151,15 @@ export default function PosPage() {
         if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
+      }
+      if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
+        setTaxRateDineIn(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
+        setTaxRateTakeaway(parseFloat(e.newValue) / 100);
+      }
+      if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
+        setTaxRateDelivery(parseFloat(e.newValue) / 100);
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -142,7 +177,7 @@ export default function PosPage() {
   const selectedTicket = tickets.find(t => t.id === selectedTicketId) ?? tickets[0];
 
   // Bill calculations — only computed when a ticket is present
-  const subtotal       = selectedTicket ? selectedTicket.items.reduce((acc, item) => acc + item.price, 0) : 0;
+  const subtotal       = selectedTicket ? selectedTicket.items.reduce((acc, item) => acc + (item.price * item.qty), 0) : 0;
   const tax            = selectedTicket ? (taxType === 'pre-tax' ? subtotal * selectedTicket.taxRate : subtotal - (subtotal / (1 + selectedTicket.taxRate))) : 0;
   const gratuity       = selectedTicket ? subtotal * selectedTicket.gratuityRate : 0;
   const discountAmount = (selectedTicket && appliedDiscount) ? appliedDiscount.amount : 0;
@@ -150,11 +185,18 @@ export default function PosPage() {
 
   // Process transaction logic
   const handleProcessPayment = () => {
+    if (!selectedTicket) return;
+    setCheckoutModalOpen(true);
+  };
+
+  const handleCompleteCheckout = () => {
+    if (!selectedTicket) return;
     setIsProcessing(true);
-    triggerToast(`Authorizing payment of $${grandTotal.toFixed(2)} for ${selectedTicket.tableNumber}...`);
+    triggerToast(`Authorizing ${checkoutPaymentMethod.toUpperCase()} payment of $${grandTotal.toFixed(2)} for ${selectedTicket.tableNumber}...`);
     
     setTimeout(() => {
       setIsProcessing(false);
+      setCheckoutModalOpen(false);
       triggerToast(`Payment validated! ${selectedTicket.tableNumber} ticket closed.`);
       // Remove paid ticket and auto-select next using latest state (avoids stale closure)
       setTickets(prev => {
@@ -162,10 +204,16 @@ export default function PosPage() {
         if (remaining.length > 0) setSelectedTicketId(remaining[0].id);
         return remaining;
       });
+      // Reset discount state
+      setAppliedDiscount(null);
+      setDiscountPercent(0);
+      setDiscountFixed(0);
+      setPromoCodeInput('');
     }, 2000);
   };
 
   const handleSplitBill = () => {
+    if (!selectedTicket) return;
     triggerToast(`Splitting invoice #DINE-${selectedTicket.orderNumber.replace('#', '')} for ${selectedTicket.tableNumber}...`);
   };
 
@@ -204,7 +252,7 @@ export default function PosPage() {
                           t.serverName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesFilter = 
       quickFilter === 'open' ? true :
-      quickFilter === 'payment' ? t.isSplit : // Needs payment / split check
+      quickFilter === 'payment' ? t.needsPayment : // Needs payment flag
       quickFilter === 'vip' ? t.isVip : false;
 
     return matchesSearch && matchesFilter;
@@ -222,7 +270,7 @@ export default function PosPage() {
       )}
 
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0`}>
+      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0`}>
         <div>
           {/* Brand/Console Title */}
           <div className="mb-10 select-none flex items-center">
@@ -239,14 +287,67 @@ export default function PosPage() {
             </div>
           </div>
 
-          {/* New Order Button */}
-          <button 
-            onClick={() => triggerToast('Initializing New Order placement...')}
-            className="w-full py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer mb-8"
-          >
-            <span className="material-symbols-outlined text-sm font-bold">add</span>
-            New Order
-          </button>
+          {/* Order Action Buttons */}
+          <div className="grid grid-cols-1 gap-2 mb-8 select-none">
+            <button 
+              onClick={() => {
+                const newId = `ticket-${Date.now()}`;
+                const tableNum = Math.floor(1 + Math.random() * 20);
+                const orderNum = Math.floor(1000 + Math.random() * 9000);
+                const newTicket: PosTicket = {
+                  id: newId,
+                  tableNumber: `Table ${tableNum < 10 ? '0' + tableNum : tableNum}`,
+                  serverName: 'J. Smith',
+                  duration: '1m',
+                  needsPayment: true,
+                  cardAmount: 76.00,
+                  guests: 2,
+                  orderNumber: `#${orderNum}`,
+                  taxRate: taxRateDineIn,
+                  gratuityRate: 0.20,
+                  items: [
+                    { qty: 2, name: 'Truffle Risotto', price: 76.00 }
+                  ]
+                };
+                setTickets(prev => [newTicket, ...prev]);
+                setSelectedTicketId(newId);
+                triggerToast(`New order initialized for Table ${tableNum}!`);
+              }}
+              className="w-full py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xs font-bold">add</span>
+              New Table Order
+            </button>
+            <button 
+              onClick={() => {
+                const newId = `ticket-${Date.now()}`;
+                const orderNum = Math.floor(1000 + Math.random() * 9000);
+                const newTicket: PosTicket = {
+                  id: newId,
+                  tableNumber: 'Walk-in Takeaway',
+                  serverName: 'J. Smith',
+                  duration: '1m',
+                  needsPayment: true,
+                  cardAmount: 45.00,
+                  guests: 1,
+                  orderNumber: `#${orderNum}`,
+                  taxRate: taxRateTakeaway,
+                  gratuityRate: 0.00, // No auto-gratuity for takeaway
+                  items: [
+                    { qty: 1, name: 'Truffle Burrata Salad', price: 26.00 },
+                    { qty: 1, name: 'Signature Emerald Gimlet', price: 19.00 }
+                  ]
+                };
+                setTickets(prev => [newTicket, ...prev]);
+                setSelectedTicketId(newId);
+                triggerToast('Walk-in takeaway order initialized!');
+              }}
+              className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xs font-bold">shopping_bag</span>
+              Walk-in Customer
+            </button>
+          </div>
 
           {/* Navigation Links */}
           <nav className="space-y-1.5 font-sans">
@@ -345,7 +446,7 @@ export default function PosPage() {
       </aside>
 
       {/* MAIN CONTENT AREA */}
-      <div className="flex-grow flex flex-col min-h-screen relative bg-[#11100e]">
+      <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#11100e]">
         
         {/* Top Header */}
         <header className="h-[65px] lg:h-[90px] border-b border-white/5 flex items-center justify-between px-4 lg:px-10 flex-shrink-0 bg-[#0e0e0d] sticky top-0 z-40 select-none">
@@ -373,7 +474,7 @@ export default function PosPage() {
                 placeholder="Search tables or guests..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-[#161513] border border-white/5 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 w-[160px] md:w-[220px] lg:w-[240px] transition-colors"
+                className="bg-[#161513] border border-white/5 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 w-[140px] md:w-[200px] lg:w-[210px] xl:w-[260px] transition-colors"
               />
             </div>
             
@@ -396,7 +497,7 @@ export default function PosPage() {
         <div className="flex-1 flex overflow-hidden">
           
           {/* LEFT COLUMN: Active Orders List */}
-          <div className={`w-full lg:w-[420px] border-r border-white/5 flex-col h-full bg-[#11100e]/50 flex-shrink-0 select-none ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
+          <div className={`w-full lg:w-[320px] xl:w-[420px] border-r border-white/5 flex-col h-full bg-[#11100e]/50 flex-shrink-0 select-none ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
             
             {/* Quick Filters toolbar */}
             <div className="p-6 pb-4 border-b border-white/5 flex gap-2 flex-shrink-0">
@@ -469,7 +570,7 @@ export default function PosPage() {
 
           {/* RIGHT COLUMN: Selected Order Ticket Details */}
           {selectedTicket ? (
-            <div className={`flex-grow flex-col h-full bg-[#11100e] overflow-hidden ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
+            <div className={`flex-1 flex-col h-full bg-[#11100e] overflow-hidden min-w-0 ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
 
               {/* Mobile back-to-orders bar */}
               <button
@@ -485,12 +586,12 @@ export default function PosPage() {
               <div className="p-6 lg:p-8 border-b border-white/5 flex justify-between items-start flex-shrink-0 select-none">
                 <div>
                   <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Current Ticket</span>
-                  <h3 className="font-serif text-[32px] text-white font-bold leading-none">{selectedTicket.tableNumber}</h3>
+                  <h3 className="font-serif text-[32px] text-white font-bold leading-none select-text">{selectedTicket.tableNumber}</h3>
                 </div>
                 
                 <div className="text-right text-xs text-[#A69984]/70 font-semibold font-sans space-y-1">
                   <div>Guests: {selectedTicket.guests}</div>
-                  <div>Order {selectedTicket.orderNumber}</div>
+                  <div className="select-text">Order {selectedTicket.orderNumber}</div>
                 </div>
               </div>
 
@@ -499,8 +600,8 @@ export default function PosPage() {
                 {/* Column Headers */}
                 <div className="grid grid-cols-12 text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest pb-3 border-b border-white/5 select-none">
                   <div className="col-span-1 text-left">Qty</div>
-                  <div className="col-span-8 text-left">Item</div>
-                  <div className="col-span-3 text-right">Price</div>
+                  <div className="col-span-7 text-left">Item</div>
+                  <div className="col-span-4 text-right">Price</div>
                 </div>
 
                 {/* Items rows */}
@@ -513,17 +614,17 @@ export default function PosPage() {
                       </div>
                       
                       {/* Name & Note */}
-                      <div className="col-span-8 text-left">
+                      <div className="col-span-7 text-left min-w-0">
                         <div className="font-sans font-bold text-sm text-white truncate pr-2">{item.name}</div>
                         {item.note && (
-                          <div className="font-sans text-[12px] text-[#A69984]/65 font-medium mt-1">
+                          <div className="font-sans text-[12px] text-[#A69984]/65 font-medium mt-1 break-words">
                             {item.note}
                           </div>
                         )}
                       </div>
 
                       {/* Price */}
-                      <div className="col-span-3 text-right font-sans font-bold text-sm text-white/95">
+                      <div className="col-span-4 text-right font-sans font-bold text-sm text-white/95">
                         ${item.price.toFixed(2)}
                       </div>
                     </div>
@@ -660,30 +761,30 @@ export default function PosPage() {
                 )}
 
                 {/* Footer Buttons */}
-                <div className="flex gap-2 lg:gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 lg:gap-3">
                   <button
                     type="button"
                     onClick={() => setDiscountVisible(prev => !prev)}
-                    className={`flex items-center justify-center gap-1.5 px-3 lg:px-4 py-3.5 bg-transparent border rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${discountVisible || appliedDiscount ? 'border-emerald-500/40 text-emerald-400' : 'border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab]'}`}
+                    className={`flex items-center justify-center gap-1.5 px-3 lg:px-4 py-3.5 bg-transparent border rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer w-full ${discountVisible || appliedDiscount ? 'border-emerald-500/40 text-emerald-400' : 'border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab]'}`}
                   >
                     <span className="material-symbols-outlined text-base">sell</span>
-                    <span className="hidden sm:inline">Discount</span>
+                    <span>Discount</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleSplitBill}
-                    className="flex items-center justify-center gap-1.5 px-3 lg:px-4 py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider text-[#ffe2ab] transition-all cursor-pointer"
+                    className="flex items-center justify-center gap-1.5 px-3 lg:px-4 py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider text-[#ffe2ab] transition-all cursor-pointer w-full"
                   >
                     <span className="material-symbols-outlined text-base">call_split</span>
-                    <span className="hidden sm:inline">Split</span>
+                    <span>Split</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleProcessPayment}
                     disabled={isProcessing}
-                    className="flex-1 flex items-center justify-center gap-2 py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 text-[#402d00] font-sans font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md cursor-pointer hover:scale-[1.01]"
+                    className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 text-[#402d00] font-sans font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md cursor-pointer hover:scale-[1.01] w-full"
                   >
                     <span className="material-symbols-outlined text-base">credit_card</span>
                     {isProcessing ? 'Processing...' : 'Process Payment'}
@@ -706,6 +807,217 @@ export default function PosPage() {
         </div>
 
       </div>
+
+      {/* CASHIER CHECKOUT / PAYMENT MODAL */}
+      {checkoutModalOpen && selectedTicket && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#12110f] border border-[#ffe2ab]/20 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between select-none bg-[#0a0a09]">
+              <div>
+                <h3 className="font-serif font-bold text-lg text-white">Process Checkout</h3>
+                <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
+                  Table {selectedTicket.tableNumber} • Order {selectedTicket.orderNumber}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCheckoutModalOpen(false)}
+                className="text-[#A69984] hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {/* Payment Methods */}
+              <div className="space-y-2.5">
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none">Payment Method</label>
+                <div className="grid grid-cols-3 gap-3">
+                  {(['card', 'cash', 'digital'] as const).map(method => (
+                    <button
+                      key={method}
+                      type="button"
+                      onClick={() => setCheckoutPaymentMethod(method)}
+                      className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all cursor-pointer select-none ${
+                        checkoutPaymentMethod === method
+                          ? 'border-[#ffe2ab] bg-[#ffe2ab]/5 text-[#ffe2ab]'
+                          : 'border-white/5 bg-[#161513]/40 text-[#A69984]/60 hover:text-white hover:border-white/10'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-2xl mb-1.5">
+                        {method === 'card' ? 'credit_card' : method === 'cash' ? 'payments' : 'devices'}
+                      </span>
+                      <span className="font-sans font-bold text-[9px] uppercase tracking-wider">
+                        {method === 'card' ? 'Credit / Stripe' : method === 'cash' ? 'Cash' : 'Digital Wallet'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Discount Section inside the checkout modal */}
+              <div className="bg-[#161513]/40 border border-white/5 rounded-xl p-5 space-y-4">
+                <div className="flex justify-between items-center select-none">
+                  <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-[#A69984]">Discount Settings</span>
+                  {appliedDiscount && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveDiscount}
+                      className="text-rose-400 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-xs">close</span> Remove Discount
+                    </button>
+                  )}
+                </div>
+
+                {/* Sub-tabs for Discount Types inside modal */}
+                <div className="flex gap-1 bg-black/40 rounded-lg p-1 select-none">
+                  {(['percent', 'fixed', 'promo'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setDiscountMode(mode)}
+                      className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        discountMode === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
+                      }`}
+                    >
+                      {mode === 'percent' ? '% Rate' : mode === 'fixed' ? 'Fixed $' : 'Promo Code'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Discount input fields inside checkout modal */}
+                <div className="flex gap-2">
+                  {discountMode === 'percent' && (
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discountPercent || ''}
+                      onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter Percentage (e.g. 15)"
+                      className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                    />
+                  )}
+                  {discountMode === 'fixed' && (
+                    <input
+                      type="number"
+                      min="0"
+                      value={discountFixed || ''}
+                      onChange={(e) => setDiscountFixed(parseFloat(e.target.value) || 0)}
+                      placeholder="Enter Amount (e.g. 10.00)"
+                      className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                    />
+                  )}
+                  {discountMode === 'promo' && (
+                    <input
+                      type="text"
+                      value={promoCodeInput}
+                      onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                      placeholder="ENTER PROMO CODE"
+                      className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors tracking-widest font-mono"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={computeApplyDiscount}
+                    className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
+                  >
+                    Apply
+                  </button>
+                </div>
+
+                {/* Helper Promo Quick Buttons inside modal */}
+                {discountMode === 'promo' && (
+                  <div className="flex flex-wrap gap-1.5 select-none">
+                    {Object.keys(VALID_PROMO_CODES).slice(0, 4).map(code => (
+                      <button
+                        key={code}
+                        type="button"
+                        onClick={() => setPromoCodeInput(code)}
+                        className="px-2.5 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/25 rounded-lg text-[9px] font-bold tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all font-mono"
+                      >
+                        {code}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Display currently applied discount in modal */}
+                {appliedDiscount && (
+                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 animate-fade-in select-none">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm text-emerald-400">sell</span>
+                      <span className="text-emerald-400 font-sans font-bold text-[10px] uppercase tracking-wider">
+                        {appliedDiscount.label}
+                      </span>
+                    </div>
+                    <span className="text-emerald-400 font-mono font-bold text-xs">
+                      −${appliedDiscount.amount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Order Calculations Summary */}
+              <div className="bg-[#0a0a09] border border-white/5 rounded-xl p-5 space-y-3 font-sans select-none">
+                <div className="flex justify-between text-xs text-[#A69984]/70">
+                  <span>Subtotal</span>
+                  <span className="text-white font-mono">${subtotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-[#A69984]/70">
+                  <span>Tax ({(selectedTicket.taxRate * 100).toFixed(1)}%)</span>
+                  <span className="text-white font-mono">${tax.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-xs text-[#A69984]/70">
+                  <span>Gratuity</span>
+                  <span className="text-white font-mono">${gratuity.toFixed(2)}</span>
+                </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-xs text-emerald-400">
+                    <span>Discount</span>
+                    <span className="font-mono">−${discountAmount.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="border-t border-white/5 pt-3 flex justify-between items-baseline">
+                  <span className="text-xs font-bold text-[#A69984] uppercase tracking-wider">Grand Total Due</span>
+                  <span className="text-2xl font-bold text-[#ffe2ab] font-serif tracking-wider">
+                    ${grandTotal.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex gap-3 select-none">
+              <button
+                type="button"
+                onClick={() => setCheckoutModalOpen(false)}
+                className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCompleteCheckout}
+                disabled={isProcessing}
+                className="flex-1 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer text-center flex items-center justify-center gap-2"
+              >
+                {isProcessing ? (
+                  <span>Processing...</span>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
+                    <span>Complete Payment</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* INTERACTIVE TOAST FEEDBACK NOTIFICATION */}
       {toast.show && (
