@@ -158,7 +158,7 @@ export default function PosStaffPage() {
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative">
 
       {/* SIDEBAR */}
-      <aside className="w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-20">
+      <aside className="w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto">
         <div>
           {/* Brand */}
           <div className="mb-10 flex items-center">
@@ -175,14 +175,23 @@ export default function PosStaffPage() {
             </div>
           </div>
 
-          {/* New Order */}
-          <Link
-            href="/pos"
-            className="w-full py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center justify-center gap-2 cursor-pointer mb-8"
-          >
-            <span className="material-symbols-outlined text-sm font-bold">add</span>
-            New Order
-          </Link>
+          {/* Order Action Buttons */}
+          <div className="grid grid-cols-1 gap-2 mb-8 select-none">
+            <Link
+              href="/pos?newOrder=table"
+              className="w-full py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xs font-bold">add</span>
+              New Table Order
+            </Link>
+            <Link
+              href="/pos?newOrder=walkin"
+              className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xs font-bold">shopping_bag</span>
+              Walk-in Customer
+            </Link>
+          </div>
 
           {/* Nav */}
           <nav className="space-y-1.5 font-sans">
@@ -194,10 +203,7 @@ export default function PosStaffPage() {
               <span className="material-symbols-outlined text-lg leading-none">receipt_long</span>
               Orders
             </Link>
-            <Link href="/pos/inventory" className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300">
-              <span className="material-symbols-outlined text-lg leading-none">inventory_2</span>
-              Inventory
-            </Link>
+
             {/* Staff — active */}
             <div className="flex items-center justify-between w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-white/5 text-white border border-white/10 relative shadow">
               <div className="flex items-center gap-4">
@@ -210,12 +216,16 @@ export default function PosStaffPage() {
               <span className="material-symbols-outlined text-lg leading-none">trending_up</span>
               Analytics
             </Link>
+            <Link href="/pos/discounts" className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300">
+              <span className="material-symbols-outlined text-lg leading-none">sell</span>
+              Discounts
+            </Link>
           </nav>
         </div>
 
         {/* Bottom */}
         <div className="border-t border-white/5 pt-6 font-sans space-y-4">
-          <Link href="/dashboard" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
+          <Link href="/pos/settings" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
             <span className="material-symbols-outlined text-lg leading-none">settings</span>
             Settings
           </Link>

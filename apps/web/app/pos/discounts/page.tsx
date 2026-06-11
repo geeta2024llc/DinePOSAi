@@ -1,7 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+
+interface Operator {
+  name: string;
+  role: string;
+  avatar: string;
+}
+
+const AVAILABLE_OPERATORS: Operator[] = [
+  {
+    name: 'Michael T.',
+    role: 'Head Waiter',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop'
+  },
+  {
+    name: 'Sarah J.',
+    role: 'Waitress',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop'
+  },
+  {
+    name: 'Alex D.',
+    role: 'Bartender',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop'
+  },
+  {
+    name: 'J. Smith',
+    role: 'General Manager',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
+  }
+];
 
 interface DiscountCode {
   id: string;
@@ -28,6 +57,37 @@ const initialDiscounts: DiscountCode[] = [
 export default function DiscountsPage() {
   const [discounts, setDiscounts] = useState<DiscountCode[]>(initialDiscounts);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Operator states
+  const [activeOperator, setActiveOperator] = useState<Operator>(AVAILABLE_OPERATORS[0]);
+  const [operatorModalOpen, setOperatorModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedOperator = localStorage.getItem('dinepos_active_operator');
+      if (savedOperator) {
+        try {
+          setActiveOperator(JSON.parse(savedOperator));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'dinepos_active_operator' && e.newValue) {
+          try {
+            setActiveOperator(JSON.parse(e.newValue));
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      };
+      window.addEventListener('storage', handleStorageChange);
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    }
+  }, []);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -131,7 +191,7 @@ export default function DiscountsPage() {
       )}
 
       {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0`}>
+      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 overflow-y-auto`}>
         <div>
           {/* Brand */}
           <div className="mb-10 flex items-center">
@@ -146,6 +206,24 @@ export default function DiscountsPage() {
             </div>
           </div>
 
+          {/* Order Action Buttons */}
+          <div className="grid grid-cols-1 gap-2 mb-8 select-none">
+            <Link
+              href="/pos?newOrder=table"
+              className="w-full py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xs font-bold">add</span>
+              New Table Order
+            </Link>
+            <Link
+              href="/pos?newOrder=walkin"
+              className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xs font-bold">shopping_bag</span>
+              Walk-in Customer
+            </Link>
+          </div>
+
           {/* Nav */}
           <nav className="space-y-1.5 font-sans">
             <Link href="/pos" className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300">
@@ -156,14 +234,8 @@ export default function DiscountsPage() {
               <span className="material-symbols-outlined text-lg leading-none">receipt_long</span>
               Orders
             </Link>
-            <Link href="/pos/inventory" className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300">
-              <span className="material-symbols-outlined text-lg leading-none">inventory_2</span>
-              Inventory
-            </Link>
-            <Link href="/pos/staff" className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300">
-              <span className="material-symbols-outlined text-lg leading-none">groups</span>
-              Staff
-            </Link>
+
+
             <Link href="/pos/analytics" className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300">
               <span className="material-symbols-outlined text-lg leading-none">trending_up</span>
               Analytics
@@ -179,18 +251,30 @@ export default function DiscountsPage() {
         </div>
 
         <div className="border-t border-white/5 pt-6 font-sans space-y-4">
-          <Link href="/dashboard" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
+          <Link href="/pos/settings" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
             <span className="material-symbols-outlined text-lg leading-none">settings</span>
             Settings
-          </Link>
-          <Link href="/support" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
-            <span className="material-symbols-outlined text-lg leading-none">help</span>
-            Support
           </Link>
           <Link href="/login" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
             <span className="material-symbols-outlined text-lg leading-none">logout</span>
             Sign Out
           </Link>
+          <div 
+            onClick={() => setOperatorModalOpen(true)}
+            className="flex items-center gap-3 pt-2 cursor-pointer group hover:bg-white/5 p-2 rounded-xl transition-all"
+          >
+            <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0 group-hover:border-[#ffe2ab]/30 transition-colors">
+              <img
+                src={activeOperator.avatar}
+                alt={`${activeOperator.name} avatar`}
+                className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+              />
+            </div>
+            <div className="overflow-hidden">
+              <div className="text-white font-bold text-xs tracking-wide truncate group-hover:text-[#ffe2ab] transition-colors">{activeOperator.name}</div>
+              <div className="text-[8px] text-[#ffe2ab]/70 font-bold tracking-wider uppercase mt-0.5">{activeOperator.role}</div>
+            </div>
+          </div>
         </div>
       </aside>
 
@@ -499,6 +583,50 @@ export default function DiscountsPage() {
           </div>
         </div>
       )}
+      {/* OPERATOR SWITCHER MODAL */}
+      {operatorModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm select-none">
+          <div className="bg-[#121211] border border-white/10 rounded-2xl p-6 w-[360px] shadow-2xl relative animate-fade-in animate-duration-200">
+            <button
+              onClick={() => setOperatorModalOpen(false)}
+              className="absolute top-4 right-4 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+            
+            <h3 className="font-serif text-lg font-bold text-white mb-2">Switch Operator</h3>
+            <p className="text-[11px] text-[#A69984]/60 mb-5 font-medium uppercase tracking-wider">Select the active POS cashier</p>
+            
+            <div className="space-y-2">
+              {AVAILABLE_OPERATORS.map((op) => (
+                <button
+                  key={op.name}
+                  onClick={() => {
+                    setActiveOperator(op);
+                    localStorage.setItem('dinepos_active_operator', JSON.stringify(op));
+                    setOperatorModalOpen(false);
+                    triggerToast(`Operator switched to ${op.name}`);
+                  }}
+                  className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all cursor-pointer ${
+                    activeOperator.name === op.name
+                      ? 'bg-[#ffe2ab]/10 border-[#ffe2ab] text-white'
+                      : 'bg-white/5 border-transparent hover:border-white/10 text-[#A69984] hover:text-white'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
+                    <img src={op.avatar} alt={op.name} className="w-full h-full object-cover grayscale" />
+                  </div>
+                  <div className="text-left overflow-hidden">
+                    <div className="font-bold text-xs tracking-wide truncate">{op.name}</div>
+                    <div className="text-[9px] text-[#ffe2ab]/70 font-semibold tracking-wider uppercase mt-0.5">{op.role}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

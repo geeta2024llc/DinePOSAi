@@ -12,6 +12,7 @@ interface OrderItem {
   name: string;
   qty: number;
   options?: OrderItemOption[];
+  notes?: string;
 }
 
 interface KdsTicket {
@@ -20,7 +21,7 @@ interface KdsTicket {
   isVip?: boolean;
   onHold?: boolean;
   secondsElapsed: number;
-  type: 'dine-in' | 'takeaway';
+  type: 'dine-in' | 'takeaway' | 'delivery';
   status: 'pending' | 'cooking' | 'complete' | 'rejected';
   items: OrderItem[];
 }
@@ -39,7 +40,8 @@ const initialTickets: KdsTicket[] = [
         options: [
           { text: 'Medium Rare', type: 'default' },
           { text: 'ALLERGY: NO GARLIC', type: 'allergy' }
-        ]
+        ],
+        notes: 'Please prepare medium-rare, closer to rare.'
       },
       {
         name: 'Scallop Risotto',
@@ -61,7 +63,8 @@ const initialTickets: KdsTicket[] = [
           { text: 'Medium', type: 'default' },
           { text: 'NO ONIONS', type: 'highlight' },
           { text: 'Add Truffle Fries', type: 'default' }
-        ]
+        ],
+        notes: 'No salt on the burger patty if possible.'
       },
       {
         name: 'Caesar Salad',
@@ -119,7 +122,7 @@ const initialTickets: KdsTicket[] = [
     id: 'ticket-6',
     tableNumber: 'Table 10',
     secondsElapsed: 300,
-    type: 'takeaway',
+    type: 'delivery',
     status: 'cooking',
     items: [
       { name: 'Wagyu Burger', qty: 2, options: [{ text: 'Well Done', type: 'default' }] }
@@ -149,7 +152,7 @@ const initialTickets: KdsTicket[] = [
 
 export default function KdsPage() {
   const [tickets, setTickets] = useState<KdsTicket[]>(initialTickets);
-  const [diningFilter, setDiningFilter] = useState<'all' | 'dine-in' | 'takeaway'>('all');
+  const [diningFilter, setDiningFilter] = useState<'all' | 'dine-in' | 'takeaway' | 'delivery'>('all');
   const [statusTab, setStatusTab] = useState<'pending' | 'cooking' | 'complete' | 'rejected'>('pending');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -339,37 +342,47 @@ export default function KdsPage() {
         {/* Filter Toolbar Area */}
         <div className="px-4 sm:px-10 pt-6 sm:pt-8 pb-3 flex flex-col gap-4 sm:gap-6 select-none flex-shrink-0">
           
-          {/* Row 1: Segmented controls for Dining filters (raised design buttons) */}
-          <div className="flex bg-[#12110f]/80 backdrop-blur-md border border-white/5 rounded-2xl p-1.5 gap-2 max-w-sm self-start shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+          {/* Row 1: Segmented controls for Dining filters (premium capsule design) */}
+          <div className="flex bg-[#161513]/90 border border-white/5 rounded-full p-1 gap-1 self-start shadow-lg">
             <button 
               onClick={() => setDiningFilter('all')}
-              className={`px-6 py-2.5 rounded-xl font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${
+              className={`px-5 py-2 rounded-full font-sans text-[10.5px] uppercase tracking-widest font-black transition-all duration-300 cursor-pointer whitespace-nowrap ${
                 diningFilter === 'all' 
-                  ? 'bg-gradient-to-r from-[#ffe2ab] to-[#edd099] text-[#1c1200] shadow-[0_4px_16px_rgba(255,226,171,0.25)] scale-[1.02]' 
-                  : 'text-[#A69984]/70 border border-transparent hover:text-white hover:bg-white/[0.02]'
+                  ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_2px_8px_rgba(255,226,171,0.15)]' 
+                  : 'text-[#A69984]/60 hover:text-white hover:bg-white/5'
               }`}
             >
               All Orders
             </button>
             <button 
               onClick={() => setDiningFilter('dine-in')}
-              className={`px-6 py-2.5 rounded-xl font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${
+              className={`px-5 py-2 rounded-full font-sans text-[10.5px] uppercase tracking-widest font-black transition-all duration-300 cursor-pointer whitespace-nowrap ${
                 diningFilter === 'dine-in' 
-                  ? 'bg-gradient-to-r from-[#ffe2ab] to-[#edd099] text-[#1c1200] shadow-[0_4px_16px_rgba(255,226,171,0.25)] scale-[1.02]' 
-                  : 'text-[#A69984]/70 border border-transparent hover:text-white hover:bg-white/[0.02]'
+                  ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_2px_8px_rgba(255,226,171,0.15)]' 
+                  : 'text-[#A69984]/60 hover:text-white hover:bg-white/5'
               }`}
             >
               Dine-in
             </button>
             <button 
               onClick={() => setDiningFilter('takeaway')}
-              className={`px-6 py-2.5 rounded-xl font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${
+              className={`px-5 py-2 rounded-full font-sans text-[10.5px] uppercase tracking-widest font-black transition-all duration-300 cursor-pointer whitespace-nowrap ${
                 diningFilter === 'takeaway' 
-                  ? 'bg-gradient-to-r from-[#ffe2ab] to-[#edd099] text-[#1c1200] shadow-[0_4px_16px_rgba(255,226,171,0.25)] scale-[1.02]' 
-                  : 'text-[#A69984]/70 border border-transparent hover:text-white hover:bg-white/[0.02]'
+                  ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_2px_8px_rgba(255,226,171,0.15)]' 
+                  : 'text-[#A69984]/60 hover:text-white hover:bg-white/5'
               }`}
             >
               Takeaway
+            </button>
+            <button 
+              onClick={() => setDiningFilter('delivery')}
+              className={`px-5 py-2 rounded-full font-sans text-[10.5px] uppercase tracking-widest font-black transition-all duration-300 cursor-pointer whitespace-nowrap ${
+                diningFilter === 'delivery' 
+                  ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_2px_8px_rgba(255,226,171,0.15)]' 
+                  : 'text-[#A69984]/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              Delivery
             </button>
           </div>
 
@@ -467,6 +480,16 @@ export default function KdsPage() {
                               VIP
                             </span>
                           )}
+                          {ticket.type === 'takeaway' && (
+                            <span className="bg-sky-500/10 border border-sky-500/20 text-sky-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
+                              Takeaway
+                            </span>
+                          )}
+                          {ticket.type === 'delivery' && (
+                            <span className="bg-purple-500/10 border border-purple-500/20 text-purple-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
+                              Delivery
+                            </span>
+                          )}
                         </div>
                         
                         {/* Clock icon and legible timer */}
@@ -518,6 +541,18 @@ export default function KdsPage() {
                                 })}
                               </ul>
                             )}
+                            {/* Item Chef Notes */}
+                            {item.notes && (
+                              <div className="mt-2 pl-4 border-l border-amber-500/30 py-0.5">
+                                <p className="text-[11px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1 select-none">
+                                  <span className="material-symbols-outlined text-[13px] leading-none">sticky_note_2</span>
+                                  Chef Note
+                                </p>
+                                <p className="text-[12.5px] text-[#e5e2e1] italic mt-0.5 leading-normal">
+                                  "{item.notes}"
+                                </p>
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>
@@ -526,30 +561,36 @@ export default function KdsPage() {
                     {/* Bottom Actions buttons styled matching mockup */}
                     <div className="mt-8 border-t border-white/5 pt-5">
                       {ticket.status === 'pending' && (
-                        <>
+                        <div className="flex gap-3">
                           {ticket.id === 'ticket-1' ? (
                             <button 
                               onClick={() => handleStartCooking(ticket.id, ticket.tableNumber)}
-                              className="w-full py-3.5 bg-[#ef4444]/5 hover:bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                              className="flex-1 py-3.5 bg-[#ef4444]/5 hover:bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                             >
                               Initialize Cooking
                             </button>
                           ) : ticket.onHold ? (
                             <button 
                               disabled 
-                              className="w-full py-3.5 bg-white/5 border border-white/5 text-[#A69984]/30 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl cursor-not-allowed text-center"
+                              className="flex-1 py-3.5 bg-white/5 border border-white/5 text-[#A69984]/30 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl cursor-not-allowed text-center"
                             >
                               Hold
                             </button>
                           ) : (
                             <button 
                               onClick={() => handleStartCooking(ticket.id, ticket.tableNumber)}
-                              className="w-full py-3.5 bg-[#ffe2ab]/5 hover:bg-[#ffe2ab]/10 border border-[#ffe2ab]/15 text-[#ffe2ab]/90 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                              className="flex-1 py-3.5 bg-[#ffe2ab]/5 hover:bg-[#ffe2ab]/10 border border-[#ffe2ab]/15 text-[#ffe2ab]/90 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                             >
                               Start Cooking
                             </button>
                           )}
-                        </>
+                          <button 
+                            onClick={() => handleRejectOrder(ticket.id, ticket.tableNumber)}
+                            className="py-3.5 px-4 bg-white/5 border border-white/10 hover:bg-[#ef4444]/10 hover:border-[#ef4444]/20 hover:text-[#ef4444] text-[#A69984] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                          >
+                            Cancel
+                          </button>
+                        </div>
                       )}
 
                       {ticket.status === 'cooking' && (

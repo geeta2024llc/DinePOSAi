@@ -319,6 +319,16 @@ const translations: Record<string, Record<string, string>> = {
     analyticsTakeaway: "Takeaway",
     analyticsDelivery: "Delivery",
     analyticsExport: "Export Report",
+    timeBasedMenu: "Time-Based Menu Schedule",
+    timeBasedMenuDesc: "Enable lunch and dinner menu service windows. When enabled, customer digital menu filters menu items dynamically according to the current local time.",
+    lunchMenuTime: "Lunch Service Hours",
+    dinnerMenuTime: "Dinner Service Hours",
+    mealPeriodLabel: "Meal Period",
+    lunchOnly: "Lunch Only",
+    dinnerOnly: "Dinner Only",
+    bothMeals: "Both (All Day)",
+    timeBasedMenuInfoNote: "Items not assigned to a specific period (All Day) will appear during all service windows.",
+    timeBasedMenuDisabledNote: "Note: When Time-Based Menu is disabled, all menu items are visible all day regardless of their meal period assignment.",
   },
   ja: {
     adminConsole: "管理コンソール",
@@ -482,6 +492,16 @@ const translations: Record<string, Record<string, string>> = {
     analyticsTakeaway: "テイクアウト",
     analyticsDelivery: "デリバリー",
     analyticsExport: "レポート出力",
+    timeBasedMenu: "時間帯別メニュー設定",
+    timeBasedMenuDesc: "ランチおよびディナーの提供時間帯を設定します。有効にすると、デジタルメニューの表示内容が現在の時刻に合わせて自動的に切り替わります。",
+    lunchMenuTime: "ランチ提供時間帯",
+    dinnerMenuTime: "ディナー提供時間帯",
+    mealPeriodLabel: "提供時間帯",
+    lunchOnly: "ランチのみ",
+    dinnerOnly: "ディナーのみ",
+    bothMeals: "終日 (両方)",
+    timeBasedMenuInfoNote: "提供時間帯が「終日」に指定されているメニューは、すべての時間帯で表示されます。",
+    timeBasedMenuDisabledNote: "※時間帯別メニュー設定が無効の場合、提供時間帯の設定に関わらず、すべてのメニュー項目が終日表示されます。",
   },
   zh: {
     adminConsole: "管理控制台",
@@ -645,6 +665,16 @@ const translations: Record<string, Record<string, string>> = {
     analyticsTakeaway: "外带",
     analyticsDelivery: "外卖",
     analyticsExport: "导出报告",
+    timeBasedMenu: "分时段菜单设置",
+    timeBasedMenuDesc: "启用午餐和晚餐菜单服务时段。启用后，顾客数字菜单将根据当前本地时间动态过滤菜单项。",
+    lunchMenuTime: "午餐服务时间",
+    dinnerMenuTime: "晚餐服务时间",
+    mealPeriodLabel: "适用时段",
+    lunchOnly: "仅限午餐",
+    dinnerOnly: "仅限晚餐",
+    bothMeals: "全天（两者皆可）",
+    timeBasedMenuInfoNote: "提供时段为“全天”的菜品将在所有服务时段显示。",
+    timeBasedMenuDisabledNote: "注：分时段菜单关闭时，所有菜单项将全天显示，不受适用时段设置的影响。",
   },
   ko: {
     adminConsole: "관리 콘솔",
@@ -808,6 +838,16 @@ const translations: Record<string, Record<string, string>> = {
     analyticsTakeaway: "포장",
     analyticsDelivery: "배달",
     analyticsExport: "보고서 내보내기",
+    timeBasedMenu: "시간대별 메뉴 설정",
+    timeBasedMenuDesc: "점심 및 저녁 메뉴 서비스 시간대를 설정합니다. 활성화하면 고객용 디지털 메뉴가 현재 현지 시간에 따라 메뉴 항목을 동적으로 필터링합니다.",
+    lunchMenuTime: "점심 서비스 시간",
+    dinnerMenuTime: "저녁 서비스 시간",
+    mealPeriodLabel: "제공 시간대",
+    lunchOnly: "점심 전용",
+    dinnerOnly: "저녁 전용",
+    bothMeals: "종일 (모두)",
+    timeBasedMenuInfoNote: "제공 시간대가 '종일'로 설정된 메뉴는 모든 시간대에 표시됩니다.",
+    timeBasedMenuDisabledNote: "참고: 시간대별 메뉴 설정이 비활성화된 경우, 지정된 시간대와 관계없이 모든 메뉴 항목이 종일 표시됩니다.",
   }
 };
 
@@ -820,6 +860,8 @@ export default function DashboardPage() {
   // Sidebar tab selection state - defaults to operations (Operations Console) matching target mockup
   const [activeTab, setActiveTab] = useState<'general' | 'operations' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu' | 'analytics'>('general');
   const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | '30days'>('week');
+  const [dashAuditSearch, setDashAuditSearch] = useState('');
+  const [dashAuditPage, setDashAuditPage] = useState(1);
 
   // Staff Directory States
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
@@ -1046,7 +1088,12 @@ export default function DashboardPage() {
     excludedTags: ['Seafood'],
     showAIConcierge: true,
     enableSelfCheckout: true,
-    customerTableNumber: 12
+    customerTableNumber: 12,
+    enableTimeBasedMenu: false,
+    lunchStart: '11:00',
+    lunchEnd: '15:00',
+    dinnerStart: '18:00',
+    dinnerEnd: '23:00'
   });
 
   // Load custom theme from localStorage on mount
@@ -1218,6 +1265,7 @@ export default function DashboardPage() {
   const [menuFormDescription, setMenuFormDescription] = useState('');
   const [menuFormImage, setMenuFormImage] = useState('/images/wagyu_beef_tartare.png');
   const [menuFormTags, setMenuFormTags] = useState<string[]>([]);
+  const [menuFormMealPeriod, setMenuFormMealPeriod] = useState<'lunch' | 'dinner' | 'both'>('both');
 
   // Category Manager States
   const [categories, setCategories] = useState<any[]>([]);
@@ -1581,7 +1629,8 @@ export default function DashboardPage() {
               cost: menuFormCost, 
               description: menuFormDescription, 
               image: menuFormImage, 
-              tags: menuFormTags 
+              tags: menuFormTags,
+              mealPeriod: menuFormMealPeriod
             }
           : m
       );
@@ -1597,7 +1646,8 @@ export default function DashboardPage() {
         cost: menuFormCost,
         description: menuFormDescription,
         image: menuFormImage,
-        tags: menuFormTags
+        tags: menuFormTags,
+        mealPeriod: menuFormMealPeriod
       };
       updatedList = [...menuItemsList, newItem];
       triggerToast(`Successfully added menu item: ${menuFormName}`, 'success');
@@ -3108,12 +3158,12 @@ export default function DashboardPage() {
 
                     {/* Item 3 */}
                     <div className={`flex justify-between items-center ${t.inputBg}/50 p-3.5 border ${t.border} rounded-xl`}>
-                      <span className={`text-xs font-bold ${t.text} tracking-wide`}>Access Inventory/Dashboard</span>
+                      <span className={`text-xs font-bold ${t.text} tracking-wide`}>Access Admin Dashboard</span>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-0.5 ${t.tagStaff} font-bold text-[8px] uppercase tracking-wider rounded`}>
                           Full Staff
                         </span>
-                        <button type="button" onClick={() => triggerToast('Inventory permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => triggerToast('Dashboard permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -4548,6 +4598,78 @@ export default function DashboardPage() {
                             <span className="material-symbols-outlined absolute right-2.5 top-2 text-[#A69984]/40 text-xs pointer-events-none">keyboard_arrow_down</span>
                           </div>
                         </div>
+
+                        {/* Time-Based Menu System */}
+                        <div className="border-t border-white/5 pt-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="max-w-[80%] flex flex-col justify-center">
+                              <h4 className="text-xs font-bold text-white">{tr.timeBasedMenu}</h4>
+                              <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>{tr.timeBasedMenuDesc}</p>
+                            </div>
+                            <button type="button" 
+                              onClick={() => updateDigitalMenuConfig({ enableTimeBasedMenu: !digitalMenuConfig.enableTimeBasedMenu })} 
+                              className={`w-9 h-5 rounded-full p-0.5 transition-colors shrink-0 ${digitalMenuConfig.enableTimeBasedMenu ? t.accentBg : 'bg-white/20'}`}
+                            >
+                              <div className={`w-4 h-4 bg-white rounded-full transition-transform ${digitalMenuConfig.enableTimeBasedMenu ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                            </button>
+                          </div>
+
+                          {digitalMenuConfig.enableTimeBasedMenu && (
+                            <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-3 mt-2">
+                              {/* Lunch Hours */}
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-xs font-semibold text-white/85 shrink-0 flex items-center gap-1.5">
+                                  <span>🌤️</span> {tr.lunchMenuTime}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="time"
+                                    aria-label="Lunch Start Time"
+                                    value={digitalMenuConfig.lunchStart || '11:00'}
+                                    onChange={(e) => updateDigitalMenuConfig({ lunchStart: e.target.value })}
+                                    className={`bg-[#12110f] border border-white/10 rounded-lg py-1 px-2 text-white text-xs focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-semibold`}
+                                  />
+                                  <span className={`text-[10px] ${t.textMutedDark}`}>to</span>
+                                  <input 
+                                    type="time"
+                                    aria-label="Lunch End Time"
+                                    value={digitalMenuConfig.lunchEnd || '15:00'}
+                                    onChange={(e) => updateDigitalMenuConfig({ lunchEnd: e.target.value })}
+                                    className={`bg-[#12110f] border border-white/10 rounded-lg py-1 px-2 text-white text-xs focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-semibold`}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Dinner Hours */}
+                              <div className="flex items-center justify-between gap-4">
+                                <span className="text-xs font-semibold text-white/85 shrink-0 flex items-center gap-1.5">
+                                  <span>🌙</span> {tr.dinnerMenuTime}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="time"
+                                    aria-label="Dinner Start Time"
+                                    value={digitalMenuConfig.dinnerStart || '18:00'}
+                                    onChange={(e) => updateDigitalMenuConfig({ dinnerStart: e.target.value })}
+                                    className={`bg-[#12110f] border border-white/10 rounded-lg py-1 px-2 text-white text-xs focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-semibold`}
+                                  />
+                                  <span className={`text-[10px] ${t.textMutedDark}`}>to</span>
+                                  <input 
+                                    type="time"
+                                    aria-label="Dinner End Time"
+                                    value={digitalMenuConfig.dinnerEnd || '23:00'}
+                                    onChange={(e) => updateDigitalMenuConfig({ dinnerEnd: e.target.value })}
+                                    className={`bg-[#12110f] border border-white/10 rounded-lg py-1 px-2 text-white text-xs focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-semibold`}
+                                  />
+                                </div>
+                              </div>
+
+                              <p className={`text-[9px] ${t.textMutedLight} pt-1 leading-relaxed border-t border-white/5`}>
+                                💡 {tr.timeBasedMenuInfoNote}
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                     </div>
@@ -4996,6 +5118,7 @@ export default function DashboardPage() {
                       setMenuFormDescription('');
                       setMenuFormImage('/images/wagyu_beef_tartare.png');
                       setMenuFormTags([]);
+                      setMenuFormMealPeriod('both');
                       setShowMenuAddEditModal(true);
                     }}
                     className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none"
@@ -5109,9 +5232,25 @@ export default function DashboardPage() {
                                   <div className={`text-[10px] ${t.textMutedLight} font-semibold truncate mt-0.5`}>
                                     {item.description}
                                   </div>
-                                  <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                                  <div className="flex gap-1.5 mt-1.5 flex-wrap items-center">
+                                    {/* Meal Period Badge */}
+                                    {item.mealPeriod === 'lunch' && (
+                                      <span className="px-1.5 py-0.5 bg-amber-500/10 border border-amber-500/20 rounded text-[8px] uppercase tracking-wide text-amber-400 font-semibold flex items-center gap-1">
+                                        <span>🌤️</span> {tr.lunchOnly}
+                                      </span>
+                                    )}
+                                    {item.mealPeriod === 'dinner' && (
+                                      <span className="px-1.5 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded text-[8px] uppercase tracking-wide text-indigo-400 font-semibold flex items-center gap-1">
+                                        <span>🌙</span> {tr.dinnerOnly}
+                                      </span>
+                                    )}
+                                    {(item.mealPeriod === 'both' || !item.mealPeriod) && (
+                                      <span className="px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded text-[8px] uppercase tracking-wide text-emerald-400 font-semibold flex items-center gap-1">
+                                        <span>📅</span> {tr.bothMeals}
+                                      </span>
+                                    )}
                                     {(item.tags || []).map((tag: string) => (
-                                      <span key={tag} className="px-1.5 py-0.2 bg-white/5 border border-white/10 rounded text-[8px] uppercase tracking-wide text-white/50">
+                                      <span key={tag} className="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[8px] uppercase tracking-wide text-white/50">
                                         {tag}
                                       </span>
                                     ))}
@@ -5149,6 +5288,7 @@ export default function DashboardPage() {
                                       setMenuFormDescription(item.description);
                                       setMenuFormImage(item.image || '/images/wagyu_beef_tartare.png');
                                       setMenuFormTags(item.tags || []);
+                                      setMenuFormMealPeriod(item.mealPeriod || 'both');
                                       setShowMenuAddEditModal(true);
                                     }}
                                     className={`w-8 h-8 rounded-lg flex items-center justify-center bg-transparent border ${t.borderStrong} hover:border-[#ffe2ab]/20 text-[#A69984] hover:text-[#ffe2ab] transition-colors cursor-pointer`}
@@ -5248,7 +5388,7 @@ export default function DashboardPage() {
             const payMethods = [
               { label: 'Card', pct: 68, color: 'bg-sky-400', textColor: 'text-sky-400', amount: Math.round(d.revenue * 0.68) },
               { label: 'Cash', pct: 19, color: 'bg-amber-400', textColor: 'text-amber-400', amount: Math.round(d.revenue * 0.19) },
-              { label: 'QR / Digital', pct: 13, color: 'bg-violet-400', textColor: 'text-violet-400', amount: Math.round(d.revenue * 0.13) },
+              { label: 'Digital Wallet', pct: 13, color: 'bg-violet-400', textColor: 'text-violet-400', amount: Math.round(d.revenue * 0.13) },
             ];
 
             const rangeOpts: { key: typeof analyticsRange; label: string }[] = [
@@ -5257,6 +5397,57 @@ export default function DashboardPage() {
               { key: 'month', label: tr.analyticsMonth },
               { key: '30days', label: tr.analytics30 },
             ];
+
+            const dashAuditTransactions = [
+              { id: '#ORD-9021', time: 'Oct 24, 2023 21:45 PM', method: 'CARD', amount: 342.50, status: 'Success' },
+              { id: '#ORD-9020', time: 'Oct 24, 2023 21:12 PM', method: 'CASH', amount: 85.00, status: 'Success' },
+              { id: '#ORD-9019', time: 'Oct 24, 2023 20:45 PM', method: 'DIGITAL WALLET', amount: 510.25, status: 'Success' },
+              { id: '#ORD-9018', time: 'Oct 24, 2023 20:15 PM', method: 'SPLIT', amount: 124.00, status: 'Success' },
+              { id: '#ORD-9017', time: 'Oct 24, 2023 19:30 PM', method: 'CARD', amount: 215.40, status: 'Success' },
+              { id: '#ORD-9016', time: 'Oct 24, 2023 18:50 PM', method: 'CASH', amount: 45.00, status: 'Success' },
+              { id: '#ORD-9015', time: 'Oct 24, 2023 18:10 PM', method: 'CARD', amount: 189.50, status: 'Success' },
+              { id: '#ORD-9014', time: 'Oct 24, 2023 17:40 PM', method: 'SPLIT', amount: 295.00, status: 'Success' },
+              { id: '#ORD-9013', time: 'Oct 24, 2023 16:15 PM', method: 'DIGITAL WALLET', amount: 68.20, status: 'Success' },
+              { id: '#ORD-9012', time: 'Oct 24, 2023 15:30 PM', method: 'CARD', amount: 155.00, status: 'Success' },
+              { id: '#ORD-9011', time: 'Oct 24, 2023 14:45 PM', method: 'CASH', amount: 112.50, status: 'Success' },
+              { id: '#ORD-9010', time: 'Oct 24, 2023 13:20 PM', method: 'CARD', amount: 94.00, status: 'Success' },
+            ];
+
+            const dashFilteredAudit = dashAuditTransactions.filter(tx => 
+              tx.id.toLowerCase().includes(dashAuditSearch.toLowerCase()) ||
+              tx.method.toLowerCase().includes(dashAuditSearch.toLowerCase())
+            );
+
+            const dashItemsPerPage = 5;
+            const dashTotalAuditPages = Math.ceil(dashFilteredAudit.length / dashItemsPerPage);
+            const dashCurrentAuditPage = Math.min(dashAuditPage, dashTotalAuditPages || 1);
+            const dashPaginatedAudit = dashFilteredAudit.slice((dashCurrentAuditPage - 1) * dashItemsPerPage, dashCurrentAuditPage * dashItemsPerPage);
+
+            const dashCashCount = dashFilteredAudit.filter(t => t.method === 'CASH').length;
+            const dashCardCount = dashFilteredAudit.filter(t => t.method === 'CARD').length;
+            const dashWalletCount = dashFilteredAudit.filter(t => t.method === 'DIGITAL WALLET').length;
+            const dashSplitCount = dashFilteredAudit.filter(t => t.method === 'SPLIT').length;
+            const dashTotalOrdersCount = dashFilteredAudit.length;
+
+            const handleDashboardExportCSV = () => {
+              const header = ['Transaction ID', 'Time', 'Payment Method', 'Amount ($)', 'Status'];
+              const rows = dashFilteredAudit.map(tx => [
+                tx.id,
+                tx.time,
+                tx.method === 'DIGITAL WALLET' ? 'Digital Wallet' : tx.method,
+                tx.amount.toFixed(2),
+                tx.status
+              ]);
+              const csvContent = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `dineposai_dashboard_analytics_${analyticsRange}_${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+              triggerToast('Analytics transactions exported successfully as CSV.', 'success');
+            };
 
             return (
               <div className="space-y-8 font-sans animate-fade-in duration-300">
@@ -5289,7 +5480,7 @@ export default function DashboardPage() {
                       ))}
                     </div>
                     <button type="button"
-                      onClick={() => {}}
+                      onClick={handleDashboardExportCSV}
                       className={`flex items-center gap-2 px-4 py-2.5 border ${t.border} ${t.textMuted} hover:${t.text} rounded-xl text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer`}
                     >
                       <span className="material-symbols-outlined text-sm">download</span>
@@ -5565,6 +5756,187 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
+                </div>
+
+                {/* Audit Trail & Payments Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-stretch select-none">
+                  
+                  {/* Payments Widget (Span 4) */}
+                  <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
+                    <div>
+                      <div className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest mb-6`}>
+                        Payments
+                      </div>
+                      
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <span className={`text-[56px] font-bold ${t.text} leading-none font-sans`}>{dashTotalOrdersCount}</span>
+                        <span className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest mt-1`}>Orders</span>
+                      </div>
+                    </div>
+                    
+                    <div className={`space-y-4 pt-4 border-t ${t.border}`}>
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Cash</span>
+                        </div>
+                        <span className={`font-mono text-sm ${t.text}`}>{dashCashCount}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Card</span>
+                        </div>
+                        <span className={`font-mono text-sm ${t.text}`}>{dashCardCount}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Digital Wallet</span>
+                        </div>
+                        <span className={`font-mono text-sm ${t.text}`}>{dashWalletCount}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center text-xs font-semibold">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
+                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Split</span>
+                        </div>
+                        <span className={`font-mono text-sm ${t.text}`}>{dashSplitCount}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Audit Trail Widget (Span 8) */}
+                  <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
+                    <div>
+                      {/* Header */}
+                      <div className={`flex flex-col sm:flex-row justify-between sm:items-center border-b ${t.border} pb-4 gap-4`}>
+                        <div>
+                          <h3 className={`${t.text} font-serif text-sm font-bold tracking-wide uppercase`}>Audit Trail</h3>
+                          <div className={`text-[9px] ${t.textMuted} font-bold uppercase tracking-widest mt-1.5`}>
+                            {dashFilteredAudit.length} Total Transactions Found
+                          </div>
+                        </div>
+                        
+                        {/* Search */}
+                        <div className="relative w-full sm:w-[240px]">
+                          <span className={`material-symbols-outlined absolute left-3.5 top-2.5 ${t.textMuted} text-sm`}>search</span>
+                          <input
+                            type="text"
+                            placeholder="Search ID or method..."
+                            value={dashAuditSearch}
+                            onChange={(e) => {
+                              setDashAuditSearch(e.target.value);
+                              setDashAuditPage(1);
+                            }}
+                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-9 pr-4 py-2 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 transition-all font-medium`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Records / Table */}
+                      <div className="mt-4 overflow-x-auto min-h-[220px]">
+                        {dashPaginatedAudit.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-16 text-center select-none">
+                            <span className={`material-symbols-outlined text-4xl ${t.textMuted} opacity-30 mb-3`}>inventory_2</span>
+                            <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest`}>No records in range</p>
+                          </div>
+                        ) : (
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className={`text-[9.5px] font-bold ${t.textMuted} uppercase tracking-widest border-b ${t.border}`}>
+                                <th className="pb-3 pr-4">Transaction ID</th>
+                                <th className="pb-3 px-4">Date & Time</th>
+                                <th className="pb-3 px-4">Method</th>
+                                <th className="pb-3 px-4 text-right">Amount</th>
+                                <th className="pb-3 pl-4">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className={`divide-y ${t.divider} text-xs font-sans`}>
+                              {dashPaginatedAudit.map((tx) => (
+                                <tr key={tx.id} className={`hover:${t.cardHover} transition-colors`}>
+                                  <td className={`py-3 pr-4 font-bold ${t.text} tracking-wider`}>{tx.id}</td>
+                                  <td className={`py-3 px-4 ${t.textMuted} font-semibold`}>{tx.time}</td>
+                                  <td className="py-3 px-4">
+                                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9.5px] font-bold border uppercase tracking-wider ${
+                                      tx.method === 'CASH' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                      tx.method === 'CARD' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
+                                      tx.method === 'DIGITAL WALLET' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
+                                      'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+                                    }`}>
+                                      {tx.method === 'DIGITAL WALLET' ? 'DIGITAL WALLET' : tx.method}
+                                    </span>
+                                  </td>
+                                  <td className={`py-3 px-4 text-right font-mono font-bold ${t.accent}`}>{typeof tx.amount === 'number' ? `$${tx.amount.toFixed(2)}` : tx.amount}</td>
+                                  <td className="py-3 pl-4">
+                                    <span className="inline-flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                                      {tx.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {dashFilteredAudit.length > 0 && (
+                      <div className={`flex justify-between items-center text-[10px] ${t.textMuted} font-bold uppercase tracking-wider pt-4 border-t ${t.border} select-none`}>
+                        <span>
+                          Showing {((dashCurrentAuditPage - 1) * dashItemsPerPage) + 1}-{Math.min(dashCurrentAuditPage * dashItemsPerPage, dashFilteredAudit.length)} of {dashFilteredAudit.length} entries
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            disabled={dashCurrentAuditPage === 1}
+                            onClick={() => setDashAuditPage(prev => Math.max(prev - 1, 1))}
+                            className={`w-7 h-7 rounded-lg border ${t.border} flex items-center justify-center ${t.text} transition-colors cursor-pointer ${
+                              dashCurrentAuditPage === 1 ? 'opacity-30 cursor-not-allowed' : `bg-white/5 hover:${t.cardHover}`
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-sm">chevron_left</span>
+                          </button>
+                          
+                          {Array.from({ length: dashTotalAuditPages }, (_, idx) => {
+                            const pageNum = idx + 1;
+                            return (
+                              <button
+                                type="button"
+                                key={pageNum}
+                                onClick={() => setDashAuditPage(pageNum)}
+                                className={`w-7 h-7 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
+                                  dashCurrentAuditPage === pageNum
+                                    ? `${t.accentBg} ${t.accentText}`
+                                    : `bg-white/5 hover:${t.cardHover} ${t.textMuted} hover:text-white border ${t.border}`
+                                }`}
+                              >
+                                {pageNum}
+                              </button>
+                            );
+                          })}
+                          
+                          <button
+                            type="button"
+                            disabled={dashCurrentAuditPage === dashTotalAuditPages}
+                            onClick={() => setDashAuditPage(prev => Math.min(prev + 1, dashTotalAuditPages))}
+                            className={`w-7 h-7 rounded-lg border ${t.border} flex items-center justify-center ${t.text} transition-colors cursor-pointer ${
+                              dashCurrentAuditPage === dashTotalAuditPages ? 'opacity-30 cursor-not-allowed' : `bg-white/5 hover:${t.cardHover}`
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-sm">chevron_right</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
 
               </div>
@@ -6024,6 +6396,34 @@ export default function DashboardPage() {
                         }`}
                       >
                         {tag}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Meal Period Selection */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2`}>{tr.mealPeriodLabel}</label>
+                <div className="grid grid-cols-3 gap-2 text-xs select-none">
+                  {[
+                    { id: 'lunch', label: tr.lunchOnly, icon: '🌤️' },
+                    { id: 'dinner', label: tr.dinnerOnly, icon: '🌙' },
+                    { id: 'both', label: tr.bothMeals, icon: '📅' }
+                  ].map(period => {
+                    const isSelected = menuFormMealPeriod === period.id;
+                    return (
+                      <button type="button"
+                        key={period.id}
+                        onClick={() => setMenuFormMealPeriod(period.id as any)}
+                        className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                          isSelected 
+                            ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/30 text-[#ffe2ab]' 
+                            : 'bg-[#0e0e0d] border-white/10 hover:border-white/20 text-[#A69984]'
+                        }`}
+                      >
+                        <span>{period.icon}</span>
+                        <span>{period.label}</span>
                       </button>
                     );
                   })}

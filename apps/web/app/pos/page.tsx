@@ -11,6 +11,35 @@ const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: numb
   'CHEF25': { type: 'percent', value: 25, label: "25% Chef's Special" },
 };
 
+interface Operator {
+  name: string;
+  role: string;
+  avatar: string;
+}
+
+const AVAILABLE_OPERATORS: Operator[] = [
+  {
+    name: 'Michael T.',
+    role: 'Head Waiter',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop'
+  },
+  {
+    name: 'Sarah J.',
+    role: 'Waitress',
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop'
+  },
+  {
+    name: 'Alex D.',
+    role: 'Bartender',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop'
+  },
+  {
+    name: 'J. Smith',
+    role: 'General Manager',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
+  }
+];
+
 interface OrderItem {
   qty: number;
   name: string;
@@ -32,6 +61,10 @@ interface PosTicket {
   items: OrderItem[];
   taxRate: number;
   gratuityRate: number;
+  splitMethod?: 'evenly' | 'by-item';
+  splitGuestCount?: number;
+  splitPaidGuests?: number[];
+  splitItemAssignments?: Record<number, number>;
 }
 
 const initialTickets: PosTicket[] = [
@@ -103,6 +136,27 @@ export default function PosPage() {
   const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.085);
   const [taxRateDelivery, setTaxRateDelivery] = useState(0.085);
 
+  // Digital Menu catalog states
+  const [menuItems, setMenuItems] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [menuModalOpen, setMenuModalOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [menuSearchQuery, setMenuSearchQuery] = useState('');
+  const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
+
+  // Checkout Customer Details, Tips, and Notes states
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [tipMode, setTipMode] = useState<'none' | '15' | '18' | '20' | 'custom'>('none');
+  const [customTipAmount, setCustomTipAmount] = useState<number>(0);
+  const [checkoutNotes, setCheckoutNotes] = useState('');
+
+  // Accordion visibility states
+  const [customerDetailsVisible, setCustomerDetailsVisible] = useState(false);
+  const [discountSettingsVisible, setDiscountSettingsVisible] = useState(false);
+  const [tipsVisible, setTipsVisible] = useState(false);
+  const [notesVisible, setNotesVisible] = useState(false);
+
   // Responsive sidebar (mobile/tablet)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Mobile panel toggle — 'list' shows the orders list, 'detail' shows ticket
@@ -112,6 +166,13 @@ export default function PosPage() {
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'card' | 'cash' | 'digital'>('card');
 
+  // Split bill states for POS
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [splitMethod, setSplitMethod] = useState<'evenly' | 'by-item'>('evenly');
+  const [splitGuestCount, setSplitGuestCount] = useState(2);
+  const [splitPaidGuests, setSplitPaidGuests] = useState<number[]>([]);
+  const [splitItemAssignments, setSplitItemAssignments] = useState<Record<number, number>>({});
+
   // Discount system
   const [discountVisible, setDiscountVisible] = useState(false);
   const [discountMode, setDiscountMode] = useState<'percent' | 'fixed' | 'promo'>('percent');
@@ -119,6 +180,11 @@ export default function PosPage() {
   const [discountFixed, setDiscountFixed] = useState<number>(0);
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState<{ type: string; amount: number; label: string } | null>(null);
+
+  // Operator states
+  const [activeOperator, setActiveOperator] = useState<Operator>(AVAILABLE_OPERATORS[0]);
+  const [operatorModalOpen, setOperatorModalOpen] = useState(false);
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -142,8 +208,146 @@ export default function PosPage() {
           return { ...t, taxRate: savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : t.taxRate };
         }
       }));
+
+      // Load digital menu items
+      const defaultMenuItems = [
+        { id: 'spec-1', name: 'Gold Leaf A5 Wagyu Ribeye', category: 'special', price: 185, description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal, brushed with truffle glaze, adorned with 24k gold leaf.', image: '/images/wagyu_ribeye.png', tags: ['GF', 'Non-Veg'] },
+        { id: 'spec-2', name: 'Beluga Caviar & Oysters', category: 'special', price: 95, description: 'Six freshly shucked Kumamoto oysters topped with Beluga caviar, champagne mignonette, and gold flakes.', image: '/images/caviar_oysters.png', tags: ['Seafood', 'Non-Veg'] },
+        { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
+        { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] },
+        { id: 'start-1', name: 'Wagyu Beef Tartare', category: 'starters', price: 38, description: 'Hand-cut A5 Wagyu, quail egg yolk, cornichons, shallots, Dijon emulsion, served with toasted brioche points.', image: '/images/wagyu_beef_tartare.png', tags: ['Non-Veg'] },
+        { id: 'start-2', name: 'Truffle Burrata Salad', category: 'starters', price: 26, description: 'Creamy Italian burrata, heirloom cherry tomatoes, fresh basil, aged balsamic, shaved black winter truffle.', image: '/images/truffle_burrata_salad.png', tags: ['Veg', 'GF'] },
+        { id: 'start-3', name: 'Pan-Seared Jumbo Scallops', category: 'starters', price: 42, description: 'Pan-seared jumbo scallops, sweet pea purée, crispy pancetta, meyer lemon beurre blanc.', image: '/images/pan_seared_scallops.png', tags: ['Seafood', 'Non-Veg'] },
+        { id: 'main-1', name: 'Acquerello Mushroom Risotto', category: 'mains', price: 32, description: 'Acquerello carnaroli rice, foraged forest mushrooms, Parmigiano-Reggiano, fresh black truffle shavings.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] },
+        { id: 'main-2', name: 'Crispy Skin Sea Bass', category: 'mains', price: 45, description: 'Crispy skin Chilean sea bass served over creamy saffron risotto, topped with microgreens and citrus beurre blanc.', image: '/images/sea_bass.png', tags: ['Seafood', 'Non-Veg'] },
+        { id: 'main-3', name: 'Truffle Glazed Filet Mignon', category: 'mains', price: 58, description: '8oz USDA Prime tenderloin, truffle potato purée, glazed organic heirloom carrots, rich bone marrow reduction.', image: '/images/filet_mignon.png', tags: ['GF', 'Non-Veg'] },
+        { id: 'dess-1', name: 'Chocolate Soufflé', category: 'desserts', price: 18, description: '70% Valrhona dark chocolate soufflé, Tahitian vanilla bean gelato, warm salted caramel drizzle poured tableside.', image: '/images/chocolate_souffle.png', tags: ['Veg'] },
+        { id: 'dess-2', name: 'Saffron Crème Brûlée', category: 'desserts', price: 16, description: 'Silky saffron-infused custard with a perfectly caramelized sugar crust, macerated wild berries.', image: '/images/saffron_creme_brulee.png', tags: ['Veg', 'GF'] },
+        { id: 'drink-1', name: 'Royal Gold Old Fashioned', category: 'drinks', price: 28, description: 'Rare 12-year bourbon, demerara syrup, gold bitters, smoked with cherrywood chips, served with a gold-leaf ice sphere.', image: '/images/old_fashioned.png', tags: ['GF'] },
+        { id: 'drink-2', name: 'Signature Emerald Gimlet', category: 'drinks', price: 22, description: 'Empress gin, fresh lime, botanical cucumber elixir, fresh mint essence, served in a chilled crystal coupette.', image: '/images/emerald_gimlet.png', tags: ['GF', 'Veg'] }
+      ];
+
+      const savedMenu = localStorage.getItem('dinepos_menu_items');
+      if (savedMenu) {
+        try {
+          setMenuItems(JSON.parse(savedMenu));
+        } catch (e) {
+          console.error('Failed to parse menu items:', e);
+          setMenuItems(defaultMenuItems);
+        }
+      } else {
+        setMenuItems(defaultMenuItems);
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
+      }
+
+      // Load digital menu categories
+      const defaultCategories = [
+        { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
+        { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' },
+        { id: 'starters', name: 'Starters', icon: 'restaurant' },
+        { id: 'mains', name: 'Main Course', icon: 'restaurant_menu' },
+        { id: 'desserts', name: 'Desserts', icon: 'icecream' },
+        { id: 'drinks', name: 'Drinks', icon: 'local_bar' }
+      ];
+      const savedCategories = localStorage.getItem('dinepos_menu_categories');
+      if (savedCategories) {
+        try {
+          setCategories(JSON.parse(savedCategories));
+        } catch (e) {
+          console.error('Failed to parse categories:', e);
+          setCategories(defaultCategories);
+        }
+      } else {
+        setCategories(defaultCategories);
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedOperator = localStorage.getItem('dinepos_active_operator');
+      if (savedOperator) {
+        try {
+          setActiveOperator(JSON.parse(savedOperator));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'dinepos_active_operator' && e.newValue) {
+          try {
+            setActiveOperator(JSON.parse(e.newValue));
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      };
+      window.addEventListener('storage', handleStorageChange);
+      return () => {
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const newOrderType = params.get('newOrder');
+      if (newOrderType) {
+        // Clear parameter from URL immediately
+        const newUrl = window.location.pathname;
+        window.history.replaceState({ path: newUrl }, '', newUrl);
+
+        if (newOrderType === 'table') {
+          const newId = `ticket-${Date.now()}`;
+          const tableNum = Math.floor(1 + Math.random() * 20);
+          const orderNum = Math.floor(1000 + Math.random() * 9000);
+          const newTicket: PosTicket = {
+            id: newId,
+            tableNumber: `Table ${tableNum < 10 ? '0' + tableNum : tableNum}`,
+            serverName: 'J. Smith',
+            duration: '1m',
+            needsPayment: true,
+            cardAmount: 76.00,
+            guests: 2,
+            orderNumber: `#${orderNum}`,
+            taxRate: taxRateDineIn,
+            gratuityRate: 0.20,
+            items: [
+              { qty: 2, name: 'Truffle Risotto', price: 76.00 }
+            ]
+          };
+          setTickets(prev => [newTicket, ...prev]);
+          setSelectedTicketId(newId);
+          triggerToast(`New order initialized for Table ${tableNum}!`);
+        } else if (newOrderType === 'walkin') {
+          const newId = `ticket-${Date.now()}`;
+          const orderNum = Math.floor(1000 + Math.random() * 9000);
+          const newTicket: PosTicket = {
+            id: newId,
+            tableNumber: 'Walk-in Takeaway',
+            serverName: 'J. Smith',
+            duration: '1m',
+            needsPayment: true,
+            cardAmount: 45.00,
+            guests: 1,
+            orderNumber: `#${orderNum}`,
+            taxRate: taxRateTakeaway,
+            gratuityRate: 0.00,
+            items: [
+              { qty: 1, name: 'Truffle Burrata Salad', price: 26.00 },
+              { qty: 1, name: 'Signature Emerald Gimlet', price: 19.00 }
+            ]
+          };
+          setTickets(prev => [newTicket, ...prev]);
+          setSelectedTicketId(newId);
+          triggerToast('Walk-in takeaway order initialized!');
+        }
+      }
+    }
+  }, [taxRateDineIn, taxRateTakeaway]);
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
@@ -161,6 +365,20 @@ export default function PosPage() {
       if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
         setTaxRateDelivery(parseFloat(e.newValue) / 100);
       }
+      if (e.key === 'dinepos_menu_items' && e.newValue) {
+        try {
+          setMenuItems(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Failed to parse storage menu items:', err);
+        }
+      }
+      if (e.key === 'dinepos_menu_categories' && e.newValue) {
+        try {
+          setCategories(JSON.parse(e.newValue));
+        } catch (err) {
+          console.error('Failed to parse storage categories:', err);
+        }
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -173,8 +391,104 @@ export default function PosPage() {
     }, 3000);
   };
 
+  // Add item to active ticket
+  const handleAddItemToTicket = (ticketId: string, item: any, note?: string) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      
+      const existingItemIdx = t.items.findIndex(
+        i => i.name === item.name && (i.note || '') === (note || '')
+      );
+      
+      let updatedItems = [...t.items];
+      if (existingItemIdx > -1) {
+        const existing = updatedItems[existingItemIdx];
+        updatedItems[existingItemIdx] = {
+          ...existing,
+          qty: existing.qty + 1
+        };
+      } else {
+        updatedItems.push({
+          qty: 1,
+          name: item.name,
+          price: item.price,
+          note: note ? note.trim() : undefined
+        });
+      }
+      
+      const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
+      const itemGrat = sub * t.gratuityRate;
+      const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+      
+      return {
+        ...t,
+        items: updatedItems,
+        cardAmount: totalAmount
+      };
+    }));
+    triggerToast(`Added ${item.name} to ticket.`);
+  };
+
+  // Adjust quantity of item in ticket
+  const handleUpdateItemQty = (ticketId: string, itemName: string, change: number, note?: string) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      
+      const updatedItems = t.items.map(i => {
+        if (i.name === itemName && (note === undefined || i.note === note)) {
+          const newQty = Math.max(1, i.qty + change);
+          return { ...i, qty: newQty };
+        }
+        return i;
+      });
+      
+      const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
+      const itemGrat = sub * t.gratuityRate;
+      const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+      
+      return {
+        ...t,
+        items: updatedItems,
+        cardAmount: totalAmount
+      };
+    }));
+  };
+
+  // Remove item from ticket
+  const handleRemoveItem = (ticketId: string, itemName: string, note?: string) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      
+      const updatedItems = t.items.filter(i => !(i.name === itemName && (note === undefined || i.note === note)));
+      
+      const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
+      const itemGrat = sub * t.gratuityRate;
+      const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+      
+      return {
+        ...t,
+        items: updatedItems,
+        cardAmount: totalAmount
+      };
+    }));
+    triggerToast(`Removed ${itemName} from ticket.`);
+  };
+
   // Find active selected ticket — may be undefined when all tickets are paid
   const selectedTicket = tickets.find(t => t.id === selectedTicketId) ?? tickets[0];
+
+  // Sync split states from active ticket
+  useEffect(() => {
+    if (selectedTicket) {
+      setSplitMethod(selectedTicket.splitMethod || 'evenly');
+      setSplitGuestCount(selectedTicket.splitGuestCount || selectedTicket.guests || 2);
+      setSplitPaidGuests(selectedTicket.splitPaidGuests || []);
+      setSplitItemAssignments(selectedTicket.splitItemAssignments || {});
+    }
+  }, [selectedTicketId, selectedTicket]);
 
   // Bill calculations — only computed when a ticket is present
   const subtotal       = selectedTicket ? selectedTicket.items.reduce((acc, item) => acc + (item.price * item.qty), 0) : 0;
@@ -183,38 +497,109 @@ export default function PosPage() {
   const discountAmount = (selectedTicket && appliedDiscount) ? appliedDiscount.amount : 0;
   const grandTotal     = selectedTicket ? Math.max(0, taxType === 'pre-tax' ? subtotal + tax + gratuity - discountAmount : subtotal + gratuity - discountAmount) : 0;
 
+  // Tip calculation
+  const tipAmount = selectedTicket ? (
+    tipMode === 'none' ? 0 :
+    tipMode === '15' ? subtotal * 0.15 :
+    tipMode === '18' ? subtotal * 0.18 :
+    tipMode === '20' ? subtotal * 0.20 :
+    customTipAmount
+  ) : 0;
+
   // Process transaction logic
   const handleProcessPayment = () => {
     if (!selectedTicket) return;
+    setCustomerName('');
+    setCustomerPhone('');
+    setTipMode('none');
+    setCustomTipAmount(0);
+    setCheckoutNotes('');
+    setCustomerDetailsVisible(false);
+    setDiscountSettingsVisible(false);
+    setTipsVisible(false);
+    setNotesVisible(false);
     setCheckoutModalOpen(true);
+  };
+
+  const updateTicketSplits = (updates: {
+    isSplit?: boolean;
+    splitMethod?: 'evenly' | 'by-item';
+    splitGuestCount?: number;
+    splitPaidGuests?: number[];
+    splitItemAssignments?: Record<number, number>;
+  }) => {
+    if (!selectedTicket) return;
+    setTickets(prev => prev.map(t => {
+      if (t.id === selectedTicket.id) {
+        return {
+          ...t,
+          ...updates
+        };
+      }
+      return t;
+    }));
+  };
+
+  const closeActiveTicket = (successMsg: string) => {
+    setCheckoutModalOpen(false);
+    setSplitModalOpen(false);
+    triggerToast(successMsg);
+
+    // Remove paid ticket and auto-select next using latest state
+    setTickets(prev => {
+      const remaining = prev.filter(t => t.id !== selectedTicket.id);
+      if (remaining.length > 0) {
+        setSelectedTicketId(remaining[0].id);
+      } else {
+        setSelectedTicketId('');
+      }
+      return remaining;
+    });
+
+    // Reset discount and custom checkout states
+    setAppliedDiscount(null);
+    setDiscountPercent(0);
+    setDiscountFixed(0);
+    setPromoCodeInput('');
+    setCustomerName('');
+    setCustomerPhone('');
+    setTipMode('none');
+    setCustomTipAmount(0);
+    setCheckoutNotes('');
+    setCustomerDetailsVisible(false);
+    setDiscountSettingsVisible(false);
+    setTipsVisible(false);
+    setNotesVisible(false);
+
+    // Reset split states
+    setSplitPaidGuests([]);
+    setSplitItemAssignments({});
   };
 
   const handleCompleteCheckout = () => {
     if (!selectedTicket) return;
     setIsProcessing(true);
-    triggerToast(`Authorizing ${checkoutPaymentMethod.toUpperCase()} payment of $${grandTotal.toFixed(2)} for ${selectedTicket.tableNumber}...`);
+    const finalAmount = grandTotal + tipAmount;
+    let paymentDetail = `Authorizing ${checkoutPaymentMethod.toUpperCase()} payment of $${finalAmount.toFixed(2)} for ${selectedTicket.tableNumber}...`;
+    if (customerName.trim()) {
+      paymentDetail = `[Customer: ${customerName.trim()}] ` + paymentDetail;
+    }
+    triggerToast(paymentDetail);
     
     setTimeout(() => {
       setIsProcessing(false);
-      setCheckoutModalOpen(false);
-      triggerToast(`Payment validated! ${selectedTicket.tableNumber} ticket closed.`);
-      // Remove paid ticket and auto-select next using latest state (avoids stale closure)
-      setTickets(prev => {
-        const remaining = prev.filter(t => t.id !== selectedTicket.id);
-        if (remaining.length > 0) setSelectedTicketId(remaining[0].id);
-        return remaining;
-      });
-      // Reset discount state
-      setAppliedDiscount(null);
-      setDiscountPercent(0);
-      setDiscountFixed(0);
-      setPromoCodeInput('');
+      let successMsg = `Payment validated! ${selectedTicket.tableNumber} ticket closed.`;
+      if (checkoutNotes.trim()) {
+        successMsg += ` Note saved: "${checkoutNotes.trim()}"`;
+      }
+      closeActiveTicket(successMsg);
     }, 2000);
   };
 
   const handleSplitBill = () => {
     if (!selectedTicket) return;
-    triggerToast(`Splitting invoice #DINE-${selectedTicket.orderNumber.replace('#', '')} for ${selectedTicket.tableNumber}...`);
+    setCheckoutModalOpen(false);
+    setSplitModalOpen(true);
   };
 
   const computeApplyDiscount = () => {
@@ -270,7 +655,7 @@ export default function PosPage() {
       )}
 
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0`}>
+      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 overflow-y-auto`}>
         <div>
           {/* Brand/Console Title */}
           <div className="mb-10 select-none flex items-center">
@@ -369,21 +754,8 @@ export default function PosPage() {
               Orders
             </Link>
 
-            <Link
-              href="/pos/inventory"
-              className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300"
-            >
-              <span className="material-symbols-outlined text-lg leading-none">inventory_2</span>
-              Inventory
-            </Link>
 
-            <Link
-              href="/pos/staff"
-              className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300"
-            >
-              <span className="material-symbols-outlined text-lg leading-none">groups</span>
-              Staff
-            </Link>
+
 
             <Link
               href="/pos/analytics"
@@ -403,22 +775,14 @@ export default function PosPage() {
           </nav>
         </div>
 
-        {/* Support, Settings & Operator avatar block */}
+        {/* Settings & Operator avatar block */}
         <div className="border-t border-white/5 pt-6 font-sans space-y-4">
           <Link
-            href="/dashboard"
+            href="/pos/settings"
             className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full text-left uppercase tracking-wider"
           >
             <span className="material-symbols-outlined text-lg leading-none">settings</span>
             Settings
-          </Link>
-          
-          <Link
-            href="/support"
-            className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full text-left uppercase tracking-wider"
-          >
-            <span className="material-symbols-outlined text-lg leading-none">help</span>
-            Support
           </Link>
 
           <Link
@@ -429,17 +793,20 @@ export default function PosPage() {
             Sign Out
           </Link>
 
-          <div className="flex items-center gap-3 pt-2">
-            <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0">
+          <div 
+            onClick={() => setOperatorModalOpen(true)}
+            className="flex items-center gap-3 pt-2 cursor-pointer group hover:bg-white/5 p-2 rounded-xl transition-all"
+          >
+            <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0 group-hover:border-[#ffe2ab]/30 transition-colors">
               <img 
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop"
-                alt="J. Smith GM avatar"
-                className="w-full h-full object-cover grayscale"
+                src={activeOperator.avatar} 
+                alt={`${activeOperator.name} avatar`}
+                className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
               />
             </div>
             <div className="overflow-hidden">
-              <div className="text-white font-bold text-xs tracking-wide truncate">J. Smith</div>
-              <div className="text-[8px] text-[#ffe2ab]/70 font-bold tracking-wider uppercase mt-0.5">General Manager</div>
+              <div className="text-white font-bold text-xs tracking-wide truncate group-hover:text-[#ffe2ab] transition-colors">{activeOperator.name}</div>
+              <div className="text-[8px] text-[#ffe2ab]/70 font-bold tracking-wider uppercase mt-0.5">{activeOperator.role}</div>
             </div>
           </div>
         </div>
@@ -475,19 +842,6 @@ export default function PosPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-[#161513] border border-white/5 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 w-[140px] md:w-[200px] lg:w-[210px] xl:w-[260px] transition-colors"
-              />
-            </div>
-            
-            <button className="w-[42px] h-[42px] flex items-center justify-center bg-transparent border border-white/5 hover:border-white/10 rounded-xl text-white transition-colors relative cursor-pointer">
-              <span className="material-symbols-outlined text-xl text-[#ffe2ab]">notifications</span>
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-full absolute top-3 right-3 motion-safe:motion-safe:animate-pulse"></span>
-            </button>
-
-            <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10">
-              <img 
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop"
-                alt="Cashier user avatar"
-                className="w-full h-full object-cover grayscale"
               />
             </div>
           </div>
@@ -584,9 +938,23 @@ export default function PosPage() {
 
               {/* Ticket details header */}
               <div className="p-6 lg:p-8 border-b border-white/5 flex justify-between items-start flex-shrink-0 select-none">
-                <div>
-                  <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Current Ticket</span>
-                  <h3 className="font-serif text-[32px] text-white font-bold leading-none select-text">{selectedTicket.tableNumber}</h3>
+                <div className="flex items-start gap-4">
+                  <div>
+                    <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Current Ticket</span>
+                    <h3 className="font-serif text-[32px] text-white font-bold leading-none select-text">{selectedTicket.tableNumber}</h3>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setActiveCategory('all');
+                      setMenuSearchQuery('');
+                      setItemNotes({});
+                      setMenuModalOpen(true);
+                    }}
+                    className="px-4 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center gap-1.5 cursor-pointer ml-4 mt-1.5 select-none"
+                  >
+                    <span className="material-symbols-outlined text-sm font-bold">restaurant_menu</span>
+                    Add Menu Item
+                  </button>
                 </div>
                 
                 <div className="text-right text-xs text-[#A69984]/70 font-semibold font-sans space-y-1">
@@ -599,33 +967,65 @@ export default function PosPage() {
               <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col">
                 {/* Column Headers */}
                 <div className="grid grid-cols-12 text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest pb-3 border-b border-white/5 select-none">
-                  <div className="col-span-1 text-left">Qty</div>
-                  <div className="col-span-7 text-left">Item</div>
-                  <div className="col-span-4 text-right">Price</div>
+                  <div className="col-span-2 text-left">Qty</div>
+                  <div className="col-span-6 text-left">Item</div>
+                  <div className="col-span-3 text-right">Price</div>
+                  <div className="col-span-1 text-right"></div>
                 </div>
 
                 {/* Items rows */}
                 <div className="divide-y divide-white/5 flex-grow">
                   {selectedTicket.items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-12 py-5 items-start">
-                      {/* Quantity */}
-                      <div className="col-span-1 text-left font-sans text-sm font-bold text-[#ffe2ab]/90">
-                        {item.qty}
+                    <div key={index} className="grid grid-cols-12 py-5 items-center">
+                      {/* Quantity & Adjusters */}
+                      <div className="col-span-2 flex items-center gap-1.5 font-sans text-sm font-bold text-[#ffe2ab]/90 select-none">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateItemQty(selectedTicket.id, item.name, -1, item.note)}
+                          className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer text-xs font-bold"
+                        >
+                          −
+                        </button>
+                        <span className="w-4 text-center select-all">{item.qty}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleUpdateItemQty(selectedTicket.id, item.name, 1, item.note)}
+                          className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer text-xs font-bold"
+                        >
+                          +
+                        </button>
                       </div>
                       
                       {/* Name & Note */}
-                      <div className="col-span-7 text-left min-w-0">
-                        <div className="font-sans font-bold text-sm text-white truncate pr-2">{item.name}</div>
+                      <div className="col-span-6 text-left min-w-0 pr-2">
+                        <div className="font-sans font-bold text-sm text-white truncate">{item.name}</div>
                         {item.note && (
-                          <div className="font-sans text-[12px] text-[#A69984]/65 font-medium mt-1 break-words">
-                            {item.note}
+                          <div className="font-sans text-[11px] text-[#ffe2ab]/70 font-medium mt-0.5 break-words">
+                            Note: {item.note}
                           </div>
                         )}
                       </div>
 
                       {/* Price */}
-                      <div className="col-span-4 text-right font-sans font-bold text-sm text-white/95">
-                        ${item.price.toFixed(2)}
+                      <div className="col-span-3 text-right font-sans text-sm pr-2">
+                        <div className="font-bold text-white/95">${item.price.toFixed(2)}</div>
+                        {item.qty > 1 && (
+                          <div className="text-[10px] text-[#A69984]/60 font-semibold mt-0.5">
+                            Total: ${(item.price * item.qty).toFixed(2)}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Remove item */}
+                      <div className="col-span-1 text-right select-none">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(selectedTicket.id, item.name, item.note)}
+                          className="text-[#A69984]/40 hover:text-rose-400 transition-colors cursor-pointer"
+                          title="Remove item"
+                        >
+                          <span className="material-symbols-outlined text-base">delete</span>
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -668,123 +1068,13 @@ export default function PosPage() {
                   </span>
                 </div>
 
-                {/* Collapsible Discount Input Panel */}
-                {discountVisible && (
-                  <div className="bg-[#0e0e0d] border border-[#ffe2ab]/15 rounded-xl p-4 space-y-3 animate-fade-in">
-                    {/* Mode tabs */}
-                    <div className="flex gap-1 bg-black/40 rounded-lg p-1">
-                      {(['percent', 'fixed', 'promo'] as const).map(mode => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setDiscountMode(mode)}
-                          className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${discountMode === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'}`}
-                        >
-                          {mode === 'percent' ? '% Rate' : mode === 'fixed' ? 'Fixed $' : 'Promo Code'}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-2">
-                      {discountMode === 'percent' && (
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={discountPercent || ''}
-                          onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
-                          placeholder="e.g. 10"
-                          className="flex-1 bg-[#161513] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      )}
-                      {discountMode === 'fixed' && (
-                        <input
-                          type="number"
-                          min="0"
-                          value={discountFixed || ''}
-                          onChange={(e) => setDiscountFixed(parseFloat(e.target.value) || 0)}
-                          placeholder="e.g. 25.00"
-                          className="flex-1 bg-[#161513] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      )}
-                      {discountMode === 'promo' && (
-                        <input
-                          type="text"
-                          value={promoCodeInput}
-                          onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                          placeholder="PROMO CODE"
-                          className="flex-1 bg-[#161513] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors tracking-widest font-mono"
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={computeApplyDiscount}
-                        className="px-4 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all"
-                      >
-                        Apply
-                      </button>
-                    </div>
-
-                    {discountMode === 'promo' && (
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.keys(VALID_PROMO_CODES).slice(0, 4).map(code => (
-                          <button
-                            key={code}
-                            type="button"
-                            onClick={() => setPromoCodeInput(code)}
-                            className="px-2.5 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/25 rounded-lg text-[9px] font-bold tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all font-mono"
-                          >
-                            {code}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Applied discount badge */}
-                {appliedDiscount && (
-                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 animate-fade-in">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-emerald-400">sell</span>
-                      <span className="text-emerald-400 font-sans font-bold text-[10px] uppercase tracking-wider">{appliedDiscount.label}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleRemoveDiscount}
-                      className="text-emerald-400/50 hover:text-rose-400 cursor-pointer transition-colors"
-                      title="Remove discount"
-                    >
-                      <span className="material-symbols-outlined text-sm">close</span>
-                    </button>
-                  </div>
-                )}
-
                 {/* Footer Buttons */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 lg:gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDiscountVisible(prev => !prev)}
-                    className={`flex items-center justify-center gap-1.5 px-3 lg:px-4 py-3.5 bg-transparent border rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer w-full ${discountVisible || appliedDiscount ? 'border-emerald-500/40 text-emerald-400' : 'border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab]'}`}
-                  >
-                    <span className="material-symbols-outlined text-base">sell</span>
-                    <span>Discount</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleSplitBill}
-                    className="flex items-center justify-center gap-1.5 px-3 lg:px-4 py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider text-[#ffe2ab] transition-all cursor-pointer w-full"
-                  >
-                    <span className="material-symbols-outlined text-base">call_split</span>
-                    <span>Split</span>
-                  </button>
-
+                <div className="w-full">
                   <button
                     type="button"
                     onClick={handleProcessPayment}
                     disabled={isProcessing}
-                    className="col-span-2 sm:col-span-1 flex items-center justify-center gap-2 py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 text-[#402d00] font-sans font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md cursor-pointer hover:scale-[1.01] w-full"
+                    className="w-full flex items-center justify-center gap-2 py-4 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md cursor-pointer hover:scale-[1.01]"
                   >
                     <span className="material-symbols-outlined text-base">credit_card</span>
                     {isProcessing ? 'Processing...' : 'Process Payment'}
@@ -807,6 +1097,50 @@ export default function PosPage() {
         </div>
 
       </div>
+
+      {/* OPERATOR SWITCHER MODAL */}
+      {operatorModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm select-none">
+          <div className="bg-[#121211] border border-white/10 rounded-2xl p-6 w-[360px] shadow-2xl relative animate-fade-in">
+            <button
+              onClick={() => setOperatorModalOpen(false)}
+              className="absolute top-4 right-4 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+            
+            <h3 className="font-serif text-lg font-bold text-white mb-2">Switch Operator</h3>
+            <p className="text-[11px] text-[#A69984]/60 mb-5 font-medium uppercase tracking-wider">Select the active POS cashier</p>
+            
+            <div className="space-y-2">
+              {AVAILABLE_OPERATORS.map((op) => (
+                <button
+                  key={op.name}
+                  onClick={() => {
+                    setActiveOperator(op);
+                    localStorage.setItem('dinepos_active_operator', JSON.stringify(op));
+                    setOperatorModalOpen(false);
+                    triggerToast(`Operator switched to ${op.name}`);
+                  }}
+                  className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all cursor-pointer ${
+                    activeOperator.name === op.name
+                      ? 'bg-[#ffe2ab]/10 border-[#ffe2ab] text-white'
+                      : 'bg-white/5 border-transparent hover:border-white/10 text-[#A69984] hover:text-white'
+                  }`}
+                >
+                  <div className="w-9 h-9 rounded-lg overflow-hidden border border-white/10 flex-shrink-0">
+                    <img src={op.avatar} alt={op.name} className="w-full h-full object-cover grayscale" />
+                  </div>
+                  <div className="text-left overflow-hidden">
+                    <div className="font-bold text-xs tracking-wide truncate">{op.name}</div>
+                    <div className="text-[9px] text-[#ffe2ab]/70 font-semibold tracking-wider uppercase mt-0.5">{op.role}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CASHIER CHECKOUT / PAYMENT MODAL */}
       {checkoutModalOpen && selectedTicket && (
@@ -857,106 +1191,263 @@ export default function PosPage() {
                 </div>
               </div>
 
-              {/* Discount Section inside the checkout modal */}
-              <div className="bg-[#161513]/40 border border-white/5 rounded-xl p-5 space-y-4">
-                <div className="flex justify-between items-center select-none">
-                  <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-[#A69984]">Discount Settings</span>
-                  {appliedDiscount && (
-                    <button
-                      type="button"
-                      onClick={handleRemoveDiscount}
-                      className="text-rose-400 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-xs">close</span> Remove Discount
-                    </button>
-                  )}
+              {/* Customer Details Accordion Card */}
+              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
+                <div 
+                  onClick={() => setCustomerDetailsVisible(prev => !prev)}
+                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
+                    customerDetailsVisible ? 'border-b border-white/5' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 font-sans">
+                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">person</span>
+                    <span className="font-sans font-bold text-xs text-white">Customer Details</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
+                    <span>{customerName ? customerName : 'Not Set'}</span>
+                    <span className="material-symbols-outlined text-base leading-none">
+                      {customerDetailsVisible ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </div>
                 </div>
-
-                {/* Sub-tabs for Discount Types inside modal */}
-                <div className="flex gap-1 bg-black/40 rounded-lg p-1 select-none">
-                  {(['percent', 'fixed', 'promo'] as const).map(mode => (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setDiscountMode(mode)}
-                      className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                        discountMode === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
-                      }`}
-                    >
-                      {mode === 'percent' ? '% Rate' : mode === 'fixed' ? 'Fixed $' : 'Promo Code'}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Discount input fields inside checkout modal */}
-                <div className="flex gap-2">
-                  {discountMode === 'percent' && (
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={discountPercent || ''}
-                      onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
-                      placeholder="Enter Percentage (e.g. 15)"
-                      className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                    />
-                  )}
-                  {discountMode === 'fixed' && (
-                    <input
-                      type="number"
-                      min="0"
-                      value={discountFixed || ''}
-                      onChange={(e) => setDiscountFixed(parseFloat(e.target.value) || 0)}
-                      placeholder="Enter Amount (e.g. 10.00)"
-                      className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                    />
-                  )}
-                  {discountMode === 'promo' && (
-                    <input
-                      type="text"
-                      value={promoCodeInput}
-                      onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                      placeholder="ENTER PROMO CODE"
-                      className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors tracking-widest font-mono"
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={computeApplyDiscount}
-                    className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
-                  >
-                    Apply
-                  </button>
-                </div>
-
-                {/* Helper Promo Quick Buttons inside modal */}
-                {discountMode === 'promo' && (
-                  <div className="flex flex-wrap gap-1.5 select-none">
-                    {Object.keys(VALID_PROMO_CODES).slice(0, 4).map(code => (
-                      <button
-                        key={code}
-                        type="button"
-                        onClick={() => setPromoCodeInput(code)}
-                        className="px-2.5 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/25 rounded-lg text-[9px] font-bold tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all font-mono"
-                      >
-                        {code}
-                      </button>
-                    ))}
+                {customerDetailsVisible && (
+                  <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-1.5 font-sans">
+                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">Customer Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. John Doe"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                        />
+                      </div>
+                      <div className="space-y-1.5 font-sans">
+                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">Phone Number</label>
+                        <input
+                          type="tel"
+                          placeholder="e.g. (555) 000-0000"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                        />
+                      </div>
+                    </div>
                   </div>
                 )}
+              </div>
 
-                {/* Display currently applied discount in modal */}
-                {appliedDiscount && (
-                  <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 animate-fade-in select-none">
-                    <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-emerald-400">sell</span>
-                      <span className="text-emerald-400 font-sans font-bold text-[10px] uppercase tracking-wider">
-                        {appliedDiscount.label}
-                      </span>
-                    </div>
-                    <span className="text-emerald-400 font-mono font-bold text-xs">
-                      −${appliedDiscount.amount.toFixed(2)}
+              {/* Discount Settings Accordion Card */}
+              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
+                <div 
+                  onClick={() => setDiscountSettingsVisible(prev => !prev)}
+                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
+                    discountSettingsVisible ? 'border-b border-white/5' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 font-sans">
+                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">sell</span>
+                    <span className="font-sans font-bold text-xs text-white">Discount Settings</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
+                    <span>{appliedDiscount ? appliedDiscount.label : 'No Discount'}</span>
+                    <span className="material-symbols-outlined text-base leading-none">
+                      {discountSettingsVisible ? 'expand_less' : 'expand_more'}
                     </span>
+                  </div>
+                </div>
+                {discountSettingsVisible && (
+                  <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
+                    <div className="flex justify-between items-center select-none font-sans">
+                      <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-[#A69984]">Discount Settings</span>
+                      {appliedDiscount && (
+                        <button
+                          type="button"
+                          onClick={handleRemoveDiscount}
+                          className="text-rose-400 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-xs">close</span> Remove Discount
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Sub-tabs for Discount Types inside modal */}
+                    <div className="flex gap-1 bg-black/40 rounded-lg p-1 select-none">
+                      {(['percent', 'fixed', 'promo'] as const).map(mode => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setDiscountMode(mode)}
+                          className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                            discountMode === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
+                          }`}
+                        >
+                          {mode === 'percent' ? '% Rate' : mode === 'fixed' ? 'Fixed $' : 'Promo Code'}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Discount input fields inside checkout modal */}
+                    <div className="flex gap-2">
+                      {discountMode === 'percent' && (
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={discountPercent || ''}
+                          onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
+                          placeholder="Enter Percentage (e.g. 15)"
+                          className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                        />
+                      )}
+                      {discountMode === 'fixed' && (
+                        <input
+                          type="number"
+                          min="0"
+                          value={discountFixed || ''}
+                          onChange={(e) => setDiscountFixed(parseFloat(e.target.value) || 0)}
+                          placeholder="Enter Amount (e.g. 10.00)"
+                          className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                        />
+                      )}
+                      {discountMode === 'promo' && (
+                        <input
+                          type="text"
+                          value={promoCodeInput}
+                          onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
+                          placeholder="ENTER PROMO CODE"
+                          className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors tracking-widest font-mono"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={computeApplyDiscount}
+                        className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
+                      >
+                        Apply
+                      </button>
+                    </div>
+
+                    {/* Helper Promo Quick Buttons inside modal */}
+                    {discountMode === 'promo' && (
+                      <div className="flex flex-wrap gap-1.5 select-none">
+                        {Object.keys(VALID_PROMO_CODES).slice(0, 4).map(code => (
+                          <button
+                            key={code}
+                            type="button"
+                            onClick={() => setPromoCodeInput(code)}
+                            className="px-2.5 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/25 rounded-lg text-[9px] font-bold tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all font-mono"
+                          >
+                            {code}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Display currently applied discount in modal */}
+                    {appliedDiscount && (
+                      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 animate-fade-in select-none">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-sm text-emerald-400">sell</span>
+                          <span className="text-emerald-400 font-sans font-bold text-[10px] uppercase tracking-wider">
+                            {appliedDiscount.label}
+                          </span>
+                        </div>
+                        <span className="text-emerald-400 font-mono font-bold text-xs">
+                          −${appliedDiscount.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Tip Selection Accordion Card */}
+              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
+                <div 
+                  onClick={() => setTipsVisible(prev => !prev)}
+                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
+                    tipsVisible ? 'border-b border-white/5' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 font-sans">
+                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">payments</span>
+                    <span className="font-sans font-bold text-xs text-white">Add Tip / Gratuity</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
+                    <span>{tipAmount > 0 ? `$${tipAmount.toFixed(2)}` : 'No Tip'}</span>
+                    <span className="material-symbols-outlined text-base leading-none">
+                      {tipsVisible ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </div>
+                </div>
+                {tipsVisible && (
+                  <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
+                    <div className="grid grid-cols-5 gap-2 select-none">
+                      {(['none', '15', '18', '20', 'custom'] as const).map(mode => (
+                        <button
+                          key={mode}
+                          type="button"
+                          onClick={() => setTipMode(mode)}
+                          className={`py-2 rounded-xl border font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
+                            tipMode === mode
+                              ? 'border-[#ffe2ab] bg-[#ffe2ab]/5 text-[#ffe2ab]'
+                              : 'border-white/5 bg-[#0e0e0d] text-[#A69984]/60 hover:text-white'
+                          }`}
+                        >
+                          {mode === 'none' ? 'No Tip' : mode === 'custom' ? 'Custom' : `${mode}%`}
+                        </button>
+                      ))}
+                    </div>
+
+                    {tipMode === 'custom' && (
+                      <div className="space-y-1.5 animate-fade-in font-sans">
+                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider block select-none">Custom Tip Amount ($)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Enter tip (e.g. 5.00)"
+                          value={customTipAmount || ''}
+                          onChange={(e) => setCustomTipAmount(parseFloat(e.target.value) || 0)}
+                          className="w-full sm:w-1/2 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Receipt / Checkout Notes Accordion Card */}
+              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
+                <div 
+                  onClick={() => setNotesVisible(prev => !prev)}
+                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
+                    notesVisible ? 'border-b border-white/5' : ''
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 font-sans">
+                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">sticky_note_2</span>
+                    <span className="font-sans font-bold text-xs text-white">Checkout Notes / Instructions</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
+                    <span>{checkoutNotes ? 'Note Added' : 'No Notes'}</span>
+                    <span className="material-symbols-outlined text-base leading-none">
+                      {notesVisible ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </div>
+                </div>
+                {notesVisible && (
+                  <div className="p-5 space-y-3 animate-fade-in bg-[#12110f]/20">
+                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none font-sans">Checkout Notes / Special Requests</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Add notes for the receipt, billing split details, or payment exceptions..."
+                      value={checkoutNotes}
+                      onChange={(e) => setCheckoutNotes(e.target.value)}
+                      className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors resize-none"
+                    />
                   </div>
                 )}
               </div>
@@ -971,10 +1462,18 @@ export default function PosPage() {
                   <span>Tax ({(selectedTicket.taxRate * 100).toFixed(1)}%)</span>
                   <span className="text-white font-mono">${tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-xs text-[#A69984]/70">
-                  <span>Gratuity</span>
-                  <span className="text-white font-mono">${gratuity.toFixed(2)}</span>
-                </div>
+                {gratuity > 0 && (
+                  <div className="flex justify-between text-xs text-[#A69984]/70">
+                    <span>Gratuity</span>
+                    <span className="text-white font-mono">${gratuity.toFixed(2)}</span>
+                  </div>
+                )}
+                {tipAmount > 0 && (
+                  <div className="flex justify-between text-xs text-[#ffe2ab]/90">
+                    <span>Tip</span>
+                    <span className="text-[#ffe2ab] font-mono">${tipAmount.toFixed(2)}</span>
+                  </div>
+                )}
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-xs text-emerald-400">
                     <span>Discount</span>
@@ -984,21 +1483,34 @@ export default function PosPage() {
                 <div className="border-t border-white/5 pt-3 flex justify-between items-baseline">
                   <span className="text-xs font-bold text-[#A69984] uppercase tracking-wider">Grand Total Due</span>
                   <span className="text-2xl font-bold text-[#ffe2ab] font-serif tracking-wider">
-                    ${grandTotal.toFixed(2)}
+                    ${(grandTotal + tipAmount).toFixed(2)}
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Modal Actions Footer */}
-            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex gap-3 select-none">
+            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex flex-wrap sm:flex-nowrap gap-3 select-none">
               <button
                 type="button"
                 onClick={() => setCheckoutModalOpen(false)}
-                className="flex-1 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
+                className="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
               >
                 Cancel
               </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  handleSplitBill();
+                  setCheckoutModalOpen(false);
+                }}
+                className="flex-1 py-3 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm font-bold">call_split</span>
+                <span>Split Check</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleCompleteCheckout}
@@ -1013,6 +1525,575 @@ export default function PosPage() {
                     <span>Complete Payment</span>
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* CASHIER SPLIT CHECK CALCULATOR MODAL */}
+      {splitModalOpen && selectedTicket && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#12110f] border border-[#ffe2ab]/20 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between select-none bg-[#0a0a09]">
+              <div>
+                <h3 className="font-serif font-bold text-lg text-white">Split Check Calculator</h3>
+                <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
+                  Table {selectedTicket.tableNumber} • Invoice #DINE-{selectedTicket.orderNumber.replace('#', '')}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSplitModalOpen(false)}
+                className="text-[#A69984] hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-2xl">close</span>
+              </button>
+            </div>
+
+            {/* Split Method switcher tabs */}
+            <div className="px-6 pt-5 shrink-0 select-none">
+              <div className="grid grid-cols-2 bg-black/40 rounded-lg p-1">
+                {(['evenly', 'by-item'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      setSplitMethod(mode);
+                      updateTicketSplits({ splitMethod: mode });
+                    }}
+                    className={`py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                      splitMethod === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
+                    }`}
+                  >
+                    {mode === 'evenly' ? 'Split Evenly' : 'Split By Item'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-grow flex flex-col min-h-0">
+              
+              {splitMethod === 'evenly' ? (
+                <div className="space-y-6 flex-grow flex flex-col">
+                  {/* Guest count selector */}
+                  <div className="bg-[#161513]/40 border border-white/5 p-5 rounded-xl space-y-4 font-sans select-none shrink-0">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">Number of Split Parties</span>
+                      <span className="text-[#ffe2ab] text-sm font-bold font-serif">{splitGuestCount} Portions</span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const val = Math.max(2, splitGuestCount - 1);
+                          setSplitGuestCount(val);
+                          setSplitPaidGuests(prev => prev.filter(g => g < val));
+                          updateTicketSplits({ 
+                            splitGuestCount: val,
+                            splitPaidGuests: splitPaidGuests.filter(g => g < val)
+                          });
+                        }}
+                        disabled={splitGuestCount <= 2}
+                        className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
+                      >
+                        −
+                      </button>
+                      <input
+                        type="range"
+                        min="2"
+                        max="10"
+                        value={splitGuestCount}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value, 10);
+                          setSplitGuestCount(val);
+                          setSplitPaidGuests(prev => prev.filter(g => g < val));
+                          updateTicketSplits({ 
+                            splitGuestCount: val,
+                            splitPaidGuests: splitPaidGuests.filter(g => g < val)
+                          });
+                        }}
+                        aria-label="Split Parties"
+                        className="flex-grow accent-[#ffe2ab]"
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const val = Math.min(10, splitGuestCount + 1);
+                          setSplitGuestCount(val);
+                          updateTicketSplits({ splitGuestCount: val });
+                        }}
+                        disabled={splitGuestCount >= 10}
+                        className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Even portions display list */}
+                  <div className="space-y-3 flex-grow overflow-y-auto">
+                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">Portions Breakdown</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {Array.from({ length: splitGuestCount }).map((_, idx) => {
+                        const guestLetter = String.fromCharCode(65 + idx); // A, B, C...
+                        const isPaid = splitPaidGuests.includes(idx);
+                        const shareTotal = (grandTotal + tipAmount) / splitGuestCount;
+                        return (
+                          <div key={idx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-[#161513]/20 border-white/5 text-white'}`}>
+                            <div className="font-sans">
+                              <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
+                              <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">${shareTotal.toFixed(2)}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                let newPaid = [];
+                                if (isPaid) {
+                                  newPaid = splitPaidGuests.filter(g => g !== idx);
+                                  setSplitPaidGuests(newPaid);
+                                  triggerToast(`Guest ${guestLetter}'s payment refunded.`);
+                                } else {
+                                  newPaid = [...splitPaidGuests, idx];
+                                  setSplitPaidGuests(newPaid);
+                                  triggerToast(`Guest ${guestLetter}'s portion of $${shareTotal.toFixed(2)} paid via ${checkoutPaymentMethod.toUpperCase()}!`);
+                                }
+                                updateTicketSplits({ splitPaidGuests: newPaid });
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500 hover:bg-emerald-600' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50 hover:bg-white/5'}`}
+                            >
+                              {isPaid ? '✓ Paid' : 'Pay Portion'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-6 flex-grow flex flex-col min-h-0">
+                  {/* Guest count selector */}
+                  <div className="flex justify-between items-center bg-[#161513]/40 border border-white/5 p-4 rounded-xl font-sans select-none shrink-0">
+                    <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">Split Parties</span>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const val = Math.max(2, splitGuestCount - 1);
+                          setSplitGuestCount(val);
+                          setSplitPaidGuests(prev => prev.filter(g => g < val));
+                          // reset item assignments for removed guest
+                          const newAssignments = { ...splitItemAssignments };
+                          Object.keys(newAssignments).forEach(k => {
+                            if (newAssignments[Number(k)] >= val) {
+                              newAssignments[Number(k)] = -1;
+                            }
+                          });
+                          setSplitItemAssignments(newAssignments);
+                          updateTicketSplits({ 
+                            splitGuestCount: val,
+                            splitPaidGuests: splitPaidGuests.filter(g => g < val),
+                            splitItemAssignments: newAssignments
+                          });
+                        }}
+                        disabled={splitGuestCount <= 2}
+                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
+                      >
+                        −
+                      </button>
+                      <span className="text-white font-serif font-bold w-12 text-center text-sm">{splitGuestCount} Guests</span>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          const val = Math.min(8, splitGuestCount + 1);
+                          setSplitGuestCount(val);
+                          updateTicketSplits({ splitGuestCount: val });
+                        }}
+                        disabled={splitGuestCount >= 8}
+                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Itemized assignment list */}
+                  <div className="space-y-3.5 flex-grow flex flex-col min-h-0">
+                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">Assign Items to Guests</span>
+                    <div className="space-y-3 overflow-y-auto max-h-[220px] pr-1 flex-grow divide-y divide-white/5">
+                      {selectedTicket.items.map((item, idx) => {
+                        const assignedGuest = splitItemAssignments[idx] ?? -1;
+                        return (
+                          <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                            <div className="max-w-[45%] font-sans">
+                              <div className="text-xs text-white font-bold">{item.qty}x {item.name}</div>
+                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-0.5">${(item.price * item.qty).toFixed(2)}</div>
+                            </div>
+                            
+                            {/* Guest selector circles */}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {/* Shared circle */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const newAssignments = { ...splitItemAssignments, [idx]: -1 };
+                                  setSplitItemAssignments(newAssignments);
+                                  updateTicketSplits({ splitItemAssignments: newAssignments });
+                                }}
+                                className={`w-8 h-8 rounded-full font-bold text-[8.5px] uppercase tracking-wider transition-all cursor-pointer ${
+                                  assignedGuest === -1 
+                                    ? 'bg-[#ffe2ab] text-[#402d00] shadow' 
+                                    : 'bg-white/5 border border-white/5 text-[#A69984]'
+                                }`}
+                                title="Split evenly among all guests"
+                              >
+                                Shr
+                              </button>
+                              {/* Guest circles */}
+                              {Array.from({ length: splitGuestCount }).map((_, gIdx) => {
+                                const guestLetter = String.fromCharCode(65 + gIdx);
+                                return (
+                                  <button
+                                    key={gIdx}
+                                    type="button"
+                                    onClick={() => {
+                                      const newAssignments = { ...splitItemAssignments, [idx]: gIdx };
+                                      setSplitItemAssignments(newAssignments);
+                                      updateTicketSplits({ splitItemAssignments: newAssignments });
+                                    }}
+                                    className={`w-8 h-8 rounded-full font-bold text-[10.5px] transition-all cursor-pointer ${
+                                      assignedGuest === gIdx 
+                                        ? 'bg-white/10 border border-[#ffe2ab]/50 text-white' 
+                                        : 'bg-transparent border border-white/5 text-[#A69984]/40 hover:text-white hover:border-white/15'
+                                    }`}
+                                    title={`Assign to Guest ${guestLetter}`}
+                                  >
+                                    {guestLetter}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Calculated totals breakdown */}
+                  {(() => {
+                    // Calculate totals per guest dynamically
+                    const totals = Array.from({ length: splitGuestCount }, () => ({ subtotal: 0, tax: 0, gratuity: 0, discount: 0, tip: 0, total: 0 }));
+                    let sharedSubtotal = 0;
+
+                    selectedTicket.items.forEach((item, itemIdx) => {
+                      const assignedGuest = splitItemAssignments[itemIdx] ?? -1;
+                      const itemCost = item.price * item.qty;
+                      if (assignedGuest !== -1 && assignedGuest < splitGuestCount) {
+                        totals[assignedGuest].subtotal += itemCost;
+                      } else {
+                        sharedSubtotal += itemCost;
+                      }
+                    });
+
+                    // Distribute shared subtotal
+                    const sharedPerGuest = sharedSubtotal / splitGuestCount;
+                    totals.forEach((t, gIdx) => {
+                      t.subtotal += sharedPerGuest;
+                      t.tax = taxType === 'pre-tax' 
+                        ? t.subtotal * selectedTicket.taxRate 
+                        : t.subtotal - (t.subtotal / (1 + selectedTicket.taxRate));
+                      t.gratuity = t.subtotal * selectedTicket.gratuityRate;
+                      t.discount = subtotal > 0 ? (t.subtotal / subtotal) * discountAmount : 0;
+                      t.tip = subtotal > 0 ? (t.subtotal / subtotal) * tipAmount : 0;
+                      t.total = Math.max(0, taxType === 'pre-tax' 
+                        ? t.subtotal + t.tax + t.gratuity - t.discount + t.tip
+                        : t.subtotal + t.gratuity - t.discount + t.tip
+                      );
+                    });
+
+                    return (
+                      <div className="space-y-3 pt-2 shrink-0">
+                        <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">Calculated Portions</span>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[160px] overflow-y-auto pr-1">
+                          {totals.map((gTotal, gIdx) => {
+                            const guestLetter = String.fromCharCode(65 + gIdx);
+                            const isPaid = splitPaidGuests.includes(gIdx);
+                            return (
+                              <div key={gIdx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-[#161513]/20 border-white/5 text-white'}`}>
+                                <div className="font-sans">
+                                  <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
+                                  <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">${gTotal.total.toFixed(2)}</div>
+                                  <div className="text-[9px] text-[#A69984]/45 mt-0.5 leading-none">
+                                    Sub: ${gTotal.subtotal.toFixed(2)} • Tax: ${gTotal.tax.toFixed(2)}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    let newPaid = [];
+                                    if (isPaid) {
+                                      newPaid = splitPaidGuests.filter(g => g !== gIdx);
+                                      setSplitPaidGuests(newPaid);
+                                      triggerToast(`Guest ${guestLetter}'s payment refunded.`);
+                                    } else {
+                                      newPaid = [...splitPaidGuests, gIdx];
+                                      setSplitPaidGuests(newPaid);
+                                      triggerToast(`Guest ${guestLetter}'s portion of $${gTotal.total.toFixed(2)} paid via ${checkoutPaymentMethod.toUpperCase()}!`);
+                                    }
+                                    updateTicketSplits({ splitPaidGuests: newPaid });
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500 hover:bg-emerald-600' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50 hover:bg-white/5'}`}
+                                >
+                                  {isPaid ? '✓ Paid' : 'Pay Portion'}
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex items-center justify-between select-none shrink-0 font-sans mt-4">
+              <div className="text-left">
+                <div className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">Portions Progress</div>
+                <div className="text-white text-xs font-bold mt-1">
+                  {splitPaidGuests.length} of {splitGuestCount} Paid 
+                  {splitPaidGuests.length === splitGuestCount && <span className="text-emerald-400 ml-1.5">✓ Settled</span>}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSplitPaidGuests([]);
+                    setSplitItemAssignments({});
+                    updateTicketSplits({ splitPaidGuests: [], splitItemAssignments: {} });
+                    triggerToast('Splits reset.');
+                  }}
+                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
+                >
+                  Reset
+                </button>
+                
+                {splitPaidGuests.length === splitGuestCount ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProcessing(true);
+                      setTimeout(() => {
+                        setIsProcessing(false);
+                        closeActiveTicket(`Checkout completed! Ticket for ${selectedTicket.tableNumber} fully paid via split billing.`);
+                      }, 2000);
+                    }}
+                    disabled={isProcessing}
+                    className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
+                    <span>{isProcessing ? 'Processing...' : 'Finalize Paid Ticket'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateTicketSplits({ isSplit: true });
+                      setSplitModalOpen(false);
+                      triggerToast(`Saved split billing configurations for ${selectedTicket.tableNumber}.`);
+                    }}
+                    className="px-5 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
+                  >
+                    Save & Apply Splits
+                  </button>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* DIGITAL MENU CATALOG MODAL */}
+      {menuModalOpen && selectedTicket && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#12110f] border border-[#ffe2ab]/20 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl animate-fade-in flex flex-col h-[85vh]">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none bg-[#0a0a09]">
+              <div>
+                <h3 className="font-serif font-bold text-lg text-white">Digital Menu Catalog</h3>
+                <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
+                  Add products to {selectedTicket.tableNumber}
+                </p>
+              </div>
+              
+              {/* Search Box */}
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <span className="material-symbols-outlined absolute left-3 top-2.5 text-[#A69984]/40 text-sm">search</span>
+                  <input
+                    type="text"
+                    placeholder="Search menu..."
+                    value={menuSearchQuery}
+                    onChange={(e) => setMenuSearchQuery(e.target.value)}
+                    className="bg-[#161513] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 w-[180px] sm:w-[220px] transition-colors"
+                  />
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setMenuModalOpen(false)}
+                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Tabs */}
+            <div className="px-6 py-3 border-b border-white/5 bg-[#0e0e0d] flex gap-2 overflow-x-auto scrollbar-none select-none shrink-0 font-sans">
+              <button
+                onClick={() => setActiveCategory('all')}
+                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
+                  activeCategory === 'all'
+                    ? 'bg-[#ffe2ab] text-[#402d00]'
+                    : 'text-[#A69984]/80 bg-white/5 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                All Items
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center gap-1 shrink-0 ${
+                    activeCategory === cat.id
+                      ? 'bg-[#ffe2ab] text-[#402d00]'
+                      : 'text-[#A69984]/80 bg-white/5 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  {cat.icon && (
+                    <span className="material-symbols-outlined text-xs leading-none">{cat.icon}</span>
+                  )}
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+
+            {/* Modal Body: Products Grid */}
+            <div className="flex-1 p-6 overflow-y-auto bg-[#12110f]">
+              {(() => {
+                const filtered = menuItems.filter(item => {
+                  const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+                  const matchesSearch = item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+                                       (item.description && item.description.toLowerCase().includes(menuSearchQuery.toLowerCase()));
+                  return matchesCategory && matchesSearch;
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div className="h-full flex flex-col items-center justify-center text-[#A69984]/40 py-20 select-none">
+                      <span className="material-symbols-outlined text-4xl mb-2 font-light">restaurant_menu</span>
+                      <p className="text-xs">No matching menu items found.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filtered.map((item) => {
+                      const imageSrc = item.image && item.image.startsWith('/images/')
+                        ? `/images/${item.image.split('/').pop()}`
+                        : item.image || '/images/placeholder.png';
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="border border-white/5 bg-[#161513]/40 rounded-xl p-4 flex flex-col justify-between hover:border-white/10 transition-all group"
+                        >
+                          <div>
+                            {/* Image Header */}
+                            <div className="w-full h-32 rounded-lg overflow-hidden bg-black/40 border border-white/5 relative mb-3 select-none">
+                              <img
+                                src={imageSrc}
+                                alt={item.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&auto=format&fit=crop';
+                                }}
+                              />
+                              <div className="absolute top-2 right-2 flex gap-1">
+                                {item.tags && item.tags.map((tag: string) => (
+                                  <span
+                                    key={tag}
+                                    className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded select-none ${
+                                      tag === 'Veg' || tag === 'GF'
+                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                    }`}
+                                  >
+                                    {tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+
+                            {/* Info */}
+                            <div className="flex justify-between items-start gap-2 mb-1.5">
+                              <h4 className="font-serif font-bold text-sm text-white group-hover:text-[#ffe2ab] transition-colors line-clamp-1">{item.name}</h4>
+                              <span className="font-sans font-bold text-sm text-[#ffe2ab] shrink-0">${item.price.toFixed(2)}</span>
+                            </div>
+                            
+                            <p className="text-[11px] text-[#A69984]/70 line-clamp-2 mb-4 h-[32px] overflow-hidden leading-relaxed select-text">
+                              {item.description || 'No description available.'}
+                            </p>
+                          </div>
+
+                          {/* Notes input & add action */}
+                          <div className="space-y-2.5 pt-2 border-t border-white/5">
+                            <input
+                              type="text"
+                              placeholder="Add kitchen note (e.g. Rare, No onions)"
+                              value={itemNotes[item.id] || ''}
+                              onChange={(e) => setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
+                              className="w-full bg-black/40 border border-white/5 rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder-white/25 focus:outline-none focus:border-[#ffe2ab]/25 transition-colors"
+                            />
+                            
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleAddItemToTicket(selectedTicket.id, item, itemNotes[item.id]);
+                                setItemNotes(prev => ({ ...prev, [item.id]: '' }));
+                              }}
+                              className="w-full py-2 bg-white/5 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] border border-white/10 hover:border-transparent rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-xs">add_circle</span>
+                              Add to Order
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex justify-end select-none shrink-0">
+              <button
+                type="button"
+                onClick={() => setMenuModalOpen(false)}
+                className="px-6 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
+              >
+                Done Adding
               </button>
             </div>
           </div>

@@ -16,6 +16,7 @@ interface MenuItem {
   tags: string[];
   allergens?: string[];
   spicyLevel?: SpicyLevel;
+  mealPeriod?: 'lunch' | 'dinner' | 'both';
 }
 
 interface CartItem {
@@ -291,13 +292,69 @@ export default function DigitalMenuPage() {
     showAIConcierge: boolean;
     enableSelfCheckout: boolean;
     customerTableNumber?: number;
+    enableTimeBasedMenu?: boolean;
+    lunchStart?: string;
+    lunchEnd?: string;
+    dinnerStart?: string;
+    dinnerEnd?: string;
   }>({
     maxPrice: 40,
     excludedTags: ['Seafood'],
     showAIConcierge: true,
     enableSelfCheckout: true,
-    customerTableNumber: 12
+    customerTableNumber: 12,
+    enableTimeBasedMenu: false,
+    lunchStart: '11:00',
+    lunchEnd: '15:00',
+    dinnerStart: '18:00',
+    dinnerEnd: '23:00'
   });
+
+  const [currentMealPeriod, setCurrentMealPeriod] = useState<'lunch' | 'dinner' | 'outside'>('outside');
+
+  const getCurrentMealPeriod = (config: typeof exclusionsConfig): 'lunch' | 'dinner' | 'outside' => {
+    if (!config.enableTimeBasedMenu) return 'outside';
+    
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const parseTimeToMinutes = (timeStr?: string): number => {
+      if (!timeStr) return 0;
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return (hours || 0) * 60 + (minutes || 0);
+    };
+
+    const lunchStartMin = parseTimeToMinutes(config.lunchStart || '11:00');
+    const lunchEndMin = parseTimeToMinutes(config.lunchEnd || '15:00');
+    const dinnerStartMin = parseTimeToMinutes(config.dinnerStart || '18:00');
+    const dinnerEndMin = parseTimeToMinutes(config.dinnerEnd || '23:00');
+
+    const isTimeInWindow = (start: number, end: number, current: number) => {
+      if (start <= end) {
+        return current >= start && current < end;
+      } else {
+        // Over midnight
+        return current >= start || current < end;
+      }
+    };
+
+    if (isTimeInWindow(lunchStartMin, lunchEndMin, currentMinutes)) {
+      return 'lunch';
+    }
+    if (isTimeInWindow(dinnerStartMin, dinnerEndMin, currentMinutes)) {
+      return 'dinner';
+    }
+    return 'outside';
+  };
+
+  useEffect(() => {
+    const updatePeriod = () => {
+      setCurrentMealPeriod(getCurrentMealPeriod(exclusionsConfig));
+    };
+    updatePeriod();
+    const interval = setInterval(updatePeriod, 60000);
+    return () => clearInterval(interval);
+  }, [exclusionsConfig]);
 
   const [userRole, setUserRole] = useState<'customer' | 'waiter'>('customer');
   const [showAdminAuthModal, setShowAdminAuthModal] = useState(false);
@@ -757,6 +814,18 @@ export default function DigitalMenuPage() {
   // Filtered menu items
   const filteredItems = useMemo(() => {
     return items.filter(item => {
+      // Time-Based Menu filter check
+      if (exclusionsConfig.enableTimeBasedMenu) {
+        if (currentMealPeriod === 'lunch') {
+          if (item.mealPeriod === 'dinner') return false;
+        } else if (currentMealPeriod === 'dinner') {
+          if (item.mealPeriod === 'lunch') return false;
+        } else {
+          // 'outside' - show only both/all day items
+          if (item.mealPeriod === 'lunch' || item.mealPeriod === 'dinner') return false;
+        }
+      }
+
       if (item.category !== activeCategory) return false;
       
       // Dining filter check
@@ -775,8 +844,6 @@ export default function DigitalMenuPage() {
         if (dietaryOption === 'non-veg' && !item.tags.includes('Non-Veg')) return false;
       }
 
-
-
       // Spicy filter check
       if (spicyFilter !== 'all' && item.spicyLevel !== spicyFilter) {
         return false;
@@ -790,7 +857,7 @@ export default function DigitalMenuPage() {
 
       return true;
     });
-  }, [activeCategory, diningOption, dietaryOption, spicyFilter, searchQuery, items]);
+  }, [activeCategory, diningOption, dietaryOption, spicyFilter, searchQuery, items, exclusionsConfig.enableTimeBasedMenu, currentMealPeriod]);
 
   // AI response engine
   const handleAISubmit = (e?: React.FormEvent) => {
@@ -992,8 +1059,15 @@ export default function DigitalMenuPage() {
             >
               <span className="material-symbols-outlined text-xl">menu</span>
             </button>
-            <h1 className="font-serif text-2xl sm:text-[30px] font-medium text-white tracking-wide leading-none select-none">
-              {categoryHeaders[activeCategory]}
+            <h1 className="font-serif text-2xl sm:text-[30px] font-medium text-white tracking-wide leading-none select-none flex items-center gap-3">
+              <span>{categoryHeaders[activeCategory]}</span>
+              {exclusionsConfig.enableTimeBasedMenu && (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-sans font-bold uppercase tracking-widest bg-white/5 border border-white/10 text-[#ffe2ab] shadow-sm animate-pulse-slow">
+                  {currentMealPeriod === 'lunch' && <>🌤️ Lunch Service</>}
+                  {currentMealPeriod === 'dinner' && <>🌙 Dinner Service</>}
+                  {currentMealPeriod === 'outside' && <>📅 All Day Menu</>}
+                </span>
+              )}
             </h1>
           </div>
           
