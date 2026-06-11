@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
@@ -827,16 +827,18 @@ export default function PosPage() {
   };
 
   // Filter listings
-  const filteredTickets = tickets.filter(t => {
-    const matchesSearch = t.tableNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          t.serverName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = 
-      quickFilter === 'open' ? true :
-      quickFilter === 'payment' ? t.needsPayment : // Needs payment flag
-      quickFilter === 'vip' ? t.isVip : false;
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(t => {
+      const matchesSearch = t.tableNumber.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            t.serverName.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesFilter = 
+        quickFilter === 'open' ? true :
+        quickFilter === 'payment' ? t.needsPayment : // Needs payment flag
+        quickFilter === 'vip' ? t.isVip : false;
 
-    return matchesSearch && matchesFilter;
-  });
+      return matchesSearch && matchesFilter;
+    });
+  }, [tickets, searchQuery, quickFilter]);
 
   return (
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative">

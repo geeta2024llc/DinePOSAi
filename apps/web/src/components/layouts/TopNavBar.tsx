@@ -27,50 +27,38 @@ export default function TopNavBar() {
 
   return (
     <nav 
-      className="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-md transition-all duration-300" 
+      className={`fixed top-0 w-full z-50 transition-all duration-500 ${
+        scrolled 
+          ? 'bg-[#0e0e0e]/80 backdrop-blur-2xl border-b border-white/5 shadow-2xl' 
+          : 'bg-transparent backdrop-blur-sm'
+      }`}
       id="main-nav"
-      style={{
-        boxShadow: scrolled ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none',
-        backgroundColor: scrolled ? 'rgba(19, 19, 19, 0.95)' : 'rgba(19, 19, 19, 0.8)'
-      }}
     >
-      <div className="flex justify-between items-center px-margin-desktop py-sm max-w-7xl mx-auto">
-        <Link href="/" className="font-display-lg text-3xl md:text-4xl text-primary font-bold">
+      <div className="flex justify-between items-center px-margin-desktop py-4 max-w-7xl mx-auto">
+        <Link href="/" className="font-display-lg text-3xl md:text-4xl text-primary font-bold tracking-tight drop-shadow-md">
           DinePOS AI
         </Link>
         
-        <div className="hidden md:flex items-center gap-lg font-title-md text-on-surface-variant font-medium">
-          <Link 
-            href="/experience" 
-            className="transition-all duration-300 hover:text-primary"
-          >
+        <div className="hidden md:flex items-center gap-8 font-title-md text-on-surface-variant/80 font-medium text-sm">
+          <Link href="/experience" className="transition-all duration-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
             Experience
           </Link>
-          <Link 
-            href="/solutions" 
-            className="transition-all duration-300 hover:text-primary"
-          >
+          <Link href="/solutions" className="transition-all duration-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
             Solutions
           </Link>
-          <Link 
-            href="/partners" 
-            className="transition-all duration-300 hover:text-primary"
-          >
+          <Link href="/partners" className="transition-all duration-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
             Partners
           </Link>
-          <Link 
-            href="/#pricing" 
-            className="hover:text-primary transition-all duration-300"
-          >
+          <Link href="/#pricing" className="transition-all duration-300 hover:text-white hover:drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
             Pricing
           </Link>
         </div>
         
-        <div className="hidden md:flex items-center gap-md">
-          <Link href="/login" className="font-title-md text-on-surface-variant hover:text-primary transition-colors duration-300 scale-95 active:opacity-80">
+        <div className="hidden md:flex items-center gap-6">
+          <Link href="/login" className="font-title-md text-sm text-on-surface-variant hover:text-white transition-colors duration-300">
             Login
           </Link>
-          <Link href="/register" className="bg-primary-container text-on-primary-container font-title-md px-md py-xs rounded hover:bg-primary transition-colors duration-300 scale-95 active:opacity-80">
+          <Link href="/register" className="bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-title-md font-semibold text-sm px-6 py-2.5 rounded-full hover:shadow-[0_0_20px_rgba(255,226,171,0.4)] transition-all duration-300 transform hover:-translate-y-0.5">
             Get Started
           </Link>
         </div>

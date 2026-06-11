@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 
 interface OrderItemOption {
@@ -266,15 +266,25 @@ export default function KdsPage() {
     return 'text-[#ef4444]'; // 15m+
   };
 
-  const getCount = (status: KdsTicket['status']) => {
-    return tickets.filter(t => t.status === status).length;
-  };
+  // Pre-calculate tab counts in a single pass to avoid multiple filter passes
+  const tabCounts = useMemo(() => {
+    const counts = { pending: 0, cooking: 0, complete: 0, rejected: 0 };
+    tickets.forEach(t => {
+      if (t.status in counts) {
+        counts[t.status]++;
+      }
+    });
+    return counts;
+  }, [tickets]);
 
-  const filteredTickets = tickets.filter(t => {
-    const matchesStatus = t.status === statusTab;
-    const matchesDining = diningFilter === 'all' || t.type === diningFilter;
-    return matchesStatus && matchesDining;
-  });
+  // Memoize filtered active tickets
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(t => {
+      const matchesStatus = t.status === statusTab;
+      const matchesDining = diningFilter === 'all' || t.type === diningFilter;
+      return matchesStatus && matchesDining;
+    });
+  }, [tickets, statusTab, diningFilter]);
 
   return (
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative">
@@ -432,7 +442,7 @@ export default function KdsPage() {
           <div className="flex gap-10 border-b border-white/5 text-xs font-sans font-bold uppercase tracking-wider select-none">
             {(['pending', 'cooking', 'complete', 'rejected'] as const).map(tab => {
               const isActive = statusTab === tab;
-              const count = getCount(tab);
+              const count = tabCounts[tab];
               
               // Define colored badges based on state
               const badgeColors = {

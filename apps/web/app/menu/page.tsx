@@ -802,6 +802,15 @@ export default function DigitalMenuPage() {
     }, 0);
   }, [cart, items]);
 
+  // Pre-calculate cart quantities for O(1) lookups during render
+  const cartQuantities = useMemo(() => {
+    const quantities: Record<string, number> = {};
+    Object.values(cart).forEach(ci => {
+      quantities[ci.itemId] = (quantities[ci.itemId] || 0) + ci.quantity;
+    });
+    return quantities;
+  }, [cart]);
+
   // Filtered menu items
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -1391,7 +1400,7 @@ export default function DigitalMenuPage() {
           {filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-8">
               {filteredItems.map(item => {
-                const qty = Object.values(cart).filter(ci => ci.itemId === item.id).reduce((sum, ci) => sum + ci.quantity, 0);
+                const qty = cartQuantities[item.id] || 0;
                 return (
                   <div 
                     key={item.id} 
@@ -1868,7 +1877,7 @@ export default function DigitalMenuPage() {
 
       {/* CHEF'S TABLE DETAIL & PAIRING MODAL */}
       {selectedItem && (() => {
-        const detailQty = Object.values(cart).filter(ci => ci.itemId === selectedItem.id).reduce((sum, ci) => sum + ci.quantity, 0);
+        const detailQty = cartQuantities[selectedItem.id] || 0;
         return (
           <div className="fixed inset-0 w-screen h-screen bg-black/95 backdrop-blur-xl flex items-center justify-center z-50 p-4 sm:p-10 select-none animate-fade-in">
             <div className="bg-[#161513] border border-[#ffe2ab]/20 rounded-2xl max-w-4xl w-full shadow-[0_0_50px_rgba(255,226,171,0.15)] overflow-hidden relative flex flex-col md:flex-row max-h-[90vh] md:max-h-[600px] animate-fade-in">

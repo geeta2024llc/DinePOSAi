@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 
 interface Operator {
@@ -181,23 +181,25 @@ export default function TransactionHistoryPage() {
   };
 
   // Filter transactions based on inputs
-  const filteredTransactions = transactions.filter(tx => {
-    // Search filter
-    const matchesSearch = 
-      tx.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.tableLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.server.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(tx => {
+      // Search filter
+      const matchesSearch = 
+        tx.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.tableLabel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        tx.server.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Method filter
-    let matchesMethod = true;
-    if (methodFilter === 'card') {
-      matchesMethod = tx.paymentType === 'card';
-    } else if (methodFilter === 'cash') {
-      matchesMethod = tx.paymentType === 'cash';
-    }
+      // Method filter
+      let matchesMethod = true;
+      if (methodFilter === 'card') {
+        matchesMethod = tx.paymentType === 'card';
+      } else if (methodFilter === 'cash') {
+        matchesMethod = tx.paymentType === 'cash';
+      }
 
-    return matchesSearch && matchesMethod;
-  });
+      return matchesSearch && matchesMethod;
+    });
+  }, [transactions, searchQuery, methodFilter]);
 
   return (
     <div className="flex w-full min-h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans antialiased overflow-x-hidden select-none">
