@@ -1357,9 +1357,9 @@ export default function SuperAdminPage() {
   const totalDeployments = fleet.length;
 
   return (
-    <div className={`flex w-full min-h-screen ${theme.bg} ${theme.text} font-sans antialiased overflow-x-hidden select-none`}>
+    <div className={`flex h-screen w-full ${theme.bg} ${theme.text} font-sans antialiased overflow-hidden select-none`}>
             {/* LEFT SIDEBAR PANEL (GLOBAL CONSOLE CONTEXT) */}
-      <aside className={`w-[280px] ${theme.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20 border-r border-white/5`}>
+      <aside className={`h-full w-[280px] ${theme.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20 border-r border-white/5 overflow-y-auto`}>
         <div>
           {/* Brand/Super Admin Console Header */}
           <div className="mb-10 select-none flex items-center">
@@ -1521,7 +1521,7 @@ export default function SuperAdminPage() {
       </aside>
 
       {/* MAIN CONTENT WINDOW */}
-      <div className={`flex-grow flex flex-col min-h-screen relative ${theme.bg}`}>
+      <div className={`flex-grow flex flex-col h-full relative ${theme.bg} overflow-hidden`}>
         
         <header className={`h-[90px] border-b ${theme.border} flex items-center justify-between px-12 flex-shrink-0 bg-transparent sticky top-0 z-10 select-none backdrop-blur-md`}>
           <div className="relative select-none">
