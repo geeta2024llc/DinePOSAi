@@ -59,6 +59,7 @@
   --font-body-md: 'Inter', sans-serif;
 
   /* Spacing Variables */
+  --spacing: 0.25rem;
   --spacing-custom-xs: 0.5rem;
   --spacing-custom-sm: 1rem;
   --spacing-custom-md: 1.5rem;
@@ -69,6 +70,7 @@
 }
 
 :root {
+  --spacing: 0.25rem;
   --color-primary: #ffe2ab;
   --color-primary-dark: #cc9d31;
   --color-background: #131313;

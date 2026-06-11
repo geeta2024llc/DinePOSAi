@@ -831,8 +831,7 @@ export default function DigitalMenuPage() {
       // Dining filter check
       if (diningOption !== 'all') {
         if (diningOption === 'takeaway' || diningOption === 'delivery') {
-          // Dynamic price exclusion
-          if (item.price > exclusionsConfig.maxPrice) return false;
+
           // Dynamic tag exclusion
           if (exclusionsConfig.excludedTags.some(tag => item.tags.includes(tag))) return false;
         }

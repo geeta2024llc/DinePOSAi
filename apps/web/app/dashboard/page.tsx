@@ -869,6 +869,16 @@ export default function DashboardPage() {
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   const [timelineTab, setTimelineTab] = useState<'timeline' | 'month'>('timeline');
+  const [shiftPlannerOffset, setShiftPlannerOffset] = useState(0);
+  const [staffPageSize, setStaffPageSize] = useState(10);
+  const [staffCurrentPage, setStaffCurrentPage] = useState(1);
+  const [editingRolePermissions, setEditingRolePermissions] = useState<string | null>(null);
+  const [editingGlobalPermission, setEditingGlobalPermission] = useState<string | null>(null);
+  const [globalPermissions, setGlobalPermissions] = useState<Record<string, string>>({
+    editReceiptConfig: 'Admin Only',
+    voidTransactions: 'Manager+',
+    accessAdminDashboard: 'Full Staff'
+  });
   const [staffMembers, setStaffMembers] = useState([
     {
       id: 'EMP-010',
@@ -893,6 +903,46 @@ export default function DashboardPage() {
       status: 'OVERTIME',
       performance: 5.0,
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
+    },
+    {
+      id: 'EMP-052',
+      name: 'David Vance',
+      role: 'Bartender',
+      status: 'ON_SHIFT',
+      performance: 4.5,
+      avatar: ''
+    },
+    {
+      id: 'EMP-061',
+      name: 'Lisa Kim',
+      role: 'Server',
+      status: 'ON_SHIFT',
+      performance: 4.7,
+      avatar: ''
+    },
+    {
+      id: 'EMP-073',
+      name: 'Robert Taylor',
+      role: 'Line Cook',
+      status: 'OFF_DUTY',
+      performance: 4.2,
+      avatar: ''
+    },
+    {
+      id: 'EMP-088',
+      name: 'Emily Davis',
+      role: 'Server',
+      status: 'OFF_DUTY',
+      performance: 4.6,
+      avatar: ''
+    },
+    {
+      id: 'EMP-092',
+      name: 'John Watson',
+      role: 'Manager',
+      status: 'ON_SHIFT',
+      performance: 4.9,
+      avatar: ''
     }
   ]);
 
@@ -1217,8 +1267,14 @@ export default function DashboardPage() {
   // Roster Shift Management States
   const [editingShift, setEditingShift] = useState<{ employee: string; day: string } | null>(null);
   const [rosterShifts, setRosterShifts] = useState<Record<string, Record<string, string>>>({
-    'Marco R.': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 22:00', 'THU 16': 'OFF', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': '10:00 - 18:00' },
-    'Sarah J.': { 'MON 13': 'OFF', 'TUE 14': '14:00 - 22:00', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': '14:00 - 22:00', 'SAT 18': '14:00 - 22:00', 'SUN 19': 'OFF' }
+    'Elena Rodriguez': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 22:00', 'THU 16': 'OFF', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': '10:00 - 18:00' },
+    'Marcus Chen': { 'MON 13': 'OFF', 'TUE 14': '14:00 - 22:00', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': '14:00 - 22:00', 'SAT 18': '14:00 - 22:00', 'SUN 19': 'OFF' },
+    'Sarah Jenkins': { 'MON 13': '16:00 - 00:00', 'TUE 14': '16:00 - 00:00', 'WED 15': 'OFF', 'THU 16': '16:00 - 00:00', 'FRI 17': '16:00 - 00:00', 'SAT 18': 'OFF', 'SUN 19': '16:00 - 00:00' },
+    'David Vance': { 'MON 13': '14:00 - 22:00', 'TUE 14': 'OFF', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': 'OFF', 'SAT 18': '14:00 - 22:00', 'SUN 19': '14:00 - 22:00' },
+    'Lisa Kim': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': 'OFF', 'THU 16': '09:00 - 17:00', 'FRI 17': '09:00 - 17:00', 'SAT 18': 'OFF', 'SUN 19': '09:00 - 17:00' },
+    'Robert Taylor': { 'MON 13': 'OFF', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 17:00', 'THU 16': 'OFF', 'FRI 17': '09:00 - 17:00', 'SAT 18': '09:00 - 17:00', 'SUN 19': 'OFF' },
+    'Emily Davis': { 'MON 13': '10:00 - 18:00', 'TUE 14': '10:00 - 18:00', 'WED 15': 'OFF', 'THU 16': '10:00 - 18:00', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': 'OFF' },
+    'John Watson': { 'MON 13': '09:00 - 22:00', 'TUE 14': '09:00 - 22:00', 'WED 15': 'OFF', 'THU 16': 'OFF', 'FRI 17': '09:00 - 22:00', 'SAT 18': '09:00 - 22:00', 'SUN 19': 'OFF' }
   });
 
   // Interactive Router Update & Test Printing states
@@ -1742,7 +1798,7 @@ export default function DashboardPage() {
       })() }} />
       
       {/* LEFT SIDEBAR PANEL (ADMIN CONSOLE CONTEXT) */}
-      <aside className={`w-[280px] ${t.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20`}>
+      <aside className={`w-[280px] ${t.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20 h-screen fixed left-0 top-0 overflow-y-auto`}>
         <div>
           {/* Brand/Admin Console Header */}
           <div className="mb-10 select-none flex items-center">
@@ -1868,7 +1924,7 @@ export default function DashboardPage() {
       </aside>
 
       {/* MAIN CONTENT WINDOW */}
-      <div className={`flex-grow flex flex-col min-h-screen relative ${t.bg}`}>
+      <div className={`flex-grow flex flex-col min-h-screen relative ${t.bg} ml-[280px]`}>
         {/* Top Header Bar */}
         <header className={`h-[90px] border-b ${t.border} flex items-center justify-between px-12 flex-shrink-0 bg-transparent sticky top-0 z-10 select-none backdrop-blur-md`}>
           <div className="relative select-none">
@@ -1903,28 +1959,6 @@ export default function DashboardPage() {
               <span className={`material-symbols-outlined text-lg ${activeTab === 'operations' ? 'text-[#ffe2ab] font-black' : 'text-[#A69984]/60'}`}>settings</span>
             </button>
 
-            {/* Language Toggle */}
-            <div className={`flex items-center ${t.cardBgOpaque} border ${t.border} rounded-xl overflow-hidden select-none`}>
-              {([
-                { code: 'en', flag: '🇺🇸', label: 'EN', title: 'English' },
-                { code: 'ja', flag: '🇯🇵', label: 'JA', title: '日本語' },
-                { code: 'zh', flag: '🇨🇳', label: 'ZH', title: '中文' },
-                { code: 'ko', flag: '🇰🇷', label: 'KO', title: '한국어' },
-              ] as const).map((lang, i) => (
-                <React.Fragment key={lang.code}>
-                  {i > 0 && <div className={`w-px h-4 bg-white/10`}></div>}
-                  <button type="button"
-                    onClick={() => handleLanguageChange(lang.code)}
-                    className={`px-2.5 py-2.5 text-[9.5px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
-                      language === lang.code ? `${t.accentBg} ${t.accentText}` : `${t.textMuted} hover:text-white`
-                    }`}
-                    title={lang.title}
-                  >
-                    {lang.flag} {lang.label}
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
 
             <button type="button" 
               onClick={() => triggerToast('Loading help documentation...', 'info')}
@@ -2504,7 +2538,7 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-wider`}>TOTAL ACTIVE STAFF</p>
-                      <h3 className={`text-2xl font-bold font-mono ${t.text} mt-1`}>142</h3>
+                      <h3 className={`text-2xl font-bold font-mono ${t.text} mt-1`}>{staffMembers.length}</h3>
                     </div>
                     <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
                       <span className="material-symbols-outlined text-sm">work</span>
@@ -2517,7 +2551,7 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-wider`}>ON SHIFT NOW</p>
-                      <h3 className={`text-2xl font-bold font-mono ${t.text} mt-1`}>38</h3>
+                      <h3 className={`text-2xl font-bold font-mono ${t.text} mt-1`}>{staffMembers.filter(m => m.status === 'ON_SHIFT').length}</h3>
                     </div>
                     <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
                       <span className="material-symbols-outlined text-sm">schedule</span>
@@ -2529,8 +2563,8 @@ export default function DashboardPage() {
                 <div className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[130px]`}>
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-wider`}>OPEN SHIFTS (NEXT 7 DAYS)</p>
-                      <h3 className={`text-2xl font-bold font-mono ${t.text} mt-1`}>12</h3>
+                      <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-wider`}>APPROACHING OVERTIME</p>
+                      <h3 className={`text-2xl font-bold font-mono ${t.text} mt-1`}>{staffMembers.filter(m => m.status === 'OVERTIME').length}</h3>
                     </div>
                     <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
                       <span className="material-symbols-outlined text-sm">warning</span>
@@ -2592,114 +2626,6 @@ export default function DashboardPage() {
                         </button>
                       </div>
                     </div>
-
-      {/* PAIR DEVICE MODAL */}
-      {showPairDeviceModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
-          <div className={`${t.cardBgOpaque} border w-[420px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
-            <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
-              <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Pair New Device</h3>
-              <button type="button" 
-                onClick={() => setShowPairDeviceModal(false)}
-                className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
-              >
-                <span className="material-symbols-outlined text-base">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              if (!newDevice.name.trim()) {
-                triggerToast('Please enter a device name.', 'info');
-                return;
-              }
-              const newId = `DEV-${Math.floor(100 + Math.random() * 900)}`;
-              const deviceToAdd = {
-                id: newId,
-                type: newDevice.type,
-                name: newDevice.name,
-                subtitle: newDevice.type === 'POS' ? 'Remote Station' : newDevice.type === 'PRINTER' ? 'Thermal Printer' : 'KDS Terminal',
-                ipAddress: newDevice.ipAddress || '192.168.1.150',
-                battery: '100% (Wired)',
-                uptime: '0h 1m',
-                status: 'ONLINE',
-                details: newDevice.type === 'POS' ? 'Uptime: 0h 1m' : newDevice.type === 'PRINTER' ? 'Routing: Expo' : 'Syncing: Real-time'
-              };
-              setDevicesList([...devicesList, deviceToAdd]);
-              setShowPairDeviceModal(false);
-              setNewDevice({
-                type: 'POS',
-                name: '',
-                ipAddress: '',
-                status: 'ONLINE',
-                details: ''
-              });
-              triggerToast(`Successfully paired device ${deviceToAdd.name}!`, 'success');
-            }} className="space-y-4">
-              {/* Type */}
-              <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Type</label>
-                <div className="relative">
-                  <select
-                    aria-label="Device type"
-                    value={newDevice.type}
-                    onChange={(e) => setNewDevice({...newDevice, type: e.target.value})}
-                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
-                  >
-                    <option value="POS">POS Terminal</option>
-                    <option value="PRINTER">Thermal Printer</option>
-                    <option value="KDS">Kitchen Display System (KDS)</option>
-                  </select>
-                  <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
-                </div>
-              </div>
-
-              {/* Name */}
-              <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Name</label>
-                <input 
-                  type="text" 
-                  aria-label="Device name"
-                  value={newDevice.name}
-                  onChange={(e) => setNewDevice({...newDevice, name: e.target.value})}
-                  placeholder="e.g. Bar Printer Left"
-                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                  required
-                />
-              </div>
-
-              {/* IP Address */}
-              <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>IP Address (Optional)</label>
-                <input 
-                  type="text" 
-                  aria-label="IP address"
-                  value={newDevice.ipAddress}
-                  onChange={(e) => setNewDevice({...newDevice, ipAddress: e.target.value})}
-                  placeholder="e.g. 192.168.1.110"
-                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                />
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <button type="button" 
-                  onClick={() => setShowPairDeviceModal(false)}
-                  className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
-                >
-                  Cancel
-                </button>
-                <button type="submit"
-                  className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
-                >
-                  Pair Device
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* TOAST ALERT */}
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
@@ -2712,8 +2638,8 @@ export default function DashboardPage() {
                           </tr>
                         </thead>
                         <tbody className={`divide-y ${t.divider} font-sans text-xs`}>
-                          {staffMembers
-                            .filter(member => {
+                          {(() => {
+                            const filtered = staffMembers.filter(member => {
                               // Filter by search query
                               const matchesSearch = member.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
                                 member.role.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
@@ -2721,13 +2647,19 @@ export default function DashboardPage() {
                               
                               // Filter by role category
                               if (staffRoleFilter === 'foh') {
-                                  return matchesSearch && (member.role.toLowerCase().includes('sommelier') || member.role.toLowerCase().includes('maitre') || member.role.toLowerCase().includes('server') || member.role.toLowerCase().includes('wait'));
+                                  return matchesSearch && (member.role.toLowerCase().includes('sommelier') || member.role.toLowerCase().includes('maitre') || member.role.toLowerCase().includes('server') || member.role.toLowerCase().includes('wait') || member.role.toLowerCase().includes('bartender'));
                               } else if (staffRoleFilter === 'kitchen') {
                                 return matchesSearch && (member.role.toLowerCase().includes('chef') || member.role.toLowerCase().includes('kitchen') || member.role.toLowerCase().includes('cook'));
                               }
                               return matchesSearch;
-                            })
-                            .map((member) => (
+                            });
+
+                            const totalPages = Math.ceil(filtered.length / staffPageSize) || 1;
+                            const activePage = staffCurrentPage > totalPages ? totalPages : staffCurrentPage;
+                            const start = (activePage - 1) * staffPageSize;
+                            const paginated = filtered.slice(start, start + staffPageSize);
+
+                            return paginated.map((member) => (
                               <tr key={member.id} className={`hover:${t.cardHover} transition-colors`}>
                                 <td className="px-6 py-4 flex items-center gap-3">
                                   {member.avatar ? (
@@ -2817,20 +2749,82 @@ export default function DashboardPage() {
                                   </div>
                                 </td>
                               </tr>
-                          ))}
+                            ));
+                          })()}
                         </tbody>
                       </table>
                     </div>
 
-                    {/* View All Staff bottom action */}
-                    <div className={`p-4 border-t ${t.border} ${t.inputBg}/30 text-center select-none`}>
-                      <button type="button" 
-                        onClick={() => triggerToast('Loading complete personnel list...', 'info')}
-                        className={`text-[10px] ${t.accent} hover:opacity-80 uppercase font-bold tracking-widest inline-flex items-center gap-1 transition-colors cursor-pointer`}
-                      >
-                        View All Staff
-                        <span className="material-symbols-outlined text-xs">keyboard_arrow_down</span>
-                      </button>
+                    {/* Pagination Footer */}
+                    <div className={`p-4 border-t ${t.border} ${t.inputBg}/30 flex flex-col sm:flex-row gap-4 justify-between items-center select-none text-xs text-[#A69984]/80 font-sans`}>
+                      <div className="flex items-center gap-2">
+                        <span>Show</span>
+                        <div className="relative">
+                          <select
+                            aria-label="Staff list page size"
+                            value={staffPageSize}
+                            onChange={(e) => {
+                              setStaffPageSize(parseInt(e.target.value));
+                              setStaffCurrentPage(1);
+                            }}
+                            className={`${t.inputBg} border ${t.border} rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none appearance-none pr-7`}
+                          >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                          </select>
+                          <span className="material-symbols-outlined absolute right-2 top-1.5 text-xs text-[#A69984]/50 pointer-events-none">keyboard_arrow_down</span>
+                        </div>
+                        <span>rows per page</span>
+                      </div>
+
+                      {(() => {
+                        const filtered = staffMembers.filter(member => {
+                          const matchesSearch = member.name.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
+                            member.role.toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
+                            member.id.toLowerCase().includes(staffSearchQuery.toLowerCase());
+                          
+                          if (staffRoleFilter === 'foh') {
+                              return matchesSearch && (member.role.toLowerCase().includes('sommelier') || member.role.toLowerCase().includes('maitre') || member.role.toLowerCase().includes('server') || member.role.toLowerCase().includes('wait') || member.role.toLowerCase().includes('bartender'));
+                          } else if (staffRoleFilter === 'kitchen') {
+                            return matchesSearch && (member.role.toLowerCase().includes('chef') || member.role.toLowerCase().includes('kitchen') || member.role.toLowerCase().includes('cook'));
+                          }
+                          return matchesSearch;
+                        });
+
+                        const totalItems = filtered.length;
+                        const totalPages = Math.ceil(totalItems / staffPageSize) || 1;
+                        const activePage = staffCurrentPage > totalPages ? totalPages : staffCurrentPage;
+                        const startItem = totalItems === 0 ? 0 : (activePage - 1) * staffPageSize + 1;
+                        const endItem = Math.min(activePage * staffPageSize, totalItems);
+
+                        return (
+                          <div className="flex items-center gap-4">
+                            <span>Showing {startItem}-{endItem} of {totalItems}</span>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={activePage === 1}
+                                onClick={() => setStaffCurrentPage(p => Math.max(p - 1, 1))}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center border ${t.border} transition-colors ${activePage === 1 ? 'opacity-30 cursor-not-allowed' : `hover:${t.cardHover} cursor-pointer`}`}
+                              >
+                                <span className="material-symbols-outlined text-sm">chevron_left</span>
+                              </button>
+                              <span className="px-3 py-1 font-mono font-bold text-white bg-white/5 border border-white/5 rounded-lg">
+                                {activePage} / {totalPages}
+                              </span>
+                              <button
+                                type="button"
+                                disabled={activePage === totalPages}
+                                onClick={() => setStaffCurrentPage(p => Math.min(p + 1, totalPages))}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center border ${t.border} transition-colors ${activePage === totalPages ? 'opacity-30 cursor-not-allowed' : `hover:${t.cardHover} cursor-pointer`}`}
+                              >
+                                <span className="material-symbols-outlined text-sm">chevron_right</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -2848,9 +2842,15 @@ export default function DashboardPage() {
                     </div>
 
                     <div className={`flex justify-between items-center ${t.inputBg}/50 py-2.5 px-4 border ${t.border} rounded-xl text-xs select-none`}>
-                      <button type="button" onClick={() => triggerToast('Previous day...', 'info')} className={`${t.textMuted} hover:${t.text} font-bold`}>{"<"}</button>
-                      <span className={`${t.text} font-bold tracking-wider font-mono`}>Today, Oct 24</span>
-                      <button type="button" onClick={() => triggerToast('Next day...', 'info')} className={`${t.textMuted} hover:${t.text} font-bold`}>{">"}</button>
+                      <button type="button" onClick={() => setShiftPlannerOffset(prev => prev - 1)} className={`${t.textMuted} hover:${t.text} font-bold px-2 cursor-pointer`}>{"<"}</button>
+                      <span className={`${t.text} font-bold tracking-wider font-mono`}>
+                        {(() => {
+                          const dates = ['Today, Oct 24', 'Fri, Oct 25', 'Sat, Oct 26', 'Sun, Oct 27', 'Mon, Oct 28', 'Tue, Oct 29', 'Wed, Oct 30'];
+                          const idx = (shiftPlannerOffset % 7 + 7) % 7;
+                          return dates[idx];
+                        })()}
+                      </span>
+                      <button type="button" onClick={() => setShiftPlannerOffset(prev => prev + 1)} className={`${t.textMuted} hover:${t.text} font-bold px-2 cursor-pointer`}>{">"}</button>
                     </div>
 
                     <div className="space-y-4">
@@ -2865,27 +2865,53 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <span className="px-2 py-0.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[8px] uppercase tracking-wider rounded">
-                            Short Staffed
+                            {(() => {
+                              const currentDayKey = ['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'][(shiftPlannerOffset % 7 + 7) % 7];
+                              const count = staffMembers.filter(m => {
+                                const shift = rosterShifts[m.name]?.[currentDayKey];
+                                return shift && (shift.includes('16:00') || shift.includes('14:00') || shift.includes('22:00'));
+                              }).length;
+                              return count < 3 ? 'Short Staffed' : 'Fully Staffed';
+                            })()}
                           </span>
                         </div>
                         {/* Avatar stack */}
-                        <div className="flex -space-x-2.5 overflow-hidden select-none">
-                          <img
-                            className="inline-block h-6 w-6 rounded-full ring-2 ring-[#161513] object-cover"
-                            src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120&auto=format&fit=crop"
-                            alt="Elena"
-                          />
-                          <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[8px] font-bold ring-2 ring-[#161513]">
-                            MC
-                          </div>
-                          <img
-                            className="inline-block h-6 w-6 rounded-full ring-2 ring-[#161513] object-cover"
-                            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop"
-                            alt="Sarah"
-                          />
-                          <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${t.tagAdmin} text-[8px] font-bold ring-2 ring-[#161513]`}>
-                            +2
-                          </div>
+                        <div className="flex -space-x-2.5 overflow-hidden select-none items-center">
+                          {(() => {
+                            const currentDayKey = ['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'][(shiftPlannerOffset % 7 + 7) % 7];
+                            const activeMembers = staffMembers.filter(m => {
+                              const shift = rosterShifts[m.name]?.[currentDayKey];
+                              return shift && (shift.includes('16:00') || shift.includes('14:00') || shift.includes('22:00'));
+                            });
+
+                            if (activeMembers.length === 0) {
+                              return <span className={`text-[10px] ${t.textMuted} italic`}>No staff scheduled</span>;
+                            }
+
+                            return (
+                              <>
+                                {activeMembers.slice(0, 3).map((m) => (
+                                  m.avatar ? (
+                                    <img
+                                      key={m.id}
+                                      className="inline-block h-6 w-6 rounded-full ring-2 ring-[#161513] object-cover"
+                                      src={m.avatar}
+                                      alt={m.name}
+                                    />
+                                  ) : (
+                                    <div key={m.id} className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${t.accentBg} ${t.accentText} text-[8px] font-bold ring-2 ring-[#161513]`}>
+                                      {m.name.split(' ').map(n => n[0]).join('')}
+                                    </div>
+                                  )
+                                ))}
+                                {activeMembers.length > 3 && (
+                                  <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${t.tagAdmin} text-[8px] font-bold ring-2 ring-[#161513]`}>
+                                    +{activeMembers.length - 3}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
 
@@ -2899,18 +2925,42 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         {/* Avatar stack */}
-                        <div className="flex -space-x-2.5 overflow-hidden select-none">
-                          <div className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[8px] font-bold ring-2 ring-[#161513]">
-                            MC
-                          </div>
-                          <img
-                            className="inline-block h-6 w-6 rounded-full ring-2 ring-[#161513] object-cover"
-                            src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop"
-                            alt="Sarah"
-                          />
-                          <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${t.tagAdmin} text-[8px] font-bold ring-2 ring-[#161513]`}>
-                            +1
-                          </div>
+                        <div className="flex -space-x-2.5 overflow-hidden select-none items-center">
+                          {(() => {
+                            const currentDayKey = ['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'][(shiftPlannerOffset % 7 + 7) % 7];
+                            const activeMembers = staffMembers.filter(m => {
+                              const shift = rosterShifts[m.name]?.[currentDayKey];
+                              return shift && (shift.includes('22:00') || shift.includes('09:00 - 22:00'));
+                            });
+
+                            if (activeMembers.length === 0) {
+                              return <span className={`text-[10px] ${t.textMuted} italic`}>No staff scheduled</span>;
+                            }
+
+                            return (
+                              <>
+                                {activeMembers.slice(0, 3).map((m) => (
+                                  m.avatar ? (
+                                    <img
+                                      key={m.id}
+                                      className="inline-block h-6 w-6 rounded-full ring-2 ring-[#161513] object-cover"
+                                      src={m.avatar}
+                                      alt={m.name}
+                                    />
+                                  ) : (
+                                    <div key={m.id} className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${t.accentBg} ${t.accentText} text-[8px] font-bold ring-2 ring-[#161513]`}>
+                                      {m.name.split(' ').map(n => n[0]).join('')}
+                                    </div>
+                                  )
+                                ))}
+                                {activeMembers.length > 3 && (
+                                  <div className={`inline-flex items-center justify-center h-6 w-6 rounded-full ${t.tagAdmin} text-[8px] font-bold ring-2 ring-[#161513]`}>
+                                    +{activeMembers.length - 3}
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -2931,49 +2981,66 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="space-y-4 font-sans select-none">
-                      {/* FOH */}
-                      <div className="space-y-1.5">
-                        <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
-                          <span>Front of House</span>
-                          <span className={t.accent}>45%</span>
-                        </div>
-                        <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
-                          <div className={`${t.accentBg} h-full rounded-full`} style={{ width: '45%' }}></div>
-                        </div>
-                      </div>
+                      {(() => {
+                        const total = staffMembers.length || 1;
+                        const fohCount = staffMembers.filter(m => ['Head Sommelier', 'Maitre D\'', 'Bartender', 'Server'].includes(m.role)).length;
+                        const kitchenCount = staffMembers.filter(m => ['Executive Sous Chef', 'Line Cook'].includes(m.role)).length;
+                        const mgmtCount = staffMembers.filter(m => ['Manager'].includes(m.role)).length;
+                        const supportCount = total - fohCount - kitchenCount - mgmtCount;
 
-                      {/* Kitchen */}
-                      <div className="space-y-1.5">
-                        <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
-                          <span>Kitchen Staff</span>
-                          <span className={t.accent}>35%</span>
-                        </div>
-                        <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
-                          <div className={`${t.accentBg} h-full rounded-full`} style={{ width: '35%' }}></div>
-                        </div>
-                      </div>
+                        const fohPct = Math.round((fohCount / total) * 100);
+                        const kitchenPct = Math.round((kitchenCount / total) * 100);
+                        const mgmtPct = Math.round((mgmtCount / total) * 100);
+                        const supportPct = Math.round((supportCount / total) * 100);
 
-                      {/* Management */}
-                      <div className="space-y-1.5">
-                        <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
-                          <span>Management</span>
-                          <span className={t.accent}>10%</span>
-                        </div>
-                        <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
-                          <div className={`${t.accentBg} h-full rounded-full`} style={{ width: '10%' }}></div>
-                        </div>
-                      </div>
+                        return (
+                          <>
+                            {/* FOH */}
+                            <div className="space-y-1.5">
+                              <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
+                                <span>Front of House</span>
+                                <span className={t.accent}>{fohPct}%</span>
+                              </div>
+                              <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
+                                <div className={`${t.accentBg} h-full rounded-full`} style={{ width: `${fohPct}%` }}></div>
+                              </div>
+                            </div>
 
-                      {/* Support / Cleaning */}
-                      <div className="space-y-1.5">
-                        <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
-                          <span>Support / Cleaning</span>
-                          <span className={t.accent}>10%</span>
-                        </div>
-                        <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
-                          <div className={`${t.accentBg} h-full rounded-full`} style={{ width: '10%' }}></div>
-                        </div>
-                      </div>
+                            {/* Kitchen */}
+                            <div className="space-y-1.5">
+                              <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
+                                <span>Kitchen Staff</span>
+                                <span className={t.accent}>{kitchenPct}%</span>
+                              </div>
+                              <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
+                                <div className={`${t.accentBg} h-full rounded-full`} style={{ width: `${kitchenPct}%` }}></div>
+                              </div>
+                            </div>
+
+                            {/* Management */}
+                            <div className="space-y-1.5">
+                              <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
+                                <span>Management</span>
+                                <span className={t.accent}>{mgmtPct}%</span>
+                              </div>
+                              <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
+                                <div className={`${t.accentBg} h-full rounded-full`} style={{ width: `${mgmtPct}%` }}></div>
+                              </div>
+                            </div>
+
+                            {/* Support / Cleaning */}
+                            <div className="space-y-1.5">
+                              <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
+                                <span>Support / Cleaning</span>
+                                <span className={t.accent}>{supportPct}%</span>
+                              </div>
+                              <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
+                                <div className={`${t.accentBg} h-full rounded-full`} style={{ width: `${supportPct}%` }}></div>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -3029,52 +3096,32 @@ export default function DashboardPage() {
                     </thead>
                     <tbody className={`divide-y ${t.divider} font-sans text-xs text-[#A69984]/80`}>
                       
-                      {/* Row 1: Marco R. */}
-                      <tr className={`hover:${t.cardHover} transition-colors`}>
-                        <td className={`px-6 py-4 font-bold ${t.text}`}>
-                          <div>Marco R.</div>
-                          <div className={`text-[9px] ${t.accentLight} uppercase tracking-wider font-semibold mt-0.5`}>Kitchen</div>
-                        </td>
-                        {['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'].map(day => {
-                          const shift = rosterShifts['Marco R.']?.[day] || 'OFF';
-                          const isSpecial = shift === '09:00 - 22:00';
-                          const isOff = shift === 'OFF';
-                          return (
-                            <td key={day} className={`px-4 py-4 text-center cursor-pointer hover:${t.cardHover} transition-colors`} onClick={() => setEditingShift({ employee: 'Marco R.', day })}>
-                              {isOff ? (
-                                <span className={`text-[10px] font-bold ${t.textMutedDark} uppercase tracking-wider`}>OFF</span>
-                              ) : isSpecial ? (
-                                <span className={`px-3 py-1.5 ${t.accentLightBg} border ${t.accentLightBorder} ${t.accent} font-bold font-mono text-[10px] rounded-lg shadow-sm`}>
-                                  {shift}
-                                </span>
-                              ) : (
-                                <span className={`text-[10px] font-medium font-mono ${t.textMuted}`}>{shift}</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
-
-                      {/* Row 2: Sarah J. */}
-                      <tr className={`hover:${t.cardHover} transition-colors`}>
-                        <td className={`px-6 py-4 font-bold ${t.text}`}>
-                          <div>Sarah J.</div>
-                          <div className={`text-[9px] ${t.accentLight} uppercase tracking-wider font-semibold mt-0.5`}>Maitre D'</div>
-                        </td>
-                        {['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'].map(day => {
-                          const shift = rosterShifts['Sarah J.']?.[day] || 'OFF';
-                          const isOff = shift === 'OFF';
-                          return (
-                            <td key={day} className={`px-4 py-4 text-center cursor-pointer hover:${t.cardHover} transition-colors`} onClick={() => setEditingShift({ employee: 'Sarah J.', day })}>
-                              {isOff ? (
-                                <span className={`text-[10px] font-bold ${t.textMutedDark} uppercase tracking-wider`}>OFF</span>
-                              ) : (
-                                <span className={`text-[10px] font-medium font-mono ${t.textMuted}`}>{shift}</span>
-                              )}
-                            </td>
-                          );
-                        })}
-                      </tr>
+                      {staffMembers.map((member) => (
+                        <tr key={member.id} className={`hover:${t.cardHover} transition-colors`}>
+                          <td className={`px-6 py-4 font-bold ${t.text}`}>
+                            <div>{member.name}</div>
+                            <div className={`text-[9px] ${t.accentLight} uppercase tracking-wider font-semibold mt-0.5`}>{member.role}</div>
+                          </td>
+                          {['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'].map(day => {
+                            const shift = rosterShifts[member.name]?.[day] || 'OFF';
+                            const isSpecial = shift === '09:00 - 22:00';
+                            const isOff = shift === 'OFF';
+                            return (
+                              <td key={day} className={`px-4 py-4 text-center cursor-pointer hover:${t.cardHover} transition-colors`} onClick={() => setEditingShift({ employee: member.name, day })}>
+                                {isOff ? (
+                                  <span className={`text-[10px] font-bold ${t.textMutedDark} uppercase tracking-wider`}>OFF</span>
+                                ) : isSpecial ? (
+                                  <span className={`px-3 py-1.5 ${t.accentLightBg} border ${t.accentLightBorder} ${t.accent} font-bold font-mono text-[10px] rounded-lg shadow-sm`}>
+                                    {shift}
+                                  </span>
+                                ) : (
+                                  <span className={`text-[10px] font-medium font-mono ${t.textMuted}`}>{shift}</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
 
                     </tbody>
                   </table>
@@ -3093,7 +3140,7 @@ export default function DashboardPage() {
 
                   <div className="space-y-3 font-sans select-none">
                     <button type="button"
-                      onClick={() => triggerToast('Opening Managers Role permissions...', 'info')}
+                      onClick={() => setEditingRolePermissions('Manager')}
                       className={`w-full flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} hover:${t.borderStrong} rounded-xl transition-all cursor-pointer text-left font-sans font-bold`}
                     >
                       <span className={`text-xs font-bold ${t.text} uppercase tracking-wider`}>Managers</span>
@@ -3101,7 +3148,7 @@ export default function DashboardPage() {
                     </button>
 
                     <button type="button"
-                      onClick={() => triggerToast('Opening Waitstaff Role permissions...', 'info')}
+                      onClick={() => setEditingRolePermissions('Server')}
                       className={`w-full flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} hover:${t.borderStrong} rounded-xl transition-all cursor-pointer text-left font-sans font-bold`}
                     >
                       <span className={`text-xs font-bold ${t.text} uppercase tracking-wider`}>Waitstaff</span>
@@ -3109,7 +3156,7 @@ export default function DashboardPage() {
                     </button>
 
                     <button type="button"
-                      onClick={() => triggerToast('Opening Kitchen Role permissions...', 'info')}
+                      onClick={() => setEditingRolePermissions('Cook')}
                       className={`w-full flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} hover:${t.borderStrong} rounded-xl transition-all cursor-pointer text-left font-sans font-bold`}
                     >
                       <span className={`text-xs font-bold ${t.text} uppercase tracking-wider`}>Kitchen</span>
@@ -3135,9 +3182,9 @@ export default function DashboardPage() {
                       <span className={`text-xs font-bold ${t.text} tracking-wide`}>Edit Receipt Configuration</span>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-0.5 ${t.tagAdmin} font-bold text-[8px] uppercase tracking-wider rounded`}>
-                          Admin Only
+                          {globalPermissions.editReceiptConfig}
                         </span>
-                        <button type="button" onClick={() => triggerToast('Receipt permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => setEditingGlobalPermission('editReceiptConfig')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -3148,9 +3195,9 @@ export default function DashboardPage() {
                       <span className={`text-xs font-bold ${t.text} tracking-wide`}>Void Transactions</span>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-0.5 ${t.tagManager} font-bold text-[8px] uppercase tracking-wider rounded`}>
-                          Manager+
+                          {globalPermissions.voidTransactions}
                         </span>
-                        <button type="button" onClick={() => triggerToast('Void permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => setEditingGlobalPermission('voidTransactions')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -3161,9 +3208,9 @@ export default function DashboardPage() {
                       <span className={`text-xs font-bold ${t.text} tracking-wide`}>Access Admin Dashboard</span>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-0.5 ${t.tagStaff} font-bold text-[8px] uppercase tracking-wider rounded`}>
-                          Full Staff
+                          {globalPermissions.accessAdminDashboard}
                         </span>
-                        <button type="button" onClick={() => triggerToast('Dashboard permission rules configuration...', 'info')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
+                        <button type="button" onClick={() => setEditingGlobalPermission('accessAdminDashboard')} className={`${t.textMutedDark} hover:${t.text} transition-colors cursor-pointer select-none`}>
                           <span className="material-symbols-outlined text-sm leading-none">settings</span>
                         </button>
                       </div>
@@ -3561,7 +3608,7 @@ export default function DashboardPage() {
               {/* Row 1: Fleet Health & Active Diagnostics */}
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                              {/* Fleet Health Card (Left Column - Span 5) */}
-                <div className={`${t.cardBg} border rounded-2xl p-7 shadow-xl flex flex-col justify-between min-h-[220px]`}>
+                <div className={`lg:col-span-5 ${t.cardBg} border rounded-2xl p-7 shadow-xl flex flex-col justify-between min-h-[220px]`}>
                   <div className="select-none space-y-1">
                     <h3 className={`text-[10px] font-sans font-bold uppercase tracking-wider ${t.textMuted}`}>FLEET HEALTH</h3>
                     <div className="flex items-baseline gap-2 mt-2">
@@ -3593,7 +3640,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Active Diagnostics Card (Right Column - Span 7) */}
-                <div className={`${t.cardBg} border rounded-2xl p-7 shadow-xl space-y-4`}>
+                <div className={`lg:col-span-7 ${t.cardBg} border rounded-2xl p-7 shadow-xl space-y-4`}>
                   <div className={`flex justify-between items-center border-b ${t.border} pb-3 select-none`}>
                     <h3 className={`text-[10px] font-sans font-bold uppercase tracking-wider ${t.textMuted}`}>ACTIVE DIAGNOSTICS</h3>
                     <button type="button" 
@@ -4489,27 +4536,7 @@ export default function DashboardPage() {
                     </div>
                     
                     <div className="space-y-6 font-sans">
-                      {/* Max Price Exclusions */}
-                      <div>
-                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>
-                          {tr.maxDisplayPrice}
-                        </label>
-                        <div className="flex items-center gap-3">
-                          <span className={`${t.text} font-serif text-lg font-bold`}>{isJpy ? '¥' : '$'}</span>
-                          <input 
-                            type="number"
-                            value={digitalMenuConfig.maxPrice}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
-                              updateDigitalMenuConfig({ maxPrice: val });
-                            }}
-                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none transition-colors font-medium focus:border-[#ffe2ab]/40`}
-                          />
-                        </div>
-                        <p className={`text-[9.5px] ${t.textMutedDark} mt-1.5 leading-relaxed`}>
-                          {tr.maxDisplayPriceDesc}
-                        </p>
-                      </div>
+
 
                       {/* Tag exclusions */}
                       <div>
@@ -4578,26 +4605,7 @@ export default function DashboardPage() {
                           </button>
                         </div>
 
-                        {/* Fixed Customer Table Number */}
-                        <div className="flex items-center justify-between border-t border-white/5 pt-4">
-                          <div className="max-w-[70%] flex flex-col justify-center">
-                            <h4 className="text-xs font-bold text-white">Fixed Customer Table Number</h4>
-                            <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>Admin-controlled table assignment for guest users (Customer Role).</p>
-                          </div>
-                          <div className="relative">
-                            <select
-                              aria-label="Fixed Customer Table Number"
-                              value={digitalMenuConfig.customerTableNumber || 12}
-                              onChange={(e) => updateDigitalMenuConfig({ customerTableNumber: parseInt(e.target.value, 10) })}
-                              className={`w-[80px] bg-[#12110f] border border-white/10 rounded-lg py-1.5 px-3 text-white text-xs focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-semibold appearance-none`}
-                            >
-                              {Array.from({ length: 16 }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={num}>T{num}</option>
-                              ))}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-2.5 top-2 text-[#A69984]/40 text-xs pointer-events-none">keyboard_arrow_down</span>
-                          </div>
-                        </div>
+
 
                         {/* Time-Based Menu System */}
                         <div className="border-t border-white/5 pt-4 space-y-4">
@@ -5680,43 +5688,45 @@ export default function DashboardPage() {
                       <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsStaffPerf}</h3>
                       <span className="material-symbols-outlined text-xl text-emerald-400">badge</span>
                     </div>
-                    <table className="w-full text-left">
-                      <thead>
-                        <tr className={`border-b ${t.border}`}>
-                          {['Staff Member', 'Orders', 'Revenue', 'Avg Rating', 'Covers'].map(h => (
-                            <th key={h} className={`px-5 py-3 text-[9px] ${t.textMuted} font-bold uppercase tracking-widest`}>{h}</th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-white/[0.04]">
-                        {staffData.map((s, i) => (
-                          <tr key={s.name} className="hover:bg-white/[0.015] transition-colors">
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-black ${i === 0 ? `${t.accentBg} ${t.accentText}` : 'bg-white/5 text-white/50'}`}>
-                                  {s.name.split(' ').map(n => n[0]).join('')}
-                                </div>
-                                <div>
-                                  <div className={`${t.text} font-bold text-[11.5px]`}>{s.name}</div>
-                                  <div className={`${t.textMuted} text-[9.5px] font-semibold`}>{s.role}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className={`px-5 py-4 ${t.text} font-bold text-sm`}>{s.orders}</td>
-                            <td className={`px-5 py-4 font-bold text-sm ${t.accent}`}>{formatCurrency(s.revenue)}</td>
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="material-symbols-outlined text-amber-400 text-sm">star</span>
-                                <span className={`${t.text} font-bold text-sm`}>{s.rating.toFixed(1)}</span>
-                              </div>
-                            </td>
-                            <td className={`px-5 py-4 ${t.textMuted} font-semibold text-sm`}>
-                              {s.covers > 0 ? s.covers : '—'}
-                            </td>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className={`border-b ${t.border}`}>
+                            {['Staff Member', 'Orders', 'Revenue', 'Avg Rating', 'Covers'].map(h => (
+                              <th key={h} className={`px-5 py-3 text-[9px] ${t.textMuted} font-bold uppercase tracking-widest`}>{h}</th>
+                            ))}
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.04]">
+                          {staffData.map((s, i) => (
+                            <tr key={s.name} className="hover:bg-white/[0.015] transition-colors">
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-black ${i === 0 ? `${t.accentBg} ${t.accentText}` : 'bg-white/5 text-white/50'}`}>
+                                    {s.name.split(' ').map(n => n[0]).join('')}
+                                  </div>
+                                  <div>
+                                    <div className={`${t.text} font-bold text-[11.5px]`}>{s.name}</div>
+                                    <div className={`${t.textMuted} text-[9.5px] font-semibold`}>{s.role}</div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className={`px-5 py-4 ${t.text} font-bold text-sm`}>{s.orders}</td>
+                              <td className={`px-5 py-4 font-bold text-sm ${t.accent}`}>{formatCurrency(s.revenue)}</td>
+                              <td className="px-5 py-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="material-symbols-outlined text-amber-400 text-sm">star</span>
+                                  <span className={`${t.text} font-bold text-sm`}>{s.rating.toFixed(1)}</span>
+                                </div>
+                              </td>
+                              <td className={`px-5 py-4 ${t.textMuted} font-semibold text-sm`}>
+                                {s.covers > 0 ? s.covers : '—'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {/* Payment Methods */}
@@ -5762,7 +5772,7 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-stretch select-none">
                   
                   {/* Payments Widget (Span 4) */}
-                  <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
+                  <div className={`lg:col-span-4 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
                     <div>
                       <div className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest mb-6`}>
                         Payments
@@ -5810,7 +5820,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Audit Trail Widget (Span 8) */}
-                  <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
+                  <div className={`lg:col-span-8 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
                     <div>
                       {/* Header */}
                       <div className={`flex flex-col sm:flex-row justify-between sm:items-center border-b ${t.border} pb-4 gap-4`}>
@@ -6198,6 +6208,236 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* PAIR DEVICE MODAL */}
+      {showPairDeviceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
+          <div className={`${t.cardBgOpaque} border w-[420px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
+            <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
+              <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Pair New Device</h3>
+              <button type="button" 
+                onClick={() => setShowPairDeviceModal(false)}
+                className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!newDevice.name.trim()) {
+                triggerToast('Please enter a device name.', 'info');
+                return;
+              }
+              const newId = `DEV-${Math.floor(100 + Math.random() * 900)}`;
+              const deviceToAdd = {
+                id: newId,
+                type: newDevice.type,
+                name: newDevice.name,
+                subtitle: newDevice.type === 'POS' ? 'Remote Station' : newDevice.type === 'PRINTER' ? 'Thermal Printer' : 'KDS Terminal',
+                ipAddress: newDevice.ipAddress || '192.168.1.150',
+                battery: '100% (Wired)',
+                uptime: '0h 1m',
+                status: 'ONLINE',
+                details: newDevice.type === 'POS' ? 'Uptime: 0h 1m' : newDevice.type === 'PRINTER' ? 'Routing: Expo' : 'Syncing: Real-time'
+              };
+              setDevicesList([...devicesList, deviceToAdd]);
+              setShowPairDeviceModal(false);
+              setNewDevice({
+                type: 'POS',
+                name: '',
+                ipAddress: '',
+                status: 'ONLINE',
+                details: ''
+              });
+              triggerToast(`Successfully paired device ${deviceToAdd.name}!`, 'success');
+            }} className="space-y-4">
+              {/* Type */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Type</label>
+                <div className="relative">
+                  <select
+                    aria-label="Device type"
+                    value={newDevice.type}
+                    onChange={(e) => setNewDevice({...newDevice, type: e.target.value})}
+                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
+                  >
+                    <option value="POS">POS Terminal</option>
+                    <option value="PRINTER">Thermal Printer</option>
+                    <option value="KDS">Kitchen Display System (KDS)</option>
+                  </select>
+                  <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Name</label>
+                <input 
+                  type="text" 
+                  aria-label="Device name"
+                  value={newDevice.name}
+                  onChange={(e) => setNewDevice({...newDevice, name: e.target.value})}
+                  placeholder="e.g. Bar Printer Left"
+                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                  required
+                />
+              </div>
+
+              {/* IP Address */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>IP Address (Optional)</label>
+                <input 
+                  type="text" 
+                  aria-label="IP address"
+                  value={newDevice.ipAddress}
+                  onChange={(e) => setNewDevice({...newDevice, ipAddress: e.target.value})}
+                  placeholder="e.g. 192.168.1.110"
+                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <button type="button" 
+                  onClick={() => setShowPairDeviceModal(false)}
+                  className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
+                >
+                  Cancel
+                </button>
+                <button type="submit"
+                  className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
+                >
+                  Pair Device
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT ROLE PERMISSIONS MODAL */}
+      {editingRolePermissions && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
+          <div className={`${t.cardBgOpaque} border w-[440px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
+            <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
+              <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Role Permissions: {editingRolePermissions}s</h3>
+              <button type="button" 
+                onClick={() => setEditingRolePermissions(null)}
+                className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className={`text-[11.5px] ${t.textMuted} leading-relaxed font-semibold`}>
+                Configure accessibility privileges for all staff members assigned the {editingRolePermissions} role.
+              </p>
+              
+              <div className={`divide-y ${t.divider} max-h-[300px] overflow-y-auto pr-1`}>
+                {Object.keys(securityPermissions[editingRolePermissions] || {}).map((permKey) => {
+                  const permLabels: Record<string, { title: string; desc: string }> = {
+                    refundOrders: { title: 'Refund Completed Orders', desc: 'Allow refunds on settled checks.' },
+                    compDishes: { title: 'Comp Dishes / Drinks', desc: 'Permit checking off items as complimentary.' },
+                    reopenDays: { title: 'Reopen Finished Days', desc: 'Ability to edit reports of closed registers.' },
+                    editMenu: { title: 'Modify Menu Options', desc: 'Alter prices or item descriptions directly.' },
+                    voidItems: { title: 'Void Placed Items', desc: 'Cancel sent tickets without billing.' }
+                  };
+                  const label = permLabels[permKey] || { title: permKey, desc: '' };
+                  const isChecked = securityPermissions[editingRolePermissions]?.[permKey] || false;
+
+                  return (
+                    <div key={permKey} className="py-3.5 flex justify-between items-center select-none">
+                      <div className="max-w-[75%]">
+                        <h4 className={`text-xs font-bold ${t.text} tracking-wide`}>{label.title}</h4>
+                        <p className={`text-[10px] ${t.textMutedDark} mt-0.5 font-semibold`}>{label.desc}</p>
+                      </div>
+                      <button type="button"
+                        onClick={() => togglePermission(editingRolePermissions, permKey)}
+                        className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${isChecked ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
+                      >
+                        <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 transform ${isChecked ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="pt-4 border-t border-white/5">
+                <button type="button" 
+                  onClick={() => {
+                    setEditingRolePermissions(null);
+                    triggerToast('Role configuration saved successfully!', 'success');
+                  }}
+                  className={`w-full py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
+                >
+                  Save Configuration
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT GLOBAL PERMISSIONS MATRIX MODAL */}
+      {editingGlobalPermission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
+          <div className={`${t.cardBgOpaque} border w-[380px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
+            <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
+              <h3 className={`font-serif text-base ${t.accent} font-bold tracking-wide`}>Global Rule Configuration</h3>
+              <button type="button" 
+                onClick={() => setEditingGlobalPermission(null)}
+                className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-wider`}>Setting Parameter</p>
+                <p className={`${t.text} font-bold mt-1 text-xs`}>
+                  {editingGlobalPermission === 'editReceiptConfig' ? 'Edit Receipt Configuration' : editingGlobalPermission === 'voidTransactions' ? 'Void Transactions' : 'Access Admin Dashboard'}
+                </p>
+              </div>
+
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Required Access Level</label>
+                <div className="relative">
+                  <select
+                    aria-label="Required access level"
+                    value={globalPermissions[editingGlobalPermission] || ''}
+                    onChange={(e) => {
+                      const newLevel = e.target.value;
+                      setGlobalPermissions(prev => ({
+                        ...prev,
+                        [editingGlobalPermission]: newLevel
+                      }));
+                      setEditingGlobalPermission(null);
+                      triggerToast(`Updated required level to ${newLevel}`, 'success');
+                    }}
+                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
+                  >
+                    <option value="Admin Only">Admin Only</option>
+                    <option value="Manager+">Manager+</option>
+                    <option value="Full Staff">Full Staff</option>
+                  </select>
+                  <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
+                </div>
+              </div>
+            </div>
+            
+            <div className="pt-2">
+              <button type="button" 
+                onClick={() => setEditingGlobalPermission(null)}
+                className={`w-full py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
