@@ -298,22 +298,7 @@ export default function TransactionHistoryPage() {
             Sign Out
           </Link>
 
-          <div 
-            onClick={() => setOperatorModalOpen(true)}
-            className="flex items-center gap-3 pt-2 cursor-pointer group hover:bg-white/5 p-2 rounded-xl transition-all"
-          >
-            <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0 group-hover:border-[#ffe2ab]/30 transition-colors">
-              <img 
-                src={activeOperator.avatar} 
-                alt={`${activeOperator.name} avatar`}
-                className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
-              />
-            </div>
-            <div className="overflow-hidden">
-              <div className="text-white font-bold text-xs tracking-wide truncate group-hover:text-[#ffe2ab] transition-colors">{activeOperator.name}</div>
-              <div className="text-[8px] text-[#ffe2ab]/70 font-bold tracking-wider uppercase mt-0.5">{activeOperator.role}</div>
-            </div>
-          </div>
+
         </div>
       </aside>
 

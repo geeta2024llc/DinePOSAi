@@ -71,6 +71,43 @@ const itemModifiersConfig: { [itemId: string]: { title: string; options: { name:
   ]
 };
 
+const DEFAULT_PRICES: Record<string, number> = {
+  'Gold Leaf A5 Wagyu Ribeye': 185.00,
+  'Beluga Caviar & Oysters': 95.00,
+  'Imperial Signature Combo': 120.00,
+  'Royal Vegetarian Tasting Set': 75.00,
+  'Wagyu Beef Tartare': 38.00,
+  'Truffle Burrata Salad': 26.00,
+  'Pan-Seared Jumbo Scallops': 42.00,
+  'Acquerello Mushroom Risotto': 32.00,
+  'Crispy Skin Sea Bass': 45.00,
+  'Truffle Glazed Filet Mignon': 58.00,
+  'Chocolate Soufflé': 18.00,
+  'Saffron Crème Brûlée': 16.00,
+  'Royal Gold Old Fashioned': 28.00,
+  'Signature Emerald Gimlet': 22.00,
+  'Filet Mignon': 58.00,
+  'Scallop Risotto': 42.00,
+  'Wagyu Burger': 38.00,
+  'Caesar Salad': 18.00,
+  'Tasting Menu A': 120.00,
+  'Duck Breast': 45.00,
+  'Lobster Thermidor': 85.00,
+  'Wagyu Burger (Well Done)': 38.00,
+  'Chocolate Soufflé ': 18.00,
+  'Beluga Caviar & Oysters ': 95.00,
+};
+
+const getItemPrice = (item: any): number => {
+  if (item && typeof item.price === 'number') {
+    return item.price;
+  }
+  if (item && item.name && DEFAULT_PRICES[item.name] !== undefined) {
+    return DEFAULT_PRICES[item.name];
+  }
+  return 0;
+};
+
 export default function CheckoutPage() {
   // Guest Information state
   const [firstName, setFirstName] = useState('Alexander');
@@ -380,7 +417,7 @@ export default function CheckoutPage() {
         return {
           name: item.name,
           quantity: item.qty,
-          price: item.price * item.qty,
+          price: getItemPrice(item) * item.qty,
           modifiers: item.options ? item.options.map((o: any) => o.text) : [],
           course: item.course || 'main',
           notes: item.note,
@@ -425,7 +462,7 @@ export default function CheckoutPage() {
 
   // Calculations
   const subtotal = getDisplayItems().reduce((acc, item) => acc + item.price, 0);
-  const taxRate = activeTicket
+  const taxRate = (activeTicket && typeof activeTicket.taxRate === 'number' && !isNaN(activeTicket.taxRate))
     ? activeTicket.taxRate
     : (diningOption === 'takeaway'
       ? taxRateTakeaway

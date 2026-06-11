@@ -45,7 +45,32 @@ interface OrderItem {
   name: string;
   note?: string;
   price: number;
+  options?: { text: string; type?: 'default' | 'allergy' | 'highlight' }[];
 }
+
+const itemModifiersConfig: { [itemId: string]: { title: string; options: { name: string; price?: number }[]; type: 'single' | 'multiple' }[] } = {
+  'spec-1': [
+    { title: 'Steak Doneness', type: 'single', options: [{ name: 'Rare' }, { name: 'Medium Rare' }, { name: 'Medium' }, { name: 'Well Done' }] },
+    { title: 'Premium Add-ons', type: 'multiple', options: [{ name: 'Shaved Black Truffle', price: 15 }, { name: 'Extra 24k Gold Leaf', price: 20 }] }
+  ],
+  'main-3': [
+    { title: 'Steak Doneness', type: 'single', options: [{ name: 'Rare' }, { name: 'Medium Rare' }, { name: 'Medium' }, { name: 'Well Done' }] },
+    { title: 'Premium Add-ons', type: 'multiple', options: [{ name: 'Extra Truffle Butter', price: 5 }, { name: 'Lobster Tail', price: 25 }] }
+  ],
+  'main-2': [
+    { title: 'Preparation Style', type: 'single', options: [{ name: 'Crispy Skin (Standard)' }, { name: 'Steamed Ginger Style' }] },
+    { title: 'Add-ons', type: 'multiple', options: [{ name: 'Extra Citrus Beurre Blanc', price: 3 }] }
+  ],
+  'drink-1': [
+    { title: 'Ice Preference', type: 'single', options: [{ name: 'Spherical Gold Ice Sphere' }, { name: 'Large Clear Cube' }, { name: 'No Ice' }] }
+  ],
+  'drink-2': [
+    { title: 'Preparation', type: 'single', options: [{ name: 'Chilled Crystal Coupette' }, { name: 'On the Rocks' }] }
+  ],
+  'dess-1': [
+    { title: 'Gelato Flavor', type: 'single', options: [{ name: 'Tahitian Vanilla Bean' }, { name: 'Dark Chocolate Gelato' }] }
+  ]
+};
 
 interface PosTicket {
   id: string;
@@ -90,6 +115,88 @@ const recalculateDiscountAmount = (subtotal: number, discount: any): number => {
     }
   }
   return discount.amount || 0;
+};
+
+const DEFAULT_PRICES: Record<string, number> = {
+  'Gold Leaf A5 Wagyu Ribeye': 185.00,
+  'Beluga Caviar & Oysters': 95.00,
+  'Imperial Signature Combo': 120.00,
+  'Royal Vegetarian Tasting Set': 75.00,
+  'Wagyu Beef Tartare': 38.00,
+  'Truffle Burrata Salad': 26.00,
+  'Pan-Seared Jumbo Scallops': 42.00,
+  'Acquerello Mushroom Risotto': 32.00,
+  'Crispy Skin Sea Bass': 45.00,
+  'Truffle Glazed Filet Mignon': 58.00,
+  'Chocolate Soufflé': 18.00,
+  'Saffron Crème Brûlée': 16.00,
+  'Royal Gold Old Fashioned': 28.00,
+  'Signature Emerald Gimlet': 22.00,
+  'Filet Mignon': 58.00,
+  'Scallop Risotto': 42.00,
+  'Wagyu Burger': 38.00,
+  'Caesar Salad': 18.00,
+  'Tasting Menu A': 120.00,
+  'Duck Breast': 45.00,
+  'Lobster Thermidor': 85.00,
+  'Truffle Risotto': 76.00,
+  'Wagyu Ribeye 12oz': 145.00,
+  'Seared Scallops': 42.00,
+  'Bottle: Dom Pérignon 2012': 310.00,
+};
+
+const getItemPrice = (item: any): number => {
+  if (item && typeof item.price === 'number') {
+    return item.price;
+  }
+  if (item && item.name && DEFAULT_PRICES[item.name] !== undefined) {
+    return DEFAULT_PRICES[item.name];
+  }
+  return 0;
+};
+
+const getTicketTaxRate = (t: any, defaultDineIn = 0.085, defaultTakeaway = 0.085, defaultDelivery = 0.085): number => {
+  if (t && typeof t.taxRate === 'number' && !isNaN(t.taxRate)) {
+    return t.taxRate;
+  }
+  if (t && t.tableNumber) {
+    const tbl = t.tableNumber.toLowerCase();
+    if (tbl.includes('takeaway') || tbl.includes('takeout')) return defaultTakeaway;
+    if (tbl.includes('delivery')) return defaultDelivery;
+  }
+  if (t && t.type) {
+    if (t.type === 'takeaway') return defaultTakeaway;
+    if (t.type === 'delivery') return defaultDelivery;
+  }
+  return defaultDineIn;
+};
+
+const getTicketGratuityRate = (t: any): number => {
+  if (t && typeof t.gratuityRate === 'number' && !isNaN(t.gratuityRate)) {
+    return t.gratuityRate;
+  }
+  if (t && t.tableNumber) {
+    const tbl = t.tableNumber.toLowerCase();
+    if (tbl.includes('takeaway') || tbl.includes('takeout') || tbl.includes('delivery')) return 0.00;
+  }
+  if (t && t.type) {
+    if (t.type === 'takeaway' || t.type === 'delivery') return 0.00;
+  }
+  return 0.20; // Default 20%
+};
+
+const getTicketCardAmount = (t: any, taxType: 'pre-tax' | 'post-tax' = 'pre-tax'): number => {
+  if (t.cardAmount !== undefined && t.cardAmount !== null) {
+    return t.cardAmount;
+  }
+  const sub = t.items ? t.items.reduce((acc: number, it: any) => acc + (getItemPrice(it) * it.qty), 0) : 0;
+  const discAmt = t.appliedDiscount ? recalculateDiscountAmount(sub, t.appliedDiscount) : 0;
+  const tTaxRate = getTicketTaxRate(t);
+  const tGratuityRate = getTicketGratuityRate(t);
+  const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+  const itemGrat = sub * tGratuityRate;
+  const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
+  return totalAmount;
 };
 
 const initialTickets: PosTicket[] = [
@@ -169,6 +276,31 @@ export default function PosPage() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [menuSearchQuery, setMenuSearchQuery] = useState('');
   const [itemNotes, setItemNotes] = useState<Record<string, string>>({});
+  const [catalogModifiers, setCatalogModifiers] = useState<Record<string, string[]>>({});
+
+  const handleToggleCatalogModifier = (itemId: string, modifierName: string, type: 'single' | 'multiple', groupTitle: string) => {
+    setCatalogModifiers(prev => {
+      const current = prev[itemId] || [];
+      if (type === 'single') {
+        const group = itemModifiersConfig[itemId]?.find(g => g.title === groupTitle);
+        const groupOptionNames = group ? group.options.map(o => o.name) : [];
+        const filtered = current.filter(name => !groupOptionNames.includes(name));
+        return {
+          ...prev,
+          [itemId]: [...filtered, modifierName]
+        };
+      } else {
+        const exists = current.includes(modifierName);
+        const updated = exists
+          ? current.filter(name => name !== modifierName)
+          : [...current, modifierName];
+        return {
+          ...prev,
+          [itemId]: updated
+        };
+      }
+    });
+  };
 
   // Checkout Customer Details, Tips, and Notes states
   const [customerName, setCustomerName] = useState('');
@@ -467,12 +599,19 @@ export default function PosPage() {
   };
 
   // Add item to active ticket
-  const handleAddItemToTicket = (ticketId: string, item: any, note?: string) => {
+  const handleAddItemToTicket = (
+    ticketId: string,
+    item: any,
+    note?: string,
+    selectedOptions?: { text: string; type?: 'default' | 'allergy' | 'highlight' }[]
+  ) => {
     setTickets(prev => prev.map(t => {
       if (t.id !== ticketId) return t;
       
       const existingItemIdx = t.items.findIndex(
-        i => i.name === item.name && (i.note || '') === (note || '')
+        i => i.name === item.name &&
+             (i.note || '') === (note || '') &&
+             JSON.stringify(i.options || []) === JSON.stringify(selectedOptions || [])
       );
       
       let updatedItems = [...t.items];
@@ -487,18 +626,21 @@ export default function PosPage() {
           qty: 1,
           name: item.name,
           price: item.price,
-          note: note ? note.trim() : undefined
+          note: note ? note.trim() : undefined,
+          options: selectedOptions || []
         });
       }
       
-      const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      const sub = updatedItems.reduce((acc, it) => acc + (getItemPrice(it) * it.qty), 0);
       let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
       if (newAppliedDiscount) {
         newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
       }
       const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
-      const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
-      const itemGrat = sub * t.gratuityRate;
+      const tTaxRate = getTicketTaxRate(t);
+      const tGratuityRate = getTicketGratuityRate(t);
+      const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+      const itemGrat = sub * tGratuityRate;
       const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
       
       return {
@@ -518,20 +660,22 @@ export default function PosPage() {
       
       const updatedItems = t.items.map(i => {
         if (i.name === itemName && (note === undefined || i.note === note)) {
-          const newQty = Math.max(1, i.qty + change);
+          const newQty = i.qty + change;
           return { ...i, qty: newQty };
         }
         return i;
-      });
+      }).filter(i => i.qty > 0);
       
-      const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      const sub = updatedItems.reduce((acc, it) => acc + (getItemPrice(it) * it.qty), 0);
       let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
       if (newAppliedDiscount) {
         newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
       }
       const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
-      const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
-      const itemGrat = sub * t.gratuityRate;
+      const tTaxRate = getTicketTaxRate(t);
+      const tGratuityRate = getTicketGratuityRate(t);
+      const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+      const itemGrat = sub * tGratuityRate;
       const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
       
       return {
@@ -550,14 +694,16 @@ export default function PosPage() {
       
       const updatedItems = t.items.filter(i => !(i.name === itemName && (note === undefined || i.note === note)));
       
-      const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      const sub = updatedItems.reduce((acc, it) => acc + (getItemPrice(it) * it.qty), 0);
       let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
       if (newAppliedDiscount) {
         newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
       }
       const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
-      const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
-      const itemGrat = sub * t.gratuityRate;
+      const tTaxRate = getTicketTaxRate(t);
+      const tGratuityRate = getTicketGratuityRate(t);
+      const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+      const itemGrat = sub * tGratuityRate;
       const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
       
       return {
@@ -593,9 +739,9 @@ export default function PosPage() {
   }, [selectedTicketId, selectedTicket]);
 
   // Bill calculations — only computed when a ticket is present
-  const subtotal       = selectedTicket ? selectedTicket.items.reduce((acc, item) => acc + (item.price * item.qty), 0) : 0;
-  const tax            = selectedTicket ? (taxType === 'pre-tax' ? subtotal * selectedTicket.taxRate : subtotal - (subtotal / (1 + selectedTicket.taxRate))) : 0;
-  const gratuity       = selectedTicket ? subtotal * selectedTicket.gratuityRate : 0;
+  const subtotal       = selectedTicket ? selectedTicket.items.reduce((acc, item) => acc + (getItemPrice(item) * item.qty), 0) : 0;
+  const tax            = selectedTicket ? (taxType === 'pre-tax' ? subtotal * getTicketTaxRate(selectedTicket) : subtotal - (subtotal / (1 + getTicketTaxRate(selectedTicket)))) : 0;
+  const gratuity       = selectedTicket ? subtotal * getTicketGratuityRate(selectedTicket) : 0;
   const discountAmount = (selectedTicket && appliedDiscount) ? appliedDiscount.amount : 0;
   const grandTotal     = selectedTicket ? Math.max(0, taxType === 'pre-tax' ? subtotal + tax + gratuity - discountAmount : subtotal + gratuity - discountAmount) : 0;
 
@@ -784,10 +930,12 @@ export default function PosPage() {
     // Update tickets array with applied discount and recalculated cardAmount
     setTickets(prev => prev.map(t => {
       if (t.id === selectedTicket.id) {
-        const sub = t.items.reduce((acc, it) => acc + (it.price * it.qty), 0);
+        const sub = t.items.reduce((acc, it) => acc + (getItemPrice(it) * it.qty), 0);
         const discAmt = newDiscount ? newDiscount.amount : 0;
-        const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
-        const itemGrat = sub * t.gratuityRate;
+        const tTaxRate = getTicketTaxRate(t);
+        const tGratuityRate = getTicketGratuityRate(t);
+        const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+        const itemGrat = sub * tGratuityRate;
         const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
         return {
           ...t,
@@ -810,9 +958,11 @@ export default function PosPage() {
     // Update tickets array to clear applied discount and recalculate cardAmount
     setTickets(prev => prev.map(t => {
       if (t.id === selectedTicket.id) {
-        const sub = t.items.reduce((acc, it) => acc + (it.price * it.qty), 0);
-        const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
-        const itemGrat = sub * t.gratuityRate;
+        const sub = t.items.reduce((acc, it) => acc + (getItemPrice(it) * it.qty), 0);
+        const tTaxRate = getTicketTaxRate(t);
+        const tGratuityRate = getTicketGratuityRate(t);
+        const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+        const itemGrat = sub * tGratuityRate;
         const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
         return {
           ...t,
@@ -990,22 +1140,7 @@ export default function PosPage() {
             Sign Out
           </Link>
 
-          <div 
-            onClick={() => setOperatorModalOpen(true)}
-            className="flex items-center gap-3 pt-2 cursor-pointer group hover:bg-white/5 p-2 rounded-xl transition-all"
-          >
-            <div className="w-[42px] h-[42px] rounded-xl overflow-hidden border border-white/10 bg-white/5 flex-shrink-0 group-hover:border-[#ffe2ab]/30 transition-colors">
-              <img 
-                src={activeOperator.avatar} 
-                alt={`${activeOperator.name} avatar`}
-                className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
-              />
-            </div>
-            <div className="overflow-hidden">
-              <div className="text-white font-bold text-xs tracking-wide truncate group-hover:text-[#ffe2ab] transition-colors">{activeOperator.name}</div>
-              <div className="text-[8px] text-[#ffe2ab]/70 font-bold tracking-wider uppercase mt-0.5">{activeOperator.role}</div>
-            </div>
-          </div>
+
         </div>
       </aside>
 
@@ -1097,7 +1232,7 @@ export default function PosPage() {
                             </span>
                           )}
                         </div>
-                        <div className="font-sans font-bold text-base text-[#ffe2ab]">${t.cardAmount.toFixed(2)}</div>
+                        <div className="font-sans font-bold text-base text-[#ffe2ab]">${getTicketCardAmount(t, taxType).toFixed(2)}</div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs text-[#A69984]/65 font-medium mt-4">
@@ -1201,14 +1336,32 @@ export default function PosPage() {
                             Note: {item.note}
                           </div>
                         )}
+                        {item.options && item.options.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1 font-sans">
+                            {item.options.map((opt: any, oIdx: number) => (
+                              <span
+                                key={oIdx}
+                                className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${
+                                  opt.type === 'allergy'
+                                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                    : opt.type === 'highlight'
+                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                      : 'bg-white/5 text-[#A69984] border-white/5'
+                                }`}
+                              >
+                                {opt.text}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       {/* Price */}
                       <div className="col-span-3 text-right font-sans text-sm pr-2">
-                        <div className="font-bold text-white/95">${item.price.toFixed(2)}</div>
+                        <div className="font-bold text-white/95">${getItemPrice(item).toFixed(2)}</div>
                         {item.qty > 1 && (
                           <div className="text-[10px] text-[#A69984]/60 font-semibold mt-0.5">
-                            Total: ${(item.price * item.qty).toFixed(2)}
+                            Total: ${(getItemPrice(item) * item.qty).toFixed(2)}
                           </div>
                         )}
                       </div>
@@ -1239,7 +1392,7 @@ export default function PosPage() {
                     <span className="text-white">${subtotal.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>{taxType === 'post-tax' ? 'Included Tax' : 'Tax'} ({(selectedTicket.taxRate * 100).toFixed(1)}%)</span>
+                    <span>{taxType === 'post-tax' ? 'Included Tax' : 'Tax'} ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
                     <span className="text-white">${tax.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -1656,7 +1809,7 @@ export default function PosPage() {
                   <span className="text-white font-mono">${subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-[#A69984]/70">
-                  <span>Tax ({(selectedTicket.taxRate * 100).toFixed(1)}%)</span>
+                  <span>Tax ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
                   <span className="text-white font-mono">${tax.toFixed(2)}</span>
                 </div>
                 {gratuity > 0 && (
@@ -1927,7 +2080,7 @@ export default function PosPage() {
                           <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                             <div className="max-w-[45%] font-sans">
                               <div className="text-xs text-white font-bold">{item.qty}x {item.name}</div>
-                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-0.5">${(item.price * item.qty).toFixed(2)}</div>
+                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-0.5">${(getItemPrice(item) * item.qty).toFixed(2)}</div>
                             </div>
                             
                             {/* Guest selector circles */}
@@ -1987,7 +2140,7 @@ export default function PosPage() {
 
                     selectedTicket.items.forEach((item, itemIdx) => {
                       const assignedGuest = splitItemAssignments[itemIdx] ?? -1;
-                      const itemCost = item.price * item.qty;
+                      const itemCost = getItemPrice(item) * item.qty;
                       if (assignedGuest !== -1 && assignedGuest < splitGuestCount) {
                         totals[assignedGuest].subtotal += itemCost;
                       } else {
@@ -1999,10 +2152,12 @@ export default function PosPage() {
                     const sharedPerGuest = sharedSubtotal / splitGuestCount;
                     totals.forEach((t, gIdx) => {
                       t.subtotal += sharedPerGuest;
+                      const tTaxRate = getTicketTaxRate(selectedTicket);
+                      const tGratuityRate = getTicketGratuityRate(selectedTicket);
                       t.tax = taxType === 'pre-tax' 
-                        ? t.subtotal * selectedTicket.taxRate 
-                        : t.subtotal - (t.subtotal / (1 + selectedTicket.taxRate));
-                      t.gratuity = t.subtotal * selectedTicket.gratuityRate;
+                        ? t.subtotal * tTaxRate 
+                        : t.subtotal - (t.subtotal / (1 + tTaxRate));
+                      t.gratuity = t.subtotal * tGratuityRate;
                       t.discount = subtotal > 0 ? (t.subtotal / subtotal) * discountAmount : 0;
                       t.tip = subtotal > 0 ? (t.subtotal / subtotal) * tipAmount : 0;
                       t.total = Math.max(0, taxType === 'pre-tax' 
@@ -2210,10 +2365,22 @@ export default function PosPage() {
                         ? `/images/${item.image.split('/').pop()}`
                         : item.image || '/images/placeholder.png';
 
+                      const getTicketItemQty = (ticket: any, itemName: string): number => {
+                        if (!ticket || !ticket.items) return 0;
+                        return ticket.items
+                          .filter((i: any) => i.name === itemName)
+                          .reduce((sum: number, i: any) => sum + i.qty, 0);
+                      };
+                      const itemQtyInTicket = getTicketItemQty(selectedTicket, item.name);
+
                       return (
                         <div
                           key={item.id}
-                          className="border border-white/5 bg-[#161513]/40 rounded-xl p-4 flex flex-col justify-between hover:border-white/10 transition-all group"
+                          className={`border rounded-xl p-4 flex flex-col justify-between hover:border-white/10 transition-all group ${
+                            itemQtyInTicket > 0
+                              ? 'border-[#ffe2ab]/30 bg-[#ffe2ab]/5 shadow-[0_0_15px_rgba(254,226,171,0.03)]'
+                              : 'border-white/5 bg-[#161513]/40'
+                          }`}
                         >
                           <div>
                             {/* Image Header */}
@@ -2248,9 +2415,43 @@ export default function PosPage() {
                               <span className="font-sans font-bold text-sm text-[#ffe2ab] shrink-0">${item.price.toFixed(2)}</span>
                             </div>
                             
-                            <p className="text-[11px] text-[#A69984]/70 line-clamp-2 mb-4 h-[32px] overflow-hidden leading-relaxed select-text">
+                            <p className="text-[11px] text-[#A69984]/70 line-clamp-2 mb-3 h-[32px] overflow-hidden leading-relaxed select-text">
                               {item.description || 'No description available.'}
                             </p>
+
+                            {/* Modifiers / Options selection in card */}
+                            {itemModifiersConfig[item.id] && (
+                              <div className="space-y-3 mt-1.5 mb-3 border-t border-white/5 pt-2">
+                                {itemModifiersConfig[item.id].map((group) => {
+                                  const selectedList = catalogModifiers[item.id] || [];
+                                  return (
+                                    <div key={group.title} className="space-y-1">
+                                      <span className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider block">{group.title}</span>
+                                      <div className="flex flex-wrap gap-1">
+                                        {group.options.map((opt) => {
+                                          const isSelected = selectedList.includes(opt.name);
+                                          return (
+                                            <button
+                                              key={opt.name}
+                                              type="button"
+                                              onClick={() => handleToggleCatalogModifier(item.id, opt.name, group.type, group.title)}
+                                              className={`text-[8.5px] font-bold px-2 py-1 rounded transition-all cursor-pointer border ${
+                                                isSelected
+                                                  ? 'bg-[#ffe2ab]/15 border-[#ffe2ab]/40 text-[#ffe2ab]'
+                                                  : 'bg-black/20 border-white/5 text-[#A69984]/70 hover:text-white hover:border-white/10'
+                                              }`}
+                                            >
+                                              {opt.name}
+                                              {opt.price ? ` (+$${opt.price})` : ''}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
 
                           {/* Notes input & add action */}
@@ -2263,17 +2464,62 @@ export default function PosPage() {
                               className="w-full bg-black/40 border border-white/5 rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder-white/25 focus:outline-none focus:border-[#ffe2ab]/25 transition-colors"
                             />
                             
-                            <button
-                              type="button"
-                              onClick={() => {
-                                handleAddItemToTicket(selectedTicket.id, item, itemNotes[item.id]);
-                                setItemNotes(prev => ({ ...prev, [item.id]: '' }));
-                              }}
-                              className="w-full py-2 bg-white/5 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] border border-white/10 hover:border-transparent rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <span className="material-symbols-outlined text-xs">add_circle</span>
-                              Add to Order
-                            </button>
+                            {itemQtyInTicket > 0 ? (
+                              <div className="flex items-center justify-between gap-2 w-full pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateItemQty(selectedTicket.id, item.name, -1)}
+                                  className="flex-1 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg font-sans font-bold text-[9px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-0.5 cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[10px]">remove</span>
+                                  Remove 1
+                                </button>
+                                <span className="px-2.5 py-1 bg-[#ffe2ab]/5 border border-[#ffe2ab]/25 text-[#ffe2ab] rounded-lg font-mono font-bold text-xs select-none">
+                                  x{itemQtyInTicket}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const selectedModsNames = catalogModifiers[item.id] || [];
+                                    const selectedModsObjects = selectedModsNames.map(name => {
+                                      const isAllergy = name.toUpperCase().includes('ALLERGY') || name.toUpperCase().includes('NO GARLIC') || name.toUpperCase().includes('NO NUTS');
+                                      const isHighlight = name.toUpperCase().startsWith('NO ') || name.toUpperCase().includes('EXTRA');
+                                      return {
+                                        text: name,
+                                        type: isAllergy ? 'allergy' as const : isHighlight ? 'highlight' as const : 'default' as const
+                                      };
+                                    });
+                                    handleAddItemToTicket(selectedTicket.id, item, itemNotes[item.id], selectedModsObjects);
+                                    setItemNotes(prev => ({ ...prev, [item.id]: '' }));
+                                  }}
+                                  className="flex-1 py-1.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-lg font-sans font-bold text-[9px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-0.5 cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-[10px]">add</span>
+                                  Add More
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const selectedModsNames = catalogModifiers[item.id] || [];
+                                  const selectedModsObjects = selectedModsNames.map(name => {
+                                    const isAllergy = name.toUpperCase().includes('ALLERGY') || name.toUpperCase().includes('NO GARLIC') || name.toUpperCase().includes('NO NUTS');
+                                    const isHighlight = name.toUpperCase().startsWith('NO ') || name.toUpperCase().includes('EXTRA');
+                                    return {
+                                      text: name,
+                                      type: isAllergy ? 'allergy' as const : isHighlight ? 'highlight' as const : 'default' as const
+                                    };
+                                  });
+                                  handleAddItemToTicket(selectedTicket.id, item, itemNotes[item.id], selectedModsObjects);
+                                  setItemNotes(prev => ({ ...prev, [item.id]: '' }));
+                                }}
+                                className="w-full py-2 bg-white/5 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] border border-white/10 hover:border-transparent rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-xs">add_circle</span>
+                                Add to Order
+                              </button>
+                            )}
                           </div>
                         </div>
                       );

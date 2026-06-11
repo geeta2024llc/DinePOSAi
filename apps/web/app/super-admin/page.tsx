@@ -288,7 +288,9 @@ export default function SuperAdminPage() {
     offlineMode: false,
     multiCurrency: false,
     backupInterval: 'daily',
-    backupRetention: 10
+    backupRetention: 10,
+    llmApiKey: '',
+    llmModel: 'gpt-4o'
   });
   useEffect(() => {
     const stored = localStorage.getItem('dinepos_global_features');
@@ -3888,6 +3890,43 @@ export default function SuperAdminPage() {
                           <div className={`w-4 h-4 bg-[#1c1200] rounded-full shadow-md transform duration-300 ${globalFeatures.aiConcierge ? 'translate-x-6 bg-white' : 'translate-x-0'}`} />
                         </button>
                       </div>
+
+                      {/* LLM Model Configuration (Visible when AI Concierge is enabled) */}
+                      {globalFeatures.aiConcierge && (
+                        <div className="p-5 bg-white/[0.02] border border-white/10 rounded-xl space-y-4 ml-4 relative">
+                          <div className="absolute top-0 bottom-0 left-0 w-1 bg-[#ffc53d]/50 rounded-l-xl"></div>
+                          
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">LLM Provider & Model</label>
+                            <select
+                              value={globalFeatures.llmModel}
+                              onChange={(e) => {
+                                setGlobalFeatures(prev => ({ ...prev, llmModel: e.target.value }));
+                                triggerToast('LLM model provider updated.', 'success');
+                              }}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            >
+                              <option value="gpt-4o">OpenAI GPT-4o (Recommended)</option>
+                              <option value="gpt-3.5-turbo">OpenAI GPT-3.5 Turbo</option>
+                              <option value="claude-3-opus">Anthropic Claude 3 Opus</option>
+                              <option value="claude-3-sonnet">Anthropic Claude 3.5 Sonnet</option>
+                              <option value="gemini-1.5-pro">Google Gemini 1.5 Pro</option>
+                            </select>
+                          </div>
+                          
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">API Key</label>
+                            <input
+                              type="password"
+                              placeholder="sk-..."
+                              value={globalFeatures.llmApiKey}
+                              onChange={(e) => setGlobalFeatures(prev => ({ ...prev, llmApiKey: e.target.value }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 transition-colors"
+                            />
+                            <p className="text-[9.5px] text-[#A69984]/50 mt-1.5">Your API key is stored securely and used to process Concierge requests.</p>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Guest Self-Checkout Toggle */}
                       <div className="flex justify-between items-center p-4 bg-[#0e0e0d]/40 border border-white/5 rounded-xl">

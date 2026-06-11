@@ -70,75 +70,75 @@ function RegisterForm() {
     `w-full bg-white/[0.04] border ${active ? 'border-[#ffc53d]/50' : 'border-white/[0.08]'} rounded-xl pl-11 pr-4 py-3.5 text-white text-sm placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/50 hover:border-white/15 transition-colors duration-200 font-sans`;
 
   return (
-    <div className="flex min-h-screen bg-[#0a0908] font-sans overflow-hidden">
+    <div className="flex min-h-screen bg-[#0a0a0a] font-sans overflow-hidden">
 
       {/* ─── LEFT PANEL ───────────────────────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-[58%] xl:w-[55%] relative flex-col justify-between p-14 overflow-hidden flex-shrink-0">
+      <div className="hidden lg:flex lg:w-[58%] xl:w-[55%] relative flex-col justify-between p-16 xl:p-20 overflow-hidden flex-shrink-0 border-r border-white/[0.03]">
 
         {/* Background image */}
         <div className="absolute inset-0">
           <img
             src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi"
             alt=""
-            className="w-full h-full object-cover opacity-30 scale-105"
+            className="w-full h-full object-cover opacity-20 filter blur-sm scale-105"
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
           {/* Deep gradient overlays for legibility */}
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0908] via-[#0a0908]/85 to-[#0a0908]/20" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0908] via-transparent to-[#0a0908]/60" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/90 to-[#0a0a0a]/30" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent" />
         </div>
 
         {/* Ambient gold glow */}
-        <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-[radial-gradient(circle,rgba(255,197,61,0.07)_0%,transparent_70%)] rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(255,226,171,0.06)_0%,transparent_70%)] rounded-full blur-[100px] pointer-events-none" />
 
         {/* Top: Brand */}
         <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-[#ffc53d]/15 border border-[#ffc53d]/25 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#ffc53d] text-[18px] leading-none">restaurant</span>
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center group-hover:bg-white/10 transition-colors duration-300">
+              <span className="material-symbols-outlined text-[#ffe2ab] text-[20px] leading-none">restaurant</span>
             </div>
-            <span className="font-serif text-[#ffc53d] text-xl font-bold tracking-wide group-hover:opacity-80 transition-opacity">
+            <span className="font-display-lg text-[#ffe2ab] text-2xl font-bold tracking-wide group-hover:drop-shadow-[0_0_10px_rgba(255,226,171,0.5)] transition-all">
               DinePOS AI
             </span>
           </Link>
         </div>
 
         {/* Middle: Headline + features */}
-        <div className="relative z-10 space-y-10 max-w-[520px]">
+        <div className="relative z-10 space-y-12 max-w-[560px]">
           {/* Eyebrow */}
-          <div className="flex items-center gap-3">
-            <div className="h-px w-8 bg-[#ffc53d]/50" />
-            <span className="text-[#ffc53d]/80 text-[10.5px] font-bold uppercase tracking-[0.22em]">
+          <div className="flex items-center gap-4">
+            <div className="h-px w-12 bg-gradient-to-r from-[#ffe2ab]/50 to-transparent" />
+            <span className="text-[#ffe2ab]/80 text-xs font-bold uppercase tracking-[0.25em]">
               Enterprise Hospitality Suite
             </span>
           </div>
 
           {/* Headline */}
-          <div className="space-y-4">
-            <h1 className="font-serif text-white text-[48px] xl:text-[56px] font-medium leading-[1.08] tracking-tight">
+          <div className="space-y-6">
+            <h1 className="font-display-lg text-[3.5rem] xl:text-[4rem] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 font-semibold leading-[1.1] tracking-tight drop-shadow-sm">
               The Art of Modern
               <br />
-              <span className="text-[#ffc53d] italic">Hospitality.</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffe2ab] via-[#ffd380] to-[#cc9d31] italic pr-2 drop-shadow-[0_0_20px_rgba(255,226,171,0.2)]">Hospitality.</span>
             </h1>
-            <p className="text-[#A69984] text-base leading-relaxed max-w-[420px]">
+            <p className="font-body-md text-[#d4c5ab]/80 text-lg leading-relaxed max-w-[480px] font-light">
               Precision tools built for high-end culinary environments. Reduce operational friction and let your team focus on what matters — the guest.
             </p>
           </div>
 
           {/* Feature list */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {[
               { icon: 'point_of_sale', title: 'Intelligent POS', desc: 'Fluid table management, split billing and real-time order routing.' },
               { icon: 'kitchen', title: 'Live Kitchen Display', desc: 'High-contrast KDS with course-based firing and allergy flags.' },
               { icon: 'bar_chart', title: 'Revenue Analytics', desc: 'Per-server, per-table and shift-level performance dashboards.' },
             ].map(f => (
-              <div key={f.title} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="material-symbols-outlined text-[#ffc53d] text-[18px] leading-none">{f.icon}</span>
+              <div key={f.title} className="flex items-start gap-5 group">
+                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center flex-shrink-0 group-hover:-translate-y-1 group-hover:bg-white/10 transition-all duration-300">
+                  <span className="material-symbols-outlined text-[#ffe2ab] text-[22px] leading-none">{f.icon}</span>
                 </div>
-                <div>
-                  <div className="text-white font-semibold text-sm leading-none mb-1.5">{f.title}</div>
-                  <div className="text-[#A69984]/70 text-[12.5px] leading-relaxed">{f.desc}</div>
+                <div className="pt-1">
+                  <div className="font-title-md text-white font-semibold text-base leading-none mb-2">{f.title}</div>
+                  <div className="font-body-md text-[#d4c5ab]/70 text-sm leading-relaxed">{f.desc}</div>
                 </div>
               </div>
             ))}
@@ -146,33 +146,36 @@ function RegisterForm() {
         </div>
 
         {/* Bottom: Testimonial + trust badges */}
-        <div className="relative z-10 space-y-6">
+        <div className="relative z-10 space-y-8">
           {/* Testimonial */}
-          <div className="border-l-2 border-[#ffc53d]/40 pl-5">
-            <p className="text-white/75 text-[13.5px] leading-relaxed italic font-serif">
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
+            <span className="material-symbols-outlined absolute -top-4 -right-4 text-7xl text-white/[0.02] font-light">format_quote</span>
+            <p className="font-serif text-[#d4c5ab]/90 text-sm leading-relaxed italic relative z-10">
               "DinePOS AI operates quietly in the background, handling complex modifiers and pacing so our team can focus entirely on the choreography of the dining experience."
             </p>
-            <div className="mt-3 flex items-center gap-3">
-              <div className="w-7 h-7 rounded-full bg-[#ffc53d]/20 border border-[#ffc53d]/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#ffc53d] text-sm">person</span>
-              </div>
+            <div className="mt-5 flex items-center gap-4 relative z-10 border-t border-white/5 pt-4">
+              <img 
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m" 
+                alt="Julian Rossi" 
+                className="w-10 h-10 rounded-full object-cover grayscale border border-[#ffe2ab]/30"
+              />
               <div>
-                <div className="text-white/90 text-xs font-bold leading-none">Julian Rossi</div>
-                <div className="text-[#A69984]/55 text-[10px] mt-0.5">General Manager, L'Aura Restaurant</div>
+                <div className="font-title-md text-white text-sm font-semibold leading-none">Julian Rossi</div>
+                <div className="font-label-sm text-[#ffe2ab]/80 text-[10px] uppercase tracking-widest mt-1">General Manager, L'Aura</div>
               </div>
             </div>
           </div>
 
           {/* Trust strip */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-8">
             {[
               { icon: 'lock', label: '256-bit SSL' },
               { icon: 'shield_check', label: 'GDPR Compliant' },
               { icon: 'cloud_done', label: '99.9% Uptime' },
             ].map(t => (
-              <div key={t.label} className="flex items-center gap-1.5 text-[#A69984]/40">
-                <span className="material-symbols-outlined text-[13px]">{t.icon}</span>
-                <span className="text-[10px] font-semibold tracking-wide">{t.label}</span>
+              <div key={t.label} className="flex items-center gap-2 text-[#d4c5ab]/40">
+                <span className="material-symbols-outlined text-[16px]">{t.icon}</span>
+                <span className="text-xs font-semibold tracking-wide uppercase">{t.label}</span>
               </div>
             ))}
           </div>
@@ -183,105 +186,105 @@ function RegisterForm() {
       <div className="flex-1 flex flex-col bg-[#0e0e0d] relative overflow-y-auto">
 
         {/* Ambient glow */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[radial-gradient(circle_at_top_right,rgba(255,197,61,0.05)_0%,transparent_65%)] pointer-events-none" />
+        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[radial-gradient(circle_at_top_right,rgba(255,226,171,0.03)_0%,transparent_65%)] pointer-events-none" />
 
-        <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 lg:px-16 xl:px-20 py-12 relative z-10 min-h-screen">
+        <div className="flex-1 flex flex-col justify-center px-8 sm:px-12 xl:px-24 py-16 relative z-10 min-h-screen">
 
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-10">
-            <div className="w-8 h-8 rounded-xl bg-[#ffc53d]/15 border border-[#ffc53d]/25 flex items-center justify-center">
-              <span className="material-symbols-outlined text-[#ffc53d] text-base leading-none">restaurant</span>
+            <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center">
+              <span className="material-symbols-outlined text-[#ffe2ab] text-xl leading-none">restaurant</span>
             </div>
-            <span className="font-serif text-[#ffc53d] text-lg font-bold tracking-wide">DinePOS AI</span>
+            <span className="font-display-lg text-[#ffe2ab] text-2xl font-bold tracking-wide">DinePOS AI</span>
           </div>
 
           {/* Form header */}
-          <div className="mb-8 max-w-[400px]">
-            <div className="inline-flex items-center gap-2 bg-[#ffc53d]/8 border border-[#ffc53d]/15 rounded-full px-3.5 py-1.5 mb-5">
-              <span className="w-1.5 h-1.5 bg-[#ffc53d] rounded-full"></span>
-              <span className="text-[#ffc53d] text-[10px] font-bold uppercase tracking-[0.2em]">Free Trial — No Card Required</span>
+          <div className="mb-10 max-w-[440px]">
+            <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-[#ffe2ab]/20 bg-[#ffe2ab]/5 mb-6 backdrop-blur-md shadow-[0_0_15px_rgba(255,226,171,0.05)]">
+              <span className="w-1.5 h-1.5 bg-[#ffe2ab] rounded-full animate-pulse shadow-[0_0_8px_#ffe2ab]"></span>
+              <span className="font-label-sm text-[#ffe2ab] text-xs font-bold uppercase tracking-[0.2em]">Free Trial — No Card Required</span>
             </div>
-            <h2 className="font-serif text-white text-[32px] font-medium leading-tight tracking-wide mb-2">
+            <h2 className="font-display-lg text-white text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-3">
               Create your account
             </h2>
-            <p className="text-[#A69984]/70 text-sm leading-relaxed">
+            <p className="font-body-md text-[#d4c5ab]/80 text-base leading-relaxed font-light">
               Set up in under 2 minutes. Full access to all features during your trial.
             </p>
           </div>
 
           {/* Error */}
           {error && (
-            <div className="max-w-[400px] mb-5 flex items-start gap-2.5 p-3.5 bg-red-500/8 border border-red-500/20 text-red-300 text-[12px] font-medium rounded-xl leading-relaxed">
-              <span className="material-symbols-outlined text-sm flex-shrink-0 mt-0.5">error_outline</span>
+            <div className="max-w-[440px] mb-6 flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-medium rounded-xl leading-relaxed backdrop-blur-md">
+              <span className="material-symbols-outlined text-base flex-shrink-0 mt-0.5">error_outline</span>
               {error}
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4 max-w-[400px]">
+          <form onSubmit={handleSubmit} className="space-y-5 max-w-[440px]">
 
             {/* Name + Restaurant side-by-side */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-[#A69984]/80 text-[10.5px] font-bold uppercase tracking-widest">
-                  Full Name <span className="text-[#ffc53d]/70">*</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="space-y-2">
+                <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm">
+                  Full Name <span className="text-[#ffe2ab]/70">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#A69984]/35 leading-none pointer-events-none">person</span>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">person</span>
                   <input type="text" required placeholder="Your name" value={fullName} onChange={e => setFullName(e.target.value)} className={inputClass()} />
                 </div>
               </div>
-              <div className="space-y-1.5">
-                <label className="block text-[#A69984]/80 text-[10.5px] font-bold uppercase tracking-widest">
-                  Restaurant <span className="text-[#ffc53d]/70">*</span>
+              <div className="space-y-2">
+                <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm">
+                  Restaurant <span className="text-[#ffe2ab]/70">*</span>
                 </label>
-                <div className="relative">
-                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#A69984]/35 leading-none pointer-events-none">storefront</span>
+                <div className="relative group">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">storefront</span>
                   <input type="text" required placeholder="Establishment name" value={restaurantName} onChange={e => setRestaurantName(e.target.value)} className={inputClass()} />
                 </div>
               </div>
             </div>
 
             {/* Work Email */}
-            <div className="space-y-1.5">
-              <label className="block text-[#A69984]/80 text-[10.5px] font-bold uppercase tracking-widest">
-                Work Email <span className="text-[#ffc53d]/70">*</span>
+            <div className="space-y-2">
+              <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm">
+                Work Email <span className="text-[#ffe2ab]/70">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#A69984]/35 leading-none pointer-events-none">mail</span>
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">mail</span>
                 <input type="email" required placeholder="name@restaurant.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass()} />
               </div>
             </div>
 
             {/* Password */}
-            <div className="space-y-1.5">
-              <label className="block text-[#A69984]/80 text-[10.5px] font-bold uppercase tracking-widest">
-                Password <span className="text-[#ffc53d]/70">*</span>
+            <div className="space-y-2">
+              <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm">
+                Password <span className="text-[#ffe2ab]/70">*</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#A69984]/35 leading-none pointer-events-none">lock</span>
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">lock</span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   placeholder="Create a strong password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className={`${inputClass()} pr-11`}
+                  className={`${inputClass()} pr-12`}
                 />
-                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#A69984]/35 hover:text-[#ffc53d] transition-colors">
-                  <span className="material-symbols-outlined text-lg leading-none">{showPassword ? 'visibility' : 'visibility_off'}</span>
+                <button type="button" onClick={() => setShowPassword(v => !v)} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-[#ffe2ab] transition-colors">
+                  <span className="material-symbols-outlined text-xl leading-none">{showPassword ? 'visibility' : 'visibility_off'}</span>
                 </button>
               </div>
             </div>
 
             {/* Referral Code */}
-            <div className="space-y-1.5">
-              <label className="block text-[#A69984]/80 text-[10.5px] font-bold uppercase tracking-widest flex items-center gap-2">
+            <div className="space-y-2">
+              <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm flex items-center gap-2">
                 Referral Code
-                <span className="text-[#A69984]/35 text-[9px] normal-case font-medium tracking-normal">(optional)</span>
+                <span className="text-[#d4c5ab]/40 text-[10px] normal-case font-medium tracking-normal">(optional)</span>
               </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-[#A69984]/35 leading-none pointer-events-none">redeem</span>
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">redeem</span>
                 <input
                   type="text"
                   placeholder="REF-ERIC-77"
@@ -290,43 +293,43 @@ function RegisterForm() {
                   className={`${inputClass(!!referralCode)} pr-10 font-mono tracking-widest uppercase`}
                 />
                 {referralCode && (
-                  <span className={`absolute right-3.5 top-1/2 -translate-y-1/2 material-symbols-outlined text-sm ${referralAmbassadorName ? 'text-[#ffc53d]' : 'text-[#A69984]/30'}`}>
+                  <span className={`absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-lg ${referralAmbassadorName ? 'text-[#ffe2ab]' : 'text-white/20'}`}>
                     {referralAmbassadorName ? 'verified' : 'help_outline'}
                   </span>
                 )}
               </div>
 
               {referralCode && referralAmbassadorName && (
-                <div className="flex items-center gap-2.5 mt-2 bg-[#ffc53d]/8 border border-[#ffc53d]/20 rounded-xl px-3.5 py-2.5">
-                  <span className="material-symbols-outlined text-[#ffc53d] text-base flex-shrink-0">verified_user</span>
+                <div className="flex items-center gap-3 mt-3 bg-[#ffe2ab]/5 border border-[#ffe2ab]/20 rounded-xl p-4 backdrop-blur-md">
+                  <span className="material-symbols-outlined text-[#ffe2ab] text-xl flex-shrink-0 drop-shadow-[0_0_8px_rgba(255,226,171,0.5)]">verified_user</span>
                   <div>
-                    <p className="text-[11px] text-[#ffc53d] font-bold leading-none">Referred by {referralAmbassadorName}</p>
-                    <p className="text-[9.5px] text-[#A69984]/55 font-medium mt-0.5">They'll earn <span className="text-[#ffc53d]">${rewardPerSignup}</span> when you activate.</p>
+                    <p className="text-xs text-white font-semibold leading-none mb-1">Referred by {referralAmbassadorName}</p>
+                    <p className="text-[11px] text-[#d4c5ab]/70 font-medium">They'll earn <span className="text-[#ffe2ab]">${rewardPerSignup}</span> when you activate.</p>
                   </div>
                 </div>
               )}
               {referralCode && !referralAmbassadorName && (
-                <p className="text-[10px] text-[#A69984]/45 font-medium mt-1 flex items-center gap-1.5 pl-0.5">
-                  <span className="material-symbols-outlined text-xs">info</span>
+                <p className="text-[11px] text-[#d4c5ab]/50 font-medium mt-2 flex items-center gap-1.5 pl-1">
+                  <span className="material-symbols-outlined text-[14px]">info</span>
                   Code will be validated on submission.
                 </p>
               )}
             </div>
 
             {/* Divider */}
-            <div className="border-t border-white/[0.06] pt-1" />
+            <div className="border-t border-white/[0.06] pt-2" />
 
             {/* Terms */}
-            <label className="flex items-start gap-3 cursor-pointer group select-none">
+            <label className="flex items-start gap-4 cursor-pointer group select-none">
               <input type="checkbox" checked={agreeToTerms} onChange={e => setAgreeToTerms(e.target.checked)} className="sr-only peer" />
-              <div className="mt-0.5 w-[18px] h-[18px] flex-shrink-0 rounded-md border border-white/15 bg-white/[0.04] flex items-center justify-center transition-all duration-150 peer-checked:bg-[#ffc53d] peer-checked:border-[#ffc53d] group-hover:border-white/25">
-                <span className="material-symbols-outlined text-[11px] text-[#2c1a00] font-black leading-none scale-0 peer-checked:scale-100 transition-transform">check</span>
+              <div className="mt-0.5 w-5 h-5 flex-shrink-0 rounded-md border border-white/20 bg-white/[0.02] flex items-center justify-center transition-all duration-200 peer-checked:bg-[#ffe2ab] peer-checked:border-[#ffe2ab] group-hover:border-white/40">
+                <span className="material-symbols-outlined text-sm text-[#261a00] font-black leading-none scale-0 peer-checked:scale-100 transition-transform">check</span>
               </div>
-              <span className="text-[#A69984]/70 text-[11.5px] leading-relaxed font-medium">
+              <span className="text-[#d4c5ab]/80 text-sm leading-relaxed font-light">
                 I agree to the{' '}
-                <Link href="/terms" className="text-[#ffe2ab]/90 hover:text-[#ffc53d] font-semibold transition-colors">Terms of Service</Link>
+                <Link href="/terms" className="text-[#ffe2ab] hover:drop-shadow-[0_0_8px_rgba(255,226,171,0.5)] font-semibold transition-all">Terms of Service</Link>
                 {' '}and{' '}
-                <Link href="/privacy" className="text-[#ffe2ab]/90 hover:text-[#ffc53d] font-semibold transition-colors">Privacy Policy</Link>.
+                <Link href="/privacy" className="text-[#ffe2ab] hover:drop-shadow-[0_0_8px_rgba(255,226,171,0.5)] font-semibold transition-all">Privacy Policy</Link>.
               </span>
             </label>
 
@@ -334,25 +337,28 @@ function RegisterForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-[#ffc53d] hover:bg-[#ffb014] disabled:opacity-50 disabled:cursor-not-allowed text-[#2c1a00] font-bold text-[11.5px] uppercase tracking-widest py-4 rounded-xl transition-all duration-200 shadow-[0_4px_24px_rgba(255,197,61,0.25)] hover:shadow-[0_6px_28px_rgba(255,197,61,0.35)] hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2.5 cursor-pointer mt-2"
+              className="w-full group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] disabled:from-[#ffe2ab]/50 disabled:to-[#cc9d31]/50 text-[#261a00] font-title-md font-bold text-sm uppercase tracking-widest py-4 rounded-xl transition-all duration-500 transform hover:-translate-y-1 flex items-center justify-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)] disabled:hover:translate-y-0 disabled:hover:shadow-none mt-4"
             >
-              {isLoading ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-[#2c1a00]/25 border-t-[#2c1a00] rounded-full animate-spin flex-shrink-0" />
-                  Creating your account…
-                </>
-              ) : (
-                <>
-                  Get Started — It's Free
-                  <span className="material-symbols-outlined text-base leading-none">arrow_forward</span>
-                </>
-              )}
+              <span className="relative z-10 flex items-center gap-2">
+                {isLoading ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-[#261a00]/30 border-t-[#261a00] rounded-full animate-spin flex-shrink-0" />
+                    Creating your account…
+                  </>
+                ) : (
+                  <>
+                    Get Started — It's Free
+                    <span className="material-symbols-outlined text-base transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+                  </>
+                )}
+              </span>
+              {!isLoading && <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>}
             </button>
 
             {/* Login link */}
-            <p className="text-center text-[#A69984]/55 text-[12px] font-medium">
+            <p className="text-center text-[#d4c5ab]/70 text-sm font-medium pt-2">
               Already have an account?{' '}
-              <Link href="/login" className="text-[#ffe2ab]/90 hover:text-[#ffc53d] font-bold transition-colors">
+              <Link href="/login" className="text-[#ffe2ab] hover:drop-shadow-[0_0_8px_rgba(255,226,171,0.5)] font-bold transition-all">
                 Sign in
               </Link>
             </p>
@@ -361,9 +367,9 @@ function RegisterForm() {
         </div>
 
         {/* Footer */}
-        <footer className="relative z-10 px-8 sm:px-12 lg:px-16 xl:px-20 py-5 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-3 text-[10px] text-[#A69984]/35 tracking-wide select-none">
+        <footer className="relative z-10 px-8 sm:px-12 xl:px-24 py-6 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#d4c5ab]/40 tracking-wide select-none">
           <span>© 2026 DinePOS AI Hospitality Systems</span>
-          <div className="flex items-center gap-5 font-semibold">
+          <div className="flex items-center gap-6 font-semibold">
             <Link href="/terms" className="hover:text-[#ffe2ab] transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-[#ffe2ab] transition-colors">Privacy</Link>
             <Link href="/support" className="hover:text-[#ffe2ab] transition-colors">Support</Link>

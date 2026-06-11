@@ -11,6 +11,7 @@ interface OrderItemOption {
 interface OrderItem {
   name: string;
   qty: number;
+  price?: number;
   options?: OrderItemOption[];
   notes?: string;
 }
@@ -37,6 +38,7 @@ const initialTickets: KdsTicket[] = [
       {
         name: 'Filet Mignon',
         qty: 2,
+        price: 58.00,
         options: [
           { text: 'Medium Rare', type: 'default' },
           { text: 'ALLERGY: NO GARLIC', type: 'allergy' }
@@ -45,7 +47,8 @@ const initialTickets: KdsTicket[] = [
       },
       {
         name: 'Scallop Risotto',
-        qty: 1
+        qty: 1,
+        price: 42.00
       }
     ]
   },
@@ -59,6 +62,7 @@ const initialTickets: KdsTicket[] = [
       {
         name: 'Wagyu Burger',
         qty: 1,
+        price: 38.00,
         options: [
           { text: 'Medium', type: 'default' },
           { text: 'NO ONIONS', type: 'highlight' },
@@ -69,6 +73,7 @@ const initialTickets: KdsTicket[] = [
       {
         name: 'Caesar Salad',
         qty: 1,
+        price: 18.00,
         options: [
           { text: 'Dressing on side', type: 'default' }
         ]
@@ -86,6 +91,7 @@ const initialTickets: KdsTicket[] = [
       {
         name: 'Tasting Menu A',
         qty: 3,
+        price: 120.00,
         options: [
           { text: 'Course 1 Fire', type: 'default' }
         ]
@@ -102,7 +108,8 @@ const initialTickets: KdsTicket[] = [
     items: [
       {
         name: 'Duck Breast',
-        qty: 1
+        qty: 1,
+        price: 45.00
       }
     ]
   },
@@ -114,8 +121,8 @@ const initialTickets: KdsTicket[] = [
     type: 'dine-in',
     status: 'cooking',
     items: [
-      { name: 'Lobster Thermidor', qty: 1 },
-      { name: 'Truffle Burrata Salad', qty: 2 }
+      { name: 'Lobster Thermidor', qty: 1, price: 85.00 },
+      { name: 'Truffle Burrata Salad', qty: 2, price: 26.00 }
     ]
   },
   {
@@ -125,7 +132,7 @@ const initialTickets: KdsTicket[] = [
     type: 'delivery',
     status: 'cooking',
     items: [
-      { name: 'Wagyu Burger', qty: 2, options: [{ text: 'Well Done', type: 'default' }] }
+      { name: 'Wagyu Burger', qty: 2, price: 38.00, options: [{ text: 'Well Done', type: 'default' }] }
     ]
   },
   {
@@ -135,7 +142,7 @@ const initialTickets: KdsTicket[] = [
     type: 'dine-in',
     status: 'complete',
     items: [
-      { name: 'Chocolate Soufflé', qty: 2 }
+      { name: 'Chocolate Soufflé', qty: 2, price: 18.00 }
     ]
   },
   {
@@ -145,7 +152,7 @@ const initialTickets: KdsTicket[] = [
     type: 'takeaway',
     status: 'rejected',
     items: [
-      { name: 'Beluga Caviar & Oysters', qty: 1 }
+      { name: 'Beluga Caviar & Oysters', qty: 1, price: 95.00 }
     ]
   }
 ];
@@ -483,11 +490,10 @@ export default function KdsPage() {
               );
             })}
           </div>
-
         </div>
 
         {/* Scrollable Order Card Grid */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-10 pb-32 pt-5">
+        <div className="flex-1 overflow-y-auto px-8 sm:px-12 pb-32 pt-6">
           {filteredTickets.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
               {filteredTickets.map(ticket => {
@@ -497,39 +503,38 @@ export default function KdsPage() {
                 let tableHeaderColor = 'text-[#ffe2ab]';
                 if (ticket.status === 'pending') {
                   if (ticket.id === 'ticket-1') tableHeaderColor = 'text-[#f87171]'; // Red title for Table 14
+                  else if (ticket.id === 'ticket-2') tableHeaderColor = 'text-[#fb923c]'; // Orange title for Table 03
+                  else if (ticket.id === 'ticket-3') tableHeaderColor = 'text-white'; // White title for Table 22
                   else if (ticket.id === 'ticket-4') tableHeaderColor = 'text-[#A69984]/80'; // Muted title for hold
                 }
 
                 return (
                   <div
                     key={ticket.id}
-                    className={`bg-[#161513]/95 border rounded-2xl p-8 shadow-xl flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
+                    className={`bg-gradient-to-b from-[#181716] to-[#0e0e0d] border rounded-2xl p-6 sm:p-7 shadow-2xl flex flex-col justify-between transition-all duration-300 relative overflow-hidden ${
                       ticket.onHold && ticket.status === 'pending'
-                        ? 'border-white/5 bg-[#12110f]/80'
+                        ? 'border-white/5 opacity-40 bg-[#12110f]/80'
                         : isOver15m && ticket.status === 'pending'
-                          ? 'border-[#ef4444]/25 shadow-[0_4px_24px_rgba(239,68,68,0.06)]'
+                          ? 'border-l-4 border-l-[#ef4444] border-t-white/[0.05] border-r-white/[0.05] border-b-white/[0.05] shadow-[0_4px_24px_rgba(239,68,68,0.08)]'
                           : 'border-white/5 hover:border-white/10'
                     }`}
                   >
-                    {/* HOLD watermark stripe */}
-                    {ticket.onHold && ticket.status === 'pending' && (
-                      <div className="absolute inset-0 pointer-events-none z-10 flex items-start justify-end p-3">
-                        <span className="bg-[#A69984]/15 border border-[#A69984]/20 text-[#A69984]/60 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg">
-                          On Hold
-                        </span>
-                      </div>
-                    )}
                     
                     {/* Header Details */}
-                    <div className={ticket.onHold && ticket.status === 'pending' ? 'opacity-50' : ''}>
-                      <div className="flex justify-between items-center mb-7 select-none">
-                        <div className="flex items-center gap-2.5">
+                    <div>
+                      <div className="flex justify-between items-center mb-6 select-none">
+                        <div className="flex items-center gap-2">
                           <h3 className={`font-serif text-lg font-bold tracking-wide ${tableHeaderColor}`}>
                             {ticket.tableNumber}
                           </h3>
                           {ticket.isVip && (
                             <span className="bg-[#ffe2ab] text-[#402d00] font-sans font-black text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
                               VIP
+                            </span>
+                          )}
+                          {ticket.onHold && ticket.status === 'pending' && (
+                            <span className="bg-[#A69984]/15 border border-[#A69984]/20 text-[#A69984]/70 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
+                              ON HOLD
                             </span>
                           )}
                           {ticket.type === 'takeaway' && (
@@ -545,32 +550,38 @@ export default function KdsPage() {
                         </div>
                         
                         {/* Clock icon and legible timer */}
-                        <div className="flex items-center gap-1.5 text-xs font-sans font-bold font-mono">
-                          <span className={`material-symbols-outlined text-[15px] ${getTimeColor(ticket.secondsElapsed)}`}>
+                        <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-sans font-bold font-mono border ${
+                          ticket.secondsElapsed >= 900
+                            ? 'text-[#f87171] bg-[#f87171]/5 border-[#f87171]/20'
+                            : ticket.secondsElapsed >= 600
+                              ? 'text-[#fb923c] bg-[#fb923c]/5 border-[#fb923c]/20'
+                              : 'text-[#34d399] bg-[#34d399]/5 border-[#34d399]/20'
+                        }`}>
+                          <span className="material-symbols-outlined text-[13px] leading-none">
                             schedule
                           </span>
-                          <span className={getTimeColor(ticket.secondsElapsed)}>
+                          <span>
                             {formatTime(ticket.secondsElapsed)}
                           </span>
                         </div>
                       </div>
 
                       {/* Items lists (Large, clearly visible typography) */}
-                      <ul className="space-y-6">
+                      <ul className="space-y-5">
                         {ticket.items.map((item, idx) => (
                           <li key={idx} className="font-sans">
-                            <div className="text-[15px] font-bold text-white tracking-wide flex gap-2">
-                              <span className="opacity-90">{item.qty}x</span>
+                            <div className="text-[14px] font-bold text-white tracking-wide flex items-center">
+                              <span className="text-[#ffe2ab] font-mono font-bold mr-2 text-[14px]">{item.qty}x</span>
                               <span>{item.name}</span>
                             </div>
                             
                             {/* Option Details */}
                             {item.options && item.options.length > 0 && (
-                              <ul className="mt-2 space-y-1.5 pl-4 border-l border-white/5">
+                              <ul className="mt-2 space-y-1.5 pl-3 border-l border-white/5">
                                 {item.options.map((opt, optIdx) => {
                                   if (opt.type === 'allergy') {
                                     return (
-                                      <li key={optIdx} className="text-[13px] text-[#ef4444] font-black uppercase tracking-wider flex items-center gap-1.5">
+                                      <li key={optIdx} className="text-[10.5px] text-[#f87171] font-sans font-bold uppercase tracking-wider bg-[#f87171]/10 border border-[#f87171]/20 px-2 py-0.5 rounded-md flex items-center gap-1.5 w-fit">
                                         <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444]"></span>
                                         {opt.text}
                                       </li>
@@ -578,15 +589,15 @@ export default function KdsPage() {
                                   }
                                   if (opt.type === 'highlight') {
                                     return (
-                                      <li key={optIdx} className="text-[#fb923c] font-black uppercase tracking-wider flex items-center gap-1.5">
+                                      <li key={optIdx} className="text-[10.5px] text-[#fb923c] font-sans font-bold uppercase tracking-wider bg-[#fb923c]/10 border border-[#fb923c]/20 px-2 py-0.5 rounded-md flex items-center gap-1.5 w-fit">
                                         <span className="w-1.5 h-1.5 rounded-full bg-[#fb923c]"></span>
                                         {opt.text}
                                       </li>
                                     );
                                   }
                                   return (
-                                    <li key={optIdx} className="text-[13px] text-[#b5a895] font-semibold flex items-center gap-1.5">
-                                      <span className="w-1 h-1 rounded-full bg-[#b5a895]/45"></span>
+                                    <li key={optIdx} className="text-[11.5px] text-[#A69984] font-sans font-medium flex items-center gap-1.5">
+                                      <span className="w-1 h-1 rounded-full bg-[#A69984]/30"></span>
                                       {opt.text}
                                     </li>
                                   );
@@ -595,12 +606,12 @@ export default function KdsPage() {
                             )}
                             {/* Item Chef Notes */}
                             {item.notes && (
-                              <div className="mt-2 pl-4 border-l border-amber-500/30 py-0.5">
-                                <p className="text-[11px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1 select-none">
+                              <div className="mt-3 bg-amber-500/[0.03] border border-amber-500/10 rounded-xl p-3">
+                                <p className="text-[9.5px] text-[#ffe2ab]/90 font-sans font-bold uppercase tracking-wider flex items-center gap-1 select-none">
                                   <span className="material-symbols-outlined text-[13px] leading-none">sticky_note_2</span>
                                   Chef Note
                                 </p>
-                                <p className="text-[12.5px] text-[#e5e2e1] italic mt-0.5 leading-normal">
+                                <p className="text-[11.5px] text-[#d4c5ab]/90 italic mt-1 leading-normal font-sans">
                                   "{item.notes}"
                                 </p>
                               </div>
@@ -617,28 +628,28 @@ export default function KdsPage() {
                           {ticket.id === 'ticket-1' ? (
                             <button 
                               onClick={() => handleStartCooking(ticket.id, ticket.tableNumber)}
-                              className="flex-1 py-3.5 bg-[#ef4444]/5 hover:bg-[#ef4444]/10 border border-[#ef4444]/20 text-[#ef4444] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                              className="flex-1 py-3 bg-gradient-to-r from-[#ef4444]/10 to-[#ef4444]/5 hover:from-[#ef4444]/15 hover:to-[#ef4444]/10 border border-[#ef4444]/25 hover:border-[#ef4444]/40 text-[#f87171] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                             >
                               Initialize Cooking
                             </button>
                           ) : ticket.onHold ? (
                             <button 
                               disabled 
-                              className="flex-1 py-3.5 bg-white/5 border border-white/5 text-[#A69984]/30 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl cursor-not-allowed text-center"
+                              className="flex-1 py-3 bg-white/[0.02] border border-white/[0.05] text-white/10 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl cursor-not-allowed text-center"
                             >
                               Hold
                             </button>
                           ) : (
                             <button 
                               onClick={() => handleStartCooking(ticket.id, ticket.tableNumber)}
-                              className="flex-1 py-3.5 bg-[#ffe2ab]/5 hover:bg-[#ffe2ab]/10 border border-[#ffe2ab]/15 text-[#ffe2ab]/90 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                              className="flex-1 py-3 bg-gradient-to-r from-[#ffe2ab]/10 to-[#ffd380]/5 hover:from-[#ffe2ab]/15 hover:to-[#ffd380]/10 border border-[#ffe2ab]/25 hover:border-[#ffe2ab]/55 text-[#ffe2ab] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center animate-glow-pulse"
                             >
                               Start Cooking
                             </button>
                           )}
                           <button 
                             onClick={() => handleRejectOrder(ticket.id, ticket.tableNumber)}
-                            className="py-3.5 px-4 bg-white/5 border border-white/10 hover:bg-[#ef4444]/10 hover:border-[#ef4444]/20 hover:text-[#ef4444] text-[#A69984] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                            className="py-3 px-5 bg-white/5 border border-white/10 hover:bg-[#ef4444]/10 hover:border-red-500/30 hover:text-[#f87171] text-[#A69984] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                           >
                             Cancel
                           </button>
@@ -649,13 +660,13 @@ export default function KdsPage() {
                         <div className="flex gap-3">
                           <button 
                             onClick={() => handleCompleteOrder(ticket.id, ticket.tableNumber)}
-                            className="flex-1 py-3.5 bg-[#10b981]/10 hover:bg-[#10b981]/20 border border-[#10b981]/20 text-[#10b981] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                            className="flex-1 py-3 bg-gradient-to-r from-[#10b981]/15 to-[#059669]/10 hover:from-[#10b981]/25 hover:to-[#059669]/15 border border-[#10b981]/30 hover:border-[#10b981]/50 text-[#34d399] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                           >
                             Mark Ready
                           </button>
                           <button 
                             onClick={() => handleRejectOrder(ticket.id, ticket.tableNumber)}
-                            className="py-3.5 px-4 bg-white/5 border border-white/10 hover:bg-[#ef4444]/10 hover:border-[#ef4444]/20 hover:text-[#ef4444] text-[#A69984] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                            className="py-3 px-5 bg-white/5 border border-white/10 hover:bg-[#ef4444]/10 hover:border-red-500/30 hover:text-[#f87171] text-[#A69984] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                           >
                             Cancel
                           </button>
@@ -665,7 +676,7 @@ export default function KdsPage() {
                       {ticket.status === 'complete' && (
                         <button 
                           onClick={() => handleBumpOrder(ticket.id, ticket.tableNumber)}
-                          className="w-full py-3.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white/80 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                          className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                         >
                           Bump / Archive
                         </button>
@@ -675,20 +686,19 @@ export default function KdsPage() {
                         <div className="flex gap-3">
                           <button 
                             onClick={() => handleRestoreOrder(ticket.id, ticket.tableNumber)}
-                            className="flex-1 py-3.5 bg-[#ffe2ab]/5 hover:bg-[#ffe2ab]/10 border border-[#ffe2ab]/15 text-[#ffe2ab]/90 font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
+                            className="flex-1 py-3 bg-gradient-to-r from-[#ffe2ab]/10 to-[#ffd380]/5 hover:from-[#ffe2ab]/15 hover:to-[#ffd380]/10 border border-[#ffe2ab]/25 hover:border-[#ffe2ab]/55 text-[#ffe2ab] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl transition-all cursor-pointer text-center"
                           >
                             Restore Order
                           </button>
                           <button 
                             onClick={() => handleBumpOrder(ticket.id, ticket.tableNumber)}
-                            className="py-3.5 px-4 bg-white/5 border border-[#ef4444]/20 text-[#ef4444] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl hover:bg-[#ef4444]/10 transition-all cursor-pointer text-center"
+                            className="py-3 px-5 bg-white/5 border border-[#ef4444]/20 text-[#ef4444] font-sans font-bold text-[11px] uppercase tracking-widest rounded-xl hover:bg-[#ef4444]/10 transition-all cursor-pointer text-center"
                           >
                             Delete
                           </button>
                         </div>
                       )}
                     </div>
-
                   </div>
                 );
               })}
