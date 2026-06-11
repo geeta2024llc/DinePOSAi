@@ -107,9 +107,11 @@ const mockTransactions: TransactionRecord[] = [
 ];
 
 export default function TransactionHistoryPage() {
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('today');
   const [methodFilter, setMethodFilter] = useState('all');
+  const [isLoaded, setIsLoaded] = useState(false);
   
   // Toast notification state
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'info' }>({
@@ -133,10 +135,32 @@ export default function TransactionHistoryPage() {
         }
       }
 
+      // Load completed records from localStorage
+      const savedTransactions = localStorage.getItem('dinepos_pos_transactions');
+      if (savedTransactions) {
+        try {
+          setTransactions(JSON.parse(savedTransactions));
+        } catch (e) {
+          console.error(e);
+          setTransactions(mockTransactions);
+        }
+      } else {
+        setTransactions(mockTransactions);
+        localStorage.setItem('dinepos_pos_transactions', JSON.stringify(mockTransactions));
+      }
+      setIsLoaded(true);
+
       const handleStorageChange = (e: StorageEvent) => {
         if (e.key === 'dinepos_active_operator' && e.newValue) {
           try {
             setActiveOperator(JSON.parse(e.newValue));
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        if (e.key === 'dinepos_pos_transactions' && e.newValue) {
+          try {
+            setTransactions(JSON.parse(e.newValue));
           } catch (err) {
             console.error(err);
           }
@@ -157,7 +181,7 @@ export default function TransactionHistoryPage() {
   };
 
   // Filter transactions based on inputs
-  const filteredTransactions = mockTransactions.filter(tx => {
+  const filteredTransactions = transactions.filter(tx => {
     // Search filter
     const matchesSearch = 
       tx.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -470,7 +494,7 @@ export default function TransactionHistoryPage() {
             {/* Pagination Footer */}
             <div className="p-6 border-t border-white/5 bg-[#0e0e0d]/30 flex justify-between items-center text-[10.5px] text-[#A69984]/60 font-medium select-none">
               <span>
-                Showing 1-{filteredTransactions.length} of {searchQuery || methodFilter !== 'all' ? filteredTransactions.length : '245'} transactions
+                Showing 1-{filteredTransactions.length} of {searchQuery || methodFilter !== 'all' ? filteredTransactions.length : transactions.length} transactions
               </span>
               <div className="flex items-center gap-2">
                 <button 

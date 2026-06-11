@@ -42,7 +42,6 @@ export default function CashierSettingsPage() {
 
   // Terminal Settings States
   const [terminalName, setTerminalName] = useState('Terminal 01');
-  const [customerTableNumber, setCustomerTableNumber] = useState(12);
   const [drawerAutoOpen, setDrawerAutoOpen] = useState(true);
   const [defaultCategory, setDefaultCategory] = useState('all');
   const [defaultServiceMode, setDefaultServiceMode] = useState('dine-in');
@@ -81,18 +80,6 @@ export default function CashierSettingsPage() {
       setUiScaling(localStorage.getItem('dinepos_cashier_ui_scaling') || 'standard');
       setTheme(localStorage.getItem('dinepos_cashier_theme') || 'gold-obsidian');
       setLanguage(localStorage.getItem('dinepos_cashier_language') || 'en');
-
-      const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
-      if (savedExclusions) {
-        try {
-          const parsed = JSON.parse(savedExclusions);
-          if (parsed.customerTableNumber !== undefined) {
-            setCustomerTableNumber(parsed.customerTableNumber);
-          }
-        } catch (e) {
-          console.error('Failed to parse exclusions config:', e);
-        }
-      }
     }
   }, []);
 
@@ -125,34 +112,6 @@ export default function CashierSettingsPage() {
         localStorage.setItem('dinepos_cashier_ui_scaling', uiScaling);
         localStorage.setItem('dinepos_cashier_theme', theme);
         localStorage.setItem('dinepos_cashier_language', language);
-
-        // Update the customer table number in exclusions config for the guest menu
-        const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
-        let exclusionsObj = {
-          maxPrice: 40,
-          excludedTags: ['Seafood'],
-          showAIConcierge: true,
-          enableSelfCheckout: true,
-          customerTableNumber: 12,
-          enableTimeBasedMenu: false,
-          lunchStart: '11:00',
-          lunchEnd: '15:00',
-          dinnerStart: '18:00',
-          dinnerEnd: '23:00'
-        };
-        if (savedExclusions) {
-          try {
-            exclusionsObj = { ...exclusionsObj, ...JSON.parse(savedExclusions) };
-          } catch (e) {
-            console.error('Failed to parse exclusions config:', e);
-          }
-        }
-        exclusionsObj.customerTableNumber = customerTableNumber;
-        localStorage.setItem('dinepos_exclusions_config', JSON.stringify(exclusionsObj));
-        window.dispatchEvent(new StorageEvent('storage', {
-          key: 'dinepos_exclusions_config',
-          newValue: JSON.stringify(exclusionsObj)
-        }));
       }
 
       setIsSaving(false);
@@ -388,22 +347,6 @@ export default function CashierSettingsPage() {
                     <option value="takeaway">Takeaway (Walk-in)</option>
                     <option value="delivery">Delivery</option>
                   </select>
-                </div>
-
-                <div className="space-y-2 border-t border-white/5 pt-4">
-                  <label className="block text-[#A69984]/70 font-bold uppercase tracking-wider">Fixed Customer Table Number</label>
-                  <select
-                    value={customerTableNumber}
-                    onChange={(e) => setCustomerTableNumber(parseInt(e.target.value, 10))}
-                    className="w-full bg-[#0a0a09] border border-white/10 rounded-xl px-4 py-3 text-[#ffe2ab] focus:outline-none focus:border-[#ffe2ab]/30 font-semibold cursor-pointer"
-                  >
-                    {Array.from({ length: 16 }, (_, i) => i + 1).map(num => (
-                      <option key={num} value={num}>T{num}</option>
-                    ))}
-                  </select>
-                  <p className="text-[10px] text-[#A69984]/50 mt-1">
-                    Table number locked for guest users (Customer Role) accessing the digital menu.
-                  </p>
                 </div>
               </div>
             </div>

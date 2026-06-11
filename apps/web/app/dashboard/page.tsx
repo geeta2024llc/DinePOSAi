@@ -1138,7 +1138,6 @@ export default function DashboardPage() {
     excludedTags: ['Seafood'],
     showAIConcierge: true,
     enableSelfCheckout: true,
-    customerTableNumber: 12,
     enableTimeBasedMenu: false,
     lunchStart: '11:00',
     lunchEnd: '15:00',

@@ -48,6 +48,7 @@ const itemModifiersConfig: { [itemId: string]: { title: string; options: { name:
 export default function OrderStatusPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [activeStep, setActiveStep] = useState(2); // 1 = Received, 2 = Cooking, 3 = Plating, 4 = Ready
+  const [activeTicket, setActiveTicket] = useState<any>(null);
   
   const [placedOrder, setPlacedOrder] = useState<{ [cartKey: string]: CartItem }>({});
   const [tableNumber, setTableNumber] = useState(12);
@@ -93,6 +94,23 @@ export default function OrderStatusPage() {
   const [editingItemData, setEditingItemData] = useState<{ id: string; name: string; quantity: number; notes: string } | null>(null);
 
   useEffect(() => {
+    const activeTicketId = localStorage.getItem('dinepos_active_ticket_id');
+    const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+    if (activeTicketId && sharedTicketsStr) {
+      try {
+        const tickets = JSON.parse(sharedTicketsStr);
+        const matched = tickets.find((t: any) => t.id === activeTicketId);
+        if (matched) {
+          setActiveTicket(matched);
+          setTableNumber(parseInt(matched.tableNumber.replace('Table ', ''), 10) || 12);
+          const step = matched.status === 'pending' ? 1 : matched.status === 'cooking' ? 2 : matched.status === 'complete' ? 4 : 2;
+          setActiveStep(step);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     const savedOrder = localStorage.getItem('dinepos_placed_order');
     if (savedOrder) {
       try {
@@ -114,7 +132,7 @@ export default function OrderStatusPage() {
     if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
 
     const savedTable = localStorage.getItem('dinepos_table_number');
-    if (savedTable) {
+    if (savedTable && !activeTicketId) {
       setTableNumber(parseInt(savedTable, 10) || 12);
     }
     const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
@@ -134,6 +152,23 @@ export default function OrderStatusPage() {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'dinepos_shared_tickets' && e.newValue) {
+        const activeTicketId = localStorage.getItem('dinepos_active_ticket_id');
+        if (activeTicketId) {
+          try {
+            const tickets = JSON.parse(e.newValue);
+            const matched = tickets.find((t: any) => t.id === activeTicketId);
+            if (matched) {
+              setActiveTicket(matched);
+              setTableNumber(parseInt(matched.tableNumber.replace('Table ', ''), 10) || 12);
+              const step = matched.status === 'pending' ? 1 : matched.status === 'cooking' ? 2 : matched.status === 'complete' ? 4 : 2;
+              setActiveStep(step);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
       if (e.key === 'dinepos_exclusions_config' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
@@ -164,11 +199,13 @@ export default function OrderStatusPage() {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const isOrderEmpty = !isLoaded || Object.keys(placedOrder).length === 0;
+  const isOrderEmpty = !isLoaded || ((!placedOrder || Object.keys(placedOrder).length === 0) && !activeTicket);
 
   // Calculations for receipt
   let subtotal = 740;
-  if (!isOrderEmpty) {
+  if (activeTicket) {
+    subtotal = activeTicket.items.reduce((acc: number, item: any) => acc + (item.price * item.qty), 0);
+  } else if (!isOrderEmpty) {
     subtotal = Object.values(placedOrder).reduce((acc, ci) => {
       const item = menuItemsRegistry[ci.itemId];
       let modifierExtra = 0;
@@ -185,11 +222,13 @@ export default function OrderStatusPage() {
       return acc + (singlePrice * ci.quantity);
     }, 0);
   }
-  const taxRate = diningOption === 'takeaway'
-    ? taxRateTakeaway
-    : diningOption === 'delivery'
-      ? taxRateDelivery
-      : taxRateDineIn;
+  const taxRate = activeTicket
+    ? activeTicket.taxRate
+    : (diningOption === 'takeaway'
+      ? taxRateTakeaway
+      : diningOption === 'delivery'
+        ? taxRateDelivery
+        : taxRateDineIn);
   const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
@@ -245,7 +284,30 @@ export default function OrderStatusPage() {
     }
   };
   const handleDeletePendingItem = (itemId: string) => {
-    if (isOrderEmpty) {
+    if (activeTicket) {
+      const match = itemId.match(/-item-(\d+)$/);
+      if (match) {
+        const itemIdx = parseInt(match[1], 10);
+        const updatedItems = activeTicket.items.filter((_: any, idx: number) => idx !== itemIdx);
+        
+        const existingSharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+        if (existingSharedTicketsStr) {
+          try {
+            let tickets = JSON.parse(existingSharedTicketsStr);
+            tickets = tickets.map((t: any) => {
+              if (t.id === activeTicket.id) {
+                return { ...t, items: updatedItems };
+              }
+              return t;
+            });
+            localStorage.setItem('dinepos_shared_tickets', JSON.stringify(tickets));
+            setActiveTicket({ ...activeTicket, items: updatedItems });
+          } catch (e) {
+            console.error(e);
+          }
+        }
+      }
+    } else if (isOrderEmpty) {
       setFallbackList(prev => prev.filter(item => item.id !== itemId));
     } else {
       setPlacedOrder(prev => {
@@ -258,7 +320,21 @@ export default function OrderStatusPage() {
   };
 
   const handleEditPendingItem = (itemId: string) => {
-    if (isOrderEmpty) {
+    if (activeTicket) {
+      const match = itemId.match(/-item-(\d+)$/);
+      if (match) {
+        const itemIdx = parseInt(match[1], 10);
+        const item = activeTicket.items[itemIdx];
+        if (item) {
+          setEditingItemData({
+            id: itemId,
+            name: item.name,
+            quantity: item.qty,
+            notes: item.note || ''
+          });
+        }
+      }
+    } else if (isOrderEmpty) {
       const item = fallbackList.find(i => i.id === itemId);
       if (item) {
         const qtyMatch = item.details.match(/Qty:\s*x(\d+)/);
@@ -285,7 +361,39 @@ export default function OrderStatusPage() {
     e.preventDefault();
     if (!editingItemData) return;
 
-    if (isOrderEmpty) {
+    if (activeTicket) {
+      const match = editingItemData.id.match(/-item-(\d+)$/);
+      if (match) {
+        const itemIdx = parseInt(match[1], 10);
+        const updatedItems = activeTicket.items.map((item: any, idx: number) => {
+          if (idx === itemIdx) {
+            return {
+              ...item,
+              qty: editingItemData.quantity,
+              note: editingItemData.notes || undefined
+            };
+          }
+          return item;
+        });
+
+        const existingSharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+        if (existingSharedTicketsStr) {
+          try {
+            let tickets = JSON.parse(existingSharedTicketsStr);
+            tickets = tickets.map((t: any) => {
+              if (t.id === activeTicket.id) {
+                return { ...t, items: updatedItems };
+              }
+              return t;
+            });
+            localStorage.setItem('dinepos_shared_tickets', JSON.stringify(tickets));
+            setActiveTicket({ ...activeTicket, items: updatedItems });
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
+    } else if (isOrderEmpty) {
       setFallbackList(prev => prev.map(item => {
         if (item.id === editingItemData.id) {
           let details = `Qty: x${editingItemData.quantity}`;
@@ -316,27 +424,49 @@ export default function OrderStatusPage() {
     setEditingItemData(null);
   };
 
-  const selectionItems = isOrderEmpty
-    ? fallbackList
-    : Object.entries(placedOrder).map(([key, ci], idx) => {
-        const registryItem = menuItemsRegistry[ci.itemId];
-        const statusInfo = getStatusInfo(idx, Object.keys(placedOrder).length);
-        let detailsStr = `Qty: x${ci.quantity}`;
-        if (ci.modifiers && ci.modifiers.length > 0) {
-          detailsStr += ` • ${ci.modifiers.join(', ')}`;
+  const selectionItems = activeTicket
+    ? activeTicket.items.map((item: any, idx: number) => {
+        const itemStatus = activeTicket.status === 'pending' ? 'Pending' : activeTicket.status === 'cooking' ? 'Cooking' : activeTicket.status === 'complete' ? 'Prepared' : 'Pending';
+        const itemStatusType = activeTicket.status === 'pending' ? 'pending' : activeTicket.status === 'cooking' ? 'active' : activeTicket.status === 'complete' ? 'completed' : 'pending';
+        
+        let detailsStr = `Qty: x${item.qty}`;
+        if (item.options && item.options.length > 0) {
+          detailsStr += ` • ${item.options.map((o: any) => o.text).join(', ')}`;
         }
-        if (ci.notes) {
-          detailsStr += ` • "${ci.notes}"`;
+        if (item.note) {
+          detailsStr += ` • "${item.note}"`;
         }
+
         return {
-          id: key,
-          name: registryItem ? registryItem.name : 'Gourmet Selection',
+          id: `${activeTicket.id}-item-${idx}`,
+          name: item.name,
           details: detailsStr,
-          status: statusInfo.status,
-          statusType: statusInfo.statusType,
-          icon: getItemIcon(registryItem ? registryItem.category : 'mains')
+          status: itemStatus,
+          statusType: itemStatusType,
+          icon: getItemIcon(item.course || 'mains')
         };
-      });
+      })
+    : isOrderEmpty
+      ? fallbackList
+      : Object.entries(placedOrder).map(([key, ci], idx) => {
+          const registryItem = menuItemsRegistry[ci.itemId];
+          const statusInfo = getStatusInfo(idx, Object.keys(placedOrder).length);
+          let detailsStr = `Qty: x${ci.quantity}`;
+          if (ci.modifiers && ci.modifiers.length > 0) {
+            detailsStr += ` • ${ci.modifiers.join(', ')}`;
+          }
+          if (ci.notes) {
+            detailsStr += ` • "${ci.notes}"`;
+          }
+          return {
+            id: key,
+            name: registryItem ? registryItem.name : 'Gourmet Selection',
+            details: detailsStr,
+            status: statusInfo.status,
+            statusType: statusInfo.statusType,
+            icon: getItemIcon(registryItem ? registryItem.category : 'mains')
+          };
+        });
 
   return (
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#f5f5f5] font-sans overflow-hidden antialiased select-none relative">
@@ -429,7 +559,7 @@ export default function OrderStatusPage() {
               Order Status
             </h2>
             <div className="font-sans text-xs text-[#A69984]/70 mt-1 select-none font-semibold">
-              Table {isLoaded ? tableNumber : 42} • Order #88A92
+              Table {isLoaded ? tableNumber : 42} • Order #{activeTicket ? activeTicket.orderNumber : '88A92'}
             </div>
           </div>
 
@@ -533,7 +663,7 @@ export default function OrderStatusPage() {
             </h3>
             
             <div className="bg-[#161513]/90 border border-white/5 rounded-2xl overflow-hidden shadow-lg divide-y divide-white/5">
-              {selectionItems.map(item => (
+              {selectionItems.map((item: any) => (
                 <div key={item.id} className="flex justify-between items-center p-6 hover:bg-white/[0.01] transition-colors">
                   <div className="flex items-center gap-5">
                     
@@ -642,7 +772,7 @@ export default function OrderStatusPage() {
               <div className="flex justify-between items-center mb-8 border-b border-white/5 pb-4 select-none">
                 <div>
                   <h3 className="font-serif text-2xl text-white font-medium tracking-wide">Itemized Receipt</h3>
-                  <p className="text-[#A69984]/50 font-sans text-xs mt-1">Table {isLoaded ? tableNumber : 42} • Invoice #DINE-88A92</p>
+                  <p className="text-[#A69984]/50 font-sans text-xs mt-1">Table {isLoaded ? tableNumber : 42} • Invoice #{activeTicket ? activeTicket.orderNumber : '88A92'}</p>
                 </div>
                 <button 
                   onClick={() => setShowReceipt(false)}
@@ -654,7 +784,28 @@ export default function OrderStatusPage() {
 
               {/* Receipt Breakdowns */}
               <div className="space-y-4 font-sans select-none">
-                {isOrderEmpty ? (
+                {activeTicket ? (
+                  activeTicket.items.map((item: any, idx: number) => {
+                    const itemTotal = item.price * item.qty;
+                    return (
+                      <div key={idx} className={`flex justify-between items-start py-1 ${idx > 0 ? 'border-t border-white/5 pt-4' : ''}`}>
+                        <div className="max-w-[70%]">
+                          <div className="font-serif text-sm text-white font-medium tracking-wide">{item.name}</div>
+                          {item.options && item.options.length > 0 && (
+                            <div className="text-[#ffe2ab]/75 text-[10px] font-sans mt-0.5 italic">{item.options.map((o: any) => o.text).join(', ')}</div>
+                          )}
+                          {item.note && (
+                            <div className="text-[#A69984]/50 text-[10px] font-sans mt-0.5 italic">Note: "{item.note}"</div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className="text-white text-xs font-bold font-sans">x{item.qty}</div>
+                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">${itemTotal.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : isOrderEmpty ? (
                   <>
                     <div className="flex justify-between items-start py-1">
                       <div className="max-w-[70%]">

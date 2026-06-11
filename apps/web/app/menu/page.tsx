@@ -291,7 +291,6 @@ export default function DigitalMenuPage() {
     excludedTags: string[];
     showAIConcierge: boolean;
     enableSelfCheckout: boolean;
-    customerTableNumber?: number;
     enableTimeBasedMenu?: boolean;
     lunchStart?: string;
     lunchEnd?: string;
@@ -302,7 +301,6 @@ export default function DigitalMenuPage() {
     excludedTags: ['Seafood'],
     showAIConcierge: true,
     enableSelfCheckout: true,
-    customerTableNumber: 12,
     enableTimeBasedMenu: false,
     lunchStart: '11:00',
     lunchEnd: '15:00',
@@ -599,13 +597,6 @@ export default function DigitalMenuPage() {
       setOrderSubmitted(true);
     }
   }, []);
-
-  // Sync Customer Role Table Number dynamically when config loads or updates
-  useEffect(() => {
-    if (userRole === 'customer' && exclusionsConfig.customerTableNumber !== undefined) {
-      setTableNumber(exclusionsConfig.customerTableNumber);
-    }
-  }, [userRole, exclusionsConfig.customerTableNumber]);
 
   // Sync menu items and categories in real-time across browser tabs/windows
   useEffect(() => {
@@ -948,6 +939,101 @@ export default function DigitalMenuPage() {
       triggerPairingToast("Cart contains unavailable items. Please review your selections.");
       return;
     }
+    
+    // Generate order ID
+    let savedOrderId = localStorage.getItem('dinepos_order_id');
+    if (!savedOrderId) {
+      savedOrderId = `DP-${Math.floor(10000 + Math.random() * 90000)}`;
+      localStorage.setItem('dinepos_order_id', savedOrderId);
+    }
+    
+    const activeEmail = localStorage.getItem('dinepos_logged_in_email') || 'customer@dinepos.ai';
+    
+    // Retrieve tax rates
+    const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
+    const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
+    const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
+    const taxRateDineIn = savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : 0.10;
+    const taxRateTakeaway = savedTaxRateTakeaway ? parseFloat(savedTaxRateTakeaway) / 100 : 0.08;
+    const taxRateDelivery = savedTaxRateDelivery ? parseFloat(savedTaxRateDelivery) / 100 : 0.08;
+    
+    const resolvedDiningType = diningOption === 'all' ? 'dine-in' : diningOption;
+    const taxRate = resolvedDiningType === 'takeaway'
+      ? taxRateTakeaway
+      : resolvedDiningType === 'delivery'
+        ? taxRateDelivery
+        : taxRateDineIn;
+
+    // Compile ticket items
+    const ticketItems = Object.values(cart).map(cartItem => {
+      const itemObj = items.find(m => m.id === cartItem.itemId);
+      
+      // Calculate item modifiers extra price
+      let modifierExtra = 0;
+      cartItem.modifiers.forEach(modName => {
+        const configs = itemModifiersConfig[cartItem.itemId] || [];
+        for (const config of configs) {
+          const opt = config.options.find(o => o.name === modName);
+          if (opt?.price) {
+            modifierExtra += opt.price;
+          }
+        }
+      });
+      
+      const unitPrice = (itemObj ? itemObj.price : 0) + modifierExtra;
+      
+      // Format options to match KdsTicket/PosTicket options type
+      const optionsMapped = cartItem.modifiers.map(mod => {
+        const isAllergy = mod.toLowerCase().includes('allergy') || mod.toLowerCase().includes('no ');
+        return {
+          text: mod,
+          type: isAllergy ? ('allergy' as const) : ('default' as const)
+        };
+      });
+
+      return {
+        qty: cartItem.quantity,
+        name: itemObj ? itemObj.name : 'Unknown Item',
+        price: unitPrice,
+        note: cartItem.notes || undefined,
+        course: cartItem.course,
+        options: optionsMapped
+      };
+    });
+
+    const newTicket = {
+      id: savedOrderId,
+      orderNumber: savedOrderId.replace('DP-', ''),
+      tableNumber: `Table ${tableNumber.toString().padStart(2, '0')}`,
+      serverName: activeEmail === 'waiter@dinepos.ai' ? 'Michael T.' : 'Self Service',
+      guests: 2,
+      type: resolvedDiningType,
+      status: 'pending' as const,
+      paymentStatus: 'unpaid' as const,
+      isVip: ticketItems.some(i => i.price >= 80),
+      secondsElapsed: 0,
+      items: ticketItems,
+      taxRate: taxRate,
+      gratuityRate: 0.20,
+      createdAt: new Date().toISOString()
+    };
+
+    // Load existing shared tickets and append/update
+    const existingSharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+    let sharedTickets = [];
+    if (existingSharedTicketsStr) {
+      try {
+        sharedTickets = JSON.parse(existingSharedTicketsStr);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    // Remove if there is an existing unpaid ticket with the same ID to prevent duplicates
+    sharedTickets = sharedTickets.filter((t: any) => t.id !== savedOrderId);
+    sharedTickets.push(newTicket);
+    localStorage.setItem('dinepos_shared_tickets', JSON.stringify(sharedTickets));
+    localStorage.setItem('dinepos_active_ticket_id', savedOrderId);
+
     setIsCartOpen(false);
     setOrderSubmitted(true);
     localStorage.setItem('dinepos_order_submitted', 'true');

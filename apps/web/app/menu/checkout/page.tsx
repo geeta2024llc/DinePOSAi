@@ -109,6 +109,7 @@ export default function CheckoutPage() {
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
   const [orderId, setOrderId] = useState('DP-88392');
+  const [activeTicket, setActiveTicket] = useState<any>(null);
 
   // Toast notifications feedback
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'info' }>({
@@ -192,6 +193,21 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'dinepos_shared_tickets' && e.newValue) {
+        const activeTicketId = localStorage.getItem('dinepos_active_ticket_id');
+        if (activeTicketId) {
+          try {
+            const tickets = JSON.parse(e.newValue);
+            const matched = tickets.find((t: any) => t.id === activeTicketId);
+            if (matched) {
+              setActiveTicket(matched);
+              setTableNumber(parseInt(matched.tableNumber.replace('Table ', ''), 10) || 12);
+            }
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
       if (e.key === 'dinepos_tax_type' && e.newValue) {
         if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
@@ -237,6 +253,22 @@ export default function CheckoutPage() {
   // migrateCart helper is imported from cartUtils
 
   useEffect(() => {
+    const activeTicketId = localStorage.getItem('dinepos_active_ticket_id');
+    const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+    if (activeTicketId && sharedTicketsStr) {
+      try {
+        const tickets = JSON.parse(sharedTicketsStr);
+        const matched = tickets.find((t: any) => t.id === activeTicketId);
+        if (matched) {
+          setActiveTicket(matched);
+          setTableNumber(parseInt(matched.tableNumber.replace('Table ', ''), 10) || 12);
+          setOrderId(matched.id);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     let loadedCart = {};
     const savedCart = localStorage.getItem('dinepos_cart');
     if (savedCart) {
@@ -253,7 +285,7 @@ export default function CheckoutPage() {
     setCart(loadedCart);
 
     const savedTable = localStorage.getItem('dinepos_table_number');
-    if (savedTable) {
+    if (savedTable && !activeTicketId) {
       setTableNumber(parseInt(savedTable, 10) || 12);
     }
 
@@ -298,12 +330,14 @@ export default function CheckoutPage() {
     }
 
     // Load dynamic order ID or generate one
-    let savedOrderId = localStorage.getItem('dinepos_order_id');
-    if (!savedOrderId) {
-      savedOrderId = `DP-${Math.floor(10000 + Math.random() * 90000)}`;
-      localStorage.setItem('dinepos_order_id', savedOrderId);
+    if (!activeTicketId) {
+      let savedOrderId = localStorage.getItem('dinepos_order_id');
+      if (!savedOrderId) {
+        savedOrderId = `DP-${Math.floor(10000 + Math.random() * 90000)}`;
+        localStorage.setItem('dinepos_order_id', savedOrderId);
+      }
+      setOrderId(savedOrderId);
     }
-    setOrderId(savedOrderId);
 
     setIsLoaded(true);
   }, []);
@@ -333,10 +367,28 @@ export default function CheckoutPage() {
     }
   }, [splitMethod, isLoaded]);
 
-  const isCartEmpty = !isLoaded || Object.keys(cart).length === 0;
+  const isCartEmpty = !isLoaded || (Object.keys(cart).length === 0 && !activeTicket);
 
   // Render items based on cart
   const getDisplayItems = (): DisplayCartItem[] => {
+    if (activeTicket) {
+      return activeTicket.items.map((item: any) => {
+        let details = [`Course: ${(item.course || 'main').toUpperCase()}`];
+        if (item.options && item.options.length > 0) {
+          details.unshift(item.options.map((o: any) => o.text).join(', '));
+        }
+        return {
+          name: item.name,
+          quantity: item.qty,
+          price: item.price * item.qty,
+          modifiers: item.options ? item.options.map((o: any) => o.text) : [],
+          course: item.course || 'main',
+          notes: item.note,
+          details: details
+        };
+      });
+    }
+
     if (isCartEmpty) {
       return [];
     }
@@ -373,21 +425,29 @@ export default function CheckoutPage() {
 
   // Calculations
   const subtotal = getDisplayItems().reduce((acc, item) => acc + item.price, 0);
-  const taxRate = diningOption === 'takeaway'
-    ? taxRateTakeaway
-    : diningOption === 'delivery'
-      ? taxRateDelivery
-      : taxRateDineIn;
+  const taxRate = activeTicket
+    ? activeTicket.taxRate
+    : (diningOption === 'takeaway'
+      ? taxRateTakeaway
+      : diningOption === 'delivery'
+        ? taxRateDelivery
+        : taxRateDineIn);
   const tax = taxType === 'pre-tax'
     ? subtotal * taxRate
     : subtotal - (subtotal / (1 + taxRate));
-  const autoGratuityRate = 0.20;
+  const autoGratuityRate = activeTicket ? (activeTicket.gratuityRate || 0.20) : 0.20;
   const autoGratuity = subtotal * autoGratuityRate;
-  const promoDiscountAmount = appliedPromo
-    ? appliedPromo.type === 'percent'
-      ? subtotal * (appliedPromo.value / 100)
-      : Math.min(appliedPromo.value, subtotal)
-    : 0;
+  
+  // Read cashier-applied discount from activeTicket if present
+  const cashierDiscountAmount = (activeTicket && activeTicket.appliedDiscount) ? activeTicket.appliedDiscount.amount : 0;
+
+  const promoDiscountAmount = cashierDiscountAmount > 0
+    ? cashierDiscountAmount
+    : (appliedPromo
+      ? (appliedPromo.type === 'percent'
+        ? subtotal * (appliedPromo.value / 100)
+        : Math.min(appliedPromo.value, subtotal))
+      : 0);
   const total = taxType === 'pre-tax'
     ? Math.max(0, subtotal + tax + autoGratuity - promoDiscountAmount)
     : Math.max(0, subtotal + autoGratuity - promoDiscountAmount);
@@ -501,14 +561,90 @@ export default function CheckoutPage() {
       setProcessingStep(2);
       setTimeout(() => {
         setProcessingStep(3);
+        
+        // Update shared ticket payment status
+        const existingSharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+        let sharedTickets = [];
+        if (existingSharedTicketsStr) {
+          try {
+            sharedTickets = JSON.parse(existingSharedTicketsStr);
+          } catch (err) {}
+        }
+        
+        sharedTickets = sharedTickets.map((t: any) => {
+          if (t.id === orderId) {
+            return {
+              ...t,
+              status: 'complete',
+              paymentStatus: 'paid'
+            };
+          }
+          return t;
+        });
+        localStorage.setItem('dinepos_shared_tickets', JSON.stringify(sharedTickets));
+
+        // Create transaction record and push to dinepos_pos_transactions
+        const transactionId = `tx-${Math.floor(100000 + Math.random() * 900000)}`;
+        const dateObj = new Date();
+        const dateOptions: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
+        const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+        
+        const newTx = {
+          id: transactionId,
+          orderId: `#ORD-${orderId.replace('DP-', '')}`,
+          date: dateObj.toLocaleDateString('en-US', dateOptions),
+          time: dateObj.toLocaleTimeString('en-US', timeOptions),
+          tableType: 'table' as const,
+          tableLabel: `Tbl ${tableNumber.toString().padStart(2, '0')}`,
+          server: activeTicket ? activeTicket.serverName : 'Self Service',
+          amount: total,
+          paymentMethod: 'Stripe Card',
+          paymentType: 'card' as const,
+          paymentDetails: `•••• ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`,
+          paymentIcon: 'credit_card'
+        };
+
+        const existingTxStr = localStorage.getItem('dinepos_pos_transactions');
+        let txList = [];
+        if (existingTxStr) {
+          try {
+            txList = JSON.parse(existingTxStr);
+          } catch (err) {}
+        }
+        txList.unshift(newTx);
+        localStorage.setItem('dinepos_pos_transactions', JSON.stringify(txList));
+
         // Clean up cart and placed order upon successful payment validation
         localStorage.removeItem('dinepos_cart');
         localStorage.removeItem('dinepos_placed_order');
         localStorage.removeItem('dinepos_split_item_assignments');
         localStorage.removeItem('dinepos_split_paid_guests');
+        localStorage.removeItem('dinepos_active_ticket_id');
       }, 1200);
     }, 1000);
   };
+
+  if (isLoaded && activeTicket && activeTicket.paymentStatus === 'paid') {
+    return (
+      <div className="min-h-screen bg-[#0e0e0d] text-[#e5e2e1] font-sans flex flex-col items-center justify-center p-8 select-none">
+        <div className="bg-[#161513] border border-[#ffe2ab]/20 rounded-2xl max-w-md w-full p-8 text-center shadow-[0_0_50px_rgba(255,226,171,0.15)] space-y-6">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mx-auto">
+            <span className="material-symbols-outlined text-3xl font-black">check_circle</span>
+          </div>
+          <h2 className="font-serif text-2xl text-white font-medium">Order Already Settled</h2>
+          <p className="text-xs text-[#A69984]/80 leading-relaxed">
+            This bill has been paid and settled. Thank you for dining with us!
+          </p>
+          <Link
+            href="/menu"
+            className="inline-block px-8 py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all shadow-[0_4px_20px_rgba(255,226,171,0.1)]"
+          >
+            Return to Table
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoaded && !exclusionsConfig.enableSelfCheckout) {
     return (

@@ -157,7 +157,37 @@ export default function KdsPage() {
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Real-time elapsed clock timers
+  // Load tickets on mount
+  useEffect(() => {
+    const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+    if (sharedTicketsStr) {
+      try {
+        setTickets(JSON.parse(sharedTicketsStr));
+      } catch (e) {
+        console.error(e);
+      }
+    } else {
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(initialTickets));
+    }
+  }, []);
+
+  // Listen to StorageEvent updates
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'dinepos_shared_tickets' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setTickets(parsed);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Real-time elapsed clock timers (kept in-memory to reduce localStorage write churn)
   useEffect(() => {
     const interval = setInterval(() => {
       setTickets(prev =>
@@ -180,35 +210,47 @@ export default function KdsPage() {
   };
 
   const handleStartCooking = (id: string, tableNumber: string) => {
-    setTickets(prev =>
-      prev.map(t => (t.id === id ? { ...t, status: 'cooking' } : t))
-    );
+    setTickets(prev => {
+      const updated = prev.map(t => (t.id === id ? { ...t, status: 'cooking' as const } : t));
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
+      return updated;
+    });
     triggerToast(`${tableNumber} order moved to Cooking!`);
   };
 
   const handleCompleteOrder = (id: string, tableNumber: string) => {
-    setTickets(prev =>
-      prev.map(t => (t.id === id ? { ...t, status: 'complete' } : t))
-    );
+    setTickets(prev => {
+      const updated = prev.map(t => (t.id === id ? { ...t, status: 'complete' as const } : t));
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
+      return updated;
+    });
     triggerToast(`${tableNumber} order marked Ready!`);
   };
 
   const handleRejectOrder = (id: string, tableNumber: string) => {
-    setTickets(prev =>
-      prev.map(t => (t.id === id ? { ...t, status: 'rejected' } : t))
-    );
+    setTickets(prev => {
+      const updated = prev.map(t => (t.id === id ? { ...t, status: 'rejected' as const } : t));
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
+      return updated;
+    });
     triggerToast(`${tableNumber} order rejected.`);
   };
 
   const handleRestoreOrder = (id: string, tableNumber: string) => {
-    setTickets(prev =>
-      prev.map(t => (t.id === id ? { ...t, status: 'pending' } : t))
-    );
+    setTickets(prev => {
+      const updated = prev.map(t => (t.id === id ? { ...t, status: 'pending' as const } : t));
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
+      return updated;
+    });
     triggerToast(`${tableNumber} order restored.`);
   };
 
   const handleBumpOrder = (id: string, tableNumber: string) => {
-    setTickets(prev => prev.filter(t => t.id !== id));
+    setTickets(prev => {
+      const updated = prev.filter(t => t.id !== id);
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
+      return updated;
+    });
     triggerToast(`${tableNumber} ticket archived.`);
   };
 

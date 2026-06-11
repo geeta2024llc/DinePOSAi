@@ -65,7 +65,32 @@ interface PosTicket {
   splitGuestCount?: number;
   splitPaidGuests?: number[];
   splitItemAssignments?: Record<number, number>;
+  appliedDiscount?: {
+    type: string;
+    amount: number;
+    label: string;
+    percentValue?: number;
+    fixedValue?: number;
+    promoCode?: string;
+  } | null;
 }
+
+const recalculateDiscountAmount = (subtotal: number, discount: any): number => {
+  if (!discount) return 0;
+  if (discount.type === 'percent') {
+    return subtotal * ((discount.percentValue || 0) / 100);
+  } else if (discount.type === 'fixed') {
+    return Math.min(discount.fixedValue || 0, subtotal);
+  } else if (discount.type === 'promo') {
+    if (discount.percentValue !== undefined) {
+      return subtotal * (discount.percentValue / 100);
+    }
+    if (discount.fixedValue !== undefined) {
+      return Math.min(discount.fixedValue, subtotal);
+    }
+  }
+  return discount.amount || 0;
+};
 
 const initialTickets: PosTicket[] = [
   {
@@ -130,6 +155,7 @@ export default function PosPage() {
   
   // Transaction processing loader state
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
   const [taxRateDineIn, setTaxRateDineIn] = useState(0.085);
@@ -179,7 +205,14 @@ export default function PosPage() {
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [discountFixed, setDiscountFixed] = useState<number>(0);
   const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [appliedDiscount, setAppliedDiscount] = useState<{ type: string; amount: number; label: string } | null>(null);
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    type: string;
+    amount: number;
+    label: string;
+    percentValue?: number;
+    fixedValue?: number;
+    promoCode?: string;
+  } | null>(null);
 
   // Operator states
   const [activeOperator, setActiveOperator] = useState<Operator>(AVAILABLE_OPERATORS[0]);
@@ -199,15 +232,28 @@ export default function PosPage() {
       if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
       if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
 
-      setTickets(prev => prev.map(t => {
-        if (t.tableNumber.toLowerCase().includes('takeaway')) {
-          return { ...t, taxRate: savedTaxRateTakeaway ? parseFloat(savedTaxRateTakeaway) / 100 : t.taxRate };
-        } else if (t.tableNumber.toLowerCase().includes('delivery')) {
-          return { ...t, taxRate: savedTaxRateDelivery ? parseFloat(savedTaxRateDelivery) / 100 : t.taxRate };
-        } else {
-          return { ...t, taxRate: savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : t.taxRate };
+      // Load tickets from dinepos_shared_tickets
+      const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+      if (sharedTicketsStr) {
+        try {
+          setTickets(JSON.parse(sharedTicketsStr));
+        } catch (e) {
+          console.error(e);
+          setTickets(initialTickets);
         }
-      }));
+      } else {
+        const initialTicketsWithRates = initialTickets.map(t => {
+          if (t.tableNumber.toLowerCase().includes('takeaway')) {
+            return { ...t, taxRate: savedTaxRateTakeaway ? parseFloat(savedTaxRateTakeaway) / 100 : t.taxRate };
+          } else if (t.tableNumber.toLowerCase().includes('delivery')) {
+            return { ...t, taxRate: savedTaxRateDelivery ? parseFloat(savedTaxRateDelivery) / 100 : t.taxRate };
+          } else {
+            return { ...t, taxRate: savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : t.taxRate };
+          }
+        });
+        setTickets(initialTicketsWithRates);
+        localStorage.setItem('dinepos_shared_tickets', JSON.stringify(initialTicketsWithRates));
+      }
 
       // Load digital menu items
       const defaultMenuItems = [
@@ -261,8 +307,15 @@ export default function PosPage() {
         setCategories(defaultCategories);
         localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
       }
+      setIsLoaded(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(tickets));
+    }
+  }, [tickets, isLoaded]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -283,13 +336,35 @@ export default function PosPage() {
             console.error(err);
           }
         }
+        if (e.key === 'dinepos_shared_tickets' && e.newValue) {
+          try {
+            const parsed = JSON.parse(e.newValue);
+            setTickets(parsed);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+        if (e.key === 'dinepos_tax_type' && e.newValue) {
+          if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
+            setTaxType(e.newValue as 'pre-tax' | 'post-tax');
+          }
+        }
+        if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
+          setTaxRateDineIn(parseFloat(e.newValue) / 100);
+        }
+        if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
+          setTaxRateTakeaway(parseFloat(e.newValue) / 100);
+        }
+        if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
+          setTaxRateDelivery(parseFloat(e.newValue) / 100);
+        }
       };
       window.addEventListener('storage', handleStorageChange);
       return () => {
         window.removeEventListener('storage', handleStorageChange);
       };
     }
-  }, []);
+  }, [isLoaded]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -417,13 +492,19 @@ export default function PosPage() {
       }
       
       const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
+      if (newAppliedDiscount) {
+        newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
+      }
+      const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
       const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
       const itemGrat = sub * t.gratuityRate;
-      const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+      const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
       
       return {
         ...t,
         items: updatedItems,
+        appliedDiscount: newAppliedDiscount,
         cardAmount: totalAmount
       };
     }));
@@ -444,13 +525,19 @@ export default function PosPage() {
       });
       
       const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
+      if (newAppliedDiscount) {
+        newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
+      }
+      const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
       const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
       const itemGrat = sub * t.gratuityRate;
-      const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+      const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
       
       return {
         ...t,
         items: updatedItems,
+        appliedDiscount: newAppliedDiscount,
         cardAmount: totalAmount
       };
     }));
@@ -464,13 +551,19 @@ export default function PosPage() {
       const updatedItems = t.items.filter(i => !(i.name === itemName && (note === undefined || i.note === note)));
       
       const sub = updatedItems.reduce((acc, it) => acc + (it.price * it.qty), 0);
+      let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
+      if (newAppliedDiscount) {
+        newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
+      }
+      const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
       const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
       const itemGrat = sub * t.gratuityRate;
-      const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+      const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
       
       return {
         ...t,
         items: updatedItems,
+        appliedDiscount: newAppliedDiscount,
         cardAmount: totalAmount
       };
     }));
@@ -479,6 +572,15 @@ export default function PosPage() {
 
   // Find active selected ticket — may be undefined when all tickets are paid
   const selectedTicket = tickets.find(t => t.id === selectedTicketId) ?? tickets[0];
+
+  // Synchronize appliedDiscount state with selected ticket
+  useEffect(() => {
+    if (selectedTicket) {
+      setAppliedDiscount(selectedTicket.appliedDiscount || null);
+    } else {
+      setAppliedDiscount(null);
+    }
+  }, [selectedTicketId, selectedTicket?.appliedDiscount]);
 
   // Sync split states from active ticket
   useEffect(() => {
@@ -588,6 +690,41 @@ export default function PosPage() {
     
     setTimeout(() => {
       setIsProcessing(false);
+      
+      // Create transaction record
+      const transactionId = `tx-${Math.floor(100000 + Math.random() * 900000)}`;
+      const dateObj = new Date();
+      const dateOptions: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
+      const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+      
+      const isWalkin = selectedTicket.tableNumber.toLowerCase().includes('walk');
+      const tableType = isWalkin ? ('takeout' as const) : ('table' as const);
+      
+      const newTx = {
+        id: transactionId,
+        orderId: `#ORD-${selectedTicket.id.replace('ticket-', '').slice(0, 4).toUpperCase()}`,
+        date: dateObj.toLocaleDateString('en-US', dateOptions),
+        time: dateObj.toLocaleTimeString('en-US', timeOptions),
+        tableType: tableType,
+        tableLabel: isWalkin ? 'Takeaway' : `Tbl ${selectedTicket.tableNumber.replace('Table ', '')}`,
+        server: activeOperator.name,
+        amount: grandTotal + tipAmount,
+        paymentMethod: checkoutPaymentMethod.toUpperCase() === 'CASH' ? 'Cash' : 'Card',
+        paymentType: checkoutPaymentMethod.toUpperCase() === 'CASH' ? ('cash' as const) : ('card' as const),
+        paymentDetails: checkoutPaymentMethod.toUpperCase() === 'CASH' ? '' : '•••• 4242',
+        paymentIcon: checkoutPaymentMethod.toUpperCase() === 'CASH' ? 'payments' : 'credit_card'
+      };
+
+      const existingTxStr = localStorage.getItem('dinepos_pos_transactions');
+      let txList = [];
+      if (existingTxStr) {
+        try {
+          txList = JSON.parse(existingTxStr);
+        } catch (e) {}
+      }
+      txList.unshift(newTx);
+      localStorage.setItem('dinepos_pos_transactions', JSON.stringify(txList));
+
       let successMsg = `Payment validated! ${selectedTicket.tableNumber} ticket closed.`;
       if (checkoutNotes.trim()) {
         successMsg += ` Note saved: "${checkoutNotes.trim()}"`;
@@ -604,22 +741,63 @@ export default function PosPage() {
 
   const computeApplyDiscount = () => {
     if (!selectedTicket) return;
+    let newDiscount = null;
     if (discountMode === 'promo') {
       const code = promoCodeInput.toUpperCase().trim();
       const promo = VALID_PROMO_CODES[code];
       if (!promo) { triggerToast('Invalid promo code. Please try again.'); return; }
       const amount = promo.type === 'percent' ? subtotal * (promo.value / 100) : Math.min(promo.value, subtotal);
-      setAppliedDiscount({ type: 'promo', amount, label: `${code} — ${promo.label}` });
+      newDiscount = {
+        type: 'promo',
+        amount,
+        label: `${code} — ${promo.label}`,
+        promoCode: code,
+        percentValue: promo.type === 'percent' ? promo.value : undefined,
+        fixedValue: promo.type === 'fixed' ? promo.value : undefined
+      };
+      setAppliedDiscount(newDiscount);
       triggerToast(`Promo code "${code}" applied!`);
     } else if (discountMode === 'percent') {
       if (discountPercent <= 0 || discountPercent > 100) { triggerToast('Enter a valid percentage (1–100).'); return; }
-      setAppliedDiscount({ type: 'percent', amount: subtotal * (discountPercent / 100), label: `${discountPercent}% Discount` });
+      const amount = subtotal * (discountPercent / 100);
+      newDiscount = {
+        type: 'percent',
+        amount,
+        label: `${discountPercent}% Discount`,
+        percentValue: discountPercent
+      };
+      setAppliedDiscount(newDiscount);
       triggerToast(`${discountPercent}% discount applied.`);
     } else {
       if (discountFixed <= 0) { triggerToast('Enter a valid discount amount.'); return; }
-      setAppliedDiscount({ type: 'fixed', amount: Math.min(discountFixed, subtotal), label: `$${discountFixed.toFixed(2)} Off` });
+      const amount = Math.min(discountFixed, subtotal);
+      newDiscount = {
+        type: 'fixed',
+        amount,
+        label: `$${discountFixed.toFixed(2)} Off`,
+        fixedValue: discountFixed
+      };
+      setAppliedDiscount(newDiscount);
       triggerToast(`$${discountFixed.toFixed(2)} discount applied.`);
     }
+
+    // Update tickets array with applied discount and recalculated cardAmount
+    setTickets(prev => prev.map(t => {
+      if (t.id === selectedTicket.id) {
+        const sub = t.items.reduce((acc, it) => acc + (it.price * it.qty), 0);
+        const discAmt = newDiscount ? newDiscount.amount : 0;
+        const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
+        const itemGrat = sub * t.gratuityRate;
+        const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
+        return {
+          ...t,
+          appliedDiscount: newDiscount,
+          cardAmount: totalAmount
+        };
+      }
+      return t;
+    }));
+
     setDiscountVisible(false);
   };
 
@@ -628,6 +806,23 @@ export default function PosPage() {
     setDiscountPercent(0);
     setDiscountFixed(0);
     setPromoCodeInput('');
+
+    // Update tickets array to clear applied discount and recalculate cardAmount
+    setTickets(prev => prev.map(t => {
+      if (t.id === selectedTicket.id) {
+        const sub = t.items.reduce((acc, it) => acc + (it.price * it.qty), 0);
+        const itemTax = taxType === 'pre-tax' ? sub * t.taxRate : sub - (sub / (1 + t.taxRate));
+        const itemGrat = sub * t.gratuityRate;
+        const totalAmount = taxType === 'pre-tax' ? sub + itemTax + itemGrat : sub + itemGrat;
+        return {
+          ...t,
+          appliedDiscount: null,
+          cardAmount: totalAmount
+        };
+      }
+      return t;
+    }));
+
     triggerToast('Discount removed.');
   };
 
@@ -883,7 +1078,7 @@ export default function PosPage() {
                   return (
                     <div
                       key={t.id}
-                      onClick={() => { setSelectedTicketId(t.id); setMobileView('detail'); setAppliedDiscount(null); }}
+                      onClick={() => { setSelectedTicketId(t.id); setMobileView('detail'); }}
                       className={`border rounded-2xl p-6 transition-all duration-300 cursor-pointer relative shadow-md ${isActive ? 'border-[#ffe2ab] bg-white/[0.01]' : 'border-white/5 hover:border-white/10 bg-[#161513]/40'}`}
                     >
                       <div className="flex justify-between items-start mb-2">
