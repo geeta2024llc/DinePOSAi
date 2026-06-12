@@ -47,6 +47,7 @@ interface Tenant {
   tier?: string;
   region?: string;
   billingFailed?: boolean;
+  expiryDate: string;
 }
 
 interface AdminUser {
@@ -155,13 +156,31 @@ export default function SuperAdminPage() {
 
   // Stateful mock database
   const [tenants, setTenants] = useState<Tenant[]>([
-    { id: 'TEN-8821', name: 'The Obsidian Room', location: 'New York', terminals: 12, plan: 'ACTIVE', revenue: '$342,500', status: 'ACTIVE', joined: '2024-03-12', tier: 'Premium Plus', region: 'North America - East' },
-    { id: 'TEN-7734', name: 'Lumière Brasserie', location: 'London', terminals: 80, plan: 'ACTIVE', revenue: '$2,450,000', status: 'ACTIVE', joined: '2023-11-05', tier: 'Growth', region: 'Europe - West' },
-    { id: 'TEN-5512', name: 'Cafe Zenith', location: 'Kobarid', terminals: 6, plan: 'SUSPENDED', revenue: '$28,000', status: 'SUSPENDED', joined: '2025-09-02', tier: 'Standard', region: 'Asia Pacific', billingFailed: true },
-    { id: 'TEN-9021', name: 'Aman Resorts', location: 'Tokyo', terminals: 45, plan: 'ACTIVE', revenue: '$1,280,000', status: 'ACTIVE', joined: '2024-01-18', tier: 'Premium Plus', region: 'Asia Pacific' },
-    { id: 'TEN-4581', name: 'Bouchon Bakery', location: 'Las Vegas', terminals: 8, plan: 'TRIAL', revenue: '$45,000', status: 'ACTIVE', joined: '2026-05-20', tier: 'Standard', region: 'North America - East' },
-    { id: 'TEN-2195', name: 'Gaggan Anand', location: 'Bangkok', terminals: 14, plan: 'SUSPENDED', revenue: '$122,000', status: 'SUSPENDED', joined: '2025-02-15', tier: 'Growth', region: 'Asia Pacific' },
+    { id: 'TEN-8821', name: 'The Obsidian Room', location: 'New York', terminals: 12, plan: 'ACTIVE', revenue: '$342,500', status: 'ACTIVE', joined: '2024-03-12', tier: 'Premium Plus', region: 'North America - East', expiryDate: '2027-03-12' },
+    { id: 'TEN-7734', name: 'Lumière Brasserie', location: 'London', terminals: 80, plan: 'ACTIVE', revenue: '$2,450,000', status: 'ACTIVE', joined: '2023-11-05', tier: 'Growth', region: 'Europe - West', expiryDate: '2027-11-05' },
+    { id: 'TEN-5512', name: 'Cafe Zenith', location: 'Kobarid', terminals: 6, plan: 'SUSPENDED', revenue: '$28,000', status: 'SUSPENDED', joined: '2025-09-02', tier: 'Standard', region: 'Asia Pacific', billingFailed: true, expiryDate: '2025-09-02' },
+    { id: 'TEN-9021', name: 'Aman Resorts', location: 'Tokyo', terminals: 45, plan: 'ACTIVE', revenue: '$1,280,000', status: 'ACTIVE', joined: '2024-01-18', tier: 'Premium Plus', region: 'Asia Pacific', expiryDate: '2027-01-18' },
+    { id: 'TEN-4581', name: 'Bouchon Bakery', location: 'Las Vegas', terminals: 8, plan: 'TRIAL', revenue: '$45,000', status: 'ACTIVE', joined: '2026-05-20', tier: 'Standard', region: 'North America - East', expiryDate: '2026-07-20' },
+    { id: 'TEN-2195', name: 'Gaggan Anand', location: 'Bangkok', terminals: 14, plan: 'SUSPENDED', revenue: '$122,000', status: 'SUSPENDED', joined: '2025-02-15', tier: 'Growth', region: 'Asia Pacific', expiryDate: '2025-02-15' },
   ]);
+
+  const [showTenantDetailsModal, setShowTenantDetailsModal] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
+  const [editingExpiryDate, setEditingExpiryDate] = useState('');
+
+  const checkExpiryStatus = (dateStr?: string) => {
+    if (!dateStr) return 'none';
+    const today = new Date();
+    const expiry = new Date(dateStr);
+    today.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    if (expiry < today) return 'expired';
+    
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays <= 30) return 'warning';
+    return 'active';
+  };
 
   const [admins, setAdmins] = useState<AdminUser[]>([
     { id: 'adm-1', name: 'Eric Ripert', email: 'ripert@lebernardin.com', tenant: 'Le Bernardin Group', status: 'ACTIVE', lastActive: '2h ago' },
@@ -975,7 +994,7 @@ export default function SuperAdminPage() {
   };
 
   // Form Fields
-  const [newTenantData, setNewTenantData] = useState({ name: '', location: '', plan: 'TRIAL' as Tenant['plan'] });
+  const [newTenantData, setNewTenantData] = useState({ name: '', location: '', plan: 'TRIAL' as Tenant['plan'], expiryDate: '' });
   const [newAdminData, setNewAdminData] = useState({ name: '', email: '', tenant: '' });
 
   const triggerToast = (message: string, type: 'success' | 'info' = 'success') => {
@@ -1023,6 +1042,10 @@ export default function SuperAdminPage() {
       triggerToast('Please fill in all tenant fields.', 'info');
       return;
     }
+    const defaultExpiry = new Date();
+    defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
+    const finalExpiryDate = newTenantData.expiryDate || defaultExpiry.toISOString().split('T')[0];
+
     const created: Tenant = {
       id: `TEN-${Math.floor(1000 + Math.random() * 9000)}`,
       name: newTenantData.name,
@@ -1033,10 +1056,11 @@ export default function SuperAdminPage() {
       status: newTenantData.plan === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE',
       joined: new Date().toISOString().split('T')[0],
       tier: 'Standard',
-      region: 'North America - East'
+      region: 'North America - East',
+      expiryDate: finalExpiryDate
     };
     setTenants(prev => [...prev, created]);
-    setNewTenantData({ name: '', location: '', plan: 'TRIAL' });
+    setNewTenantData({ name: '', location: '', plan: 'TRIAL', expiryDate: '' });
     setShowAddTenantModal(false);
     triggerToast(`Business tenant "${created.name}" created successfully!`, 'success');
     
@@ -1048,6 +1072,33 @@ export default function SuperAdminPage() {
         action: `Registered new business tenant "${created.name}"`,
         tenant: created.name,
         type: 'success'
+      },
+      ...prev
+    ]);
+  };
+
+  // Save tenant expiry date modifications
+  const handleSaveTenantExpiry = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTenant) return;
+    
+    setTenants(prev => prev.map(t => 
+      t.id === selectedTenant.id 
+        ? { ...t, expiryDate: editingExpiryDate } 
+        : t
+    ));
+    
+    setShowTenantDetailsModal(false);
+    triggerToast(`Subscription expiry for ${selectedTenant.name} updated to ${editingExpiryDate}`, 'success');
+    
+    setAuditLogs(prev => [
+      {
+        id: Date.now(),
+        time: 'Just now',
+        actor: 'Super Admin',
+        action: `Updated subscription expiry date of "${selectedTenant.name}" to ${editingExpiryDate}`,
+        tenant: selectedTenant.name,
+        type: 'info'
       },
       ...prev
     ]);
@@ -2072,6 +2123,7 @@ export default function SuperAdminPage() {
                         <th className="py-4 px-4">Establishment</th>
                         <th className="py-4 px-4">Subscription Tier</th>
                         <th className="py-4 px-4">Region</th>
+                        <th className="py-4 px-4">Expiry Date</th>
                         <th className="py-4 px-4">Status</th>
                         <th className="py-4 px-4 text-right">Actions</th>
                       </tr>
@@ -2124,6 +2176,30 @@ export default function SuperAdminPage() {
                           </td>
                           <td className="py-4 px-4 text-[#e5e2e1]/80 text-[12px]">{t.region || 'North America - East'}</td>
                           <td className="py-4 px-4">
+                            {(() => {
+                              const expStatus = checkExpiryStatus(t.expiryDate);
+                              if (expStatus === 'expired') {
+                                return (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-lg border border-rose-500/35 bg-rose-500/5 text-rose-400 font-bold font-mono">
+                                    <span className="material-symbols-outlined text-xs">error</span>
+                                    {t.expiryDate} (Expired)
+                                  </span>
+                                );
+                              } else if (expStatus === 'warning') {
+                                return (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-lg border border-amber-500/35 bg-amber-500/5 text-amber-400 font-bold font-mono">
+                                    <span className="material-symbols-outlined text-xs">warning</span>
+                                    {t.expiryDate} (Expiring)
+                                  </span>
+                                );
+                              } else {
+                                return (
+                                  <span className="text-[#e5e2e1]/75 font-mono text-[12px]">{t.expiryDate}</span>
+                                );
+                              }
+                            })()}
+                          </td>
+                          <td className="py-4 px-4">
                             {t.status === 'ACTIVE' ? (
                               <span className="inline-flex items-center gap-1.5 text-xs text-white/80 font-medium select-none">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
@@ -2148,7 +2224,11 @@ export default function SuperAdminPage() {
                               {t.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
                             </button>
                             <button type="button" 
-                              onClick={() => triggerToast(`Requesting analytics details for ${t.name}...`, 'info')}
+                              onClick={() => {
+                                setSelectedTenant(t);
+                                setEditingExpiryDate(t.expiryDate);
+                                setShowTenantDetailsModal(true);
+                              }}
                               className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
                             >
                               Details
@@ -6012,6 +6092,16 @@ export default function SuperAdminPage() {
                 </select>
               </div>
 
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Subscription Expiry Date</label>
+                <input 
+                  type="date"
+                  value={newTenantData.expiryDate}
+                  onChange={(e) => setNewTenantData(prev => ({ ...prev, expiryDate: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 font-mono"
+                />
+              </div>
+
               <div className="pt-4 flex gap-4">
                 <button type="button" 
                   onClick={() => setShowAddTenantModal(false)}
@@ -6019,10 +6109,119 @@ export default function SuperAdminPage() {
                 >
                   Cancel
                 </button>
-                <button type="button" 
+                <button type="submit" 
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
                 >
                   Create Tenant
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 1.5: TENANT DETAILS & EXPIRES MANAGEMENT */}
+      {showTenantDetailsModal && selectedTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[520px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            
+            <button type="button" 
+              onClick={() => { setShowTenantDetailsModal(false); setSelectedTenant(null); }}
+              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <h3 className="font-serif text-white font-bold text-2xl mb-1">Manage Tenant Subscription</h3>
+            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Review metadata and adjust system access parameters for this client.</p>
+            
+            <form onSubmit={handleSaveTenantExpiry} className="space-y-6">
+              {/* Profile Card Summary */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3">
+                <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                  <div>
+                    <div className="text-white font-bold text-sm">{selectedTenant.name}</div>
+                    <div className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider mt-0.5">ID: {selectedTenant.id}</div>
+                  </div>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                    selectedTenant.status === 'ACTIVE' ? theme.tagActive : theme.tagSuspended
+                  }`}>
+                    {selectedTenant.status}
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                  <div>
+                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Subscription Tier</span>
+                    <span className="text-white/85 font-semibold mt-0.5 block">{selectedTenant.tier || 'Standard'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Region</span>
+                    <span className="text-white/85 font-semibold mt-0.5 block">{selectedTenant.region || 'N/A'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Platform Revenue</span>
+                    <span className="text-[#ffc53d] font-bold mt-0.5 block">{selectedTenant.revenue}</span>
+                  </div>
+                  <div>
+                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Connected Terminals</span>
+                    <span className="text-white/85 font-semibold mt-0.5 block">{selectedTenant.terminals} units</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Expiry Date Section */}
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Subscription Expiry Date</label>
+                <div className="relative">
+                  <input 
+                    type="date"
+                    required
+                    value={editingExpiryDate}
+                    onChange={(e) => setEditingExpiryDate(e.target.value)}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 font-mono"
+                  />
+                </div>
+                {(() => {
+                  const expStatus = checkExpiryStatus(editingExpiryDate);
+                  if (expStatus === 'expired') {
+                    return (
+                      <p className="text-[10px] text-rose-400 font-semibold mt-2 flex items-center gap-1.5 leading-none">
+                        <span className="material-symbols-outlined text-[13px]">error</span>
+                        This subscription is currently EXPIRED. Services are deactivated.
+                      </p>
+                    );
+                  } else if (expStatus === 'warning') {
+                    return (
+                      <p className="text-[10px] text-amber-400 font-semibold mt-2 flex items-center gap-1.5 leading-none">
+                        <span className="material-symbols-outlined text-[13px]">warning</span>
+                        Expiring soon (less than 30 days remaining).
+                      </p>
+                    );
+                  } else if (expStatus === 'active') {
+                    return (
+                      <p className="text-[10px] text-emerald-400 font-semibold mt-2 flex items-center gap-1.5 leading-none">
+                        <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                        Subscription is active.
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-4 pt-2">
+                <button type="button" 
+                  onClick={() => { setShowTenantDetailsModal(false); setSelectedTenant(null); }}
+                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="submit" 
+                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>
