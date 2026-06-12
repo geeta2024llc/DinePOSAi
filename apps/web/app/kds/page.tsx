@@ -339,7 +339,7 @@ export default function KdsPage() {
         {/* Bottom controls */}
         <div className="px-5 pb-8 space-y-2">
           <Link
-            href="/dashboard"
+            href="/kds/settings"
             className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-sans font-semibold text-xs w-full text-left uppercase tracking-wider"
           >
             <span className="material-symbols-outlined text-lg leading-none">settings</span>

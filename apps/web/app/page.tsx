@@ -76,7 +76,7 @@ export default function HomePage() {
             </Link>
             
             {/* Secondary Glass Button */}
-            <Link href="/solutions" className="group border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-md font-title-md font-semibold text-white px-9 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+            <Link href="/#solutions" className="group border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-md font-title-md font-semibold text-white px-9 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
               Explore Solutions
             </Link>
           </div>
@@ -84,7 +84,7 @@ export default function HomePage() {
       </header>
 
       {/* Integrated Solutions (Bento Grid) */}
-      <section className="py-xl relative z-10 bg-surface-container-lowest">
+      <section className="py-xl relative z-10 bg-surface-container-lowest" id="solutions">
         <div className="max-w-7xl mx-auto px-margin-desktop">
           <div className="mb-lg text-center md:text-left">
             <h2 className="font-headline-lg text-4xl text-on-surface mb-xs font-semibold">Integrated Solutions</h2>
@@ -651,8 +651,6 @@ export default function HomePage() {
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/terms">Terms of Service</Link>
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/privacy">Privacy Policy</Link>
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/support">Contact Support</Link>
-            <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/experience">Experience</Link>
-            <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/solutions">Solutions</Link>
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/partners">Ambassador Program</Link>
           </div>
           <div className="text-on-surface-variant font-label-sm text-xs opacity-60">

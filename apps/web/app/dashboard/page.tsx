@@ -857,8 +857,8 @@ export default function DashboardPage() {
   const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
 
-  // Sidebar tab selection state - defaults to operations (Operations Console) matching target mockup
-  const [activeTab, setActiveTab] = useState<'general' | 'operations' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu' | 'analytics'>('general');
+  // Sidebar tab selection state
+  const [activeTab, setActiveTab] = useState<'general' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu' | 'analytics'>('general');
   const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | '30days'>('week');
   const [dashAuditSearch, setDashAuditSearch] = useState('');
   const [dashAuditPage, setDashAuditPage] = useState(1);
@@ -1930,7 +1930,7 @@ export default function DashboardPage() {
             <span className={`material-symbols-outlined absolute left-4 top-3 ${t.textMutedDark} text-sm`}>search</span>
             <input
               type="text"
-              placeholder={activeTab === 'operations' ? "Search settings..." : activeTab === 'payments' ? "Search transactions..." : activeTab === 'hardware' ? "Search devices..." : "Search parameters..."}
+              placeholder={activeTab === 'payments' ? "Search transactions..." : activeTab === 'hardware' ? "Search devices..." : "Search parameters..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full max-w-[240px] bg-black/20 border ${t.border} rounded-xl pl-11 pr-4 py-2.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`}
@@ -1947,16 +1947,7 @@ export default function DashboardPage() {
               <span className="absolute top-3.5 right-3.5 w-1 h-1 bg-rose-500 rounded-full"></span>
             </button>
 
-            <button type="button" 
-              onClick={() => setActiveTab('operations')}
-              className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border rounded-xl transition-colors cursor-pointer select-none ${
-                activeTab === 'operations' 
-                  ? `${t.accentLightBorder} bg-[#ffe2ab]/5 ${t.accentLight}` 
-                  : `${t.border} hover:border-white/10 ${t.text}`
-              }`}
-            >
-              <span className={`material-symbols-outlined text-lg ${activeTab === 'operations' ? 'text-[#ffe2ab] font-black' : 'text-[#A69984]/60'}`}>settings</span>
-            </button>
+
 
 
             <button type="button" 
@@ -1986,231 +1977,7 @@ export default function DashboardPage() {
         <div className={`flex-grow p-12 overflow-y-auto w-full mx-auto pb-32 ${t.scrollbarThumb}`}>
           
           {/* TAB 1: OPERATIONS / GENERAL CONFIGURATION SCREEN */}
-          {activeTab === 'operations' && (
-            <div className="space-y-8 animate-fade-in duration-300">
-              
-              {/* Configuration welcome banner */}
-              <div className="relative border border-white/5 rounded-3xl p-10 overflow-hidden bg-gradient-to-r from-purple-950/20 via-[#1c1221] to-[#120f26] shadow-2xl group select-none">
-                <div className="relative z-10 max-w-2xl">
-                  <h2 className="font-serif text-[44px] font-medium text-white tracking-wide leading-none mb-4">
-                    Configuration
-                  </h2>
-                  <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold">
-                    Manage your establishment's global preferences, notification routing, and hardware ecosystem.
-                  </p>
-                </div>
-              </div>
 
-              {/* Profile & Routing Dual Card Panel Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
-                {/* Left Column: General Profile (Span 8) */}
-                <div className="lg:col-span-8">
-                  <div className={`${t.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
-                    
-                    <div className={`flex items-center gap-2 border-b ${t.border} pb-4 select-none`}>
-                      <span className={`material-symbols-outlined ${t.accent} text-lg`}>settings</span>
-                      <h3 className={`font-serif text-base ${t.text} font-bold tracking-wide`}>General Profile</h3>
-                    </div>
-
-                    <div className="space-y-5 font-sans">
-                      
-                      {/* Inputs Row 1: Name and Email */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div>
-                          <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>Establishment Name</label>
-                          <input 
-                            type="text" 
-                            value={establishmentName}
-                            onChange={(e) => setEstablishmentName(e.target.value)}
-                            placeholder="Establishment Name..."
-                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                          />
-                        </div>
-                        <div>
-                          <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>Primary Contact Email</label>
-                          <input 
-                            type="email" 
-                            value={contactEmail}
-                            onChange={(e) => setContactEmail(e.target.value)}
-                            placeholder="Email address..."
-                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Input Row 2: Address */}
-                      <div>
-                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>Physical Address</label>
-                        <input 
-                          type="text" 
-                          aria-label="Business address"
-                          value={businessAddress}
-                          onChange={(e) => setBusinessAddress(e.target.value)}
-                          placeholder="Physical Address..."
-                          className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                        />
-                      </div>
-
-                      {/* Save Profile button */}
-                      <div className="flex justify-end pt-2 select-none">
-                        <button type="button"
-                          onClick={() => triggerToast('General Profile configurations saved successfully!', 'success')}
-                          className={`px-5 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}
-                        >
-                          <span className="material-symbols-outlined text-sm font-bold">save</span>
-                          Save Profile
-                        </button>
-                      </div>
-
-                    </div>
-
-                  </div>
-                </div>
-
-                {/* Right Column: Routing Settings (Span 4) */}
-                <div className="lg:col-span-4">
-                  <div className={`${t.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
-                    
-                    <div className={`flex items-center gap-2 border-b ${t.border} pb-4 select-none`}>
-                      <span className={`material-symbols-outlined ${t.accent} text-lg font-light`}>notifications_active</span>
-                      <h3 className={`font-serif text-base ${t.text} font-bold tracking-wide`}>Routing</h3>
-                    </div>
-
-                    <div className="space-y-4 font-sans select-none">
-                      
-                      {/* Toggle 1: EOD Summary */}
-                      <div className={`flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} rounded-xl`}>
-                        <div className="max-w-[70%]">
-                          <h4 className={`text-[11px] font-bold uppercase tracking-wider ${t.text}`}>End-of-Day Summary</h4>
-                          <p className={`text-[9.5px] ${t.textMutedLight} font-semibold leading-relaxed mt-0.5`}>
-                            Email report to managers
-                          </p>
-                        </div>
-                        <button type="button"
-                          onClick={() => {
-                            setEndOfDaySummary(!endOfDaySummary);
-                            triggerToast(`End-of-Day Summary email routing ${!endOfDaySummary ? 'activated' : 'deactivated'}.`, 'info');
-                          }}
-                          className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${endOfDaySummary ? t.accentBg : 'bg-white/20'}`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 transform ${endOfDaySummary ? 'translate-x-[22px]' : 'translate-x-0'}`}></div>
-                        </button>
-                      </div>
-
-                      {/* Toggle 2: Critical Void Alerts */}
-                      <div className={`flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} rounded-xl`}>
-                        <div className="max-w-[70%]">
-                          <h4 className={`text-[11px] font-bold uppercase tracking-wider ${t.text}`}>Critical Void Alerts</h4>
-                          <p className={`text-[9.5px] ${t.textMutedLight} font-semibold leading-relaxed mt-0.5`}>
-                            Real-time terminal push
-                          </p>
-                        </div>
-                        <button type="button"
-                          onClick={() => {
-                            setCriticalVoidAlerts(!criticalVoidAlerts);
-                            triggerToast(`Critical void alert routing ${!criticalVoidAlerts ? 'activated' : 'deactivated'}.`, 'info');
-                          }}
-                          className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${criticalVoidAlerts ? t.accentBg : 'bg-white/20'}`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 transform ${criticalVoidAlerts ? 'translate-x-[22px]' : 'translate-x-0'}`}></div>
-                        </button>
-                      </div>
-
-                      {/* Toggle 3: 86'd Item Broadcast */}
-                      <div className={`flex justify-between items-center ${t.inputBg}/50 p-4 border ${t.border} rounded-xl`}>
-                        <div className="max-w-[70%]">
-                          <h4 className={`text-[11px] font-bold uppercase tracking-wider ${t.text}`}>86'd Item Broadcast</h4>
-                          <p className={`text-[9.5px] ${t.textMutedLight} font-semibold leading-relaxed mt-0.5`}>
-                            Alert all active stations
-                          </p>
-                        </div>
-                        <button type="button"
-                          onClick={() => {
-                            setItemBroadcast86(!itemBroadcast86);
-                            triggerToast(`86'd items real-time broadcasting ${!itemBroadcast86 ? 'activated' : 'deactivated'}.`, 'info');
-                          }}
-                          className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${itemBroadcast86 ? t.accentBg : 'bg-white/20'}`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full shadow transition-transform duration-300 transform ${itemBroadcast86 ? 'translate-x-[22px]' : 'translate-x-0'}`}></div>
-                        </button>
-                      </div>
-
-                    </div>
-
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Thermal Printer Hub Card Section */}
-              <div className={`${t.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
-                
-                <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b ${t.border} pb-4 select-none`}>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className={`material-symbols-outlined ${t.accent} text-lg`}>print</span>
-                      <h3 className={`font-serif text-base ${t.text} font-bold tracking-wide`}>Thermal Printer Hub</h3>
-                    </div>
-                    <p className={`text-[10px] ${t.textMuted} font-semibold leading-relaxed mt-1`}>
-                      Manage 80mm routing for Kitchen Display Systems and Front-of-House receipts.
-                    </p>
-                  </div>
-
-                  <button type="button"
-                    onClick={() => triggerToast('Opening Thermal Printer registration wizard...', 'info')}
-                    className={`border ${t.accentLightBorder} hover:bg-[#ffe2ab]/5 ${t.accent} px-4 py-2 rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 cursor-pointer flex items-center gap-1.5 select-none`}
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">add</span>
-                    Add Device
-                  </button>
-                </div>
-
-                {/* Printer Hub Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 select-none">
-                  
-                  {/* Printer 1: Kitchen */}
-                  <div className={`${t.inputBg}/50 p-5 border ${t.accentLightBorder} rounded-xl flex justify-between items-center shadow-[0_0_15px_rgba(255,226,171,0.02)]`}>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span className="text-[10px] font-sans font-bold text-emerald-400 uppercase tracking-widest">ONLINE</span>
-                    </div>
-                    <span className={`px-2 py-0.5 ${t.tagAdmin} font-mono font-bold text-[8.5px] tracking-wider rounded`}>80mm</span>
-                  </div>
-
-                  {/* Printer 2: Cashier */}
-                  <div className={`${t.inputBg}/50 p-5 border ${t.border} rounded-xl flex justify-between items-center`}>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                      <span className="text-[10px] font-sans font-bold text-emerald-400 uppercase tracking-widest">ONLINE</span>
-                    </div>
-                    <span className={`px-2 py-0.5 ${t.tagAdmin} font-mono font-bold text-[8.5px] tracking-wider rounded`}>80mm</span>
-                  </div>
-
-                  {/* Printer 3: Bar */}
-                  <div className={`${t.inputBg}/50 p-5 border border-red-500/20 rounded-xl flex justify-between items-center shadow-[0_0_15px_rgba(239,68,68,0.02)]`}>
-                    <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span>
-                      <span className="text-[10px] font-sans font-bold text-red-400 uppercase tracking-widest">OFFLINE</span>
-                    </div>
-                    <span className={`px-2 py-0.5 ${t.tagAdmin} font-mono font-bold text-[8.5px] tracking-wider rounded`}>80mm</span>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Operations panel copy footer */}
-              <footer className="mt-16 pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center text-[10px] text-[#A69984]/30 font-semibold tracking-wider uppercase select-none gap-4">
-                <div>© 2026 DinePosAi. All rights reserved.</div>
-                <div className="flex gap-6">
-                  <Link href="/privacy" className="hover:text-[#A69984]/50 transition-colors">Privacy Policy</Link>
-                  <Link href="/terms" className="hover:text-[#A69984]/50 transition-colors">Terms of Service</Link>
-                </div>
-              </footer>
-
-            </div>
-          )}
 
           {/* TAB 2: RECEIPTS CONFIGURATION SCREEN */}
           {activeTab === 'receipts' && (
@@ -5953,7 +5720,7 @@ export default function DashboardPage() {
           })()}
 
           {/* Fallback Placeholder tab for other sections */}
-          {activeTab !== 'operations' && activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && activeTab !== 'analytics' && (
+          {activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && activeTab !== 'analytics' && (
             <div className={`text-center py-36 select-none border border-dashed ${t.border} rounded-2xl ${t.inputBg}/30`}>
               <span className={`material-symbols-outlined text-5xl ${t.accent} opacity-40 motion-safe:animate-pulse font-light mb-4 block`}>construction</span>
               <h3 className={`font-serif text-xl ${t.text} mb-2 tracking-wide capitalize`}>{activeTab} Dashboard Panel</h3>
@@ -5961,10 +5728,10 @@ export default function DashboardPage() {
                 Auditing tools and administrative controls for {activeTab} parameters are currently being synchronized.
               </p>
               <button type="button" 
-                onClick={() => setActiveTab('operations')}
+                onClick={() => setActiveTab('general')}
                 className={`mt-6 px-5 py-2.5 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors cursor-pointer`}
               >
-                Back to Operations Config
+                Back to General Config
               </button>
             </div>
           )}
