@@ -45,9 +45,9 @@ const themes = {
     border: 'border-white/5',
     borderStrong: 'border-white/10',
     text: 'text-[#e5e2e1]',
-    textMuted: 'text-[#A69984]/65',
-    textMutedLight: 'text-[#A69984]/50',
-    textMutedDark: 'text-[#A69984]/40',
+    textMuted: 'text-[#c5b9a5]',
+    textMutedLight: 'text-[#a69984]',
+    textMutedDark: 'text-[#887e6d]',
     accent: 'text-[#ffc53d]',
     accentBg: 'bg-[#ffc53d]',
     accentHoverBg: 'hover:bg-[#ffb014]',
@@ -60,7 +60,7 @@ const themes = {
     inputBorder: 'border-white/10',
     buttonOutline: 'border-white/10 hover:border-white/20 text-white',
     divider: 'divide-white/5',
-    tagAdmin: 'bg-white/5 border border-white/10 text-[#A69984]/50',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[#a69984]/50',
     tagManager: 'bg-[#ffe2ab]/10 border border-[#ffe2ab]/20 text-[#ffe2ab]',
     tagStaff: 'bg-sky-500/10 border border-sky-500/20 text-sky-400',
     scrollbarThumb: 'scrollbar-thumb-white/10'
@@ -69,15 +69,15 @@ const themes = {
     name: 'Pristine White',
     bg: 'bg-[#f4f3f0]',
     bgSecondary: 'bg-[#ffffff]',
-    cardBg: 'bg-white/95 border-[#e2ddd5] shadow-[0_4px_16px_rgba(142,130,111,0.06)]',
-    cardBgOpaque: 'bg-white border-[#e2ddd5] shadow-[0_4px_16px_rgba(142,130,111,0.06)]',
+    cardBg: 'bg-white/95 border-[#ede6da] shadow-[0_4px_16px_rgba(142,130,111,0.04)]',
+    cardBgOpaque: 'bg-white border-[#ede6da] shadow-[0_4px_16px_rgba(142,130,111,0.04)]',
     sidebarBg: 'bg-[#edeae5] border-[#dfdad0]',
-    border: 'border-[#e2ddd5]',
+    border: 'border-[#ede6da]',
     borderStrong: 'border-[#cdc7bc]',
-    text: 'text-[#292825]',
-    textMuted: 'text-[#6e6b63]',
-    textMutedLight: 'text-[#8b877f]',
-    textMutedDark: 'text-[#a29e95]',
+    text: 'text-[#1a1917]',
+    textMuted: 'text-[#4c4a45]',
+    textMutedLight: 'text-[#68655e]',
+    textMutedDark: 'text-[#7e7a72]',
     accent: 'text-[#cfa426]',
     accentBg: 'bg-[#cfa426]',
     accentHoverBg: 'hover:bg-[#b08b1f]',
@@ -88,10 +88,40 @@ const themes = {
     cardHover: 'hover:bg-black/[0.01]',
     inputBg: 'bg-[#fafaf9]',
     inputBorder: 'border-[#e2ddd5]',
-    buttonOutline: 'border-[#cdc7bc] hover:border-[#b0a99c] text-[#292825]',
+    buttonOutline: 'border-[#cdc7bc] hover:border-[#b0a99c] text-[#1a1917]',
     divider: 'divide-[#e2ddd5]',
     tagAdmin: 'bg-[#6e6b63]/5 border border-[#6e6b63]/15 text-[#6e6b63]',
     tagManager: 'bg-[#cfa426]/10 border border-[#cfa426]/20 text-[#8c6f17]',
+    tagStaff: 'bg-sky-600/10 border border-sky-600/20 text-sky-700',
+    scrollbarThumb: 'scrollbar-thumb-black/10'
+  },
+  'Delicious Red': {
+    name: 'Delicious Red',
+    bg: 'bg-[#faf9f6]',
+    bgSecondary: 'bg-[#ffffff]',
+    cardBg: 'bg-white/95 border-[#ede6da] shadow-[0_4px_20px_rgba(200,16,46,0.03)]',
+    cardBgOpaque: 'bg-white border-[#ede6da] shadow-[0_4px_20px_rgba(200,16,46,0.03)]',
+    sidebarBg: 'bg-[#f5f2eb] border-[#e8e2d5]',
+    border: 'border-[#ede6da]',
+    borderStrong: 'border-[#d4c3b3]',
+    text: 'text-[#1a1917]',
+    textMuted: 'text-[#5c564c]',
+    textMutedLight: 'text-[#787165]',
+    textMutedDark: 'text-[#928b7e]',
+    accent: 'text-[#c8102e]',
+    accentBg: 'bg-[#c8102e]',
+    accentHoverBg: 'hover:bg-[#a00c22]',
+    accentText: 'text-white',
+    accentLight: 'text-[#900c1e]',
+    accentLightBg: 'bg-[#c8102e]/8',
+    accentLightBorder: 'border-[#c8102e]/15',
+    cardHover: 'hover:bg-black/[0.005]',
+    inputBg: 'bg-[#fcfbfa]',
+    inputBorder: 'border-[#e1dad0]',
+    buttonOutline: 'border-[#dcd4c8] hover:border-[#bdae9c] text-[#1a1917]',
+    divider: 'divide-[#ede6da]',
+    tagAdmin: 'bg-[#5c564c]/8 border border-[#5c564c]/15 text-[#5c564c]',
+    tagManager: 'bg-[#c8102e]/10 border border-[#c8102e]/20 text-[#c8102e]',
     tagStaff: 'bg-sky-600/10 border border-sky-600/20 text-sky-700',
     scrollbarThumb: 'scrollbar-thumb-black/10'
   },
@@ -104,10 +134,10 @@ const themes = {
     sidebarBg: 'bg-[#100305] border-[#4a1c24]',
     border: 'border-[#4a1c24]',
     borderStrong: 'border-[#6b2c37]',
-    text: 'text-[#f0e2e0]',
-    textMuted: 'text-[#cca5a1]',
-    textMutedLight: 'text-[#b88c87]',
-    textMutedDark: 'text-[#9e6f6a]',
+    text: 'text-[#f5ecea]',
+    textMuted: 'text-[#d8b8b5]',
+    textMutedLight: 'text-[#c29c98]',
+    textMutedDark: 'text-[#a87e79]',
     accent: 'text-[#f5aca4]',
     accentBg: 'bg-[#f5aca4]',
     accentHoverBg: 'hover:bg-[#e0928b]',
@@ -118,9 +148,9 @@ const themes = {
     cardHover: 'hover:bg-white/[0.01]',
     inputBg: 'bg-[#160608]',
     inputBorder: 'border-[#4a1c24]',
-    buttonOutline: 'border-[#6b2c37] hover:border-[#8c3d4b] text-[#f0e2e0]',
+    buttonOutline: 'border-[#6b2c37] hover:border-[#8c3d4b] text-[#f5ecea]',
     divider: 'divide-[#4a1c24]',
-    tagAdmin: 'bg-white/5 border border-white/10 text-[#cca5a1]/50',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[#d8b8b5]/50',
     tagManager: 'bg-[#f5aca4]/10 border border-[#f5aca4]/20 text-[#f5aca4]',
     tagStaff: 'bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffe2ab]',
     scrollbarThumb: 'scrollbar-thumb-white/10'
@@ -134,10 +164,10 @@ const themes = {
     sidebarBg: 'bg-[#02090a] border-[#1a383b]',
     border: 'border-[#1a383b]',
     borderStrong: 'border-[#285357]',
-    text: 'text-[#d6ebec]',
-    textMuted: 'text-[#9fb9bb]',
-    textMutedLight: 'text-[#84a3a5]',
-    textMutedDark: 'text-[#698a8c]',
+    text: 'text-[#dcf0f2]',
+    textMuted: 'text-[#b0cdcf]',
+    textMutedLight: 'text-[#95b4b7]',
+    textMutedDark: 'text-[#7ca1a3]',
     accent: 'text-[#48e5ec]',
     accentBg: 'bg-[#48e5ec]',
     accentHoverBg: 'hover:bg-[#34c9cf]',
@@ -148,9 +178,9 @@ const themes = {
     cardHover: 'hover:bg-white/[0.01]',
     inputBg: 'bg-[#030d0e]',
     inputBorder: 'border-[#1a383b]',
-    buttonOutline: 'border-[#285357] hover:border-[#387277] text-[#d6ebec]',
+    buttonOutline: 'border-[#285357] hover:border-[#387277] text-[#dcf0f2]',
     divider: 'divide-[#1a383b]',
-    tagAdmin: 'bg-white/5 border border-white/10 text-[#9fb9bb]/50',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[#b0cdcf]/50',
     tagManager: 'bg-[#48e5ec]/10 border border-[#48e5ec]/20 text-[#48e5ec]',
     tagStaff: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
     scrollbarThumb: 'scrollbar-thumb-white/10'
@@ -166,8 +196,8 @@ const themes = {
     borderStrong: 'border-[var(--custom-accent)]/15',
     text: 'text-[var(--custom-text)]',
     textMuted: 'text-[var(--custom-text-muted)]',
-    textMutedLight: 'text-[var(--custom-text-muted)]/75',
-    textMutedDark: 'text-[var(--custom-text-muted)]/50',
+    textMutedLight: 'text-[var(--custom-text-muted)]/80',
+    textMutedDark: 'text-[var(--custom-text-muted)]/60',
     accent: 'text-[var(--custom-accent)]',
     accentBg: 'bg-[var(--custom-accent)]',
     accentHoverBg: 'hover:opacity-90',
@@ -1938,6 +1968,11 @@ export default function DashboardPage() {
   }, []);
 
   const t = themes[globalAesthetic as keyof typeof themes] || themes['Midnight Black'];
+  const isLightTheme = globalAesthetic === 'Pristine White' || globalAesthetic === 'Delicious Red';
+  const hText = isLightTheme ? 'hover:text-[#1a1917]' : 'hover:text-white';
+  const hBg = isLightTheme ? 'hover:bg-black/5' : 'hover:bg-white/5';
+  const hBgStrong = isLightTheme ? 'hover:bg-black/10' : 'hover:bg-white/10';
+  const hBorder = isLightTheme ? 'hover:border-black/20' : 'hover:border-white/20';
 
   const currencySymbols: Record<string, string> = { USD: '$', JPY: '¥', EUR: '€', GBP: '£', CNY: '¥', KRW: '₩' };
   const currencyRates: Record<string, number> = { USD: 1, JPY: 150, EUR: 0.92, GBP: 0.79, CNY: 7.24, KRW: 1340 };
@@ -2301,7 +2336,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'general'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">settings</span>
@@ -2313,7 +2348,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'payments'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">payments</span>
@@ -2325,7 +2360,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'hardware'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">print</span>
@@ -2337,7 +2372,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'staff'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">badge</span>
@@ -2349,7 +2384,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'security'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">security</span>
@@ -2361,7 +2396,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'menu'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">restaurant_menu</span>
@@ -2373,7 +2408,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'analytics'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">bar_chart</span>
@@ -2385,7 +2420,7 @@ export default function DashboardPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'inventory'
                   ? `${t.accentBg} ${t.accentText} rounded-xl`
-                  : `${t.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">inventory_2</span>
@@ -2405,7 +2440,7 @@ export default function DashboardPage() {
 
           <Link 
             href="/login"
-            className={`w-full py-2.5 bg-white/5 hover:bg-white/10 ${t.text} rounded-xl font-bold uppercase tracking-wider text-[10px] transition-colors flex items-center justify-center gap-1.5`}
+            className={`w-full py-2.5 border ${t.buttonOutline} rounded-xl font-bold uppercase tracking-wider text-[10px] transition-colors flex items-center justify-center gap-1.5`}
           >
             <span className="material-symbols-outlined text-sm">logout</span>
             {tr.signOut}
@@ -4347,7 +4382,7 @@ export default function DashboardPage() {
                   {/* Global Aesthetic */}
                   <div className={`${t.cardBgOpaque} rounded-2xl p-7 shadow-xl`}>
                     <h3 className={`${t.text} font-bold text-sm tracking-wide mb-5 select-none`}>{tr.globalThemeTitle}</h3>
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                       
                       {/* Theme: Midnight Black */}
                       <button type="button" 
@@ -4355,9 +4390,9 @@ export default function DashboardPage() {
                         className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Midnight Black' ? `${t.accentLightBorder} bg-[#ffe2ab]/5` : 'border-transparent hover:bg-white/[0.02]'}`}
                       >
                         <div className="w-full h-10 rounded-md bg-[#0a0a09] border border-white/10 flex items-center justify-center">
-                          <span className="w-2.5 h-2.5 rounded-full bg-[#ffc53d]"></span>
+                           <span className="w-2.5 h-2.5 rounded-full bg-[#ffc53d]"></span>
                         </div>
-                        <span className={`text-[9.5px] font-bold ${t.text} tracking-wide`}>Midnight Black</span>
+                        <span className={`text-[9.5px] font-bold ${globalAesthetic === 'Midnight Black' ? t.text : t.textMuted} tracking-wide transition-colors`}>Midnight Black</span>
                       </button>
 
                       {/* Theme: Pristine White */}
@@ -4368,7 +4403,18 @@ export default function DashboardPage() {
                         <div className="w-full h-10 rounded-md bg-white border border-black/10 flex items-center justify-center">
                           <span className="w-2.5 h-2.5 rounded-full bg-[#cfa426]"></span>
                         </div>
-                        <span className="text-[9.5px] font-bold text-[#6e6b63] tracking-wide">Pristine White</span>
+                        <span className={`text-[9.5px] font-bold ${globalAesthetic === 'Pristine White' ? t.text : t.textMuted} tracking-wide transition-colors`}>Pristine White</span>
+                      </button>
+
+                      {/* Theme: Delicious Red */}
+                      <button type="button" 
+                        onClick={() => handleGlobalAestheticChange('Delicious Red')}
+                        className={`flex flex-col items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${globalAesthetic === 'Delicious Red' ? 'border-[#c8102e] bg-[#c8102e]/5' : 'border-transparent hover:bg-black/[0.02]'}`}
+                      >
+                        <div className="w-full h-10 rounded-md bg-[#faf9f6] border border-black/10 flex items-center justify-center">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#c8102e]"></span>
+                        </div>
+                        <span className={`text-[9.5px] font-bold ${globalAesthetic === 'Delicious Red' ? t.text : t.textMuted} tracking-wide transition-colors`}>Delicious Red</span>
                       </button>
 
                       {/* Theme: Bordeaux Reserve */}
@@ -4379,7 +4425,7 @@ export default function DashboardPage() {
                         <div className="w-full h-10 rounded-md bg-[#180a0c] border border-white/10 flex items-center justify-center">
                           <span className="w-2.5 h-2.5 rounded-full bg-[#f5aca4]"></span>
                         </div>
-                        <span className={`text-[9.5px] font-bold ${t.text} tracking-wide`}>Bordeaux Reserve</span>
+                        <span className={`text-[9.5px] font-bold ${globalAesthetic === 'Bordeaux Reserve' ? t.text : t.textMuted} tracking-wide transition-colors`}>Bordeaux Reserve</span>
                       </button>
 
                       {/* Theme: Deep Teal */}
@@ -4390,7 +4436,7 @@ export default function DashboardPage() {
                         <div className="w-full h-10 rounded-md bg-[#051112] border border-white/10 flex items-center justify-center">
                           <span className="w-2.5 h-2.5 rounded-full bg-[#48e5ec]"></span>
                         </div>
-                        <span className={`text-[9.5px] font-bold ${t.text} tracking-wide`}>Deep Teal</span>
+                        <span className={`text-[9.5px] font-bold ${globalAesthetic === 'Deep Teal' ? t.text : t.textMuted} tracking-wide transition-colors`}>Deep Teal</span>
                       </button>
 
                       {/* Theme: Custom Palette */}
@@ -4401,7 +4447,7 @@ export default function DashboardPage() {
                         <div className="w-full h-10 rounded-md bg-[var(--custom-bg)] border border-[var(--custom-accent)]/20 flex items-center justify-center">
                           <span className="w-2.5 h-2.5 rounded-full bg-[var(--custom-accent)]"></span>
                         </div>
-                        <span className={`text-[9.5px] font-bold ${t.text} tracking-wide`}>Custom Palette</span>
+                        <span className={`text-[9.5px] font-bold ${globalAesthetic === 'Custom Palette' ? t.text : t.textMuted} tracking-wide transition-colors`}>Custom Palette</span>
                       </button>
 
                     </div>

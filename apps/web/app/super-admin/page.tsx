@@ -5,35 +5,205 @@ import Link from 'next/link';
 import { CmsConfig, getCmsConfig, saveCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 // Curated themes mirroring the admin console theme system for visual continuity
-const theme = {
-  name: 'Midnight Black',
-  bg: 'bg-[#0e0e0d]',
-  bgSecondary: 'bg-[#161513]',
-  cardBg: 'bg-[#161513]/90 border-white/5',
-  cardBgOpaque: 'bg-[#161513] border-white/5',
-  sidebarBg: 'bg-[#0a0a09] border-white/5',
-  border: 'border-white/5',
-  borderStrong: 'border-white/10',
-  text: 'text-[#e5e2e1]',
-  textMuted: 'text-[#A69984]/65',
-  textMutedLight: 'text-[#A69984]/50',
-  textMutedDark: 'text-[#A69984]/40',
-  accent: 'text-[#ffc53d]',
-  accentBg: 'bg-[#ffc53d]',
-  accentHoverBg: 'hover:bg-[#ffb014]',
-  accentText: 'text-[#2c1a00]',
-  accentLight: 'text-[#ffe2ab]',
-  accentLightBg: 'bg-[#ffe2ab]/10',
-  accentLightBorder: 'border-[#ffe2ab]/20',
-  cardHover: 'hover:bg-white/[0.01]',
-  inputBg: 'bg-[#0e0e0d]',
-  inputBorder: 'border-white/10',
-  buttonOutline: 'border-white/10 hover:border-white/20 text-white',
-  divider: 'divide-white/5',
-  tagActive: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
-  tagSuspended: 'bg-rose-500/10 border border-rose-500/20 text-rose-400',
-  tagTrial: 'bg-amber-500/10 border border-amber-500/20 text-amber-400',
-  tagExpired: 'bg-white/5 border border-white/10 text-[#A69984]/50',
+const themes = {
+  'Midnight Black': {
+    name: 'Midnight Black',
+    bg: 'bg-[#0e0e0d]',
+    bgSecondary: 'bg-[#161513]',
+    cardBg: 'bg-[#161513]/90 border-white/5',
+    cardBgOpaque: 'bg-[#161513] border-white/5',
+    sidebarBg: 'bg-[#0a0a09] border-white/5',
+    border: 'border-white/5',
+    borderStrong: 'border-white/10',
+    text: 'text-[#e5e2e1]',
+    textMuted: 'text-[#c5b9a5]',
+    textMutedLight: 'text-[#a69984]',
+    textMutedDark: 'text-[#887e6d]',
+    accent: 'text-[#ffc53d]',
+    accentBg: 'bg-[#ffc53d]',
+    accentHoverBg: 'hover:bg-[#ffb014]',
+    accentText: 'text-[#2c1a00]',
+    accentLight: 'text-[#ffe2ab]',
+    accentLightBg: 'bg-[#ffe2ab]/10',
+    accentLightBorder: 'border-[#ffe2ab]/20',
+    cardHover: 'hover:bg-white/[0.01]',
+    inputBg: 'bg-[#0e0e0d]',
+    inputBorder: 'border-white/10',
+    buttonOutline: 'border-white/10 hover:border-white/20 text-white',
+    divider: 'divide-white/5',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[#a69984]/50',
+    tagManager: 'bg-[#ffe2ab]/10 border border-[#ffe2ab]/20 text-[#ffe2ab]',
+    tagStaff: 'bg-sky-500/10 border border-sky-500/20 text-sky-400',
+    tagActive: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
+    tagSuspended: 'bg-rose-500/10 border border-rose-500/20 text-rose-400',
+    tagTrial: 'bg-amber-500/10 border border-amber-500/20 text-amber-400',
+    tagExpired: 'bg-white/5 border border-white/10 text-[#a69984]/50'
+  },
+  'Pristine White': {
+    name: 'Pristine White',
+    bg: 'bg-[#f4f3f0]',
+    bgSecondary: 'bg-[#ffffff]',
+    cardBg: 'bg-white/95 border-[#ede6da] shadow-[0_4px_16px_rgba(142,130,111,0.04)]',
+    cardBgOpaque: 'bg-white border-[#ede6da] shadow-[0_4px_16px_rgba(142,130,111,0.04)]',
+    sidebarBg: 'bg-[#edeae5] border-[#dfdad0]',
+    border: 'border-[#ede6da]',
+    borderStrong: 'border-[#cdc7bc]',
+    text: 'text-[#1a1917]',
+    textMuted: 'text-[#4c4a45]',
+    textMutedLight: 'text-[#68655e]',
+    textMutedDark: 'text-[#7e7a72]',
+    accent: 'text-[#cfa426]',
+    accentBg: 'bg-[#cfa426]',
+    accentHoverBg: 'hover:bg-[#b08b1f]',
+    accentText: 'text-white',
+    accentLight: 'text-[#8c6f17]',
+    accentLightBg: 'bg-[#cfa426]/10',
+    accentLightBorder: 'border-[#cfa426]/20',
+    cardHover: 'hover:bg-black/[0.01]',
+    inputBg: 'bg-[#fafaf9]',
+    inputBorder: 'border-[#e2ddd5]',
+    buttonOutline: 'border-[#cdc7bc] hover:border-[#b0a99c] text-[#1a1917]',
+    divider: 'divide-[#e2ddd5]',
+    tagAdmin: 'bg-[#6e6b63]/5 border border-[#6e6b63]/15 text-[#6e6b63]',
+    tagManager: 'bg-[#cfa426]/10 border border-[#cfa426]/20 text-[#8c6f17]',
+    tagStaff: 'bg-sky-600/10 border border-sky-600/20 text-sky-700',
+    tagActive: 'bg-emerald-600/10 border border-emerald-600/20 text-emerald-700',
+    tagSuspended: 'bg-rose-600/10 border border-rose-600/20 text-rose-700',
+    tagTrial: 'bg-amber-600/10 border border-amber-600/20 text-amber-700',
+    tagExpired: 'bg-[#6e6b63]/5 border border-[#6e6b63]/15 text-[#6e6b63]'
+  },
+  'Delicious Red': {
+    name: 'Delicious Red',
+    bg: 'bg-[#faf9f6]',
+    bgSecondary: 'bg-[#ffffff]',
+    cardBg: 'bg-white/95 border-[#ede6da] shadow-[0_4px_20px_rgba(200,16,46,0.03)]',
+    cardBgOpaque: 'bg-white border-[#ede6da] shadow-[0_4px_20px_rgba(200,16,46,0.03)]',
+    sidebarBg: 'bg-[#f5f2eb] border-[#e8e2d5]',
+    border: 'border-[#ede6da]',
+    borderStrong: 'border-[#d4c3b3]',
+    text: 'text-[#1a1917]',
+    textMuted: 'text-[#5c564c]',
+    textMutedLight: 'text-[#787165]',
+    textMutedDark: 'text-[#928b7e]',
+    accent: 'text-[#c8102e]',
+    accentBg: 'bg-[#c8102e]',
+    accentHoverBg: 'hover:bg-[#a00c22]',
+    accentText: 'text-white',
+    accentLight: 'text-[#900c1e]',
+    accentLightBg: 'bg-[#c8102e]/8',
+    accentLightBorder: 'border-[#c8102e]/15',
+    cardHover: 'hover:bg-black/[0.005]',
+    inputBg: 'bg-[#fcfbfa]',
+    inputBorder: 'border-[#e1dad0]',
+    buttonOutline: 'border-[#dcd4c8] hover:border-[#bdae9c] text-[#1a1917]',
+    divider: 'divide-[#ede6da]',
+    tagAdmin: 'bg-[#5c564c]/8 border border-[#5c564c]/15 text-[#5c564c]',
+    tagManager: 'bg-[#c8102e]/10 border border-[#c8102e]/20 text-[#c8102e]',
+    tagStaff: 'bg-sky-600/10 border border-sky-600/20 text-sky-700',
+    tagActive: 'bg-emerald-600/10 border border-emerald-600/20 text-emerald-700',
+    tagSuspended: 'bg-rose-600/10 border border-rose-600/20 text-rose-700',
+    tagTrial: 'bg-amber-600/10 border border-amber-600/20 text-amber-700',
+    tagExpired: 'bg-[#5c564c]/8 border border-[#5c564c]/15 text-[#5c564c]'
+  },
+  'Bordeaux Reserve': {
+    name: 'Bordeaux Reserve',
+    bg: 'bg-[#180a0c]',
+    bgSecondary: 'bg-[#221013]',
+    cardBg: 'bg-[#221013]/90 border-[#4a1c24]',
+    cardBgOpaque: 'bg-[#221013] border-[#4a1c24]',
+    sidebarBg: 'bg-[#100305] border-[#4a1c24]',
+    border: 'border-[#4a1c24]',
+    borderStrong: 'border-[#6b2c37]',
+    text: 'text-[#f5ecea]',
+    textMuted: 'text-[#d8b8b5]',
+    textMutedLight: 'text-[#c29c98]',
+    textMutedDark: 'text-[#a87e79]',
+    accent: 'text-[#f5aca4]',
+    accentBg: 'bg-[#f5aca4]',
+    accentHoverBg: 'hover:bg-[#e0928b]',
+    accentText: 'text-[#380d12]',
+    accentLight: 'text-[#fad2ce]',
+    accentLightBg: 'bg-[#f5aca4]/15',
+    accentLightBorder: 'border-[#f5aca4]/30',
+    cardHover: 'hover:bg-white/[0.01]',
+    inputBg: 'bg-[#160608]',
+    inputBorder: 'border-[#4a1c24]',
+    buttonOutline: 'border-[#6b2c37] hover:border-[#8c3d4b] text-[#f5ecea]',
+    divider: 'divide-[#4a1c24]',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[#d8b8b5]/50',
+    tagManager: 'bg-[#f5aca4]/10 border border-[#f5aca4]/20 text-[#f5aca4]',
+    tagStaff: 'bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffe2ab]',
+    tagActive: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
+    tagSuspended: 'bg-rose-500/10 border border-rose-500/20 text-rose-400',
+    tagTrial: 'bg-amber-500/10 border border-amber-500/20 text-amber-400',
+    tagExpired: 'bg-white/5 border border-white/10 text-[#d8b8b5]/50'
+  },
+  'Deep Teal': {
+    name: 'Deep Teal',
+    bg: 'bg-[#051112]',
+    bgSecondary: 'bg-[#0c1c1e]',
+    cardBg: 'bg-[#0c1c1e]/90 border-[#1a383b]',
+    cardBgOpaque: 'bg-[#0c1c1e] border-[#1a383b]',
+    sidebarBg: 'bg-[#02090a] border-[#1a383b]',
+    border: 'border-[#1a383b]',
+    borderStrong: 'border-[#285357]',
+    text: 'text-[#dcf0f2]',
+    textMuted: 'text-[#b0cdcf]',
+    textMutedLight: 'text-[#95b4b7]',
+    textMutedDark: 'text-[#7ca1a3]',
+    accent: 'text-[#48e5ec]',
+    accentBg: 'bg-[#48e5ec]',
+    accentHoverBg: 'hover:bg-[#34c9cf]',
+    accentText: 'text-[#032426]',
+    accentLight: 'text-[#9ef7fa]',
+    accentLightBg: 'bg-[#48e5ec]/15',
+    accentLightBorder: 'border-[#48e5ec]/30',
+    cardHover: 'hover:bg-white/[0.01]',
+    inputBg: 'bg-[#030d0e]',
+    inputBorder: 'border-[#1a383b]',
+    buttonOutline: 'border-[#285357] hover:border-[#387277] text-[#dcf0f2]',
+    divider: 'divide-[#1a383b]',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[#b0cdcf]/50',
+    tagManager: 'bg-[#48e5ec]/10 border border-[#48e5ec]/20 text-[#48e5ec]',
+    tagStaff: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
+    tagActive: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
+    tagSuspended: 'bg-rose-500/10 border border-rose-500/20 text-rose-400',
+    tagTrial: 'bg-amber-500/10 border border-amber-500/20 text-amber-400',
+    tagExpired: 'bg-white/5 border border-white/10 text-[#b0cdcf]/50'
+  },
+  'Custom Palette': {
+    name: 'Custom Palette',
+    bg: 'bg-[var(--custom-bg)]',
+    bgSecondary: 'bg-[var(--custom-card-bg)]',
+    cardBg: 'bg-[var(--custom-card-bg)]/90 border-[var(--custom-accent)]/10',
+    cardBgOpaque: 'bg-[var(--custom-card-bg)] border-[var(--custom-accent)]/10',
+    sidebarBg: 'bg-[var(--custom-bg)] border-[var(--custom-accent)]/10',
+    border: 'border-[var(--custom-accent)]/5',
+    borderStrong: 'border-[var(--custom-accent)]/15',
+    text: 'text-[var(--custom-text)]',
+    textMuted: 'text-[var(--custom-text-muted)]',
+    textMutedLight: 'text-[var(--custom-text-muted)]/80',
+    textMutedDark: 'text-[var(--custom-text-muted)]/60',
+    accent: 'text-[var(--custom-accent)]',
+    accentBg: 'bg-[var(--custom-accent)]',
+    accentHoverBg: 'hover:opacity-90',
+    accentText: 'text-black',
+    accentLight: 'text-[var(--custom-accent)]',
+    accentLightBg: 'bg-[var(--custom-accent)]/15',
+    accentLightBorder: 'border-[var(--custom-accent)]/20',
+    cardHover: 'hover:bg-white/[0.01]',
+    inputBg: 'bg-[var(--custom-bg)]',
+    inputBorder: 'border-[var(--custom-accent)]/20',
+    buttonOutline: 'border-[var(--custom-accent)]/20 text-[var(--custom-text)]',
+    divider: 'divide-[var(--custom-accent)]/10',
+    tagAdmin: 'bg-white/5 border border-white/10 text-[var(--custom-text-muted)]/60',
+    tagManager: 'bg-[var(--custom-accent)]/10 border border-[var(--custom-accent)]/20 text-[var(--custom-accent)]',
+    tagStaff: 'bg-sky-500/10 border border-sky-500/20 text-sky-400',
+    tagActive: 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400',
+    tagSuspended: 'bg-rose-500/10 border border-rose-500/20 text-rose-400',
+    tagTrial: 'bg-amber-500/10 border border-amber-500/20 text-amber-400',
+    tagExpired: 'bg-white/5 border border-white/10 text-[var(--custom-text-muted)]/60'
+  }
 };
 
 interface Tenant {
@@ -78,12 +248,44 @@ interface AuditLog {
   tenant: string;
   type: 'info' | 'warning' | 'success' | 'security';
 }
-
 export default function SuperAdminPage() {
+  // Dynamic aesthetic state loading
+  const [globalAesthetic, setGlobalAesthetic] = useState('Midnight Black');
+  const [customBg, setCustomBg] = useState('#0e0e0d');
+  const [customCardBg, setCustomCardBg] = useState('#161513');
+  const [customAccent, setCustomAccent] = useState('#ffc53d');
+  const [customText, setCustomText] = useState('#e5e2e1');
+  const [customTextMuted, setCustomTextMuted] = useState('#a69984');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedAesthetic = localStorage.getItem('dinepos_global_aesthetic');
+      if (savedAesthetic) setGlobalAesthetic(savedAesthetic);
+      
+      const savedBg = localStorage.getItem('dinepos_custom_bg');
+      const savedCardBg = localStorage.getItem('dinepos_custom_card_bg');
+      const savedAccent = localStorage.getItem('dinepos_custom_accent');
+      const savedText = localStorage.getItem('dinepos_custom_text');
+      const savedTextMuted = localStorage.getItem('dinepos_custom_text_muted');
+      
+      if (savedBg) setCustomBg(savedBg);
+      if (savedCardBg) setCustomCardBg(savedCardBg);
+      if (savedAccent) setCustomAccent(savedAccent);
+      if (savedText) setCustomText(savedText);
+      if (savedTextMuted) setCustomTextMuted(savedTextMuted);
+    }
+  }, []);
+
+  const theme = themes[globalAesthetic as keyof typeof themes] || themes['Midnight Black'];
+  const isLightTheme = globalAesthetic === 'Pristine White' || globalAesthetic === 'Delicious Red';
+  const hText = isLightTheme ? 'hover:text-[#1a1917]' : 'hover:text-white';
+  const hBg = isLightTheme ? 'hover:bg-black/5' : 'hover:bg-white/5';
+  const hBgStrong = isLightTheme ? 'hover:bg-black/10' : 'hover:bg-white/10';
+  const hBorder = isLightTheme ? 'hover:border-black/20' : 'hover:border-white/20';
+
   // Sidebar tab matching mockup
   const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'promocodes' | 'settings' | 'support' | 'analytics' | 'cms'>('overview');
 
-  // CMS configuration state
   const [cmsConfig, setCmsConfig] = useState<CmsConfig>(defaultCmsConfig);
 
   useEffect(() => {
@@ -1527,8 +1729,19 @@ export default function SuperAdminPage() {
 
   return (
     <div className={`flex h-screen w-full ${theme.bg} ${theme.text} font-sans antialiased overflow-hidden select-none`}>
-            {/* LEFT SIDEBAR PANEL (GLOBAL CONSOLE CONTEXT) */}
-      <aside className={`h-full w-[280px] ${theme.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20 border-r border-white/5 overflow-y-auto`}>
+      {/* Inject custom theme CSS variables dynamically — values are sanitized to hex only */}
+      <style dangerouslySetInnerHTML={{ __html: (() => {
+        const safeHex = (v: string) => /^#[0-9a-fA-F]{3,8}$/.test(v) ? v : '#000000';
+        return `:root {
+          --custom-bg: ${safeHex(customBg)};
+          --custom-card-bg: ${safeHex(customCardBg)};
+          --custom-accent: ${safeHex(customAccent)};
+          --custom-text: ${safeHex(customText)};
+          --custom-text-muted: ${safeHex(customTextMuted)};
+        }`;
+      })() }} />
+      {/* LEFT SIDEBAR PANEL (GLOBAL CONSOLE CONTEXT) */}
+      <aside className={`h-full w-[280px] ${theme.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20 border-r ${theme.border} overflow-y-auto`}>
         <div>
           {/* Brand/Super Admin Console Header */}
           <div className="mb-10 select-none flex items-center">
@@ -1553,7 +1766,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'overview'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">dashboard</span>
@@ -1565,7 +1778,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'locations'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">corporate_fare</span>
@@ -1577,7 +1790,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'access'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">security</span>
@@ -1589,7 +1802,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'health'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">dns</span>
@@ -1601,7 +1814,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'referrals'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">loyalty</span>
@@ -1613,7 +1826,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'payments'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">payments</span>
@@ -1625,7 +1838,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'promocodes'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">local_offer</span>
@@ -1637,7 +1850,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'analytics'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">bar_chart</span>
@@ -1649,7 +1862,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'support'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">confirmation_number</span>
@@ -1661,7 +1874,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'settings'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">settings</span>
@@ -1673,7 +1886,7 @@ export default function SuperAdminPage() {
               className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
                 activeTab === 'cms'
                   ? `${theme.accentBg} ${theme.accentText} rounded-xl`
-                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
               }`}
             >
               <span className="material-symbols-outlined text-lg leading-none">web</span>
@@ -1683,17 +1896,17 @@ export default function SuperAdminPage() {
         </div>
 
         {/* Sidebar Footer Controls */}
-        <div className="pt-6 font-sans border-t border-white/5 space-y-4">
+        <div className={`pt-6 font-sans border-t ${theme.border} space-y-4`}>
           <button type="button" 
             onClick={() => triggerToast('Opening global console documentation...', 'info')}
-            className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`}
+            className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} ${hText} ${hBg} rounded-xl`}
           >
             <span className="material-symbols-outlined text-lg leading-none">menu_book</span>
             <span>Documentation</span>
           </button>
           <Link 
             href="/login"
-            className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`}
+            className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} ${hText} ${hBg} rounded-xl`}
           >
             <span className="material-symbols-outlined text-lg leading-none">logout</span>
             <span>Log Out</span>
@@ -1820,19 +2033,19 @@ export default function SuperAdminPage() {
                   <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6 relative overflow-hidden`}>
                     <div className="flex justify-between items-center select-none">
                       <div>
-                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Location Performance</h3>
-                        <p className="text-[11px] text-[#A69984]/50 font-semibold mt-0.5">Real-time status of managed nodes</p>
+                        <h3 className={`font-serif text-base ${theme.text} font-bold tracking-wide`}>Location Performance</h3>
+                        <p className={`text-[11px] ${theme.textMuted} font-semibold mt-0.5`}>Real-time status of managed nodes</p>
                       </div>
-                      <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-0.5 text-[10px] font-bold font-sans uppercase tracking-wider">
+                      <div className={`flex items-center gap-1 bg-black/10 border ${theme.border} rounded-lg p-0.5 text-[10px] font-bold font-sans uppercase tracking-wider`}>
                         <button type="button"
                           onClick={() => setLocationsView('list')}
-                          className={`px-3 py-1.5 rounded transition-all cursor-pointer ${locationsView === 'list' ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-white/50 hover:text-white'}`}
+                          className={`px-3 py-1.5 rounded transition-all cursor-pointer ${locationsView === 'list' ? `${theme.accentBg} ${theme.accentText}` : `${theme.textMuted} ${hText}`}`}
                         >
                           List View
                         </button>
                         <button type="button"
                           onClick={() => setLocationsView('card')}
-                          className={`px-3 py-1.5 rounded transition-all cursor-pointer ${locationsView === 'card' ? 'bg-[#ffc53d] text-[#2c1a00]' : 'text-white/50 hover:text-white'}`}
+                          className={`px-3 py-1.5 rounded transition-all cursor-pointer ${locationsView === 'card' ? `${theme.accentBg} ${theme.accentText}` : `${theme.textMuted} ${hText}`}`}
                         >
                           Map View
                         </button>
