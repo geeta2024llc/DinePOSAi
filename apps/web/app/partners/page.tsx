@@ -73,6 +73,15 @@ export default function PartnersPage() {
   const [currentUser, setCurrentUser] = useState<Referral | null>(null);
   const [programConfig, setProgramConfig] = useState(DEFAULT_CONFIG);
 
+  const formatPolicyText = (policy: string) => {
+    if (!policy) return '';
+    return policy
+      .replace(/{rewardPerSignup}/g, `$${programConfig.rewardPerSignup}`)
+      .replace(/{commissionRate}/g, `${programConfig.commissionRate}%`)
+      .replace(/{minPayoutThreshold}/g, `$${programConfig.minPayoutThreshold}`)
+      .replace(/{cookieDuration}/g, `${programConfig.cookieDuration}`);
+  };
+
   // Navigation states — login is now a separate page at /partners/login
   const [viewMode, setViewMode] = useState<'landing' | 'register' | 'dashboard'>('landing');
   
@@ -409,9 +418,9 @@ export default function PartnersPage() {
                 <div className="w-12 h-12 rounded-xl bg-[#ffe2ab]/10 border border-[#ffe2ab]/25 flex items-center justify-center text-[#ffc53d]">
                   <span className="material-symbols-outlined text-2xl font-bold">share</span>
                 </div>
-                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">1. Share Your Code</h3>
+                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">{cmsConfig.partners.step1Title}</h3>
                 <p className="text-xs text-[#A69984] leading-relaxed">
-                  Register as a partner, add your bank details for payouts, and copy your custom invite link. No upfront commitments, no fees.
+                  {formatPolicyText(cmsConfig.partners.step1Desc)}
                 </p>
               </div>
 
@@ -419,9 +428,9 @@ export default function PartnersPage() {
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400">
                   <span className="material-symbols-outlined text-2xl">storefront</span>
                 </div>
-                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">2. Venues Register</h3>
+                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">{cmsConfig.partners.step2Title}</h3>
                 <p className="text-xs text-[#A69984] leading-relaxed">
-                  When a restaurant signs up using your code, you instantly see who joined, when, and what services they activated on your live dashboard.
+                  {formatPolicyText(cmsConfig.partners.step2Desc)}
                 </p>
               </div>
 
@@ -429,9 +438,9 @@ export default function PartnersPage() {
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center text-amber-400">
                   <span className="material-symbols-outlined text-2xl">payments</span>
                 </div>
-                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">3. Get Paid</h3>
+                <h3 className="font-serif text-lg text-white font-semibold tracking-wide">{cmsConfig.partners.step3Title}</h3>
                 <p className="text-xs text-[#A69984] leading-relaxed">
-                  Earn <span className="text-[#ffc53d] font-bold">${programConfig.rewardPerSignup}</span> per onboarded business plus <span className="text-[#ffc53d] font-bold">{programConfig.commissionRate}% commission</span>. Paid directly to your bank once you hit the <span className="text-[#ffc53d] font-bold">${programConfig.minPayoutThreshold}</span> threshold.
+                  {formatPolicyText(cmsConfig.partners.step3Desc)}
                 </p>
               </div>
             </div>
@@ -464,10 +473,10 @@ export default function PartnersPage() {
               </div>
               <div className="space-y-3">
                 <p className="text-sm font-serif italic text-white/95 leading-relaxed font-normal">
-                  "As a culinary consultant, I suggest DinePOS to every fine-dining restaurant I work with. The onboarding is incredibly smooth, and the payout system ensures I am rewarded transparently for helping businesses find the right tools."
+                  "{cmsConfig.partners.testimonialQuote}"
                 </p>
                 <div className="text-[11px] text-[#A69984]/50 font-bold uppercase tracking-wider font-sans">
-                  Eric Ripert • Chef & DinePOS Ambassador
+                  {cmsConfig.partners.testimonialAuthor}
                 </div>
               </div>
             </div>
@@ -478,9 +487,9 @@ export default function PartnersPage() {
                 <span className="inline-block border border-[#ffe2ab]/20 rounded-full px-4 py-1.5 text-[#ffe2ab] text-[10px] uppercase font-bold tracking-[0.25em] bg-[#ffe2ab]/5 mb-3">
                   Alliance Directory
                 </span>
-                <h2 className="font-serif text-white text-3xl font-medium tracking-wide">Certified Platform Alliances</h2>
+                <h2 className="font-serif text-white text-3xl font-medium tracking-wide">{cmsConfig.partners.allianceTitle}</h2>
                 <p className="text-[#A69984] text-xs leading-relaxed max-w-md mx-auto mt-2">
-                  DinePOS AI integrates with best-of-breed enterprise services to orchestrate your entire restaurant workflow.
+                  {cmsConfig.partners.allianceSubtitle}
                 </p>
               </div>
 
@@ -517,8 +526,8 @@ export default function PartnersPage() {
           <div className="max-w-[640px] mx-auto py-6 animate-fade-in duration-300">
             <div className={`border ${theme.cardBg} rounded-2xl p-8 shadow-2xl space-y-6`}>
               <div className="text-center space-y-2 pb-4 border-b border-white/5">
-                <h2 className="font-serif text-2xl text-white font-medium">Join the Ambassador Network</h2>
-                <p className="text-xs text-[#A69984]">Fill in your details and payout bank accounts to start earning.</p>
+                <h2 className="font-serif text-2xl text-white font-medium">{cmsConfig.partners.regTitle}</h2>
+                <p className="text-xs text-[#A69984]">{cmsConfig.partners.regSubtitle}</p>
               </div>
 
               <form onSubmit={handleRegister} className="space-y-6 text-xs font-semibold">
@@ -921,11 +930,9 @@ export default function PartnersPage() {
                 <div className={`p-6 rounded-2xl border ${theme.cardBg} space-y-4 font-sans text-xs`}>
                   <h4 className="font-serif text-white font-semibold tracking-wide border-b border-white/5 pb-2">Referral Payout Policies</h4>
                   <ul className="space-y-2.5 text-[#A69984]/70 font-medium list-disc list-inside">
-                    <li>Rewards accumulate when a referred merchant completes their registration using your code.</li>
-                    <li>Flat reward per signup: <span className="text-[#ffc53d] font-bold">${programConfig.rewardPerSignup}</span> per establishment.</li>
-                    <li>Commission on first payment: <span className="text-[#ffc53d] font-bold">{programConfig.commissionRate}%</span> of the referred tenant's first subscription charge.</li>
-                    <li>Minimum payout threshold: <span className="text-[#ffc53d] font-bold">${programConfig.minPayoutThreshold}</span>. Admin processes transfers within 3 business days.</li>
-                    <li>Cookie tracking window: <span className="text-[#ffc53d] font-bold">{programConfig.cookieDuration} days</span> — referral attribution is maintained for returning visitors.</li>
+                    {cmsConfig.partners.payoutPolicies.split(',').map((policy, idx) => (
+                      <li key={idx}>{formatPolicyText(policy)}</li>
+                    ))}
                   </ul>
                 </div>
 

@@ -5,34 +5,17 @@ import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
-const testimonials = [
-  {
-    quote: "DinePOS AI is the absolute cornerstone of our business operations at GEETA LLC. The seamless KDS integration, combined with real-time multi-branch telemetry and AI upselling, has allowed us to scale our culinary concepts with absolute consistency and efficiency.",
-    author: "シリス　テクラル (SHREES TEKLAL)",
-    role: "OWNER OF GEETA合同会社",
-    image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEid7UQR_nMKW3G3jPlC08Wk9mr2l-nkxjh3ar_eR_u9b85HgBO8SzA6H5bwjTt3UtafFlb3IxXTeY2JxUN3xFkEIx1HL3I_42PiDzRFxy_AKQ6Yi81BKjiTfP-2Luko51rLj525315xEG14mUuK_NLKmWRXD5gl3ga11R2wAwtSdO6Wn23PcT8o6-dWbcg/s320/9aa544e2-ec4d-476a-8bbf-c589d0ee2464.jpg",
-    objectPosition: "center 15%"
-  },
-  {
-    quote: "KDS integration completely transformed our kitchen flow. Course-based firing and automatic allergy alerts mean we execute flawless services every single night. It is an indispensable culinary tool.",
-    author: "Chef Antoine Laurent",
-    role: "Executive Chef, Le Céleste",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi",
-    objectPosition: "center"
-  },
-  {
-    quote: "With unified analytics across our multi-unit portfolio, we optimized table turns by 18% and improved server tip averages. The platform paid for itself within the first month.",
-    author: "Sophia Vance",
-    role: "Director of Operations, The Gilded Group",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m",
-    objectPosition: "center"
-  }
-];
-
 export default function HomePage() {
   const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'annual'>('monthly');
   const [activeTestimonial, setActiveTestimonial] = React.useState(0);
   const [cmsConfig, setCmsConfig] = React.useState(defaultCmsConfig);
+
+  React.useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
 
   const formatPrice = (priceStr: string) => {
     if (!priceStr) return '';
@@ -41,12 +24,29 @@ export default function HomePage() {
     return isNaN(num) ? priceStr : num.toLocaleString();
   };
 
-  React.useEffect(() => {
-    setCmsConfig(getCmsConfig());
-    const handleUpdate = () => setCmsConfig(getCmsConfig());
-    window.addEventListener('dinepos_cms_update', handleUpdate);
-    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
-  }, []);
+  const testimonials = [
+    {
+      quote: cmsConfig.homepage.testimonial1Quote,
+      author: cmsConfig.homepage.testimonial1Author,
+      role: cmsConfig.homepage.testimonial1Role,
+      image: cmsConfig.homepage.testimonial1Image,
+      objectPosition: cmsConfig.homepage.testimonial1Position
+    },
+    {
+      quote: cmsConfig.homepage.testimonial2Quote,
+      author: cmsConfig.homepage.testimonial2Author,
+      role: cmsConfig.homepage.testimonial2Role,
+      image: cmsConfig.homepage.testimonial2Image,
+      objectPosition: cmsConfig.homepage.testimonial2Position
+    },
+    {
+      quote: cmsConfig.homepage.testimonial3Quote,
+      author: cmsConfig.homepage.testimonial3Author,
+      role: cmsConfig.homepage.testimonial3Role,
+      image: cmsConfig.homepage.testimonial3Image,
+      objectPosition: cmsConfig.homepage.testimonial3Position
+    }
+  ];
 
   return (
     <div className="bg-surface-container-lowest text-on-surface flex flex-col antialiased overflow-x-hidden pt-24">
@@ -72,7 +72,7 @@ export default function HomePage() {
           <div className="mb-8">
             <span className="inline-flex items-center px-5 py-2 rounded-full border border-[#ffe2ab]/30 bg-[#ffe2ab]/5 font-label-sm text-xs text-[#ffe2ab] uppercase tracking-[0.25em] shadow-[0_0_20px_rgba(255,226,171,0.1)] backdrop-blur-md">
               <span className="w-2 h-2 rounded-full bg-[#ffe2ab] mr-3 animate-pulse shadow-[0_0_8px_#ffe2ab]"></span>
-              Introducing DinePOS AI System
+              {cmsConfig.homepage.heroLaunchBadge}
             </span>
           </div>
           
@@ -87,14 +87,14 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
             {/* Primary Glow Button */}
             <Link href="/register" className="group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-title-md font-bold text-base px-9 py-4 rounded-full transition-all duration-500 transform hover:-translate-y-1 flex items-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)]">
-              <span className="relative z-10 flex items-center gap-2">Request a Demo <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span></span>
+              <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.heroPrimaryCtaText} <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span></span>
               {/* Shine effect */}
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
             </Link>
             
             {/* Secondary Glass Button */}
             <Link href="/#solutions" className="group border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-md font-title-md font-semibold text-white px-9 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-              Explore Solutions
+              {cmsConfig.homepage.heroSecondaryCtaText}
             </Link>
           </div>
         </div>
@@ -104,8 +104,8 @@ export default function HomePage() {
       <section className="py-xl relative z-10 bg-surface-container-lowest" id="solutions">
         <div className="max-w-7xl mx-auto px-margin-desktop">
           <div className="mb-lg text-center md:text-left">
-            <h2 className="font-headline-lg text-4xl text-on-surface mb-xs font-semibold">Integrated Solutions</h2>
-            <p className="font-body-md text-on-surface-variant">Seamless synchronization from front-of-house to the pass.</p>
+            <h2 className="font-headline-lg text-4xl text-on-surface mb-xs font-semibold">{cmsConfig.homepage.solutionsHeader}</h2>
+            <p className="font-body-md text-on-surface-variant">{cmsConfig.homepage.solutionsSubtitle}</p>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-md md:gap-lg auto-rows-[minmax(320px,_auto)]">
@@ -239,13 +239,13 @@ export default function HomePage() {
           {/* Header */}
           <div className="text-center mb-xl">
             <span className="inline-block border border-primary/20 rounded-full px-4 py-1.5 font-label-sm text-primary text-[10px] uppercase tracking-[0.22em] bg-primary/5 mb-md">
-              Subscription Tiers
+              {cmsConfig.homepage.pricingHeaderBadge}
             </span>
             <h2 className="font-headline-lg text-4xl md:text-5xl text-white mb-xs font-semibold">
-              Simple, Transparent Pricing
+              {cmsConfig.homepage.pricingHeaderTitle}
             </h2>
             <p className="font-body-md text-on-surface-variant max-w-2xl mx-auto text-sm leading-relaxed">
-              Choose the plan that best fits your establishment's scale, transaction volume, and operational ambition.
+              {cmsConfig.homepage.pricingHeaderSubtitle}
             </p>
           </div>
 
@@ -278,7 +278,7 @@ export default function HomePage() {
                     ? 'bg-[#2c1a00]/15 text-[#2c1a00]'
                     : 'bg-[#ffe2ab]/10 text-[#ffe2ab]'
                 }`}>
-                  Save 20%
+                  {cmsConfig.pricing.savePercentBadgeText}
                 </span>
               </button>
             </div>
@@ -290,8 +290,8 @@ export default function HomePage() {
             <div className="bg-gradient-to-b from-white/[0.03] to-white/[0.01] rounded-2xl p-8 sm:p-9 flex flex-col justify-between h-full border border-white/[0.06] group hover:border-[#ffe2ab]/25 hover:shadow-[0_20px_50px_rgba(255,226,171,0.04)] hover:-translate-y-1 transition-all duration-500">
               <div>
                 <div className="mb-8">
-                  <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Starter Package</span>
-                  <h3 className="font-serif text-3xl text-white font-medium italic mb-4">Starter</h3>
+                  <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">{cmsConfig.pricing.starterLabel}</span>
+                  <h3 className="font-serif text-3xl text-white font-medium italic mb-4">{cmsConfig.pricing.starterName}</h3>
                   <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed mb-6 min-h-[40px]">{cmsConfig.pricing.starterDesc}</p>
                   
                   <div className="flex items-baseline gap-1 mt-6">
@@ -309,57 +309,31 @@ export default function HomePage() {
                 <div className="h-px bg-white/5 my-6"></div>
 
                 <ul className="space-y-4 mb-8">
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Digital Menu System</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Tablet Ordering</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>POS Billing System</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Kitchen Display System (KDS)</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Order Management</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Sales Reports</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>1 Restaurant Location</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Up to 5 Staff Accounts</span>
-                  </li>
+                  {cmsConfig.pricing.starterFeatures.split(',').map((feature) => (
+                    <li key={feature.trim()} className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                      <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                      <span>{feature.trim()}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
               
-              <Link href="/register?tier=Starter" className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">Choose Starter</Link>
+              <Link href={`/register?tier=${cmsConfig.pricing.starterName}`} className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">{cmsConfig.pricing.starterButtonText}</Link>
             </div>
 
             {/* Growth Card (Popular Choice) */}
             <div className="bg-gradient-to-b from-[#181613] to-[#0e0e0d] rounded-2xl p-8 sm:p-9 flex flex-col justify-between h-full border border-[#ffe2ab]/40 relative group hover:border-[#ffe2ab] hover:shadow-[0_25px_60px_rgba(255,226,171,0.08)] hover:-translate-y-1.5 transition-all duration-500 lg:scale-[1.03] z-10 shadow-2xl">
               {/* Popular choice badge with elegant gold gradient */}
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#cc9d31] to-[#ffe2ab] text-[#2c1a00] font-sans text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-[0_4px_16px_rgba(255,226,171,0.25)] flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">local_fire_department</span> Popular Choice
+                <span className="material-symbols-outlined text-xs">local_fire_department</span> {cmsConfig.pricing.popularBadgeText}
               </div>
               
               <div>
                 <div className="mb-8">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="font-sans text-[9px] text-[#ffe2ab] font-bold uppercase tracking-[0.2em] mb-1.5 block">Growth Package</span>
-                      <h3 className="font-serif text-3xl text-white font-medium italic mb-4">Growth</h3>
+                      <span className="font-sans text-[9px] text-[#ffe2ab] font-bold uppercase tracking-[0.2em] mb-1.5 block">{cmsConfig.pricing.growthLabel}</span>
+                      <h3 className="font-serif text-3xl text-white font-medium italic mb-4">{cmsConfig.pricing.growthName}</h3>
                     </div>
                     <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300">rocket_launch</span>
                   </div>
@@ -380,42 +354,20 @@ export default function HomePage() {
                 <div className="h-px bg-white/5 my-6"></div>
 
                 <ul className="space-y-4 mb-8">
-                  <li className="flex items-start gap-3 text-white font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span className="font-semibold">Everything in Starter</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>AI Upsell Engine</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Smart Combo Suggestions</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Inventory Management</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Stock Alerts</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Staff Management</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Advanced Analytics</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Customer Insights</span>
-                  </li>
+                  {cmsConfig.pricing.growthFeatures.split(',').map((feature) => {
+                    const trimmed = feature.trim();
+                    const isBold = trimmed.startsWith('Everything in');
+                    return (
+                      <li key={trimmed} className={`flex items-start gap-3 ${isBold ? 'text-white' : 'text-[#A69984]/90'} font-sans text-xs leading-relaxed`}>
+                        <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                        <span className={isBold ? 'font-semibold' : ''}>{trimmed}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               
-              <Link href="/register?tier=Growth" className="w-full text-center bg-[#ffe2ab] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold tracking-wider text-xs uppercase py-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(255,191,0,0.15)] hover:shadow-[0_4px_25px_rgba(255,191,0,0.25)] hover:scale-[1.01] block">Choose Growth</Link>
+              <Link href={`/register?tier=${cmsConfig.pricing.growthName}`} className="w-full text-center bg-[#ffe2ab] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold tracking-wider text-xs uppercase py-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(255,191,0,0.15)] hover:shadow-[0_4px_25px_rgba(255,191,0,0.25)] hover:scale-[1.01] block">{cmsConfig.pricing.growthButtonText}</Link>
             </div>
 
             {/* Business Card */}
@@ -424,8 +376,8 @@ export default function HomePage() {
                 <div className="mb-8">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Business Package</span>
-                      <h3 className="font-serif text-3xl text-white font-medium italic mb-4">Business</h3>
+                      <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">{cmsConfig.pricing.premiumLabel}</span>
+                      <h3 className="font-serif text-3xl text-white font-medium italic mb-4">{cmsConfig.pricing.premiumName}</h3>
                     </div>
                     <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300">diamond</span>
                   </div>
@@ -446,42 +398,20 @@ export default function HomePage() {
                 <div className="h-px bg-white/5 my-6"></div>
 
                 <ul className="space-y-4 mb-8">
-                  <li className="flex items-start gap-3 text-white font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span className="font-semibold">Everything in Growth</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Multi-Branch Management</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Central Dashboard</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Role-Based Permissions</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Priority Support</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>API Access</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Advanced AI Personalization</span>
-                  </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Unlimited Staff Accounts</span>
-                  </li>
+                  {cmsConfig.pricing.premiumFeatures.split(',').map((feature) => {
+                    const trimmed = feature.trim();
+                    const isBold = trimmed.startsWith('Everything in');
+                    return (
+                      <li key={trimmed} className={`flex items-start gap-3 ${isBold ? 'text-white' : 'text-[#A69984]/90'} font-sans text-xs leading-relaxed`}>
+                        <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                        <span className={isBold ? 'font-semibold' : ''}>{trimmed}</span>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
               
-              <Link href="/register?tier=Business" className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">Choose Business</Link>
+              <Link href={`/register?tier=${cmsConfig.pricing.premiumName}`} className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">{cmsConfig.pricing.premiumButtonText}</Link>
             </div>
 
           </div>
@@ -492,32 +422,19 @@ export default function HomePage() {
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ffe2ab]/[0.02] to-transparent pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
             
             <h3 className="font-serif text-3xl sm:text-4xl text-white font-medium italic mb-4">
-              14 Days Free Trial
+              {cmsConfig.homepage.trialTitle}
             </h3>
             
             <p className="font-sans text-sm text-[#A69984]/80 max-w-2xl mx-auto leading-relaxed mb-8">
-              Experience the complete power of DinePOS AI with all premium features unlocked during your trial. No credit card required.
+              {cmsConfig.homepage.trialDesc}
             </p>
             
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 font-sans text-xs font-semibold text-[#ffe2ab]">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">done</span> AI Upsell
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">done</span> Inventory
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">done</span> Staff Management
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">done</span> POS
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">done</span> KDS
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[16px]">done</span> Analytics
-              </div>
+              {cmsConfig.homepage.trialFeatures.split(',').map((feature) => (
+                <div key={feature.trim()} className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[16px]">done</span> {feature.trim()}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -533,22 +450,22 @@ export default function HomePage() {
           {/* Section header */}
           <div className="text-center mb-16 md:mb-20">
             <span className="inline-flex items-center px-5 py-2 rounded-full border border-[#ffe2ab]/20 bg-[#ffe2ab]/5 font-label-sm text-xs text-[#ffe2ab] uppercase tracking-[0.25em] mb-8 backdrop-blur-md">
-              Ambassador Network
+              {cmsConfig.homepage.ambassadorBadge}
             </span>
             <h2 className="font-display-lg text-5xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 mb-6 font-semibold tracking-tight">
-              Earn While You Introduce
+              {cmsConfig.homepage.ambassadorTitle}
             </h2>
             <p className="font-body-md text-[#d4c5ab]/80 max-w-2xl mx-auto text-lg leading-relaxed font-light">
-              Refer restaurants to DinePOS AI and earn premium cash rewards for every onboarded location. Our ambassador network is growing globally.
+              {cmsConfig.homepage.ambassadorSubtitle}
             </p>
           </div>
 
           {/* Stats bar */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 md:mb-20">
             {[
-              { value: '$150', label: 'Reward per signup', icon: 'payments' },
-              { value: '10%', label: 'Commission on first payment', icon: 'percent' },
-              { value: '$0', label: 'Cost to join the program', icon: 'loyalty' },
+              { value: cmsConfig.homepage.ambassadorStat1Value, label: cmsConfig.homepage.ambassadorStat1Label, icon: 'payments' },
+              { value: cmsConfig.homepage.ambassadorStat2Value, label: cmsConfig.homepage.ambassadorStat2Label, icon: 'percent' },
+              { value: cmsConfig.homepage.ambassadorStat3Value, label: cmsConfig.homepage.ambassadorStat3Label, icon: 'loyalty' },
             ].map(stat => (
               <div key={stat.label} className="bg-white/[0.02] backdrop-blur-xl rounded-2xl p-8 text-center border border-white/[0.05] group hover:-translate-y-1 hover:bg-white/[0.04] transition-all duration-500 shadow-xl">
                 <div className="w-16 h-16 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
@@ -568,24 +485,24 @@ export default function HomePage() {
                 icon: 'share',
                 color: 'text-[#ffe2ab]',
                 bg: 'bg-[#ffe2ab]/10 border-[#ffe2ab]/20 shadow-[0_0_20px_rgba(255,226,171,0.1)]',
-                title: 'Register & Get Your Code',
-                body: 'Sign up as a DinePOS ambassador in under 2 minutes. You\'ll receive a unique referral code and link to share with your culinary network.',
+                title: cmsConfig.homepage.ambassador1Title,
+                body: cmsConfig.homepage.ambassador1Desc,
               },
               {
                 step: '02',
                 icon: 'storefront',
                 color: 'text-emerald-400',
                 bg: 'bg-emerald-500/10 border-emerald-500/20 shadow-[0_0_20px_rgba(52,211,153,0.1)]',
-                title: 'Restaurants Sign Up',
-                body: 'When a venue registers using your code, they\'re instantly tracked on your ambassador dashboard — showing status, services activated, and accrued rewards.',
+                title: cmsConfig.homepage.ambassador2Title,
+                body: cmsConfig.homepage.ambassador2Desc,
               },
               {
                 step: '03',
                 icon: 'account_balance',
                 color: 'text-[#cc9d31]',
                 bg: 'bg-[#cc9d31]/10 border-[#cc9d31]/20 shadow-[0_0_20px_rgba(204,157,49,0.1)]',
-                title: 'Collect Your Earnings',
-                body: 'Earnings are credited per onboarded location and paid directly to your bank account by the platform admin once you reach the minimum threshold.',
+                title: cmsConfig.homepage.ambassador3Title,
+                body: cmsConfig.homepage.ambassador3Desc,
               },
             ].map((step, idx) => (
               <div key={step.step} className="bg-gradient-to-br from-[#1c1b1b]/60 to-[#0e0e0e]/80 backdrop-blur-2xl rounded-3xl p-8 md:p-10 flex flex-col gap-6 border border-white/[0.04] group hover:-translate-y-1 hover:border-white/10 transition-all duration-500 relative overflow-hidden shadow-2xl">
@@ -609,14 +526,14 @@ export default function HomePage() {
               href="/partners"
               className="group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-title-md font-bold text-base px-9 py-4 rounded-full transition-all duration-500 transform hover:-translate-y-1 flex items-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)]"
             >
-              <span className="relative z-10 flex items-center gap-2">Join the Ambassador Program <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span></span>
+              <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.ambassadorPrimaryCtaText} <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span></span>
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
             </Link>
             <Link
               href="/partners/login"
               className="group border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-md font-title-md font-semibold text-white px-9 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
             >
-              Ambassador Login
+              {cmsConfig.homepage.ambassadorSecondaryCtaText}
             </Link>
           </div>
         </div>
@@ -630,13 +547,13 @@ export default function HomePage() {
             {/* Title / Controls Column */}
             <div className="w-full lg:w-1/3 space-y-6">
               <span className="inline-block border border-primary/20 rounded-full px-4 py-1.5 font-label-sm text-primary text-[10px] uppercase tracking-[0.22em] bg-primary/5 select-none">
-                Michelin-Grade Partners
+                {cmsConfig.homepage.testimonialBadge}
               </span>
               <h2 className="font-headline-lg text-4xl text-white font-semibold leading-tight">
-                Trusted by the Elite
+                {cmsConfig.homepage.testimonialTitle}
               </h2>
               <p className="font-body-md text-on-surface-variant text-sm leading-relaxed max-w-sm">
-                See how top-tier establishments are redefining culinary service and front-of-house flow with DinePOS AI.
+                {cmsConfig.homepage.testimonialSubtitle}
               </p>
               
               <div className="flex gap-3 pt-2">
@@ -714,10 +631,10 @@ export default function HomePage() {
 
         <div className="max-w-5xl mx-auto px-margin-desktop text-center relative z-20">
           <h2 className="font-display-lg text-4xl md:text-6xl text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 mb-4 font-semibold tracking-tight drop-shadow-sm">
-            The Future of Hospitality is Here.
+            {cmsConfig.homepage.ctaSectionTitle}
           </h2>
           <p className="font-body-md text-[#d4c5ab]/80 mb-10 text-lg md:text-xl font-light">
-            Join the world's most discerning culinary institutions.
+            {cmsConfig.homepage.ctaSectionSubtitle}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
@@ -727,7 +644,7 @@ export default function HomePage() {
               className="group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-sans font-bold text-xs uppercase tracking-widest px-9 py-4 rounded-full transition-all duration-500 transform hover:-translate-y-1 flex items-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)]"
             >
               <span className="relative z-10 flex items-center gap-2">
-                Request a Demo 
+                {cmsConfig.homepage.ctaSectionPrimaryText} 
                 <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
               </span>
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
@@ -738,7 +655,7 @@ export default function HomePage() {
               href="/#pricing" 
               className="group border border-white/20 bg-white/5 hover:bg-white/10 backdrop-blur-md font-sans font-semibold text-white text-xs uppercase tracking-widest px-9 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 flex items-center shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
             >
-              View Pricing
+              {cmsConfig.homepage.ctaSectionSecondaryText}
             </Link>
           </div>
         </div>
@@ -755,7 +672,7 @@ export default function HomePage() {
             <Link className="hover:text-primary transition-colors opacity-80 hover:opacity-100" href="/partners">Ambassador Program</Link>
           </div>
           <div className="text-on-surface-variant font-label-sm text-xs opacity-60">
-            © 2026 DinePOS AI Hospitality Systems. All rights reserved.
+            {cmsConfig.homepage.footerCopyright}
           </div>
         </div>
       </footer>

@@ -108,7 +108,7 @@ export default function SupportPage() {
             
             <div className="flex items-center gap-3 mb-8 relative z-10 border-b border-white/5 pb-6">
               <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">mail</span>
-              <h2 className="font-serif text-xl md:text-2xl text-white tracking-wide font-bold">Direct Inquiry</h2>
+              <h2 className="font-serif text-xl md:text-2xl text-white tracking-wide font-bold">{cmsConfig.support.formTitle}</h2>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
@@ -119,7 +119,7 @@ export default function SupportPage() {
                     type="text" 
                     value={establishment}
                     onChange={(e) => setEstablishment(e.target.value)}
-                    placeholder="e.g. The French Laundry" 
+                    placeholder={cmsConfig.support.formEstPlaceholder} 
                     className="w-full bg-[#0a0a09] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-all font-medium shadow-inner" 
                   />
                 </div>
@@ -130,7 +130,7 @@ export default function SupportPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Your Name" 
+                    placeholder={cmsConfig.support.formNamePlaceholder} 
                     className="w-full bg-[#0a0a09] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-all font-medium shadow-inner" 
                   />
                 </div>
@@ -144,7 +144,7 @@ export default function SupportPage() {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="contact@restaurant.com" 
+                    placeholder={cmsConfig.support.formEmailPlaceholder} 
                     className="w-full bg-[#0a0a09] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-all font-medium shadow-inner" 
                   />
                 </div>
@@ -173,14 +173,14 @@ export default function SupportPage() {
                   required
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  placeholder="How can our concierge assist you today?" 
+                  placeholder={cmsConfig.support.formMsgPlaceholder} 
                   className="w-full bg-[#0a0a09] border border-white/10 rounded-xl px-4 py-3.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-all font-medium shadow-inner resize-none"
                 ></textarea>
               </div>
 
               <div className="flex justify-end pt-4">
                 <button type="submit" className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[11px] uppercase tracking-wider px-8 py-4 rounded-xl transition-all duration-300 shadow-lg flex items-center gap-2 cursor-pointer active:scale-95">
-                  Submit Request <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                  {cmsConfig.support.formButtonText} <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
                 </button>
               </div>
             </form>
@@ -225,14 +225,14 @@ export default function SupportPage() {
               <div className="flex justify-between items-center mb-3">
                 <div className="flex items-center gap-2 text-[#ffe2ab] font-sans text-[11px] uppercase tracking-widest font-bold">
                   <span className="material-symbols-outlined text-lg">confirmation_number</span>
-                  Ticket Portal
+                  {cmsConfig.support.portalTitle}
                 </div>
                 <div className="w-8 h-8 rounded-full bg-[#ffe2ab]/10 flex items-center justify-center group-hover:bg-[#ffe2ab]/20 transition-colors">
                   <span className="material-symbols-outlined text-[#ffe2ab] text-sm">arrow_forward</span>
                 </div>
               </div>
               <p className="font-sans text-[12px] text-[#A69984] font-medium leading-relaxed">
-                Track your submitted requests and view resolution history.
+                {cmsConfig.support.portalDesc}
               </p>
             </div>
 
@@ -243,54 +243,54 @@ export default function SupportPage() {
         <div className="pt-8 border-t border-white/5">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
             <div>
-              <h2 className="font-serif text-[26px] md:text-[32px] text-white mb-2 font-bold tracking-wide">Knowledge Base</h2>
-              <p className="font-sans text-[13px] text-[#A69984] font-medium">Detailed guides and solutions for common operational queries.</p>
+              <h2 className="font-serif text-[26px] md:text-[32px] text-white mb-2 font-bold tracking-wide">{cmsConfig.support.kbTitle}</h2>
+              <p className="font-sans text-[13px] text-[#A69984] font-medium">{cmsConfig.support.kbSubtitle}</p>
             </div>
             <button 
               onClick={() => triggerToast('Opening full knowledge directory...')}
               className="font-sans text-[#ffe2ab] text-[10px] uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors font-bold cursor-pointer bg-[#ffe2ab]/10 px-4 py-2 rounded-lg"
             >
-              View All Articles <span className="material-symbols-outlined text-sm">menu_book</span>
+              {cmsConfig.support.kbButtonText} <span className="material-symbols-outlined text-sm">menu_book</span>
             </button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div 
-              onClick={() => triggerToast('Opening "Menu Engineering Guide"...')}
+              onClick={() => triggerToast(`Opening "${cmsConfig.support.kb1Title} Guide"...`)}
               className="bg-[#12110f] border border-white/5 rounded-3xl p-8 hover:bg-white/[0.02] cursor-pointer transition-all duration-300 group"
             >
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-white/5">
-                <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">restaurant_menu</span>
+                <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">{cmsConfig.support.kb1Icon}</span>
               </div>
-              <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">Menu Engineering</h4>
+              <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">{cmsConfig.support.kb1Title}</h4>
               <p className="font-sans text-[#A69984] text-[12.5px] leading-relaxed font-medium">
-                Best practices for updating pricing and modifier groups during active service safely without disrupting open tickets.
+                {cmsConfig.support.kb1Desc}
               </p>
             </div>
 
             <div 
-              onClick={() => triggerToast('Opening "Offline Mode Operations"...')}
+              onClick={() => triggerToast(`Opening "${cmsConfig.support.kb2Title} Guide"...`)}
               className="bg-[#12110f] border border-white/5 rounded-3xl p-8 hover:bg-white/[0.02] cursor-pointer transition-all duration-300 group"
             >
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-white/5">
-                <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">wifi_off</span>
+                <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">{cmsConfig.support.kb2Icon}</span>
               </div>
-              <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">Offline Operations</h4>
+              <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">{cmsConfig.support.kb2Title}</h4>
               <p className="font-sans text-[#A69984] text-[12.5px] leading-relaxed font-medium">
-                Maintaining seamless order flow and local print routing during temporary network interruptions or ISP outages.
+                {cmsConfig.support.kb2Desc}
               </p>
             </div>
 
             <div 
-              onClick={() => triggerToast('Opening "Staff Permissions Management"...')}
+              onClick={() => triggerToast(`Opening "${cmsConfig.support.kb3Title} Guide"...`)}
               className="bg-[#12110f] border border-white/5 rounded-3xl p-8 hover:bg-white/[0.02] cursor-pointer transition-all duration-300 group"
             >
               <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 border border-white/5">
-                <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">manage_accounts</span>
+                <span className="material-symbols-outlined text-[#ffe2ab] text-xl font-light">{cmsConfig.support.kb3Icon}</span>
               </div>
-              <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">Access Permissions</h4>
+              <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">{cmsConfig.support.kb3Title}</h4>
               <p className="font-sans text-[#A69984] text-[12.5px] leading-relaxed font-medium">
-                Configuring granular access levels for management, servers, and kitchen staff across all POS terminals.
+                {cmsConfig.support.kb3Desc}
               </p>
             </div>
           </div>
@@ -299,8 +299,8 @@ export default function SupportPage() {
         {/* FAQ Section */}
         <div className="pt-16 mt-16 border-t border-white/5">
           <div className="text-center md:text-left mb-10">
-            <h2 className="font-serif text-[26px] md:text-[32px] text-white mb-2 font-bold tracking-wide">Frequently Asked Questions</h2>
-            <p className="font-sans text-[13px] text-[#A69984] font-medium">Common questions about DinePOS AI services and network replication.</p>
+            <h2 className="font-serif text-[26px] md:text-[32px] text-white mb-2 font-bold tracking-wide">{cmsConfig.support.faqTitle}</h2>
+            <p className="font-sans text-[13px] text-[#A69984] font-medium">{cmsConfig.support.faqSubtitle}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">

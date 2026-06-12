@@ -19,8 +19,18 @@ export default function LoginPage() {
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
 
   useEffect(() => {
-    setCmsConfig(getCmsConfig());
-    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    const config = getCmsConfig();
+    setCmsConfig(config);
+    if (typeof window !== 'undefined') {
+      document.title = config.auth.loginPageTitle;
+    }
+    const handleUpdate = () => {
+      const updated = getCmsConfig();
+      setCmsConfig(updated);
+      if (typeof window !== 'undefined') {
+        document.title = updated.auth.loginPageTitle;
+      }
+    };
     window.addEventListener('dinepos_cms_update', handleUpdate);
     return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
   }, []);
@@ -137,7 +147,7 @@ export default function LoginPage() {
         {/* Logo and Subtitle */}
         <div className="text-center mb-8">
           <h1 className="font-serif text-[#ffe2ab] text-[36px] font-semibold tracking-wide leading-none select-none">
-            DinePOS AI
+            {cmsConfig.auth.loginPageTitle}
           </h1>
           <h2 className="text-white font-bold text-xs tracking-wide mt-3 select-none">
             {cmsConfig.auth.loginTitle}
@@ -157,7 +167,7 @@ export default function LoginPage() {
           {/* Role selector field */}
           <div className="space-y-2">
             <label className="block text-[#A69984] text-[10px] font-bold uppercase tracking-[0.12em] select-none">
-              SELECT OPERATIONAL ROLE
+              {cmsConfig.auth.loginRoleLabel}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#A69984]/40">
@@ -184,7 +194,7 @@ export default function LoginPage() {
           {/* Email field */}
           <div className="space-y-2">
             <label className="block text-[#A69984] text-[10px] font-bold uppercase tracking-[0.12em] select-none">
-              EMAIL ADDRESS
+              {cmsConfig.auth.loginEmailLabel}
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#A69984]/40">
@@ -205,13 +215,13 @@ export default function LoginPage() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <label className="block text-[#A69984] text-[10px] font-bold uppercase tracking-[0.12em] select-none">
-                PASSWORD
+                {cmsConfig.auth.loginPasswordLabel}
               </label>
               <Link 
                 href="/forgot-password" 
                 className="text-[#ffe2ab] text-[11px] font-semibold tracking-wide hover:text-[#ffdca0] transition-colors"
               >
-                Forgot Password?
+                {cmsConfig.auth.loginForgotPassword}
               </Link>
             </div>
             <div className="relative">
@@ -251,7 +261,7 @@ export default function LoginPage() {
                 <span className="material-symbols-outlined text-[10px] text-[#402d00] font-black scale-0 peer-checked:scale-100 transition-transform duration-200 select-none">check</span>
               </div>
               <span className="ml-2.5 text-[#A69984]/85 font-sans text-[11px] font-medium tracking-wide">
-                Remember this device
+                {cmsConfig.auth.loginRememberMe}
               </span>
             </label>
           </div>
@@ -265,11 +275,11 @@ export default function LoginPage() {
             {isLoading ? (
               <span className="flex items-center gap-2">
                 <span className="w-4 h-4 border-2 border-[#402d00]/30 border-t-[#402d00] rounded-full animate-spin flex-shrink-0"></span>
-                Signing In…
+                {cmsConfig.auth.loginButtonText === 'Sign In' ? 'Signing In…' : `${cmsConfig.auth.loginButtonText}…`}
               </span>
             ) : (
               <span className="flex items-center gap-2">
-                Sign In <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
+                {cmsConfig.auth.loginButtonText} <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
               </span>
             )}
           </button>
@@ -279,7 +289,7 @@ export default function LoginPage() {
         <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
           <div className="text-center">
             <span className="text-[#A69984] text-[10px] font-bold uppercase tracking-[0.15em] select-none">
-              Quick Demo Access
+              {cmsConfig.auth.loginDemoTitle}
             </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -342,7 +352,7 @@ export default function LoginPage() {
 
         {/* Muted bottom operational guideline text */}
         <div className="mt-6 text-center text-[#A69984]/40 font-sans text-[10px] leading-relaxed select-none uppercase tracking-[0.06em]">
-          Secure operational gateway · Authorized personnel only
+          {cmsConfig.auth.loginFooter}
         </div>
       </div>
     </div>

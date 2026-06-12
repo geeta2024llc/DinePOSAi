@@ -9,8 +9,18 @@ function RegisterForm() {
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
 
   useEffect(() => {
-    setCmsConfig(getCmsConfig());
-    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    const config = getCmsConfig();
+    setCmsConfig(config);
+    if (typeof window !== 'undefined') {
+      document.title = config.auth.signupPageTitle;
+    }
+    const handleUpdate = () => {
+      const updated = getCmsConfig();
+      setCmsConfig(updated);
+      if (typeof window !== 'undefined') {
+        document.title = updated.auth.signupPageTitle;
+      }
+    };
     window.addEventListener('dinepos_cms_update', handleUpdate);
     return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
   }, []);
@@ -132,7 +142,7 @@ function RegisterForm() {
               <span className="material-symbols-outlined text-[#ffe2ab] text-[20px] leading-none">restaurant</span>
             </div>
             <span className="font-display-lg text-[#ffe2ab] text-2xl font-bold tracking-wide group-hover:drop-shadow-[0_0_10px_rgba(255,226,171,0.5)] transition-all">
-              DinePOS AI
+              {cmsConfig.auth.signupPageTitle}
             </span>
           </Link>
         </div>
@@ -143,19 +153,25 @@ function RegisterForm() {
           <div className="flex items-center gap-4">
             <div className="h-px w-12 bg-gradient-to-r from-[#ffe2ab]/50 to-transparent" />
             <span className="text-[#ffe2ab]/80 text-xs font-bold uppercase tracking-[0.25em]">
-              Enterprise Hospitality Suite
+              {cmsConfig.auth.signupLeftEyebrow}
             </span>
           </div>
 
           {/* Headline */}
           <div className="space-y-6">
             <h1 className="font-display-lg text-[3.5rem] xl:text-[4rem] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 font-semibold leading-[1.1] tracking-tight drop-shadow-sm">
-              The Art of Modern
-              <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffe2ab] via-[#ffd380] to-[#cc9d31] italic pr-2 drop-shadow-[0_0_20px_rgba(255,226,171,0.2)]">Hospitality.</span>
+              {cmsConfig.auth.signupLeftTitle.includes('Hospitality') ? (
+                <>
+                  {cmsConfig.auth.signupLeftTitle.replace('Hospitality.', '').replace('Hospitality', '')}
+                  <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffe2ab] via-[#ffd380] to-[#cc9d31] italic pr-2 drop-shadow-[0_0_20px_rgba(255,226,171,0.2)]">Hospitality.</span>
+                </>
+              ) : (
+                cmsConfig.auth.signupLeftTitle
+              )}
             </h1>
             <p className="font-body-md text-[#d4c5ab]/80 text-lg leading-relaxed max-w-[480px] font-light">
-              Precision tools built for high-end culinary environments. Reduce operational friction and let your team focus on what matters — the guest.
+              {cmsConfig.auth.signupLeftDesc}
             </p>
           </div>
 
@@ -185,18 +201,18 @@ function RegisterForm() {
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
             <span className="material-symbols-outlined absolute -top-4 -right-4 text-7xl text-white/[0.02] font-light">format_quote</span>
             <p className="font-serif text-[#d4c5ab]/90 text-sm leading-relaxed italic relative z-10">
-              "DinePOS AI is the absolute cornerstone of our business operations at GEETA LLC. The seamless KDS integration, combined with real-time multi-branch telemetry and AI upselling, has allowed us to scale our culinary concepts with absolute consistency and efficiency."
+              "{cmsConfig.homepage.testimonial1Quote}"
             </p>
             <div className="mt-5 flex items-center gap-4 relative z-10 border-t border-white/5 pt-4">
               <img 
-                src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEid7UQR_nMKW3G3jPlC08Wk9mr2l-nkxjh3ar_eR_u9b85HgBO8SzA6H5bwjTt3UtafFlb3IxXTeY2JxUN3xFkEIx1HL3I_42PiDzRFxy_AKQ6Yi81BKjiTfP-2Luko51rLj525315xEG14mUuK_NLKmWRXD5gl3ga11R2wAwtSdO6Wn23PcT8o6-dWbcg/s320/9aa544e2-ec4d-476a-8bbf-c589d0ee2464.jpg" 
-                alt="シリス　テクラル" 
+                src={cmsConfig.homepage.testimonial1Image} 
+                alt={cmsConfig.homepage.testimonial1Author} 
                 className="w-10 h-10 rounded-full object-cover border border-[#ffe2ab]/30"
-                style={{ objectPosition: 'center 15%' }}
+                style={{ objectPosition: cmsConfig.homepage.testimonial1Position }}
               />
               <div>
-                <div className="font-title-md text-white text-sm font-semibold leading-none">シリス　テクラル (SHREES TEKLAL)</div>
-                <div className="font-label-sm text-[#ffe2ab]/80 text-[10px] uppercase tracking-widest mt-1">OWNER OF GEETA合同会社</div>
+                <div className="font-title-md text-white text-sm font-semibold leading-none">{cmsConfig.homepage.testimonial1Author}</div>
+                <div className="font-label-sm text-[#ffe2ab]/80 text-[10px] uppercase tracking-widest mt-1">{cmsConfig.homepage.testimonial1Role}</div>
               </div>
             </div>
           </div>
@@ -230,14 +246,14 @@ function RegisterForm() {
             <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 backdrop-blur-md flex items-center justify-center">
               <span className="material-symbols-outlined text-[#ffe2ab] text-xl leading-none">restaurant</span>
             </div>
-            <span className="font-display-lg text-[#ffe2ab] text-2xl font-bold tracking-wide">DinePOS AI</span>
+            <span className="font-display-lg text-[#ffe2ab] text-2xl font-bold tracking-wide">{cmsConfig.auth.signupPageTitle}</span>
           </div>
 
           {/* Form header */}
           <div className="mb-10 max-w-[440px]">
             <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-[#ffe2ab]/20 bg-[#ffe2ab]/5 mb-6 backdrop-blur-md shadow-[0_0_15px_rgba(255,226,171,0.05)]">
               <span className="w-1.5 h-1.5 bg-[#ffe2ab] rounded-full animate-pulse shadow-[0_0_8px_#ffe2ab]"></span>
-              <span className="font-label-sm text-[#ffe2ab] text-xs font-bold uppercase tracking-[0.2em]">{selectedTier} Free Trial — 14 Days</span>
+              <span className="font-label-sm text-[#ffe2ab] text-xs font-bold uppercase tracking-[0.2em]">{selectedTier} {cmsConfig.auth.signupRightEyebrow}</span>
             </div>
             <h2 className="font-display-lg text-white text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-3">
               {cmsConfig.auth.signupTitle}
@@ -378,11 +394,11 @@ function RegisterForm() {
                 {isLoading ? (
                   <>
                     <span className="w-5 h-5 border-2 border-[#261a00]/30 border-t-[#261a00] rounded-full animate-spin flex-shrink-0" />
-                    Creating your account…
+                    {cmsConfig.auth.signupButtonText.includes('Get Started') ? 'Creating your account…' : `${cmsConfig.auth.signupButtonText}…`}
                   </>
                 ) : (
                   <>
-                    Get Started — It's Free
+                    {cmsConfig.auth.signupButtonText}
                     <span className="material-symbols-outlined text-base transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
                   </>
                 )}
@@ -403,7 +419,7 @@ function RegisterForm() {
 
         {/* Footer */}
         <footer className="relative z-10 px-8 sm:px-12 xl:px-24 py-6 border-t border-white/[0.05] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#d4c5ab]/40 tracking-wide select-none">
-          <span>© 2026 DinePOS AI Hospitality Systems</span>
+          <span>{cmsConfig.auth.signupFooter}</span>
           <div className="flex items-center gap-6 font-semibold">
             <Link href="/terms" className="hover:text-[#ffe2ab] transition-colors">Terms</Link>
             <Link href="/privacy" className="hover:text-[#ffe2ab] transition-colors">Privacy</Link>

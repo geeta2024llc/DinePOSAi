@@ -3173,7 +3173,7 @@ export default function DashboardPage() {
                             {tr.currentPlan}
                           </span>
                           <h3 className={`font-serif text-3xl font-bold ${t.text} mt-2.5`}>
-                            {userAccount ? `${userAccount.tier} ${userAccount.plan === 'TRIAL' ? '(14-Day Trial)' : ''}` : tr.planName}
+                            {userAccount ? `${userAccount.tier === 'Starter' ? cmsConfig.pricing.starterName : userAccount.tier === 'Growth' ? cmsConfig.pricing.growthName : userAccount.tier === 'Business' ? cmsConfig.pricing.premiumName : userAccount.tier} ${userAccount.plan === 'TRIAL' ? '(14-Day Trial)' : ''}` : tr.planName}
                           </h3>
                           <p className={`text-[11px] ${t.textMutedLight} font-semibold mt-1`}>
                             {userAccount && userAccount.plan === 'TRIAL' 
@@ -6193,8 +6193,8 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>Starter Package</span>
-                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>Starter</h4>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>{cmsConfig.pricing.starterLabel}</span>
+                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>{cmsConfig.pricing.starterName}</h4>
                     </div>
                     <span className={`material-symbols-outlined text-2xl ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>storefront</span>
                   </div>
@@ -6213,22 +6213,12 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-px bg-white/5 my-2"></div>
                   <ul className="space-y-2.5 text-[10px] select-none">
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Digital Menu System</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Tablet Ordering</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>POS Billing System</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>1 Location, 5 Staff</span>
-                    </li>
+                    {cmsConfig.pricing.starterFeatures.split(',').map((feature) => (
+                      <li key={feature.trim()} className="flex items-center gap-2 text-white">
+                        <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                        <span>{feature.trim()}</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               </div>
@@ -6243,13 +6233,13 @@ export default function DashboardPage() {
                 }`}
               >
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#cc9d31] to-[#ffe2ab] text-[#2c1a00] font-sans text-[7.5px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[10px]">local_fire_department</span> Popular
+                  <span className="material-symbols-outlined text-[10px]">local_fire_department</span> {cmsConfig.pricing.popularBadgeText}
                 </div>
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>Growth Package</span>
-                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>Growth</h4>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>{cmsConfig.pricing.growthLabel}</span>
+                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>{cmsConfig.pricing.growthName}</h4>
                     </div>
                     <span className={`material-symbols-outlined text-2xl ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>rocket_launch</span>
                   </div>
@@ -6268,22 +6258,16 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-px bg-white/5 my-2"></div>
                   <ul className="space-y-2.5 text-[10px] select-none">
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span className="font-bold">Everything in Starter</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>AI Upsell Engine</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Smart Combo Suggestions</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Inventory Management</span>
-                    </li>
+                    {cmsConfig.pricing.growthFeatures.split(',').map((feature) => {
+                      const trimmed = feature.trim();
+                      const isBold = trimmed.startsWith('Everything in');
+                      return (
+                        <li key={trimmed} className="flex items-center gap-2 text-white">
+                          <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                          <span className={isBold ? 'font-bold' : ''}>{trimmed}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </div>
@@ -6300,8 +6284,8 @@ export default function DashboardPage() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>Business Package</span>
-                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>Business</h4>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>{cmsConfig.pricing.premiumLabel}</span>
+                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>{cmsConfig.pricing.premiumName}</h4>
                     </div>
                     <span className={`material-symbols-outlined text-2xl ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>diamond</span>
                   </div>
@@ -6320,22 +6304,16 @@ export default function DashboardPage() {
                   </div>
                   <div className="h-px bg-white/5 my-2"></div>
                   <ul className="space-y-2.5 text-[10px] select-none">
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span className="font-bold">Everything in Growth</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Multi-Branch Management</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Central Dashboard</span>
-                    </li>
-                    <li className="flex items-center gap-2 text-white">
-                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
-                      <span>Unlimited Staff Accounts</span>
-                    </li>
+                    {cmsConfig.pricing.premiumFeatures.split(',').map((feature) => {
+                      const trimmed = feature.trim();
+                      const isBold = trimmed.startsWith('Everything in');
+                      return (
+                        <li key={trimmed} className="flex items-center gap-2 text-white">
+                          <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                          <span className={isBold ? 'font-bold' : ''}>{trimmed}</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               </div>
@@ -6347,7 +6325,7 @@ export default function DashboardPage() {
               <div>
                 <span className="text-[#ffe2ab] font-bold">Selected Billing Summary:</span>
                 <p className={`${t.textMuted} mt-0.5`}>
-                  You are upgrading to the <strong className="text-white">{selectedUpgradeTier}</strong> package billed <strong className="text-white">{upgradeBillingCycle === 'annual' ? 'annually' : 'monthly'}</strong>. 
+                  You are upgrading to the <strong className="text-white">{selectedUpgradeTier === 'Starter' ? cmsConfig.pricing.starterName : selectedUpgradeTier === 'Growth' ? cmsConfig.pricing.growthName : cmsConfig.pricing.premiumName}</strong> package billed <strong className="text-white">{upgradeBillingCycle === 'annual' ? 'annually' : 'monthly'}</strong>. 
                   Your credit card on file will be charged <strong className="text-[#ffc53d]">¥{
                     formatPrice(
                       selectedUpgradeTier === 'Starter'
@@ -6391,7 +6369,7 @@ export default function DashboardPage() {
                   localStorage.setItem('dinepos_user_account', JSON.stringify(updatedUser));
                   setUserAccount(updatedUser as any);
                   setShowPlanUpgradeModal(false);
-                  triggerToast(`Successfully subscribed to the ${selectedUpgradeTier} package!`, 'success');
+                  triggerToast(`Successfully subscribed to the ${selectedUpgradeTier === 'Starter' ? cmsConfig.pricing.starterName : selectedUpgradeTier === 'Growth' ? cmsConfig.pricing.growthName : cmsConfig.pricing.premiumName} package!`, 'success');
                   
                   // dispatch storage/update event
                   window.dispatchEvent(new Event('storage'));

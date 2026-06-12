@@ -55,7 +55,7 @@ export default function TermsPage() {
           <section id="introduction" className="mb-12">
             <h2 className="font-headline-lg text-3xl text-primary mb-4">1. Introduction</h2>
             <p className="font-body-md text-on-surface-variant leading-relaxed">
-              Welcome to DinePOS AI Hospitality Systems. These Terms and Conditions govern your access to and use of our point-of-sale, kitchen display systems, and broader hospitality management platforms. By accessing or using our services, you agree to be bound by these terms. If you do not agree to all the terms and conditions, then you may not access the services.
+              {cmsConfig.legal.termsIntro}
             </p>
           </section>
 
@@ -66,14 +66,14 @@ export default function TermsPage() {
               <div className="glass-panel rounded-xl p-6 border-outline/10">
                 <h3 className="font-title-md font-semibold text-primary mb-2">Authorized Access</h3>
                 <p className="font-body-md text-on-surface-variant text-sm leading-relaxed">
-                  You agree to use the DinePOS AI platforms solely for your internal business operations within the hospitality sector. You shall not license, sublicense, sell, resell, transfer, assign, distribute, or otherwise commercially exploit or make available to any third party the Service in any way.
+                  {cmsConfig.legal.termsUsage1}
                 </p>
               </div>
 
               <div className="glass-panel rounded-xl p-6 border-outline/10">
                 <h3 className="font-title-md font-semibold text-primary mb-2">System Integrity</h3>
                 <p className="font-body-md text-on-surface-variant text-sm leading-relaxed">
-                  Users are strictly prohibited from attempting to interfere with, compromise the system integrity or security, or decipher any transmissions to or from the servers running the Service. Operational screens (KDS/POS) must be maintained in environments consistent with hardware specifications to ensure optimal high-contrast legibility and functional uptime.
+                  {cmsConfig.legal.termsUsage2}
                 </p>
               </div>
             </div>
@@ -94,13 +94,13 @@ export default function TermsPage() {
           <section id="subscription-terms" className="mb-12">
             <h2 className="font-headline-lg text-3xl text-primary mb-4">4. Subscription Terms</h2>
             <p className="font-body-md text-on-surface-variant leading-relaxed mb-6">
-              Access to the DinePOS AI suite is provided on a subscription basis. Fees are billed in advance on a recurring schedule as determined by your selected service tier.
+              {cmsConfig.legal.termsSub1}
             </p>
             
             <div className="border-l-2 border-primary pl-6 py-2 bg-gradient-to-r from-primary/10 to-transparent rounded-r-xl">
               <h4 className="font-label-sm text-primary uppercase text-xs font-bold tracking-widest mb-2">Important Notice</h4>
               <p className="font-body-md text-on-surface-variant text-sm leading-relaxed">
-                Failure to maintain active payment methods may result in immediate suspension of POS and KDS operational screens to protect system resources. Reinstatement requires clearing all outstanding balances.
+                {cmsConfig.legal.termsSub2}
               </p>
             </div>
           </section>
@@ -108,10 +108,10 @@ export default function TermsPage() {
           <section id="liability" className="mb-12">
             <h2 className="font-headline-lg text-3xl text-primary mb-4">5. Liability & Indemnification</h2>
             <p className="font-body-md text-on-surface-variant leading-relaxed mb-4">
-              DinePOS AI Hospitality Systems shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
+              {cmsConfig.legal.termsLiability1}
             </p>
             <p className="font-body-md text-on-surface-variant leading-relaxed">
-              Our total liability for all claims related to the Service shall not exceed the total amount paid by you to us for the Service during the twelve (12) months preceding the claim.
+              {cmsConfig.legal.termsLiability2}
             </p>
           </section>
         </div>

@@ -45,7 +45,7 @@ export default function PrivacyPage() {
                 {cmsConfig.legal.privacyBody1}
               </p>
               <p>
-                Our AI models are trained on anonymized, aggregated datasets. Specific patron identifiers, payment details, and proprietary recipes are never ingested into global training environments without explicit, opt-in enterprise agreements.
+                {cmsConfig.legal.privacySovereignty2}
               </p>
             </div>
           </div>
@@ -60,22 +60,12 @@ export default function PrivacyPage() {
                 <h2 className="font-title-md text-2xl text-on-surface font-semibold">Data Collection</h2>
               </div>
               <ul className="space-y-4 font-body-md text-on-surface-variant text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Transactional Point-of-Sale records
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Patron reservation & preference metrics
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Staff interaction and terminal logs
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  AI-driven predictive inventory telemetry
-                </li>
+                {cmsConfig.legal.privacyCollection.split(',').map((item) => (
+                  <li key={item.trim()} className="flex items-start gap-2">
+                    <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
+                    {item.trim()}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -86,22 +76,12 @@ export default function PrivacyPage() {
                 <h2 className="font-title-md text-2xl text-on-surface font-semibold">GDPR & CCPA Compliance</h2>
               </div>
               <ul className="space-y-4 font-body-md text-on-surface-variant text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Right to access and erasure (Right to be forgotten)
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Strict data processing agreements (DPAs)
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Automated compliance reporting for franchisees
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
-                  Zero-knowledge proof architecture for sensitive fields
-                </li>
+                {cmsConfig.legal.privacyCompliance.split(',').map((item) => (
+                  <li key={item.trim()} className="flex items-start gap-2">
+                    <span className="material-symbols-outlined text-primary text-sm mt-0.5">circle</span>
+                    {item.trim()}
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -111,7 +91,7 @@ export default function PrivacyPage() {
           <div className="glass-panel rounded-xl p-8 border-outline/10 hover-glow transition-all">
             <h2 className="font-title-md text-2xl text-primary font-semibold mb-4">Third-Party Integrations</h2>
             <p className="font-body-md text-on-surface-variant leading-relaxed">
-              DinePOS AI integrates seamlessly with leading delivery aggregators, CRM platforms, and payment gateways. Data shared with these entities is strictly limited to the necessary operational scope. We require all third-party vendors to adhere to our stringent 'Aura Protocol' data standards before integration is authorized.
+              {cmsConfig.legal.privacyThirdParty}
             </p>
           </div>
 

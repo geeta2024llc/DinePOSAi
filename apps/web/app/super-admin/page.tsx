@@ -4868,6 +4868,323 @@ export default function SuperAdminPage() {
                           </div>
                         </div>
 
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Support Page Layout & Placeholders</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">KB Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.kbTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, kbTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">KB Subtitle</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.kbSubtitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, kbSubtitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">KB Button Text</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.kbButtonText}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, kbButtonText: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        {/* KB Article 1 */}
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Knowledge Base Card 1</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 1 Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.kb1Title}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, kb1Title: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 1 Icon (Material Symbol)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.kb1Icon}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, kb1Icon: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 1 Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.support.kb1Desc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, kb1Desc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* KB Article 2 */}
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Knowledge Base Card 2</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 2 Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.kb2Title}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, kb2Title: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 2 Icon (Material Symbol)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.kb2Icon}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, kb2Icon: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 2 Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.support.kb2Desc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, kb2Desc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* KB Article 3 */}
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Knowledge Base Card 3</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 3 Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.kb3Title}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, kb3Title: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 3 Icon (Material Symbol)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.kb3Icon}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, kb3Icon: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Card 3 Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.support.kb3Desc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, kb3Desc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Inquiry form settings */}
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Direct Inquiry Form</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Form Header Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.formTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, formTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Submit Button Text</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.formButtonText}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, formButtonText: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Establishment Input Placeholder</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.formEstPlaceholder}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, formEstPlaceholder: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Name Input Placeholder</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.formNamePlaceholder}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, formNamePlaceholder: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Email Input Placeholder</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.formEmailPlaceholder}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, formEmailPlaceholder: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Message Textarea Placeholder</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.formMsgPlaceholder}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, formMsgPlaceholder: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ticket Portal settings */}
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Ticket Portal Card</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Portal Card Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.portalTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, portalTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Portal Card Description</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.portalDesc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, portalDesc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* FAQ titles */}
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">FAQ Section Titles</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">FAQ Main Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.faqTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, faqTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">FAQ Subtitle</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.support.faqSubtitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  support: { ...prev.support, faqSubtitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
                       </div>
                     </div>
                   )}
@@ -4980,6 +5297,205 @@ export default function SuperAdminPage() {
                             </div>
                           </div>
                         </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">How it Works (Steps)</h4>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Step 1</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Step 1 Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.step1Title}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, step1Title: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Step 1 Description</label>
+                              <textarea
+                                rows={2}
+                                value={cmsConfig.partners.step1Desc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, step1Desc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Step 2</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Step 2 Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.step2Title}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, step2Title: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Step 2 Description</label>
+                              <textarea
+                                rows={2}
+                                value={cmsConfig.partners.step2Desc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, step2Desc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Step 3</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Step 3 Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.step3Title}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, step3Title: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Step 3 Description</label>
+                              <textarea
+                                rows={2}
+                                value={cmsConfig.partners.step3Desc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, step3Desc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Ambassador Testimonial & Policies</h4>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Ambassador Testimonial Quote</label>
+                            <textarea
+                              rows={3}
+                              value={cmsConfig.partners.testimonialQuote}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                partners: { ...prev.partners, testimonialQuote: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Ambassador Testimonial Author & Role</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.partners.testimonialAuthor}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                partners: { ...prev.partners, testimonialAuthor: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Alliances Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.allianceTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, allianceTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Alliances Subtitle</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.allianceSubtitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, allianceSubtitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Payout Policies (Comma-separated, supports placeholders like {'{rewardPerSignup}'}, {'{commissionRate}'}, {'{minPayoutThreshold}'}, {'{cookieDuration}'})</label>
+                            <textarea
+                              rows={4}
+                              value={cmsConfig.partners.payoutPolicies}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                partners: { ...prev.partners, payoutPolicies: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Ambassador Registration Info</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Reg Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.regTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, regTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Reg Subtitle</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.regSubtitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, regSubtitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -5047,6 +5563,234 @@ export default function SuperAdminPage() {
                               }))}
                               className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
                             />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Auth Page Headers & Logos</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Login Brand Logo Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginPageTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginPageTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Register Brand Logo Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.signupPageTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, signupPageTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Login Page Input Labels & Buttons</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Select Role Label</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginRoleLabel}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginRoleLabel: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Email Input Label</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginEmailLabel}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginEmailLabel: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Password Input Label</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginPasswordLabel}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginPasswordLabel: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Remember Me Text</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginRememberMe}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginRememberMe: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Forgot Password Text</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginForgotPassword}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginForgotPassword: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Sign-In Button Text</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginButtonText}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginButtonText: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Demo Access Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginDemoTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginDemoTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Login Footer Notes</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginFooter}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginFooter: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Register Page Custom copy</h4>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Left Side Brand Banner</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Banner Eyebrow</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.auth.signupLeftEyebrow}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  auth: { ...prev.auth, signupLeftEyebrow: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Banner Headline</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.auth.signupLeftTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  auth: { ...prev.auth, signupLeftTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Banner Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.auth.signupLeftDesc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, signupLeftDesc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h5 className="text-[10px] text-[#ffc53d] uppercase tracking-wider font-bold">Right Side Form Console</h5>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Form Trial Eyebrow (e.g. {'{selectedTier}'} Free Trial)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.auth.signupRightEyebrow}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  auth: { ...prev.auth, signupRightEyebrow: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Form Submit Button Text</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.auth.signupButtonText}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  auth: { ...prev.auth, signupButtonText: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Form Footer Copyright Notes</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.auth.signupFooter}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  auth: { ...prev.auth, signupFooter: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
                           </div>
                         </div>
                       </div>
