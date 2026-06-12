@@ -1,8 +1,20 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 export default function TermsPage() {
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
+
   return (
     <div className="bg-surface-container-lowest text-on-surface flex flex-col antialiased min-h-screen pt-24 pb-8">
       <TopNavBar />
@@ -36,8 +48,8 @@ export default function TermsPage() {
         {/* Main Content */}
         <div className="md:col-span-3 pb-24">
           <div className="mb-12">
-            <h1 className="font-display-lg text-5xl text-primary mb-2">Terms and Conditions</h1>
-            <p className="font-label-sm text-on-surface-variant text-sm">Last Updated: October 24, 2024</p>
+            <h1 className="font-display-lg text-5xl text-primary mb-2">{cmsConfig.legal.termsTitle}</h1>
+            <p className="font-label-sm text-on-surface-variant text-sm">{cmsConfig.legal.termsSubtitle}</p>
           </div>
 
           <section id="introduction" className="mb-12">
@@ -70,7 +82,7 @@ export default function TermsPage() {
           <section id="data-privacy" className="mb-12">
             <h2 className="font-headline-lg text-3xl text-primary mb-4">3. Data Privacy</h2>
             <p className="font-body-md text-on-surface-variant leading-relaxed mb-4">
-              DinePOS AI Hospitality Systems operates as a data processor for the guest data entered into our systems by your establishment. We adhere to stringent data protection protocols, leveraging deep tonal layering and secure infrastructure to isolate tenant data.
+              {cmsConfig.legal.termsBody1}
             </p>
             <ul className="list-disc list-outside ml-6 space-y-2 font-body-md text-on-surface-variant text-sm">
               <li><strong className="text-on-surface">Data Sovereignty:</strong> Your data remains your property.</li>

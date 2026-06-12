@@ -3,31 +3,50 @@
 import React from 'react';
 import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 const testimonials = [
   {
-    quote: "The precision of DinePOS AI is unmatched. It operates quietly in the background, handling complex pacing and modifiers, allowing our sommeliers and servers to focus entirely on the choreography of the dining experience.",
-    author: "Julian Rossi",
-    role: "General Manager, L'Aura",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m"
+    quote: "DinePOS AI is the absolute cornerstone of our business operations at GEETA LLC. The seamless KDS integration, combined with real-time multi-branch telemetry and AI upselling, has allowed us to scale our culinary concepts with absolute consistency and efficiency.",
+    author: "シリス　テクラル (SHREES TEKLAL)",
+    role: "OWNER OF GEETA合同会社",
+    image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEid7UQR_nMKW3G3jPlC08Wk9mr2l-nkxjh3ar_eR_u9b85HgBO8SzA6H5bwjTt3UtafFlb3IxXTeY2JxUN3xFkEIx1HL3I_42PiDzRFxy_AKQ6Yi81BKjiTfP-2Luko51rLj525315xEG14mUuK_NLKmWRXD5gl3ga11R2wAwtSdO6Wn23PcT8o6-dWbcg/s320/9aa544e2-ec4d-476a-8bbf-c589d0ee2464.jpg",
+    objectPosition: "center 15%"
   },
   {
     quote: "KDS integration completely transformed our kitchen flow. Course-based firing and automatic allergy alerts mean we execute flawless services every single night. It is an indispensable culinary tool.",
     author: "Chef Antoine Laurent",
     role: "Executive Chef, Le Céleste",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi"
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi",
+    objectPosition: "center"
   },
   {
     quote: "With unified analytics across our multi-unit portfolio, we optimized table turns by 18% and improved server tip averages. The platform paid for itself within the first month.",
     author: "Sophia Vance",
     role: "Director of Operations, The Gilded Group",
-    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m"
+    image: "https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m",
+    objectPosition: "center"
   }
 ];
 
 export default function HomePage() {
   const [billingCycle, setBillingCycle] = React.useState<'monthly' | 'annual'>('monthly');
   const [activeTestimonial, setActiveTestimonial] = React.useState(0);
+  const [cmsConfig, setCmsConfig] = React.useState(defaultCmsConfig);
+
+  const formatPrice = (priceStr: string) => {
+    if (!priceStr) return '';
+    const clean = priceStr.replace(/,/g, '');
+    const num = Number(clean);
+    return isNaN(num) ? priceStr : num.toLocaleString();
+  };
+
+  React.useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
 
   return (
     <div className="bg-surface-container-lowest text-on-surface flex flex-col antialiased overflow-x-hidden pt-24">
@@ -39,7 +58,7 @@ export default function HomePage() {
           <img 
             alt="Luxury restaurant dark mood lighting" 
             className="w-full h-full object-cover opacity-20 filter blur-sm scale-105" 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuBF7LtjyBWbBlUr7NILHD6qzt9b-YtzTj9_1YVoX1bQqVJRgCLmBb4wIeFMkalbqm55eKEtN939-SsncojktN3xbYpAQHsoZpvhZ6CkeucH3gyG0sRKQRLg648a6f9OFqvhFuK0dW6v7zRo513dF9P_qLSsluq43CsukuUC6K_WGN5IOmOhoqEejVf1VPB06wdgFjWdt6_llCe29jlKCL-yKAZha7dQNIrL_PStu-XkNiQyTcCInb2ok0jVD3O_duXfbLnpp6ZdTKJi" 
+            src={cmsConfig.homepage.heroImage} 
             onError={(e) => { e.currentTarget.style.display = 'none'; }}
           />
           {/* Central Radial Gradient to focus the text */}
@@ -57,14 +76,12 @@ export default function HomePage() {
             </span>
           </div>
           
-          <h1 className="font-display-lg text-6xl md:text-[5.5rem] text-transparent bg-clip-text bg-gradient-to-b from-white to-white/70 mb-6 max-w-5xl leading-[1.1] tracking-tight drop-shadow-sm">
-            The Art of Modern{' '}
-            <br className="hidden sm:block" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ffe2ab] via-[#ffd380] to-[#cc9d31] italic pr-2 drop-shadow-[0_0_20px_rgba(255,226,171,0.2)]">Hospitality</span>
+          <h1 className="font-display-lg text-5xl md:text-[5rem] text-transparent bg-clip-text bg-gradient-to-r from-white via-[#ffe2ab] to-[#cc9d31] mb-6 max-w-5xl leading-[1.1] tracking-tight drop-shadow-sm">
+            {cmsConfig.homepage.heroTitle}
           </h1>
           
           <p className="font-body-md text-[#d4c5ab]/90 max-w-2xl mx-auto mb-12 text-xl md:text-2xl leading-relaxed font-light drop-shadow-sm">
-            Precision tools crafted for high-end culinary environments. Blend the tactile elegance of fine dining with the raw power of modern fintech.
+            {cmsConfig.homepage.heroSubtitle}
           </p>
           
           <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
@@ -111,9 +128,9 @@ export default function HomePage() {
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
                     <span className="material-symbols-outlined text-primary text-2xl">point_of_sale</span>
                   </div>
-                  <h3 className="font-display-lg text-4xl text-on-surface mb-sm font-semibold tracking-tight">Intelligent POS</h3>
+                  <h3 className="font-display-lg text-4xl text-on-surface mb-sm font-semibold tracking-tight">{cmsConfig.homepage.posTitle}</h3>
                   <p className="font-body-md text-on-surface-variant/80 text-lg leading-relaxed font-light">
-                    Fluid table management, dynamic coursing, and split-second transaction processing designed for the pace of a busy dining room.
+                    {cmsConfig.homepage.posDesc}
                   </p>
                 </div>
                 <Link className="font-label-sm text-primary uppercase tracking-[0.15em] mt-12 inline-flex items-center gap-2 hover:text-primary-fixed transition-colors group/link w-fit" href="/pos">
@@ -128,9 +145,9 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
                   <span className="material-symbols-outlined text-primary text-xl">kitchen</span>
                 </div>
-                <h3 className="font-display-lg text-3xl text-on-surface mb-xs font-semibold tracking-tight">Kitchen Display</h3>
+                <h3 className="font-display-lg text-3xl text-on-surface mb-xs font-semibold tracking-tight">{cmsConfig.homepage.kdsTitle}</h3>
                 <p className="font-body-md text-on-surface-variant/80 text-base leading-relaxed font-light">
-                  High-contrast, color-coded ticketing. Prioritize firing times to ensure perfect plating synchronicity.
+                  {cmsConfig.homepage.kdsDesc}
                 </p>
               </div>
               {/* Mock KDS Ticket */}
@@ -157,9 +174,9 @@ export default function HomePage() {
                 <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
                   <span className="material-symbols-outlined text-primary text-xl">support_agent</span>
                 </div>
-                <h3 className="font-display-lg text-3xl text-on-surface mb-xs font-semibold tracking-tight">Global Concierge</h3>
+                <h3 className="font-display-lg text-3xl text-on-surface mb-xs font-semibold tracking-tight">{cmsConfig.homepage.conciergeTitle}</h3>
                 <p className="font-body-md text-on-surface-variant/80 text-base leading-relaxed font-light">
-                  24/7 white-glove technical support. We handle the system so you can focus on the service.
+                  {cmsConfig.homepage.conciergeDesc}
                 </p>
               </div>
               <Link className="font-label-sm text-primary uppercase tracking-[0.15em] mt-12 inline-flex items-center gap-2 hover:text-primary-fixed transition-colors group/link w-fit relative z-10" href="/support">
@@ -174,9 +191,9 @@ export default function HomePage() {
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
                     <span className="material-symbols-outlined text-primary text-2xl">diamond</span>
                   </div>
-                  <h3 className="font-display-lg text-4xl text-on-surface mb-sm font-semibold tracking-tight">Guest Profiles</h3>
+                  <h3 className="font-display-lg text-4xl text-on-surface mb-sm font-semibold tracking-tight">{cmsConfig.homepage.guestTitle}</h3>
                   <p className="font-body-md text-on-surface-variant/80 text-lg leading-relaxed font-light mb-sm">
-                    Anticipate needs before they arrive. Track preferences, allergies, and milestone dates to deliver a truly personalized concierge experience.
+                    {cmsConfig.homepage.guestDesc}
                   </p>
                 </div>
                 <Link className="font-label-sm text-primary uppercase tracking-[0.15em] mt-12 inline-flex items-center gap-2 hover:text-primary-fixed transition-colors group/link w-fit" href="/login">
@@ -275,17 +292,17 @@ export default function HomePage() {
                 <div className="mb-8">
                   <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Starter Package</span>
                   <h3 className="font-serif text-3xl text-white font-medium italic mb-4">Starter</h3>
-                  <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed mb-6 min-h-[40px]">Perfect for independent bistros getting off the ground with reliable limits.</p>
+                  <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed mb-6 min-h-[40px]">{cmsConfig.pricing.starterDesc}</p>
                   
                   <div className="flex items-baseline gap-1 mt-6">
-                    <span className="text-sm font-sans font-bold text-[#A69984]/80 align-super -mt-2">$</span>
+                    <span className="text-xl font-sans font-bold text-[#ffe2ab] align-super -mt-2">¥</span>
                     <span className="text-5xl font-serif text-white font-semibold tracking-tight transition-all duration-300">
-                      {billingCycle === 'monthly' ? '149' : '119'}
+                      {formatPrice(billingCycle === 'monthly' ? cmsConfig.pricing.starterMonthly : cmsConfig.pricing.starterAnnual)}
                     </span>
                     <span className="text-xs font-sans text-[#A69984]/50 uppercase tracking-widest ml-1">/ Month</span>
                   </div>
                   <div className="text-[10px] text-[#A69984]/45 font-sans mt-2 font-medium">
-                    {billingCycle === 'monthly' ? 'Billed monthly' : 'Billed annually ($1,428/yr)'}
+                    {billingCycle === 'monthly' ? 'Billed monthly' : `Billed annually (¥${formatPrice((parseFloat(cmsConfig.pricing.starterAnnual) * 12).toString())}/yr)`}
                   </div>
                 </div>
 
@@ -294,24 +311,40 @@ export default function HomePage() {
                 <ul className="space-y-4 mb-8">
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>500 order allowance included</span>
+                    <span>Digital Menu System</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Standard Overage: $0.20/order</span>
+                    <span>Tablet Ordering</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Standard Webhook pipelines</span>
+                    <span>POS Billing System</span>
                   </li>
-                  <li className="flex items-start gap-3 text-[#A69984]/35 font-sans text-xs leading-relaxed line-through decoration-white/10 select-none">
-                    <span className="material-symbols-outlined text-white/10 text-[18px] flex-shrink-0 mt-0.5">remove_circle_outline</span>
-                    <span>Dedicated Account Manager</span>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Kitchen Display System (KDS)</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Order Management</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Sales Reports</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>1 Restaurant Location</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Up to 5 Staff Accounts</span>
                   </li>
                 </ul>
               </div>
               
-              <Link href="/register" className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">Choose Starter</Link>
+              <Link href="/register?tier=Starter" className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">Choose Starter</Link>
             </div>
 
             {/* Growth Card (Popular Choice) */}
@@ -330,17 +363,17 @@ export default function HomePage() {
                     </div>
                     <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300">rocket_launch</span>
                   </div>
-                  <p className="font-sans text-xs text-[#A69984]/80 leading-relaxed mb-6 min-h-[40px]">Designed for expanding merchants demanding dynamic scaling pipelines.</p>
+                  <p className="font-sans text-xs text-[#A69984]/80 leading-relaxed mb-6 min-h-[40px]">{cmsConfig.pricing.growthDesc}</p>
                   
                   <div className="flex items-baseline gap-1 mt-6">
-                    <span className="text-sm font-sans font-bold text-[#ffe2ab] align-super -mt-2">$</span>
+                    <span className="text-xl font-sans font-bold text-[#ffe2ab] align-super -mt-2">¥</span>
                     <span className="text-5xl font-serif text-[#ffe2ab] font-bold tracking-tight transition-all duration-300">
-                      {billingCycle === 'monthly' ? '399' : '319'}
+                      {formatPrice(billingCycle === 'monthly' ? cmsConfig.pricing.growthMonthly : cmsConfig.pricing.growthAnnual)}
                     </span>
                     <span className="text-xs font-sans text-[#ffe2ab]/75 uppercase tracking-widest ml-1">/ Month</span>
                   </div>
                   <div className="text-[10px] text-[#ffe2ab]/50 font-sans mt-2 font-medium">
-                    {billingCycle === 'monthly' ? 'Billed monthly' : 'Billed annually ($3,828/yr)'}
+                    {billingCycle === 'monthly' ? 'Billed monthly' : `Billed annually (¥${formatPrice((parseFloat(cmsConfig.pricing.growthAnnual) * 12).toString())}/yr)`}
                   </div>
                 </div>
 
@@ -349,76 +382,143 @@ export default function HomePage() {
                 <ul className="space-y-4 mb-8">
                   <li className="flex items-start gap-3 text-white font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span className="font-semibold">2,500 order allowance included</span>
+                    <span className="font-semibold">Everything in Starter</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Optimized Overage: $0.15/order</span>
+                    <span>AI Upsell Engine</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>High-performance endpoints</span>
+                    <span>Smart Combo Suggestions</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Priority 24/7 Support</span>
+                    <span>Inventory Management</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Stock Alerts</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Staff Management</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Advanced Analytics</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Customer Insights</span>
                   </li>
                 </ul>
               </div>
               
-              <Link href="/register" className="w-full text-center bg-[#ffe2ab] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold tracking-wider text-xs uppercase py-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(255,191,0,0.15)] hover:shadow-[0_4px_25px_rgba(255,191,0,0.25)] hover:scale-[1.01] block">Choose Growth</Link>
+              <Link href="/register?tier=Growth" className="w-full text-center bg-[#ffe2ab] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold tracking-wider text-xs uppercase py-4 rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(255,191,0,0.15)] hover:shadow-[0_4px_25px_rgba(255,191,0,0.25)] hover:scale-[1.01] block">Choose Growth</Link>
             </div>
 
-            {/* Premium Card */}
+            {/* Business Card */}
             <div className="bg-gradient-to-b from-white/[0.03] to-white/[0.01] rounded-2xl p-8 sm:p-9 flex flex-col justify-between h-full border border-white/[0.06] group hover:border-[#ffe2ab]/25 hover:shadow-[0_20px_50px_rgba(255,226,171,0.04)] hover:-translate-y-1 transition-all duration-500">
               <div>
                 <div className="mb-8">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Premium Package</span>
-                      <h3 className="font-serif text-3xl text-white font-medium italic mb-4">Premium</h3>
+                      <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Business Package</span>
+                      <h3 className="font-serif text-3xl text-white font-medium italic mb-4">Business</h3>
                     </div>
                     <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300">diamond</span>
                   </div>
-                  <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed mb-6 min-h-[40px]">Ultimate package tailored for large operations seeking rock-bottom rates.</p>
+                  <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed mb-6 min-h-[40px]">{cmsConfig.pricing.premiumDesc}</p>
                   
                   <div className="flex items-baseline gap-1 mt-6">
-                    <span className="text-sm font-sans font-bold text-[#A69984]/80 align-super -mt-2">$</span>
+                    <span className="text-xl font-sans font-bold text-[#A69984]/80 align-super -mt-2">¥</span>
                     <span className="text-5xl font-serif text-white font-semibold tracking-tight transition-all duration-300">
-                      {billingCycle === 'monthly' ? '899' : '719'}
+                      {formatPrice(billingCycle === 'monthly' ? cmsConfig.pricing.premiumMonthly : cmsConfig.pricing.premiumAnnual)}
                     </span>
                     <span className="text-xs font-sans text-[#A69984]/50 uppercase tracking-widest ml-1">/ Month</span>
                   </div>
                   <div className="text-[10px] text-[#A69984]/45 font-sans mt-2 font-medium">
-                    {billingCycle === 'monthly' ? 'Billed monthly' : 'Billed annually ($8,628/yr)'}
+                    {billingCycle === 'monthly' ? 'Billed monthly' : `Billed annually (¥${formatPrice((parseFloat(cmsConfig.pricing.premiumAnnual) * 12).toString())}/yr)`}
                   </div>
                 </div>
 
                 <div className="h-px bg-white/5 my-6"></div>
 
                 <ul className="space-y-4 mb-8">
-                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>10,000 order allowance included</span>
+                  <li className="flex items-start gap-3 text-white font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span className="font-semibold">Everything in Growth</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Lowest Overage: $0.10/order</span>
+                    <span>Multi-Branch Management</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Enterprise API access keys</span>
+                    <span>Central Dashboard</span>
                   </li>
                   <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
                     <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
-                    <span>Dedicated Account Strategy</span>
+                    <span>Role-Based Permissions</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Priority Support</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>API Access</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Advanced AI Personalization</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
+                    <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                    <span>Unlimited Staff Accounts</span>
                   </li>
                 </ul>
               </div>
               
-              <Link href="/register" className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">Choose Premium</Link>
+              <Link href="/register?tier=Business" className="w-full text-center border border-white/10 hover:border-[#ffe2ab]/50 text-[#ffe2ab] font-sans font-semibold tracking-wider text-xs uppercase py-3.5 rounded-xl hover:bg-white/[0.03] transition-all duration-300 block">Choose Business</Link>
             </div>
 
+          </div>
+
+          {/* Free Trial Banner */}
+          <div className="mt-20 border border-white/[0.06] rounded-3xl p-8 sm:p-12 bg-[#0c0c0d] relative overflow-hidden group hover:border-[#ffe2ab]/25 transition-all duration-500 text-center max-w-4xl mx-auto shadow-2xl">
+            {/* Elegant light rays background */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#ffe2ab]/[0.02] to-transparent pointer-events-none opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+            
+            <h3 className="font-serif text-3xl sm:text-4xl text-white font-medium italic mb-4">
+              14 Days Free Trial
+            </h3>
+            
+            <p className="font-sans text-sm text-[#A69984]/80 max-w-2xl mx-auto leading-relaxed mb-8">
+              Experience the complete power of DinePOS AI with all premium features unlocked during your trial. No credit card required.
+            </p>
+            
+            <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 font-sans text-xs font-semibold text-[#ffe2ab]">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">done</span> AI Upsell
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">done</span> Inventory
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">done</span> Staff Management
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">done</span> POS
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">done</span> KDS
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[16px]">done</span> Analytics
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -575,8 +675,9 @@ export default function HomePage() {
                   <div className="flex items-center gap-4">
                     <img 
                       alt={testimonials[activeTestimonial].author} 
-                      className="w-12 h-12 rounded-full object-cover grayscale opacity-90 border border-[#ffe2ab]/30" 
+                      className="w-12 h-12 rounded-full object-cover border border-[#ffe2ab]/30" 
                       src={testimonials[activeTestimonial].image} 
+                      style={{ objectPosition: testimonials[activeTestimonial].objectPosition || 'center' }}
                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                     />
                     <div>

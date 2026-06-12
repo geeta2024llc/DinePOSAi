@@ -3,10 +3,21 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 function RegisterForm() {
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
+
   const router = useRouter();
   const searchParams = useSearchParams();
+  const selectedTier = searchParams.get('tier') || 'Growth';
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -48,6 +59,29 @@ function RegisterForm() {
     if (!fullName || !email || !restaurantName || !password) { setError('Please fill in all required fields.'); return; }
     if (!agreeToTerms) { setError('Please agree to the Terms and Privacy Policy to continue.'); return; }
     setIsLoading(true);
+
+    const joinedDate = new Date().toISOString().split('T')[0];
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 14); // 14 days trial duration
+    const expiryStr = expiryDate.toISOString().split('T')[0];
+
+    const userAccount = {
+      fullName,
+      email: email.toLowerCase(),
+      restaurantName,
+      tier: selectedTier,
+      plan: 'TRIAL',
+      joinedDate,
+      expiryDate: expiryStr,
+    };
+    
+    try {
+      localStorage.setItem('dinepos_user_account', JSON.stringify(userAccount));
+      localStorage.setItem('dinepos_logged_in_email', email.toLowerCase());
+    } catch (err) {
+      console.error('Failed to write user account to localStorage:', err);
+    }
+
     if (referralCode.trim()) {
       try {
         const stored = localStorage.getItem('dinepos_referrals');
@@ -151,17 +185,18 @@ function RegisterForm() {
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-2xl p-6 backdrop-blur-xl relative overflow-hidden">
             <span className="material-symbols-outlined absolute -top-4 -right-4 text-7xl text-white/[0.02] font-light">format_quote</span>
             <p className="font-serif text-[#d4c5ab]/90 text-sm leading-relaxed italic relative z-10">
-              "DinePOS AI operates quietly in the background, handling complex modifiers and pacing so our team can focus entirely on the choreography of the dining experience."
+              "DinePOS AI is the absolute cornerstone of our business operations at GEETA LLC. The seamless KDS integration, combined with real-time multi-branch telemetry and AI upselling, has allowed us to scale our culinary concepts with absolute consistency and efficiency."
             </p>
             <div className="mt-5 flex items-center gap-4 relative z-10 border-t border-white/5 pt-4">
               <img 
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBA_tr72qxwryiHrap9NizCYdmdT52uUIq0_1k1RU99eytvG8QoC_kdRpDVU1GwA6oxikSwZbJ82mfyykJdg9czijrb93Rz0_BE_8xHPbnqVPPYkP2vec8cEZhWes7_ZhtTOsMYq6yZnE4NYIc5567rAQ5nfaGyaQMZehPd2vMhepiMt4zDM4M0m3o2BdvH4LVPmvMAuMiU1Jw42sM2HTrIbh_EK1GZyLjQmhCuqOcdreyhu9jgpQdIZz9JA0xKgH9c0vL3xIVRRK7m" 
-                alt="Julian Rossi" 
-                className="w-10 h-10 rounded-full object-cover grayscale border border-[#ffe2ab]/30"
+                src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEid7UQR_nMKW3G3jPlC08Wk9mr2l-nkxjh3ar_eR_u9b85HgBO8SzA6H5bwjTt3UtafFlb3IxXTeY2JxUN3xFkEIx1HL3I_42PiDzRFxy_AKQ6Yi81BKjiTfP-2Luko51rLj525315xEG14mUuK_NLKmWRXD5gl3ga11R2wAwtSdO6Wn23PcT8o6-dWbcg/s320/9aa544e2-ec4d-476a-8bbf-c589d0ee2464.jpg" 
+                alt="シリス　テクラル" 
+                className="w-10 h-10 rounded-full object-cover border border-[#ffe2ab]/30"
+                style={{ objectPosition: 'center 15%' }}
               />
               <div>
-                <div className="font-title-md text-white text-sm font-semibold leading-none">Julian Rossi</div>
-                <div className="font-label-sm text-[#ffe2ab]/80 text-[10px] uppercase tracking-widest mt-1">General Manager, L'Aura</div>
+                <div className="font-title-md text-white text-sm font-semibold leading-none">シリス　テクラル (SHREES TEKLAL)</div>
+                <div className="font-label-sm text-[#ffe2ab]/80 text-[10px] uppercase tracking-widest mt-1">OWNER OF GEETA合同会社</div>
               </div>
             </div>
           </div>
@@ -202,13 +237,13 @@ function RegisterForm() {
           <div className="mb-10 max-w-[440px]">
             <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-[#ffe2ab]/20 bg-[#ffe2ab]/5 mb-6 backdrop-blur-md shadow-[0_0_15px_rgba(255,226,171,0.05)]">
               <span className="w-1.5 h-1.5 bg-[#ffe2ab] rounded-full animate-pulse shadow-[0_0_8px_#ffe2ab]"></span>
-              <span className="font-label-sm text-[#ffe2ab] text-xs font-bold uppercase tracking-[0.2em]">Free Trial — No Card Required</span>
+              <span className="font-label-sm text-[#ffe2ab] text-xs font-bold uppercase tracking-[0.2em]">{selectedTier} Free Trial — 14 Days</span>
             </div>
             <h2 className="font-display-lg text-white text-4xl md:text-5xl font-semibold leading-tight tracking-tight mb-3">
-              Create your account
+              {cmsConfig.auth.signupTitle}
             </h2>
             <p className="font-body-md text-[#d4c5ab]/80 text-base leading-relaxed font-light">
-              Set up in under 2 minutes. Full access to all features during your trial.
+              {cmsConfig.auth.signupSubtitle}
             </p>
           </div>
 

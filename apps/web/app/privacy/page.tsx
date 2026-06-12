@@ -1,8 +1,19 @@
-import React from 'react';
+'use client';
+
+import React, { useState, useEffect } from 'react';
 import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 export default function PrivacyPage() {
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
   return (
     <div className="bg-surface-container-lowest text-on-surface flex flex-col antialiased min-h-screen pt-24 pb-8">
       <TopNavBar />
@@ -11,9 +22,9 @@ export default function PrivacyPage() {
         
         {/* Header */}
         <div className="mb-12 mt-8 border-b border-outline/10 pb-8">
-          <h1 className="font-display-lg text-5xl text-primary mb-4">Privacy Policy</h1>
+          <h1 className="font-display-lg text-5xl text-primary mb-4">{cmsConfig.legal.privacyTitle}</h1>
           <p className="font-title-md text-on-surface-variant text-lg mb-2">
-            Intelligent Hospitality Systems Data Governance
+            {cmsConfig.legal.privacySubtitle}
           </p>
           <p className="font-label-sm text-on-surface-variant text-sm opacity-70">
             Last Updated: October 24, 2024
@@ -31,7 +42,7 @@ export default function PrivacyPage() {
             </div>
             <div className="space-y-4 font-body-md text-on-surface-variant leading-relaxed">
               <p>
-                At DinePOS AI, we treat the data of your establishment and your patrons with the highest level of security protocols available in the hospitality sector. We employ AES-256 encryption at rest and TLS 1.3 for all data in transit. Your operational data remains entirely sovereign; we act solely as processors.
+                {cmsConfig.legal.privacyBody1}
               </p>
               <p>
                 Our AI models are trained on anonymized, aggregated datasets. Specific patron identifiers, payment details, and proprietary recipes are never ingested into global training environments without explicit, opt-in enterprise agreements.

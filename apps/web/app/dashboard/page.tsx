@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 const themes = {
   'Midnight Black': {
@@ -852,6 +853,21 @@ const translations: Record<string, Record<string, string>> = {
 };
 
 export default function DashboardPage() {
+  // CMS Configuration State
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
+
+  // Subscription switcher states
+  const [showPlanUpgradeModal, setShowPlanUpgradeModal] = useState(false);
+  const [upgradeBillingCycle, setUpgradeBillingCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [selectedUpgradeTier, setSelectedUpgradeTier] = useState<'Starter' | 'Growth' | 'Business'>('Growth');
+
   // Localization States
   const [language, setLanguage] = useState<'en' | 'ja' | 'zh' | 'ko'>('en');
   const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
@@ -862,6 +878,71 @@ export default function DashboardPage() {
   const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | '30days'>('week');
   const [dashAuditSearch, setDashAuditSearch] = useState('');
   const [dashAuditPage, setDashAuditPage] = useState(1);
+
+  const [userAccount, setUserAccount] = useState<{
+    fullName: string;
+    email: string;
+    restaurantName: string;
+    tier: string;
+    plan: string;
+    joinedDate: string;
+    expiryDate: string;
+    billingCycle?: 'monthly' | 'annual';
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('dinepos_user_account');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setUserAccount(parsed);
+        if (parsed.tier) {
+          setSelectedUpgradeTier(parsed.tier as any);
+        }
+        if (parsed.billingCycle) {
+          setUpgradeBillingCycle(parsed.billingCycle);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const formatPrice = (priceStr: string) => {
+    if (!priceStr) return '';
+    const clean = priceStr.replace(/,/g, '');
+    const num = Number(clean);
+    return isNaN(num) ? priceStr : num.toLocaleString();
+  };
+
+  const getDisplayPlanPrice = () => {
+    if (!userAccount) return '¥0';
+    if (userAccount.plan === 'TRIAL') return '¥0';
+    
+    const cycle = userAccount.billingCycle || 'monthly';
+    const tier = userAccount.tier || 'Growth';
+    
+    let rawPrice = '0';
+    if (tier === 'Starter') {
+      rawPrice = cycle === 'monthly' ? cmsConfig.pricing.starterMonthly : cmsConfig.pricing.starterAnnual;
+    } else if (tier === 'Growth') {
+      rawPrice = cycle === 'monthly' ? cmsConfig.pricing.growthMonthly : cmsConfig.pricing.growthAnnual;
+    } else if (tier === 'Business') {
+      rawPrice = cycle === 'monthly' ? cmsConfig.pricing.premiumMonthly : cmsConfig.pricing.premiumAnnual;
+    }
+    
+    return `¥${formatPrice(rawPrice)}`;
+  };
+
+  const getTrialDaysLeft = () => {
+    if (!userAccount || userAccount.plan !== 'TRIAL') return 0;
+    const expiry = new Date(userAccount.expiryDate);
+    const today = new Date();
+    expiry.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    const diffTime = expiry.getTime() - today.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
 
   // Staff Directory States
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
@@ -1924,6 +2005,68 @@ export default function DashboardPage() {
 
       {/* MAIN CONTENT WINDOW */}
       <div className={`flex-grow flex flex-col min-h-screen relative ${t.bg} ml-[280px]`}>
+        {/* Trial warning banner */}
+        {userAccount && userAccount.plan === 'TRIAL' && (() => {
+          const daysLeft = getTrialDaysLeft();
+          if (daysLeft > 0) {
+            return (
+              <div className="bg-amber-500/10 border-b border-amber-500/20 px-12 py-3.5 flex items-center justify-between text-xs text-amber-400 font-sans z-30 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">warning</span>
+                  <span>Your free trial of DinePOS AI expires in <strong className="underline">{daysLeft} days</strong> ({userAccount.expiryDate}). Upgrade your plan to preserve access.</span>
+                </div>
+                <button
+                  onClick={() => setShowPlanUpgradeModal(true)}
+                  className="px-3.5 py-1.5 bg-amber-400 text-black font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-amber-300 transition-colors cursor-pointer"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            );
+          } else {
+            return (
+              <div className="bg-rose-500/10 border-b border-rose-500/20 px-12 py-3.5 flex items-center justify-between text-xs text-rose-400 font-sans z-30 select-none">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base">error</span>
+                  <span>Your 14-day free trial has <strong>expired</strong>. Please upgrade your plan to restore full operations.</span>
+                </div>
+                <button
+                  onClick={() => setShowPlanUpgradeModal(true)}
+                  className="px-3.5 py-1.5 bg-rose-500 text-white font-sans font-bold text-[10px] uppercase tracking-wider rounded-lg hover:bg-rose-400 transition-colors cursor-pointer"
+                >
+                  Upgrade Now
+                </button>
+              </div>
+            );
+          }
+        })()}
+
+        {/* Trial lock overlay */}
+        {userAccount && userAccount.plan === 'TRIAL' && getTrialDaysLeft() <= 0 && (
+          <div className="absolute inset-0 bg-[#0e0e0d]/95 backdrop-blur-md z-40 flex flex-col items-center justify-center text-center p-8 select-none">
+            <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-3xl font-bold">lock</span>
+            </div>
+            <h2 className="font-serif text-3xl text-white font-bold mb-3">Your Free Trial Has Expired</h2>
+            <p className="font-sans text-xs text-[#A69984]/75 max-w-md leading-relaxed mb-8">
+              Your 14-day free trial of DinePOS AI has concluded. Upgrade to a paid tier now to restore FOH terminals, kitchen displays, and telemetry services.
+            </p>
+            <div className="flex gap-4">
+              <button
+                onClick={() => setShowPlanUpgradeModal(true)}
+                className="px-6 py-3 bg-[#ffe2ab] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+              >
+                Upgrade Plan
+              </button>
+              <Link
+                href="/"
+                className="px-6 py-3 border border-white/10 hover:border-white/20 text-white font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all"
+              >
+                Back to Home
+              </Link>
+            </div>
+          </div>
+        )}
         {/* Top Header Bar */}
         <header className={`h-[90px] border-b ${t.border} flex items-center justify-between px-12 flex-shrink-0 bg-transparent sticky top-0 z-10 select-none backdrop-blur-md`}>
           <div className="relative select-none">
@@ -3029,14 +3172,22 @@ export default function DashboardPage() {
                           <span className="px-2 py-0.5 text-[8.5px] rounded bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold uppercase tracking-wider select-none leading-none">
                             {tr.currentPlan}
                           </span>
-                          <h3 className={`font-serif text-3xl font-bold ${t.text} mt-2.5`}>{tr.planName}</h3>
+                          <h3 className={`font-serif text-3xl font-bold ${t.text} mt-2.5`}>
+                            {userAccount ? `${userAccount.tier} ${userAccount.plan === 'TRIAL' ? '(14-Day Trial)' : ''}` : tr.planName}
+                          </h3>
                           <p className={`text-[11px] ${t.textMutedLight} font-semibold mt-1`}>
-                            {tr.planBilling}
+                            {userAccount && userAccount.plan === 'TRIAL' 
+                              ? `Trial expires on ${userAccount.expiryDate} (${Math.max(0, getTrialDaysLeft())} days remaining)` 
+                              : `Active subscription (Billed ${userAccount?.billingCycle === 'annual' ? 'annually' : 'monthly'})`}
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className={`font-serif text-3xl font-bold ${t.text}`}>{formatCurrency(2499)}</span>
-                          <span className={`text-xs ${t.textMuted} font-semibold`}> / yr</span>
+                          <span className={`font-serif text-3xl font-bold ${t.text}`}>
+                            {getDisplayPlanPrice()}
+                          </span>
+                          <span className={`text-xs ${t.textMuted} font-semibold`}>
+                            {userAccount && userAccount.plan === 'TRIAL' ? ' / 14 days' : ' / month'}
+                          </span>
                         </div>
                       </div>
 
@@ -3055,7 +3206,7 @@ export default function DashboardPage() {
 
                     <div className="flex items-center gap-3 pt-6 z-10 select-none">
                       <button type="button" 
-                        onClick={() => triggerToast('Opening subscription plan switcher...', 'info')}
+                        onClick={() => setShowPlanUpgradeModal(true)}
                         className={`bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 shadow-md cursor-pointer`}
                       >
                         {tr.changePlan}
@@ -5974,6 +6125,282 @@ export default function DashboardPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUBSCRIPTION PLAN UPGRADE / SWITCHER MODAL */}
+      {showPlanUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in p-4 overflow-y-auto">
+          <div className={`${t.cardBgOpaque} border w-[900px] max-w-full rounded-2xl p-7 md:p-8 shadow-2xl space-y-6 animate-scale-up font-sans my-8`}>
+            {/* Header */}
+            <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
+              <div>
+                <h3 className={`font-serif text-xl ${t.accent} font-bold tracking-wide`}>
+                  Manage Subscription Plan
+                </h3>
+                <p className={`text-[10px] ${t.textMuted} font-semibold mt-1`}>
+                  Upgrade or switch your active DinePOS AI service package
+                </p>
+              </div>
+              <button type="button" 
+                onClick={() => setShowPlanUpgradeModal(false)}
+                className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            {/* Toggle switch for Billing Cycle */}
+            <div className="flex justify-center select-none">
+              <div className="bg-[#0e0e0d] border border-white/5 p-1 rounded-full flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setUpgradeBillingCycle('monthly')}
+                  className={`px-6 py-2 rounded-full font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    upgradeBillingCycle === 'monthly'
+                      ? 'bg-[#ffe2ab] text-[#2c1a00] shadow-md'
+                      : `${t.textMuted} hover:${t.text}`
+                  }`}
+                >
+                  Monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUpgradeBillingCycle('annual')}
+                  className={`px-6 py-2 rounded-full font-sans text-xs font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2 ${
+                    upgradeBillingCycle === 'annual'
+                      ? 'bg-[#ffe2ab] text-[#2c1a00] shadow-md'
+                      : `${t.textMuted} hover:${t.text}`
+                  }`}
+                >
+                  Annually <span className="bg-[#ffc53d]/20 border border-[#ffc53d]/30 text-[#ffc53d] text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full">Save 20%</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Tiers Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Starter Tier */}
+              <div 
+                onClick={() => setSelectedUpgradeTier('Starter')}
+                className={`rounded-2xl p-6 border transition-all duration-300 cursor-pointer flex flex-col justify-between h-full relative group ${
+                  selectedUpgradeTier === 'Starter'
+                    ? 'border-[#ffc53d] bg-gradient-to-b from-[#181613] to-[#0e0e0d] shadow-lg shadow-[#ffc53d]/5 scale-[1.02]'
+                    : 'border-white/5 bg-[#161513]/40 hover:border-white/10 hover:bg-[#161513]/60'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>Starter Package</span>
+                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>Starter</h4>
+                    </div>
+                    <span className={`material-symbols-outlined text-2xl ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>storefront</span>
+                  </div>
+                  <p className={`text-[11px] leading-relaxed ${t.textMuted}`}>
+                    {cmsConfig.pricing.starterDesc}
+                  </p>
+                  <div className="flex items-baseline gap-1 pt-2">
+                    <span className={`text-sm font-bold ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>¥</span>
+                    <span className={`text-3xl font-serif font-bold tracking-tight ${selectedUpgradeTier === 'Starter' ? 'text-[#ffc53d]' : 'text-white'}`}>
+                      {formatPrice(upgradeBillingCycle === 'monthly' ? cmsConfig.pricing.starterMonthly : cmsConfig.pricing.starterAnnual)}
+                    </span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ml-1 ${t.textMuted}`}>/ mo</span>
+                  </div>
+                  <div className={`text-[9px] font-bold ${t.textMuted}`}>
+                    {upgradeBillingCycle === 'annual' ? 'Billed annually' : 'Billed monthly'}
+                  </div>
+                  <div className="h-px bg-white/5 my-2"></div>
+                  <ul className="space-y-2.5 text-[10px] select-none">
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Digital Menu System</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Tablet Ordering</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>POS Billing System</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>1 Location, 5 Staff</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Growth Tier */}
+              <div 
+                onClick={() => setSelectedUpgradeTier('Growth')}
+                className={`rounded-2xl p-6 border transition-all duration-300 cursor-pointer flex flex-col justify-between h-full relative group ${
+                  selectedUpgradeTier === 'Growth'
+                    ? 'border-[#ffc53d] bg-gradient-to-b from-[#181613] to-[#0e0e0d] shadow-lg shadow-[#ffc53d]/5 scale-[1.02]'
+                    : 'border-white/5 bg-[#161513]/40 hover:border-white/10 hover:bg-[#161513]/60'
+                }`}
+              >
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#cc9d31] to-[#ffe2ab] text-[#2c1a00] font-sans text-[7.5px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full shadow-md flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[10px]">local_fire_department</span> Popular
+                </div>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>Growth Package</span>
+                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>Growth</h4>
+                    </div>
+                    <span className={`material-symbols-outlined text-2xl ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>rocket_launch</span>
+                  </div>
+                  <p className={`text-[11px] leading-relaxed ${t.textMuted}`}>
+                    {cmsConfig.pricing.growthDesc}
+                  </p>
+                  <div className="flex items-baseline gap-1 pt-2">
+                    <span className={`text-sm font-bold ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>¥</span>
+                    <span className={`text-3xl font-serif font-bold tracking-tight ${selectedUpgradeTier === 'Growth' ? 'text-[#ffc53d]' : 'text-white'}`}>
+                      {formatPrice(upgradeBillingCycle === 'monthly' ? cmsConfig.pricing.growthMonthly : cmsConfig.pricing.growthAnnual)}
+                    </span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ml-1 ${t.textMuted}`}>/ mo</span>
+                  </div>
+                  <div className={`text-[9px] font-bold ${t.textMuted}`}>
+                    {upgradeBillingCycle === 'annual' ? 'Billed annually' : 'Billed monthly'}
+                  </div>
+                  <div className="h-px bg-white/5 my-2"></div>
+                  <ul className="space-y-2.5 text-[10px] select-none">
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span className="font-bold">Everything in Starter</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>AI Upsell Engine</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Smart Combo Suggestions</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Inventory Management</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Business Tier */}
+              <div 
+                onClick={() => setSelectedUpgradeTier('Business')}
+                className={`rounded-2xl p-6 border transition-all duration-300 cursor-pointer flex flex-col justify-between h-full relative group ${
+                  selectedUpgradeTier === 'Business'
+                    ? 'border-[#ffc53d] bg-gradient-to-b from-[#181613] to-[#0e0e0d] shadow-lg shadow-[#ffc53d]/5 scale-[1.02]'
+                    : 'border-white/5 bg-[#161513]/40 hover:border-white/10 hover:bg-[#161513]/60'
+                }`}
+              >
+                <div className="space-y-4">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className={`text-[8px] font-bold uppercase tracking-widest block ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>Business Package</span>
+                      <h4 className={`font-serif text-xl font-bold mt-1 ${t.text}`}>Business</h4>
+                    </div>
+                    <span className={`material-symbols-outlined text-2xl ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>diamond</span>
+                  </div>
+                  <p className={`text-[11px] leading-relaxed ${t.textMuted}`}>
+                    {cmsConfig.pricing.premiumDesc}
+                  </p>
+                  <div className="flex items-baseline gap-1 pt-2">
+                    <span className={`text-sm font-bold ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : `${t.textMuted}`}`}>¥</span>
+                    <span className={`text-3xl font-serif font-bold tracking-tight ${selectedUpgradeTier === 'Business' ? 'text-[#ffc53d]' : 'text-white'}`}>
+                      {formatPrice(upgradeBillingCycle === 'monthly' ? cmsConfig.pricing.premiumMonthly : cmsConfig.pricing.premiumAnnual)}
+                    </span>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wider ml-1 ${t.textMuted}`}>/ mo</span>
+                  </div>
+                  <div className={`text-[9px] font-bold ${t.textMuted}`}>
+                    {upgradeBillingCycle === 'annual' ? 'Billed annually' : 'Billed monthly'}
+                  </div>
+                  <div className="h-px bg-white/5 my-2"></div>
+                  <ul className="space-y-2.5 text-[10px] select-none">
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span className="font-bold">Everything in Growth</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Multi-Branch Management</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Central Dashboard</span>
+                    </li>
+                    <li className="flex items-center gap-2 text-white">
+                      <span className="material-symbols-outlined text-xs text-[#ffe2ab]">check_circle</span>
+                      <span>Unlimited Staff Accounts</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary alert */}
+            <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 rounded-xl p-4 flex items-start gap-3 text-xs leading-relaxed select-none">
+              <span className="material-symbols-outlined text-[#ffc53d] text-base mt-0.5">info</span>
+              <div>
+                <span className="text-[#ffe2ab] font-bold">Selected Billing Summary:</span>
+                <p className={`${t.textMuted} mt-0.5`}>
+                  You are upgrading to the <strong className="text-white">{selectedUpgradeTier}</strong> package billed <strong className="text-white">{upgradeBillingCycle === 'annual' ? 'annually' : 'monthly'}</strong>. 
+                  Your credit card on file will be charged <strong className="text-[#ffc53d]">¥{
+                    formatPrice(
+                      selectedUpgradeTier === 'Starter'
+                        ? (upgradeBillingCycle === 'monthly' ? cmsConfig.pricing.starterMonthly : cmsConfig.pricing.starterAnnual)
+                        : selectedUpgradeTier === 'Growth'
+                        ? (upgradeBillingCycle === 'monthly' ? cmsConfig.pricing.growthMonthly : cmsConfig.pricing.growthAnnual)
+                        : (upgradeBillingCycle === 'monthly' ? cmsConfig.pricing.premiumMonthly : cmsConfig.pricing.premiumAnnual)
+                    )
+                  } / month</strong>. 
+                  This will transition your tenant status to <strong className="text-emerald-400">ACTIVE</strong>, extending your billing expiration immediately.
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-4 pt-2">
+              <button type="button"
+                onClick={() => setShowPlanUpgradeModal(false)}
+                className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
+              >
+                Cancel
+              </button>
+              <button type="button"
+                onClick={() => {
+                  const newExpiry = new Date();
+                  if (upgradeBillingCycle === 'annual') {
+                    newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+                  } else {
+                    newExpiry.setMonth(newExpiry.getMonth() + 1);
+                  }
+                  const expiryStr = newExpiry.toISOString().split('T')[0];
+
+                  const updatedUser = {
+                    ...userAccount,
+                    plan: 'ACTIVE',
+                    tier: selectedUpgradeTier,
+                    billingCycle: upgradeBillingCycle,
+                    expiryDate: expiryStr
+                  };
+
+                  localStorage.setItem('dinepos_user_account', JSON.stringify(updatedUser));
+                  setUserAccount(updatedUser as any);
+                  setShowPlanUpgradeModal(false);
+                  triggerToast(`Successfully subscribed to the ${selectedUpgradeTier} package!`, 'success');
+                  
+                  // dispatch storage/update event
+                  window.dispatchEvent(new Event('storage'));
+                }}
+                className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
+              >
+                Confirm Upgrade
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -3,8 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 export default function SupportPage() {
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
+
   const [establishment, setEstablishment] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -81,10 +91,10 @@ export default function SupportPage() {
         {/* Header */}
         <div className="text-center mb-16 mt-8 animate-fade-in">
           <h1 className="font-serif text-[42px] md:text-[56px] text-white tracking-wide leading-none mb-6 font-medium">
-            Premium Support <span className="text-[#ffe2ab] italic font-light">Concierge</span>
+            {cmsConfig.support.title}
           </h1>
           <p className="font-sans text-[13px] md:text-[14px] text-[#A69984] max-w-2xl mx-auto leading-relaxed font-medium tracking-wide">
-            Intelligent assistance for high-end hospitality environments. Reach out to our dedicated specialists or track your venue's resolution history.
+            {cmsConfig.support.subtitle}
           </p>
         </div>
 
@@ -180,7 +190,7 @@ export default function SupportPage() {
           <div className="lg:col-span-4 space-y-6">
             
             {/* Global Concierge Card */}
-            <div className="bg-[#12110f] border border-white/5 rounded-3xl p-8 shadow-xl flex flex-col justify-center h-[260px] relative overflow-hidden">
+            <div className="bg-[#12110f] border border-white/5 rounded-3xl p-8 shadow-xl flex flex-col justify-center min-h-[280px] relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#A69984]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/4 pointer-events-none"></div>
               
               <div className="flex items-center gap-2 mb-4">
@@ -192,14 +202,18 @@ export default function SupportPage() {
               </p>
               
               <div className="space-y-4 font-sans">
-                <a href="tel:+18005553463" className="flex items-center gap-4 text-white hover:text-[#ffe2ab] transition-colors text-sm font-bold bg-white/5 p-3 rounded-xl border border-white/5">
+                <a href={`tel:${cmsConfig.support.phone.replace(/[^+\d]/g, '')}`} className="flex items-center gap-4 text-white hover:text-[#ffe2ab] transition-colors text-sm font-bold bg-white/5 p-3 rounded-xl border border-white/5">
                   <span className="material-symbols-outlined text-[#A69984] text-lg">call</span>
-                  +1 (800) 555-DINE
+                  {cmsConfig.support.phone}
                 </a>
-                <a href="mailto:concierge@dinepos.ai" className="flex items-center gap-4 text-white hover:text-[#ffe2ab] transition-colors text-sm font-bold bg-white/5 p-3 rounded-xl border border-white/5">
+                <a href={`mailto:${cmsConfig.support.email}`} className="flex items-center gap-4 text-white hover:text-[#ffe2ab] transition-colors text-sm font-bold bg-white/5 p-3 rounded-xl border border-white/5">
                   <span className="material-symbols-outlined text-[#A69984] text-lg">mail</span>
-                  concierge@dinepos.ai
+                  {cmsConfig.support.email}
                 </a>
+                <div className="flex items-center gap-4 text-white text-sm font-bold bg-white/5 p-3 rounded-xl border border-white/5">
+                  <span className="material-symbols-outlined text-[#A69984] text-lg">schedule</span>
+                  {cmsConfig.support.hours}
+                </div>
               </div>
             </div>
 
@@ -277,6 +291,36 @@ export default function SupportPage() {
               <h4 className="font-serif text-lg text-white font-bold mb-3 tracking-wide">Access Permissions</h4>
               <p className="font-sans text-[#A69984] text-[12.5px] leading-relaxed font-medium">
                 Configuring granular access levels for management, servers, and kitchen staff across all POS terminals.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* FAQ Section */}
+        <div className="pt-16 mt-16 border-t border-white/5">
+          <div className="text-center md:text-left mb-10">
+            <h2 className="font-serif text-[26px] md:text-[32px] text-white mb-2 font-bold tracking-wide">Frequently Asked Questions</h2>
+            <p className="font-sans text-[13px] text-[#A69984] font-medium">Common questions about DinePOS AI services and network replication.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">
+            <div className="bg-[#12110f] border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+              <h4 className="font-serif text-lg text-[#ffe2ab] font-bold mb-3 tracking-wide flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#ffe2ab] text-lg">help_outline</span>
+                {cmsConfig.support.faq1Title}
+              </h4>
+              <p className="text-[#A69984] text-[13px] leading-relaxed font-medium mt-3">
+                {cmsConfig.support.faq1Desc}
+              </p>
+            </div>
+
+            <div className="bg-[#12110f] border border-white/5 rounded-3xl p-8 relative overflow-hidden">
+              <h4 className="font-serif text-lg text-[#ffe2ab] font-bold mb-3 tracking-wide flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#ffe2ab] text-lg">help_outline</span>
+                {cmsConfig.support.faq2Title}
+              </h4>
+              <p className="text-[#A69984] text-[13px] leading-relaxed font-medium mt-3">
+                {cmsConfig.support.faq2Desc}
               </p>
             </div>
           </div>

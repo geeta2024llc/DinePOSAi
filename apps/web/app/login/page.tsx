@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 // NOTE: Plaintext credentials below are intentional for local demo environment and quick operational role switching/testing.
 const credentialsMap = {
@@ -15,6 +16,15 @@ const credentialsMap = {
 };
 
 export default function LoginPage() {
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
+
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState('super-admin');
   const [email, setEmail] = useState('');
@@ -129,8 +139,11 @@ export default function LoginPage() {
           <h1 className="font-serif text-[#ffe2ab] text-[36px] font-semibold tracking-wide leading-none select-none">
             DinePOS AI
           </h1>
-          <p className="text-[#ffe2ab]/75 font-sans text-xs tracking-wider mt-1 select-none font-medium">
-            Executive AI Suite
+          <h2 className="text-white font-bold text-xs tracking-wide mt-3 select-none">
+            {cmsConfig.auth.loginTitle}
+          </h2>
+          <p className="text-[#A69984] font-sans text-[10px] leading-relaxed mt-1 select-none font-medium">
+            {cmsConfig.auth.loginSubtitle}
           </p>
         </div>
         

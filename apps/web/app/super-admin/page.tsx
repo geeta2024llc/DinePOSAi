@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { CmsConfig, getCmsConfig, saveCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 // Curated themes mirroring the admin console theme system for visual continuity
 const theme = {
@@ -80,14 +81,23 @@ interface AuditLog {
 
 export default function SuperAdminPage() {
   // Sidebar tab matching mockup
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'promocodes' | 'settings' | 'support' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'promocodes' | 'settings' | 'support' | 'analytics' | 'cms'>('overview');
+
+  // CMS configuration state
+  const [cmsConfig, setCmsConfig] = useState<CmsConfig>(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+  }, []);
+
+  const [cmsSubTab, setCmsSubTab] = useState<'homepage' | 'pricing' | 'support' | 'partners' | 'auth' | 'legal'>('homepage');
 
   // Search filter state
   const [searchQuery, setSearchQuery] = useState('');
 
   // Dropdown filter states
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Suspended'>('All');
-  const [tierFilter, setTierFilter] = useState<'All' | 'Premium Plus' | 'Growth' | 'Standard'>('All');
+  const [tierFilter, setTierFilter] = useState<'All' | 'Business' | 'Growth' | 'Starter'>('All');
   const [regionFilter, setRegionFilter] = useState<'All' | 'North America - East' | 'Europe - West' | 'Asia Pacific'>('All');
 
   // Deploying update status loader
@@ -156,17 +166,25 @@ export default function SuperAdminPage() {
 
   // Stateful mock database
   const [tenants, setTenants] = useState<Tenant[]>([
-    { id: 'TEN-8821', name: 'The Obsidian Room', location: 'New York', terminals: 12, plan: 'ACTIVE', revenue: '$342,500', status: 'ACTIVE', joined: '2024-03-12', tier: 'Premium Plus', region: 'North America - East', expiryDate: '2027-03-12' },
-    { id: 'TEN-7734', name: 'Lumière Brasserie', location: 'London', terminals: 80, plan: 'ACTIVE', revenue: '$2,450,000', status: 'ACTIVE', joined: '2023-11-05', tier: 'Growth', region: 'Europe - West', expiryDate: '2027-11-05' },
-    { id: 'TEN-5512', name: 'Cafe Zenith', location: 'Kobarid', terminals: 6, plan: 'SUSPENDED', revenue: '$28,000', status: 'SUSPENDED', joined: '2025-09-02', tier: 'Standard', region: 'Asia Pacific', billingFailed: true, expiryDate: '2025-09-02' },
-    { id: 'TEN-9021', name: 'Aman Resorts', location: 'Tokyo', terminals: 45, plan: 'ACTIVE', revenue: '$1,280,000', status: 'ACTIVE', joined: '2024-01-18', tier: 'Premium Plus', region: 'Asia Pacific', expiryDate: '2027-01-18' },
-    { id: 'TEN-4581', name: 'Bouchon Bakery', location: 'Las Vegas', terminals: 8, plan: 'TRIAL', revenue: '$45,000', status: 'ACTIVE', joined: '2026-05-20', tier: 'Standard', region: 'North America - East', expiryDate: '2026-07-20' },
-    { id: 'TEN-2195', name: 'Gaggan Anand', location: 'Bangkok', terminals: 14, plan: 'SUSPENDED', revenue: '$122,000', status: 'SUSPENDED', joined: '2025-02-15', tier: 'Growth', region: 'Asia Pacific', expiryDate: '2025-02-15' },
+    { id: 'TEN-8821', name: 'The Obsidian Room', location: 'New York', terminals: 12, plan: 'ACTIVE', revenue: '¥342,500', status: 'ACTIVE', joined: '2024-03-12', tier: 'Business', region: 'North America - East', expiryDate: '2027-03-12' },
+    { id: 'TEN-7734', name: 'Lumière Brasserie', location: 'London', terminals: 80, plan: 'ACTIVE', revenue: '¥2,450,000', status: 'ACTIVE', joined: '2023-11-05', tier: 'Growth', region: 'Europe - West', expiryDate: '2027-11-05' },
+    { id: 'TEN-5512', name: 'Cafe Zenith', location: 'Kobarid', terminals: 6, plan: 'SUSPENDED', revenue: '¥28,000', status: 'SUSPENDED', joined: '2025-09-02', tier: 'Starter', region: 'Asia Pacific', billingFailed: true, expiryDate: '2025-09-02' },
+    { id: 'TEN-9021', name: 'Aman Resorts', location: 'Tokyo', terminals: 45, plan: 'ACTIVE', revenue: '¥1,280,000', status: 'ACTIVE', joined: '2024-01-18', tier: 'Business', region: 'Asia Pacific', expiryDate: '2027-01-18' },
+    { id: 'TEN-4581', name: 'Bouchon Bakery', location: 'Las Vegas', terminals: 8, plan: 'TRIAL', revenue: '¥45,000', status: 'ACTIVE', joined: '2026-05-20', tier: 'Starter', region: 'North America - East', expiryDate: '2026-07-20' },
+    { id: 'TEN-2195', name: 'Gaggan Anand', location: 'Bangkok', terminals: 14, plan: 'SUSPENDED', revenue: '¥122,000', status: 'SUSPENDED', joined: '2025-02-15', tier: 'Growth', region: 'Asia Pacific', expiryDate: '2025-02-15' },
   ]);
 
   const [showTenantDetailsModal, setShowTenantDetailsModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
   const [editingExpiryDate, setEditingExpiryDate] = useState('');
+  const [activeActionMenuId, setActiveActionMenuId] = useState<string | null>(null);
+  const [attentionOnlyFilter, setAttentionOnlyFilter] = useState(false);
+
+  useEffect(() => {
+    const handleCloseMenus = () => setActiveActionMenuId(null);
+    window.addEventListener('click', handleCloseMenus);
+    return () => window.removeEventListener('click', handleCloseMenus);
+  }, []);
 
   const checkExpiryStatus = (dateStr?: string) => {
     if (!dateStr) return 'none';
@@ -180,6 +198,95 @@ export default function SuperAdminPage() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     if (diffDays <= 30) return 'warning';
     return 'active';
+  };
+
+  const getExpiryCountdownText = (dateStr: string) => {
+    const today = new Date();
+    const expiry = new Date(dateStr);
+    today.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    
+    const diffTime = expiry.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) {
+      const days = Math.abs(diffDays);
+      return `Expired ${days} day${days > 1 ? 's' : ''} ago`;
+    } else if (diffDays === 0) {
+      return 'Expires today';
+    } else if (diffDays === 1) {
+      return 'Expires tomorrow';
+    } else {
+      return `${diffDays} days left`;
+    }
+  };
+
+  const handleQuickRenew = (tenantId: string, days: number) => {
+    setTenants(prev => prev.map(t => {
+      if (t.id !== tenantId) return t;
+      const currentExpiry = new Date(t.expiryDate);
+      currentExpiry.setDate(currentExpiry.getDate() + days);
+      const newExpiryStr = currentExpiry.toISOString().split('T')[0];
+      
+      triggerToast(`Subscription for ${t.name} extended by ${days} days!`, 'success');
+      
+      setAuditLogs(logs => [
+        {
+          id: Date.now(),
+          time: 'Just now',
+          actor: 'Super Admin',
+          action: `Extended subscription expiry for "${t.name}" by ${days} days to ${newExpiryStr}`,
+          tenant: t.name,
+          type: 'success'
+        },
+        ...logs
+      ]);
+      return { 
+        ...t, 
+        expiryDate: newExpiryStr, 
+        status: 'ACTIVE',
+        plan: 'ACTIVE' 
+      };
+    }));
+  };
+
+  const handleRetryBilling = (tenantId: string) => {
+    setTenants(prev => prev.map(t => {
+      if (t.id !== tenantId) return t;
+      
+      triggerToast(`Re-ran card billing for ${t.name}. Payment processed successfully!`, 'success');
+      
+      setAuditLogs(logs => [
+        {
+          id: Date.now(),
+          time: 'Just now',
+          actor: 'Super Admin',
+          action: `Cleared billing failed status for "${t.name}" via manual settlement`,
+          tenant: t.name,
+          type: 'success'
+        },
+        ...logs
+      ]);
+      return { ...t, billingFailed: false, status: 'ACTIVE', plan: 'ACTIVE' };
+    }));
+  };
+
+  const handleDeleteTenant = (tenantId: string, name: string) => {
+    if (confirm(`Are you sure you want to permanently delete business tenant "${name}"? This action cannot be undone.`)) {
+      setTenants(prev => prev.filter(t => t.id !== tenantId));
+      triggerToast(`Business tenant "${name}" has been deleted.`, 'success');
+      setAuditLogs(logs => [
+        {
+          id: Date.now(),
+          time: 'Just now',
+          actor: 'Super Admin',
+          action: `Permanently removed business tenant "${name}" from the system registry`,
+          tenant: name,
+          type: 'warning'
+        },
+        ...logs
+      ]);
+    }
   };
 
   const [admins, setAdmins] = useState<AdminUser[]>([
@@ -272,24 +379,24 @@ export default function SuperAdminPage() {
       const initial: PricingPlan[] = [
         {
           id: 'plan-standard',
-          name: 'Standard Starter',
-          monthlyPrice: 99,
-          terminalsLimit: 3,
+          name: 'Starter',
+          monthlyPrice: 3980,
+          terminalsLimit: 5,
           storageLimitGB: 10,
           features: { aiConcierge: false, selfCheckout: true, analytics: false, offlineMode: false }
         },
         {
           id: 'plan-growth',
-          name: 'Enterprise Growth',
-          monthlyPrice: 299,
-          terminalsLimit: 12,
+          name: 'Growth',
+          monthlyPrice: 6980,
+          terminalsLimit: 15,
           storageLimitGB: 100,
           features: { aiConcierge: true, selfCheckout: true, analytics: true, offlineMode: false }
         },
         {
           id: 'plan-premium',
-          name: 'Premium Plus',
-          monthlyPrice: 999,
+          name: 'Business',
+          monthlyPrice: 12980,
           terminalsLimit: 50,
           storageLimitGB: 1000,
           features: { aiConcierge: true, selfCheckout: true, analytics: true, offlineMode: true }
@@ -562,8 +669,8 @@ export default function SuperAdminPage() {
 
   // Export tenants list as CSV
   const handleExportTenants = () => {
-    const header = ['ID', 'Name', 'Location', 'Tier', 'Region', 'Plan', 'Status', 'Terminals', 'Revenue', 'Joined'];
-    const rows = tenants.map(t => [t.id, t.name, t.location, t.tier || '', t.region || '', t.plan, t.status, t.terminals, t.revenue, t.joined]);
+    const header = ['ID', 'Name', 'Location', 'Tier', 'Region', 'Plan', 'Status', 'Terminals', 'Revenue', 'Joined', 'Expiry Date'];
+    const rows = tenants.map(t => [t.id, t.name, t.location, t.tier || '', t.region || '', t.plan, t.status, t.terminals, t.revenue, t.joined, t.expiryDate]);
     const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -824,10 +931,10 @@ export default function SuperAdminPage() {
         },
         {
           id: 'promo-5',
-          code: 'PREMIUM100',
-          description: '$100 off Premium Plus — currently paused for review',
+          code: 'BUSINESS10000',
+          description: '¥10,000 off Business — currently paused for review',
           discountType: 'flat',
-          discountValue: 100,
+          discountValue: 10000,
           applicablePlan: 'plan-premium',
           maxUses: 30,
           currentUses: 8,
@@ -1043,7 +1150,11 @@ export default function SuperAdminPage() {
       return;
     }
     const defaultExpiry = new Date();
-    defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
+    if (newTenantData.plan === 'TRIAL') {
+      defaultExpiry.setDate(defaultExpiry.getDate() + 14);
+    } else {
+      defaultExpiry.setFullYear(defaultExpiry.getFullYear() + 1);
+    }
     const finalExpiryDate = newTenantData.expiryDate || defaultExpiry.toISOString().split('T')[0];
 
     const created: Tenant = {
@@ -1052,10 +1163,10 @@ export default function SuperAdminPage() {
       location: newTenantData.location,
       terminals: 0,
       plan: newTenantData.plan,
-      revenue: '$0',
+      revenue: '¥0',
       status: newTenantData.plan === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE',
       joined: new Date().toISOString().split('T')[0],
-      tier: 'Standard',
+      tier: 'Starter',
       region: 'North America - East',
       expiryDate: finalExpiryDate
     };
@@ -1077,26 +1188,26 @@ export default function SuperAdminPage() {
     ]);
   };
 
-  // Save tenant expiry date modifications
+  // Save tenant expiry date and configuration modifications
   const handleSaveTenantExpiry = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTenant) return;
     
     setTenants(prev => prev.map(t => 
       t.id === selectedTenant.id 
-        ? { ...t, expiryDate: editingExpiryDate } 
+        ? { ...selectedTenant, expiryDate: editingExpiryDate } 
         : t
     ));
     
     setShowTenantDetailsModal(false);
-    triggerToast(`Subscription expiry for ${selectedTenant.name} updated to ${editingExpiryDate}`, 'success');
+    triggerToast(`Tenant subscription settings for ${selectedTenant.name} updated successfully.`, 'success');
     
     setAuditLogs(prev => [
       {
         id: Date.now(),
         time: 'Just now',
         actor: 'Super Admin',
-        action: `Updated subscription expiry date of "${selectedTenant.name}" to ${editingExpiryDate}`,
+        action: `Updated settings (Tier, Terminals, Expiry: ${editingExpiryDate}) for tenant "${selectedTenant.name}"`,
         tenant: selectedTenant.name,
         type: 'info'
       },
@@ -1383,8 +1494,13 @@ export default function SuperAdminPage() {
     const matchesTier = tierFilter === 'All' || t.tier === tierFilter;
     
     const matchesRegion = regionFilter === 'All' || t.region === regionFilter;
+
+    // Attention Required filter logic
+    const expStatus = checkExpiryStatus(t.expiryDate);
+    const needsAttention = t.status === 'SUSPENDED' || expStatus === 'expired' || t.billingFailed;
+    const matchesAttention = !attentionOnlyFilter || needsAttention;
     
-    return matchesSearch && matchesStatus && matchesTier && matchesRegion;
+    return matchesSearch && matchesStatus && matchesTier && matchesRegion && matchesAttention;
   });
 
   const filteredAdmins = admins.filter(a => 
@@ -1550,6 +1666,18 @@ export default function SuperAdminPage() {
             >
               <span className="material-symbols-outlined text-lg leading-none">settings</span>
               <span>Global Settings</span>
+            </button>
+            {/* CMS Content */}
+            <button type="button"
+              onClick={() => { setActiveTab('cms'); setSearchQuery(''); }}
+              className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeTab === 'cms'
+                  ? `${theme.accentBg} ${theme.accentText} rounded-xl`
+                  : `${theme.textMuted} hover:text-white hover:bg-white/5 rounded-xl`
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg leading-none">web</span>
+              <span>CMS Content</span>
             </button>
           </nav>
         </div>
@@ -2000,10 +2128,18 @@ export default function SuperAdminPage() {
               </div>
 
               {/* KPI Cards Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 select-none">
                 
                 {/* Card 1: Total Active Tenants */}
-                <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
+                <div 
+                  onClick={() => { 
+                    setStatusFilter(statusFilter === 'Active' ? 'All' : 'Active'); 
+                    setAttentionOnlyFilter(false); 
+                  }}
+                  className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-primary/20 ${
+                    statusFilter === 'Active' ? 'border-[#ffc53d]/50 shadow-[0_0_25px_rgba(255,197,61,0.08)] bg-white/[0.01]' : ''
+                  }`}
+                >
                   <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
                     <span className="material-symbols-outlined text-[90px] leading-none">corporate_fare</span>
                   </div>
@@ -2011,7 +2147,9 @@ export default function SuperAdminPage() {
                     <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Total Active Tenants</span>
                   </div>
                   <div className="z-10 flex items-baseline gap-3">
-                    <h3 className="font-serif text-5xl font-bold text-white tracking-wide">142</h3>
+                    <h3 className="font-serif text-5xl font-bold text-white tracking-wide">
+                      {138 + tenants.filter(t => t.status === 'ACTIVE').length}
+                    </h3>
                     <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 leading-none">
                       <span className="material-symbols-outlined text-sm font-bold leading-none">arrow_upward</span>
                       12%
@@ -2034,7 +2172,15 @@ export default function SuperAdminPage() {
                 </div>
 
                 {/* Card 3: Attention Required */}
-                <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
+                <div 
+                  onClick={() => { 
+                    setAttentionOnlyFilter(!attentionOnlyFilter); 
+                    setStatusFilter('All'); 
+                  }}
+                  className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-rose-500/20 ${
+                    attentionOnlyFilter ? 'border-rose-500/50 shadow-[0_0_25px_rgba(239,68,68,0.08)] bg-white/[0.01]' : ''
+                  }`}
+                >
                   <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
                     <span className="material-symbols-outlined text-[90px] leading-none">warning</span>
                   </div>
@@ -2042,7 +2188,9 @@ export default function SuperAdminPage() {
                     <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Attention Required</span>
                   </div>
                   <div className="z-10">
-                    <h3 className="font-serif text-5xl font-bold text-rose-500 tracking-wide">3</h3>
+                    <h3 className="font-serif text-5xl font-bold text-rose-500 tracking-wide">
+                      {tenants.filter(t => t.status === 'SUSPENDED' || checkExpiryStatus(t.expiryDate) === 'expired' || t.billingFailed).length}
+                    </h3>
                     <p className="text-[10px] text-rose-400/70 font-semibold mt-1 uppercase tracking-wider">Suspended/Issue</p>
                   </div>
                 </div>
@@ -2089,9 +2237,9 @@ export default function SuperAdminPage() {
                       className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
                     >
                       <option value="All">Tier: All</option>
-                      <option value="Premium Plus">Tier: Premium Plus</option>
+                      <option value="Business">Tier: Business</option>
                       <option value="Growth">Tier: Growth</option>
-                      <option value="Standard">Tier: Standard</option>
+                      <option value="Starter">Tier: Starter</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
                   </div>
@@ -2159,10 +2307,10 @@ export default function SuperAdminPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            {t.tier === 'Premium Plus' ? (
+                            {t.tier === 'Business' ? (
                               <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
                                 <span className="material-symbols-outlined text-xs">star</span>
-                                Premium Plus
+                                Business
                               </span>
                             ) : t.tier === 'Growth' ? (
                               <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/70 font-semibold">
@@ -2170,7 +2318,7 @@ export default function SuperAdminPage() {
                               </span>
                             ) : (
                               <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-semibold">
-                                Standard
+                                Starter
                               </span>
                             )}
                           </td>
@@ -2178,23 +2326,33 @@ export default function SuperAdminPage() {
                           <td className="py-4 px-4">
                             {(() => {
                               const expStatus = checkExpiryStatus(t.expiryDate);
+                              const countdownText = getExpiryCountdownText(t.expiryDate);
                               if (expStatus === 'expired') {
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-lg border border-rose-500/35 bg-rose-500/5 text-rose-400 font-bold font-mono">
-                                    <span className="material-symbols-outlined text-xs">error</span>
-                                    {t.expiryDate} (Expired)
-                                  </span>
+                                  <div className="flex flex-col gap-1 select-none">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-rose-500/35 bg-rose-500/5 text-rose-400 font-bold font-mono w-fit">
+                                      <span className="material-symbols-outlined text-[12px] font-bold leading-none">error</span>
+                                      {t.expiryDate}
+                                    </span>
+                                    <span className="text-[10.5px] text-rose-400/60 font-semibold pl-1">{countdownText}</span>
+                                  </div>
                                 );
                               } else if (expStatus === 'warning') {
                                 return (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] rounded-lg border border-amber-500/35 bg-amber-500/5 text-amber-400 font-bold font-mono">
-                                    <span className="material-symbols-outlined text-xs">warning</span>
-                                    {t.expiryDate} (Expiring)
-                                  </span>
+                                  <div className="flex flex-col gap-1 select-none animate-pulse">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-amber-500/35 bg-amber-500/5 text-amber-400 font-bold font-mono w-fit">
+                                      <span className="material-symbols-outlined text-[12px] font-bold leading-none">warning</span>
+                                      {t.expiryDate}
+                                    </span>
+                                    <span className="text-[10.5px] text-amber-400/60 font-semibold pl-1">{countdownText}</span>
+                                  </div>
                                 );
                               } else {
                                 return (
-                                  <span className="text-[#e5e2e1]/75 font-mono text-[12px]">{t.expiryDate}</span>
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-[#e5e2e1]/85 font-mono text-[12px]">{t.expiryDate}</span>
+                                    <span className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider select-none">{countdownText}</span>
+                                  </div>
                                 );
                               }
                             })()}
@@ -2212,27 +2370,71 @@ export default function SuperAdminPage() {
                               </span>
                             )}
                           </td>
-                          <td className="py-4 px-4 text-right space-x-2">
-                            <button type="button" 
-                              onClick={() => toggleTenantStatus(t.id, t.name, t.status)}
-                              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                t.status === 'ACTIVE' 
-                                  ? 'border-rose-500/10 text-rose-400 hover:bg-rose-500/10' 
-                                  : 'border-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10'
-                              }`}
-                            >
-                              {t.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                            </button>
-                            <button type="button" 
-                              onClick={() => {
-                                setSelectedTenant(t);
-                                setEditingExpiryDate(t.expiryDate);
-                                setShowTenantDetailsModal(true);
-                              }}
-                              className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Details
-                            </button>
+                          <td className="py-4 px-4 text-right relative">
+                            <div className="flex items-center justify-end gap-2">
+                              <button type="button" 
+                                onClick={() => {
+                                  setSelectedTenant(t);
+                                  setEditingExpiryDate(t.expiryDate);
+                                  setShowTenantDetailsModal(true);
+                                }}
+                                className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] hover:text-white px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                              >
+                                Details
+                              </button>
+                              
+                              <div className="relative">
+                                <button type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveActionMenuId(activeActionMenuId === t.id ? null : t.id);
+                                  }}
+                                  className="w-8 h-8 rounded-lg border border-white/10 hover:border-white/20 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer"
+                                >
+                                  <span className="material-symbols-outlined text-base">more_vert</span>
+                                </button>
+                                
+                                {activeActionMenuId === t.id && (
+                                  <div className="absolute right-0 mt-1.5 w-48 bg-[#161513] border border-white/10 rounded-xl shadow-2xl py-2 z-30 text-left font-sans animate-slide-in">
+                                    <button type="button"
+                                      onClick={() => toggleTenantStatus(t.id, t.name, t.status)}
+                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-sm text-[#A69984]">
+                                        {t.status === 'ACTIVE' ? 'block' : 'check_circle'}
+                                      </span>
+                                      {t.status === 'ACTIVE' ? 'Suspend Tenant' : 'Activate Tenant'}
+                                    </button>
+                                    
+                                    <button type="button"
+                                      onClick={() => handleQuickRenew(t.id, 30)}
+                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-sm text-[#A69984]">snooze</span>
+                                      Extend Expiry (+30d)
+                                    </button>
+
+                                    {t.billingFailed && (
+                                      <button type="button"
+                                        onClick={() => handleRetryBilling(t.id)}
+                                        className="w-full px-4 py-2 hover:bg-[#ffc53d]/10 text-xs text-[#ffc53d] font-semibold flex items-center gap-2 border-t border-white/5 mt-1 pt-2 cursor-pointer"
+                                      >
+                                        <span className="material-symbols-outlined text-sm">credit_card</span>
+                                        Retry Billing System
+                                      </button>
+                                    )}
+
+                                    <button type="button"
+                                      onClick={() => handleDeleteTenant(t.id, t.name)}
+                                      className="w-full px-4 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-semibold flex items-center gap-2 border-t border-white/5 mt-1 pt-2 cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-sm">delete</span>
+                                      Delete Business
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -3504,9 +3706,9 @@ export default function SuperAdminPage() {
                   onClick={() => {
                     const header = ['Date', 'Tenant', 'Plan', 'Amount', 'Status', 'Invoice #'];
                     const rows = [
-                      ['Nov 15, 2026', 'The Obsidian Room', 'Enterprise Growth', '$2,499.00', 'Upcoming', 'INV-8821-NOV'],
-                      ['Oct 01, 2026', 'Lumière Brasserie', 'Enterprise Growth', '$450.00', 'Paid', 'INV-7734-OCT'],
-                      ['Oct 01, 2026', 'Aman Resorts', 'Premium Plus', '$999.00', 'Paid', 'INV-9021-OCT'],
+                      ['Nov 15, 2026', 'The Obsidian Room', 'Business', '¥12,980', 'Upcoming', 'INV-8821-NOV'],
+                      ['Oct 01, 2026', 'Lumière Brasserie', 'Growth', '¥6,980', 'Paid', 'INV-7734-OCT'],
+                      ['Oct 01, 2026', 'Aman Resorts', 'Business', '¥12,980', 'Paid', 'INV-9021-OCT'],
                     ];
                     const csv = [header, ...rows].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
                     const blob = new Blob([csv], { type: 'text/csv' });
@@ -3652,10 +3854,10 @@ export default function SuperAdminPage() {
                         <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>The Obsidian Room</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                            Enterprise Growth
+                            Business
                           </span>
                         </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>$2,499.00</td>
+                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥12,980</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/5 border border-white/10 text-[#A69984]/50 font-bold text-[8.5px] uppercase tracking-wider rounded-md">
                             Upcoming
@@ -3677,10 +3879,10 @@ export default function SuperAdminPage() {
                         <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Lumière Brasserie</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                            Enterprise Growth
+                            Growth
                           </span>
                         </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>$450.00</td>
+                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥6,980</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
                             Paid
@@ -3702,10 +3904,10 @@ export default function SuperAdminPage() {
                         <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Cafe Zenith</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-semibold">
-                            Standard Starter
+                            Starter
                           </span>
                         </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>$1,199.00</td>
+                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥3,980</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold text-[8.5px] uppercase tracking-wider rounded-md">
                             Failed
@@ -3727,10 +3929,10 @@ export default function SuperAdminPage() {
                         <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>The Obsidian Room</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                            Enterprise Growth
+                            Business
                           </span>
                         </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>$2,499.00</td>
+                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥12,980</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
                             Paid
@@ -3752,10 +3954,10 @@ export default function SuperAdminPage() {
                         <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Gaggan Anand</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/70 font-semibold">
-                            Enterprise Growth
+                            Growth
                           </span>
                         </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>$2,499.00</td>
+                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥6,980</td>
                         <td className="px-6 py-4.5">
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
                             Paid
@@ -4155,6 +4357,846 @@ export default function SuperAdminPage() {
             </div>
           )}
 
+          {/* TAB: CMS CONTENT MANAGEMENT */}
+          {activeTab === 'cms' && (
+            <div className="space-y-8 animate-fade-in duration-300">
+              {/* Header */}
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">
+                    CMS Content Manager
+                  </h1>
+                  <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold mt-2">
+                    Modify the live copy, images, pricing tiers, and legal policies displayed across DinePOS AI platform pages.
+                  </p>
+                </div>
+                <div>
+                  <button type="button"
+                    onClick={() => {
+                      saveCmsConfig(cmsConfig);
+                      setAuditLogs(prev => [
+                        {
+                          id: Date.now(),
+                          time: 'Just now',
+                          actor: 'Super Admin',
+                          action: `Published updates to CMS configuration (${cmsSubTab.toUpperCase()})`,
+                          tenant: 'System-wide',
+                          type: 'security'
+                        },
+                        ...prev
+                      ]);
+                      triggerToast('CMS Configuration updated and published!', 'success');
+                    }}
+                    className={`px-6 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg flex items-center gap-2`}
+                  >
+                    <span className="material-symbols-outlined text-sm font-bold">publish</span>
+                    Publish Changes
+                  </button>
+                </div>
+              </div>
+
+              {/* Sub-tabs Selection */}
+              <div className="flex flex-wrap gap-2 border-b border-white/5 pb-4">
+                {[
+                  { id: 'homepage', label: 'Homepage', icon: 'home' },
+                  { id: 'pricing', label: 'SaaS Pricing', icon: 'payments' },
+                  { id: 'support', label: 'Support Desk', icon: 'support_agent' },
+                  { id: 'partners', label: 'Partner Program', icon: 'group' },
+                  { id: 'auth', label: 'Auth Screens', icon: 'login' },
+                  { id: 'legal', label: 'Legal Policies', icon: 'policy' }
+                ].map(subTab => (
+                  <button
+                    key={subTab.id}
+                    type="button"
+                    onClick={() => setCmsSubTab(subTab.id as any)}
+                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg border transition-all cursor-pointer ${
+                      cmsSubTab === subTab.id
+                        ? 'bg-[#ffc53d]/10 border-[#ffc53d]/30 text-[#ffc53d]'
+                        : 'border-white/5 text-[#A69984]/70 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">{subTab.icon}</span>
+                    {subTab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Form Content */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start font-sans">
+                <div className="lg:col-span-8 space-y-8">
+                  {cmsSubTab === 'homepage' && (
+                    <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
+                        <span className="material-symbols-outlined text-[#ffc53d]">home</span>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Homepage Hero & Bento Feature Blocks</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 gap-6">
+                        {/* Hero Image */}
+                        <div>
+                          <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Hero Image URL</label>
+                          <input
+                            type="text"
+                            value={cmsConfig.homepage.heroImage}
+                            onChange={(e) => setCmsConfig(prev => ({
+                              ...prev,
+                              homepage: { ...prev.homepage, heroImage: e.target.value }
+                            }))}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                          />
+                        </div>
+
+                        {/* Hero Title */}
+                        <div>
+                          <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Hero Title</label>
+                          <input
+                            type="text"
+                            value={cmsConfig.homepage.heroTitle}
+                            onChange={(e) => setCmsConfig(prev => ({
+                              ...prev,
+                              homepage: { ...prev.homepage, heroTitle: e.target.value }
+                            }))}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                          />
+                        </div>
+
+                        {/* Hero Subtitle */}
+                        <div>
+                          <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Hero Subtitle</label>
+                          <textarea
+                            rows={3}
+                            value={cmsConfig.homepage.heroSubtitle}
+                            onChange={(e) => setCmsConfig(prev => ({
+                              ...prev,
+                              homepage: { ...prev.homepage, heroSubtitle: e.target.value }
+                            }))}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                          />
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Feature Blocks (Bento Grid)</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* POS Title & Desc */}
+                          <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">POS Feature Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.homepage.posTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, posTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">POS Feature Description</label>
+                              <textarea
+                                rows={3}
+                                value={cmsConfig.homepage.posDesc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, posDesc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* KDS Title & Desc */}
+                          <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">KDS Feature Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.homepage.kdsTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, kdsTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">KDS Feature Description</label>
+                              <textarea
+                                rows={3}
+                                value={cmsConfig.homepage.kdsDesc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, kdsDesc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Concierge Title & Desc */}
+                          <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Concierge Feature Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.homepage.conciergeTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, conciergeTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Concierge Feature Description</label>
+                              <textarea
+                                rows={3}
+                                value={cmsConfig.homepage.conciergeDesc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, conciergeDesc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Guest Title & Desc */}
+                          <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Guest Profile Feature Title</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.homepage.guestTitle}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, guestTitle: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Guest Profile Feature Description</label>
+                              <textarea
+                                rows={3}
+                                value={cmsConfig.homepage.guestDesc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  homepage: { ...prev.homepage, guestDesc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
+                  {cmsSubTab === 'pricing' && (
+                    <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
+                        <span className="material-symbols-outlined text-[#ffc53d]">payments</span>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">SaaS Subscription Pricing & Tier Descriptions</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-8">
+                        {/* Starter Tier */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Starter Package</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Monthly Price (¥)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.pricing.starterMonthly}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  pricing: { ...prev.pricing, starterMonthly: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Annual Price (¥ / month)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.pricing.starterAnnual}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  pricing: { ...prev.pricing, starterAnnual: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Starter Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.pricing.starterDesc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                               ...prev,
+                               pricing: { ...prev.pricing, starterDesc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Growth Tier */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Growth Package</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Monthly Price (¥)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.pricing.growthMonthly}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  pricing: { ...prev.pricing, growthMonthly: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Annual Price (¥ / month)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.pricing.growthAnnual}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  pricing: { ...prev.pricing, growthAnnual: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Growth Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.pricing.growthDesc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                               ...prev,
+                               pricing: { ...prev.pricing, growthDesc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Business Tier */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Business Package</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Monthly Price (¥)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.pricing.premiumMonthly}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  pricing: { ...prev.pricing, premiumMonthly: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Annual Price (¥ / month)</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.pricing.premiumAnnual}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  pricing: { ...prev.pricing, premiumAnnual: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Business Description</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.pricing.premiumDesc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                               ...prev,
+                               pricing: { ...prev.pricing, premiumDesc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {cmsSubTab === 'support' && (
+                    <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
+                        <span className="material-symbols-outlined text-[#ffc53d]">support_agent</span>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Support Desk Copy & FAQs</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Support Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.title}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, title: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Support Subtitle</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.subtitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, subtitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-white/5 pt-4">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Concierge Email</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.email}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, email: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Concierge Phone</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.phone}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, phone: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Available Hours</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.hours}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, hours: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Knowledge Base / FAQs</h4>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">FAQ 1: Question</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.faq1Title}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, faq1Title: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">FAQ 1: Answer</label>
+                            <textarea
+                              rows={3}
+                              value={cmsConfig.support.faq1Desc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, faq1Desc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">FAQ 2: Question</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.support.faq2Title}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, faq2Title: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">FAQ 2: Answer</label>
+                            <textarea
+                              rows={3}
+                              value={cmsConfig.support.faq2Desc}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                support: { ...prev.support, faq2Desc: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+
+                  {cmsSubTab === 'partners' && (
+                    <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
+                        <span className="material-symbols-outlined text-[#ffc53d]">group</span>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Global Alliance & Featured Partners</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        <div>
+                          <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Partners Hero Title</label>
+                          <input
+                            type="text"
+                            value={cmsConfig.partners.title}
+                            onChange={(e) => setCmsConfig(prev => ({
+                              ...prev,
+                              partners: { ...prev.partners, title: e.target.value }
+                            }))}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Partners Hero Subtitle</label>
+                          <input
+                            type="text"
+                            value={cmsConfig.partners.subtitle}
+                            onChange={(e) => setCmsConfig(prev => ({
+                              ...prev,
+                              partners: { ...prev.partners, subtitle: e.target.value }
+                            }))}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Partners Introduction Copy</label>
+                          <textarea
+                            rows={3}
+                            value={cmsConfig.partners.intro}
+                            onChange={(e) => setCmsConfig(prev => ({
+                              ...prev,
+                              partners: { ...prev.partners, intro: e.target.value }
+                            }))}
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                          />
+                        </div>
+
+                        <div className="border-t border-white/5 pt-4">
+                          <h4 className="font-serif text-sm text-white font-bold mb-4">Alliance Directory (Featured Integrations)</h4>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Partner 1 Name & Desc */}
+                          <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Integration 1: Name</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.partner1Name}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, partner1Name: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Integration 1: Description</label>
+                              <textarea
+                                rows={3}
+                                value={cmsConfig.partners.partner1Desc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, partner1Desc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Partner 2 Name & Desc */}
+                          <div className="space-y-4 p-4 bg-white/[0.02] border border-white/5 rounded-xl">
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Integration 2: Name</label>
+                              <input
+                                type="text"
+                                value={cmsConfig.partners.partner2Name}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, partner2Name: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Integration 2: Description</label>
+                              <textarea
+                                rows={3}
+                                value={cmsConfig.partners.partner2Desc}
+                                onChange={(e) => setCmsConfig(prev => ({
+                                  ...prev,
+                                  partners: { ...prev.partners, partner2Desc: e.target.value }
+                                }))}
+                                className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {cmsSubTab === 'auth' && (
+                    <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
+                        <span className="material-symbols-outlined text-[#ffc53d]">login</span>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Executive Auth Screens Copy</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        {/* Login Screen */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Sign-In page (Login Console)</h4>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Login Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.loginTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Login Subtitle</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.auth.loginSubtitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, loginSubtitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Register Screen */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Sign-Up page (Register Console)</h4>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Register Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.auth.signupTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, signupTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Register Subtitle</label>
+                            <textarea
+                              rows={2}
+                              value={cmsConfig.auth.signupSubtitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                auth: { ...prev.auth, signupSubtitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {cmsSubTab === 'legal' && (
+                    <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+                      <div className="flex items-center gap-2.5 pb-2 border-b border-white/5">
+                        <span className="material-symbols-outlined text-[#ffc53d]">policy</span>
+                        <h3 className="font-serif text-base text-white font-bold tracking-wide">Legal Agreements & Policies</h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6">
+                        {/* Terms of Service */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Terms of Service (TOS)</h4>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Terms Header Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.legal.termsTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                legal: { ...prev.legal, termsTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Terms Subheading</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.legal.termsSubtitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                legal: { ...prev.legal, termsSubtitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Terms Introductory Body Copy</label>
+                            <textarea
+                              rows={4}
+                              value={cmsConfig.legal.termsBody1}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                legal: { ...prev.legal, termsBody1: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Privacy Policy */}
+                        <div className="space-y-4 p-5 bg-white/[0.02] border border-white/5 rounded-xl">
+                          <h4 className="font-serif text-sm text-[#ffc53d] font-bold">Privacy Policy</h4>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Privacy Header Title</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.legal.privacyTitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                legal: { ...prev.legal, privacyTitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Privacy Subheading</label>
+                            <input
+                              type="text"
+                              value={cmsConfig.legal.privacySubtitle}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                legal: { ...prev.legal, privacySubtitle: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Privacy Introductory Body Copy</label>
+                            <textarea
+                              rows={4}
+                              value={cmsConfig.legal.privacyBody1}
+                              onChange={(e) => setCmsConfig(prev => ({
+                                ...prev,
+                                legal: { ...prev.legal, privacyBody1: e.target.value }
+                              }))}
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Audit trail sidebar */}
+                <div className="lg:col-span-4">
+                  <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6 min-h-[400px]`}>
+                    <div className="flex justify-between items-center select-none border-b border-white/5 pb-4">
+                      <h3 className="font-serif text-base text-white font-bold tracking-wide">Audit Trail</h3>
+                      <button type="button" 
+                        onClick={() => { setAuditLogs([]); triggerToast('Logs cleared.', 'info'); }}
+                        className="text-[9px] text-rose-400 hover:text-rose-300 font-bold uppercase tracking-widest cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 text-xs select-text overflow-y-auto max-h-[380px] pr-1">
+                      {filteredLogs.map(log => (
+                        <div key={log.id} className="border-b border-white/5 pb-3 last:border-none">
+                          <div className="flex gap-2 items-start">
+                            <span className={`material-symbols-outlined text-sm mt-0.5 ${
+                              log.type === 'security' ? 'text-amber-400' :
+                              log.type === 'warning' ? 'text-rose-400' :
+                              log.type === 'success' ? 'text-emerald-400' : 'text-sky-400'
+                            }`}>
+                              {log.type === 'security' ? 'security' : log.type === 'warning' ? 'priority_high' : log.type === 'success' ? 'check_circle' : 'info'}
+                            </span>
+                            <div>
+                              <div className="text-white font-bold leading-tight">{log.action}</div>
+                              <div className="text-[9.5px] text-[#A69984]/65 mt-1 font-semibold">
+                                {log.actor} • <span className="italic">{log.tenant}</span>
+                              </div>
+                              <span className="text-[8px] text-[#A69984]/40 font-bold block mt-1 uppercase tracking-wider">{log.time}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+
+                      {filteredLogs.length === 0 && (
+                        <div className="text-center py-20 text-[#A69984]/30">
+                          Audit logs clear.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
           {/* TAB: ANALYTICS */}
           {activeTab === 'analytics' && (() => {
             // Derived metrics from live state
@@ -4165,15 +5207,15 @@ export default function SuperAdminPage() {
             const churnRate = totalTenants > 0 ? ((suspendedTenants / totalTenants) * 100).toFixed(1) : '0.0';
             const trialConversion = totalTenants > 0 ? (((totalTenants - trialTenants - suspendedTenants) / totalTenants) * 100).toFixed(1) : '0.0';
 
-            const premiumTenants = tenants.filter(t => t.tier === 'Premium Plus');
+            const businessTenants = tenants.filter(t => t.tier === 'Business');
             const growthTenants = tenants.filter(t => t.tier === 'Growth');
-            const standardTenants = tenants.filter(t => t.tier === 'Standard');
+            const starterTenants = tenants.filter(t => t.tier === 'Starter');
 
-            const parseRevenue = (r: string) => parseFloat(r.replace(/[$,]/g, '')) || 0;
+            const parseRevenue = (r: string) => parseFloat(r.replace(/[¥$,]/g, '')) || 0;
             const totalRevenue = tenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
-            const premiumRevenue = premiumTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+            const businessRevenue = businessTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
             const growthRevenue = growthTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
-            const standardRevenue = standardTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+            const starterRevenue = starterTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
 
             const totalTerminals = tenants.reduce((sum, t) => sum + t.terminals, 0);
             const avgTerminalsPerTenant = totalTenants > 0 ? (totalTerminals / totalTenants).toFixed(1) : '0';
@@ -4204,7 +5246,7 @@ export default function SuperAdminPage() {
             const mrr = (totalRevenue / 12).toFixed(0);
             const arr = totalRevenue.toFixed(0);
 
-            const revenueBarMax = Math.max(premiumRevenue, growthRevenue, standardRevenue, 1);
+            const revenueBarMax = Math.max(businessRevenue, growthRevenue, starterRevenue, 1);
 
             const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
             const mockMonthlyRevenue = [310000, 375000, 420000, 398000, 455000, totalRevenue];
@@ -4293,19 +5335,19 @@ export default function SuperAdminPage() {
                       <span className="material-symbols-outlined text-amber-400 text-xl">leaderboard</span>
                     </div>
                     <div className="space-y-5">
-                      {/* Premium Plus */}
+                      {/* Business */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                            <span className="text-[11px] text-white font-bold">Premium Plus</span>
+                            <span className="text-[11px] text-white font-bold">Business</span>
                           </div>
-                          <span className="text-[11px] text-[#ffc53d] font-bold">${premiumRevenue.toLocaleString()}</span>
+                          <span className="text-[11px] text-[#ffc53d] font-bold">¥{businessRevenue.toLocaleString()}</span>
                         </div>
                         <div className="w-full bg-white/5 rounded-full h-2">
-                          <div className="bg-amber-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(premiumRevenue / revenueBarMax) * 100}%` }}></div>
+                          <div className="bg-amber-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(businessRevenue / revenueBarMax) * 100}%` }}></div>
                         </div>
-                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{premiumTenants.length} tenants · {totalTenants > 0 ? ((premiumRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{businessTenants.length} tenants · {totalTenants > 0 ? ((businessRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
                       </div>
                       {/* Growth */}
                       <div>
@@ -4314,26 +5356,26 @@ export default function SuperAdminPage() {
                             <span className="w-2 h-2 rounded-full bg-sky-400"></span>
                             <span className="text-[11px] text-white font-bold">Growth</span>
                           </div>
-                          <span className="text-[11px] text-sky-400 font-bold">${growthRevenue.toLocaleString()}</span>
+                          <span className="text-[11px] text-sky-400 font-bold">¥{growthRevenue.toLocaleString()}</span>
                         </div>
                         <div className="w-full bg-white/5 rounded-full h-2">
                           <div className="bg-sky-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(growthRevenue / revenueBarMax) * 100}%` }}></div>
                         </div>
                         <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{growthTenants.length} tenants · {totalTenants > 0 ? ((growthRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
                       </div>
-                      {/* Standard */}
+                      {/* Starter */}
                       <div>
                         <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-violet-400"></span>
-                            <span className="text-[11px] text-white font-bold">Standard</span>
+                            <span className="text-[11px] text-white font-bold">Starter</span>
                           </div>
-                          <span className="text-[11px] text-violet-400 font-bold">${standardRevenue.toLocaleString()}</span>
+                          <span className="text-[11px] text-violet-400 font-bold">¥{starterRevenue.toLocaleString()}</span>
                         </div>
                         <div className="w-full bg-white/5 rounded-full h-2">
-                          <div className="bg-violet-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(standardRevenue / revenueBarMax) * 100}%` }}></div>
+                          <div className="bg-violet-400 h-2 rounded-full transition-all duration-700" style={{ width: `${(starterRevenue / revenueBarMax) * 100}%` }}></div>
                         </div>
-                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{standardTenants.length} tenants · {totalTenants > 0 ? ((standardRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
+                        <div className="text-[9px] text-[#A69984]/40 font-semibold mt-1">{starterTenants.length} tenants · {totalTenants > 0 ? ((starterRevenue / totalRevenue) * 100).toFixed(0) : 0}% of total revenue</div>
                       </div>
                     </div>
                   </div>
@@ -6135,40 +7177,111 @@ export default function SuperAdminPage() {
             <h3 className="font-serif text-white font-bold text-2xl mb-1">Manage Tenant Subscription</h3>
             <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Review metadata and adjust system access parameters for this client.</p>
             
-            <form onSubmit={handleSaveTenantExpiry} className="space-y-6">
-              {/* Profile Card Summary */}
-              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-white/5">
+            <form onSubmit={handleSaveTenantExpiry} className="space-y-5">
+              {/* Profile Card Summary & Configuration */}
+              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-5 space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-white/5">
                   <div>
                     <div className="text-white font-bold text-sm">{selectedTenant.name}</div>
-                    <div className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider mt-0.5">ID: {selectedTenant.id}</div>
+                    <div className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider mt-0.5">ID: {selectedTenant.id} · Joined: {selectedTenant.joined}</div>
                   </div>
-                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                  <span className={`text-[9.5px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
                     selectedTenant.status === 'ACTIVE' ? theme.tagActive : theme.tagSuspended
                   }`}>
                     {selectedTenant.status}
                   </span>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
+                {/* Editable Fields */}
+                <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Subscription Tier</span>
-                    <span className="text-white/85 font-semibold mt-0.5 block">{selectedTenant.tier || 'Standard'}</span>
+                    <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Subscription Tier</label>
+                    <div className="relative">
+                      <select
+                        aria-label="Subscription Tier"
+                        value={selectedTenant.tier || 'Starter'}
+                        onChange={(e) => setSelectedTenant(prev => prev ? { ...prev, tier: e.target.value } : null)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 cursor-pointer appearance-none pr-8 font-semibold"
+                      >
+                        <option value="Starter">Starter</option>
+                        <option value="Growth">Growth</option>
+                        <option value="Business">Business</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
+                    </div>
                   </div>
+
                   <div>
-                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Region</span>
-                    <span className="text-white/85 font-semibold mt-0.5 block">{selectedTenant.region || 'N/A'}</span>
+                    <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Deployment Region</label>
+                    <div className="relative">
+                      <select
+                        aria-label="Region"
+                        value={selectedTenant.region || 'North America - East'}
+                        onChange={(e) => setSelectedTenant(prev => prev ? { ...prev, region: e.target.value } : null)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 cursor-pointer appearance-none pr-8 font-semibold"
+                      >
+                        <option value="North America - East">NA - East</option>
+                        <option value="Europe - West">EU - West</option>
+                        <option value="Asia Pacific">Asia Pacific</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
+                    </div>
                   </div>
+
                   <div>
-                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Platform Revenue</span>
-                    <span className="text-[#ffc53d] font-bold mt-0.5 block">{selectedTenant.revenue}</span>
+                    <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Platform Revenue</label>
+                    <div className="w-full bg-black/30 border border-white/5 rounded-xl px-3 py-2 text-xs text-[#ffc53d] font-bold select-none font-mono">
+                      {selectedTenant.revenue}
+                    </div>
                   </div>
+
                   <div>
-                    <span className="text-[#A69984]/50 text-[10px] font-bold uppercase tracking-wider block">Connected Terminals</span>
-                    <span className="text-white/85 font-semibold mt-0.5 block">{selectedTenant.terminals} units</span>
+                    <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Terminals Capacity</label>
+                    <div className="flex items-center gap-1">
+                      <button type="button"
+                        onClick={() => setSelectedTenant(prev => prev ? { ...prev, terminals: Math.max(0, prev.terminals - 1) } : null)}
+                        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white border border-white/10 transition-colors cursor-pointer select-none font-bold"
+                      >
+                        -
+                      </button>
+                      <input 
+                        type="text"
+                        readOnly
+                        value={`${selectedTenant.terminals} units`}
+                        className="w-16 text-center bg-transparent text-xs text-white/90 font-semibold focus:outline-none"
+                      />
+                      <button type="button"
+                        onClick={() => setSelectedTenant(prev => prev ? { ...prev, terminals: prev.terminals + 1 } : null)}
+                        className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white border border-white/10 transition-colors cursor-pointer select-none font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
+
+              {/* Billing Alert Settlement */}
+              {selectedTenant.billingFailed && (
+                <div className="bg-rose-500/8 border border-rose-500/20 rounded-xl p-4 flex items-center justify-between">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <span className="material-symbols-outlined text-rose-400 text-base mt-0.5 flex-shrink-0">credit_card_off</span>
+                    <div className="min-w-0">
+                      <div className="text-rose-300 text-[11px] font-bold">Billing Failed / Suspended</div>
+                      <p className="text-[10px] text-rose-400/70 font-semibold leading-normal mt-0.5 truncate">Recent transaction failed. Settle card fees.</p>
+                    </div>
+                  </div>
+                  <button type="button"
+                    onClick={() => {
+                      setSelectedTenant(prev => prev ? { ...prev, billingFailed: false, status: 'ACTIVE', plan: 'ACTIVE' } : null);
+                      triggerToast(`Settled account billing for ${selectedTenant.name}!`, 'success');
+                    }}
+                    className="text-[9.5px] bg-rose-500 hover:bg-rose-600 text-white font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg shadow-md cursor-pointer transition-colors flex-shrink-0 ml-3"
+                  >
+                    Settle Fees
+                  </button>
+                </div>
+              )}
 
               {/* Expiry Date Section */}
               <div>
@@ -6187,21 +7300,21 @@ export default function SuperAdminPage() {
                   if (expStatus === 'expired') {
                     return (
                       <p className="text-[10px] text-rose-400 font-semibold mt-2 flex items-center gap-1.5 leading-none">
-                        <span className="material-symbols-outlined text-[13px]">error</span>
+                        <span className="material-symbols-outlined text-[13px] font-bold leading-none">error</span>
                         This subscription is currently EXPIRED. Services are deactivated.
                       </p>
                     );
                   } else if (expStatus === 'warning') {
                     return (
                       <p className="text-[10px] text-amber-400 font-semibold mt-2 flex items-center gap-1.5 leading-none">
-                        <span className="material-symbols-outlined text-[13px]">warning</span>
+                        <span className="material-symbols-outlined text-[13px] font-bold leading-none">warning</span>
                         Expiring soon (less than 30 days remaining).
                       </p>
                     );
                   } else if (expStatus === 'active') {
                     return (
                       <p className="text-[10px] text-emerald-400 font-semibold mt-2 flex items-center gap-1.5 leading-none">
-                        <span className="material-symbols-outlined text-[13px]">check_circle</span>
+                        <span className="material-symbols-outlined text-[13px] font-bold leading-none">check_circle</span>
                         Subscription is active.
                       </p>
                     );

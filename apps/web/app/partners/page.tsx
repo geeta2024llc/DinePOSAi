@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import TopNavBar from '@/components/layouts/TopNavBar';
 import Link from 'next/link';
+import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 // Theme mirroring the admin and registration layouts
 const theme = {
@@ -59,6 +60,15 @@ const DEFAULT_CONFIG = {
 };
 
 export default function PartnersPage() {
+  const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+
+  useEffect(() => {
+    setCmsConfig(getCmsConfig());
+    const handleUpdate = () => setCmsConfig(getCmsConfig());
+    window.addEventListener('dinepos_cms_update', handleUpdate);
+    return () => window.removeEventListener('dinepos_cms_update', handleUpdate);
+  }, []);
+
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [currentUser, setCurrentUser] = useState<Referral | null>(null);
   const [programConfig, setProgramConfig] = useState(DEFAULT_CONFIG);
@@ -324,14 +334,13 @@ export default function PartnersPage() {
             {/* Hero */}
             <div className="text-center max-w-3xl mx-auto space-y-6">
               <span className="inline-block border border-[#ffe2ab]/20 rounded-full px-4 py-1.5 text-[#ffe2ab] text-[10px] uppercase font-bold tracking-[0.25em] bg-[#ffe2ab]/5">
-                DinePOS Ambassador Network
+                {cmsConfig.partners.title}
               </span>
               <h1 className="font-serif text-white text-5xl md:text-6xl font-medium leading-tight tracking-wide">
-                Introduce DinePOS.<br />
-                <span className="text-[#ffc53d] italic">Earn Premium Rewards.</span>
+                {cmsConfig.partners.subtitle}
               </h1>
               <p className="text-[#A69984] text-lg leading-relaxed font-normal max-w-2xl mx-auto">
-                Promote our premium restaurant POS operating system to your culinary network. Earn <strong className="text-[#ffc53d]">${programConfig.rewardPerSignup}</strong> per signup plus <strong className="text-[#ffc53d]">{programConfig.commissionRate}% commission</strong> on every onboarded location.
+                {cmsConfig.partners.intro}
               </p>
 
               <div className="flex flex-wrap justify-center gap-4 pt-4 select-none">
@@ -462,6 +471,42 @@ export default function PartnersPage() {
                 </div>
               </div>
             </div>
+
+            {/* Alliance Directory / Certified Integrations */}
+            <div className="pt-16 mt-16 border-t border-white/5 font-sans">
+              <div className="text-center mb-10">
+                <span className="inline-block border border-[#ffe2ab]/20 rounded-full px-4 py-1.5 text-[#ffe2ab] text-[10px] uppercase font-bold tracking-[0.25em] bg-[#ffe2ab]/5 mb-3">
+                  Alliance Directory
+                </span>
+                <h2 className="font-serif text-white text-3xl font-medium tracking-wide">Certified Platform Alliances</h2>
+                <p className="text-[#A69984] text-xs leading-relaxed max-w-md mx-auto mt-2">
+                  DinePOS AI integrates with best-of-breed enterprise services to orchestrate your entire restaurant workflow.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className={`${theme.cardBg} border rounded-2xl p-8 flex gap-6 items-start hover:border-[#ffe2ab]/25 transition-all duration-300`}>
+                  <div className="w-12 h-12 rounded-xl bg-[#ffe2ab]/10 border border-[#ffe2ab]/25 flex items-center justify-center text-[#ffc53d] flex-shrink-0">
+                    <span className="material-symbols-outlined text-2xl">sync</span>
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg text-white font-semibold tracking-wide mb-2">{cmsConfig.partners.partner1Name}</h3>
+                    <p className="text-xs text-[#A69984] leading-relaxed">{cmsConfig.partners.partner1Desc}</p>
+                  </div>
+                </div>
+
+                <div className={`${theme.cardBg} border rounded-2xl p-8 flex gap-6 items-start hover:border-[#ffe2ab]/25 transition-all duration-300`}>
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center text-emerald-400 flex-shrink-0">
+                    <span className="material-symbols-outlined text-2xl">credit_card</span>
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-lg text-white font-semibold tracking-wide mb-2">{cmsConfig.partners.partner2Name}</h3>
+                    <p className="text-xs text-[#A69984] leading-relaxed">{cmsConfig.partners.partner2Desc}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
