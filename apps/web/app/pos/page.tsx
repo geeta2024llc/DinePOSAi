@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { deductStockForOrder } from '../inventoryUtils';
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
   'DINE10': { type: 'percent', value: 10, label: '10% Off' },
@@ -870,6 +871,9 @@ export default function PosPage() {
       }
       txList.unshift(newTx);
       localStorage.setItem('dinepos_pos_transactions', JSON.stringify(txList));
+
+      // Deduct ingredient stock based on the items in the paid ticket
+      deductStockForOrder(selectedTicket.items);
 
       let successMsg = `Payment validated! ${selectedTicket.tableNumber} ticket closed.`;
       if (checkoutNotes.trim()) {

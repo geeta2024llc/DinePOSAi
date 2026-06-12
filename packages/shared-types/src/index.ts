@@ -242,6 +242,101 @@ export interface TenantBilling {
   createdAt: string;
 }
 
+// 📦 Inventory Item Model
+export interface InventoryItem {
+  id: string;
+  tenantId: string;
+  name: string;
+  sku: string | null;
+  unit: string;
+  costPerUnit: number;
+  stockLevel: number;
+  minStockLevel: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 🍳 MenuItem Recipe Model
+export interface MenuItemRecipe {
+  id: string;
+  tenantId: string;
+  menuItemId: string;
+  itemVariantId: string | null;
+  ingredientId: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 🚚 Supplier Model
+export interface Supplier {
+  id: string;
+  tenantId: string;
+  name: string;
+  contactName: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 📝 Purchase Order Model
+export type PurchaseOrderStatus = 'PENDING' | 'ORDERED' | 'RECEIVED' | 'CANCELLED';
+
+export interface PurchaseOrder {
+  id: string;
+  tenantId: string;
+  supplierId: string | null;
+  status: PurchaseOrderStatus;
+  totalCost: number;
+  orderedAt: string | null;
+  receivedAt: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 📦 Purchase Order Item Model
+export interface PurchaseOrderItem {
+  id: string;
+  tenantId: string;
+  purchaseOrderId: string;
+  ingredientId: string;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+}
+
+// 🗑️ Waste Log Model
+export type WasteReason = 'SPOILAGE' | 'ACCIDENT' | 'EXPIRED' | 'QUALITY_CONTROL';
+
+export interface WasteLog {
+  id: string;
+  tenantId: string;
+  ingredientId: string;
+  quantity: number;
+  reason: WasteReason;
+  notes: string | null;
+  reportedBy: string | null;
+  createdAt: string;
+}
+
+// 📊 Inventory Transaction Model (Ledger)
+export type InventoryTransactionType = 'PURCHASE' | 'SALE_DEDUCTION' | 'WASTE' | 'MANUAL_ADJUSTMENT' | 'REFUND_RESTOCK';
+
+export interface InventoryTransaction {
+  id: string;
+  tenantId: string;
+  ingredientId: string;
+  type: InventoryTransactionType;
+  quantity: number;
+  referenceId: string | null;
+  notes: string | null;
+  createdBy: string | null;
+  createdAt: string;
+}
+
 // 📬 Unified API Response Envelope
 export interface ApiResponse<T = any> {
   success: boolean;

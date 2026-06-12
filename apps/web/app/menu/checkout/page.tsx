@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { migrateCart } from '../cartUtils';
+import { deductStockForOrder } from '../../inventoryUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
   'spec-1': { name: 'Gold Leaf A5 Wagyu Ribeye', price: 185, category: 'special', description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal.' },
@@ -650,6 +651,13 @@ export default function CheckoutPage() {
         }
         txList.unshift(newTx);
         localStorage.setItem('dinepos_pos_transactions', JSON.stringify(txList));
+
+        // Deduct ingredient stock from inventory based on cart items
+        const itemsToDeduct = Object.values(cart).map(cartItem => {
+          const item = menuItemsRegistry[cartItem.itemId];
+          return { name: item ? item.name : '', qty: cartItem.quantity };
+        }).filter(x => x.name !== '');
+        deductStockForOrder(itemsToDeduct);
 
         // Clean up cart and placed order upon successful payment validation
         localStorage.removeItem('dinepos_cart');
