@@ -325,7 +325,7 @@ export default function HomePage() {
             <div className="bg-gradient-to-b from-[#181613] to-[#0e0e0d] rounded-2xl p-8 sm:p-9 flex flex-col justify-between h-full border border-[#ffe2ab]/40 relative group hover:border-[#ffe2ab] hover:shadow-[0_25px_60px_rgba(255,226,171,0.08)] hover:-translate-y-1.5 transition-all duration-500 lg:scale-[1.03] z-10 shadow-2xl">
               {/* Popular choice badge with elegant gold gradient */}
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-[#cc9d31] to-[#ffe2ab] text-[#2c1a00] font-sans text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-[0_4px_16px_rgba(255,226,171,0.25)] flex items-center gap-1">
-                <span className="material-symbols-outlined text-xs">local_fire_department</span> {cmsConfig.pricing.popularBadgeText}
+                <span className="material-symbols-outlined text-xs notranslate" translate="no">local_fire_department</span> {cmsConfig.pricing.popularBadgeText}
               </div>
               
               <div>
@@ -335,7 +335,7 @@ export default function HomePage() {
                       <span className="font-sans text-[9px] text-[#ffe2ab] font-bold uppercase tracking-[0.2em] mb-1.5 block">{cmsConfig.pricing.growthLabel}</span>
                       <h3 className="font-serif text-3xl text-white font-medium italic mb-4">{cmsConfig.pricing.growthName}</h3>
                     </div>
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300">rocket_launch</span>
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300 notranslate" translate="no">rocket_launch</span>
                   </div>
                   <p className="font-sans text-xs text-[#A69984]/80 leading-relaxed mb-6 min-h-[40px]">{cmsConfig.pricing.growthDesc}</p>
                   
@@ -379,7 +379,7 @@ export default function HomePage() {
                       <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">{cmsConfig.pricing.premiumLabel}</span>
                       <h3 className="font-serif text-3xl text-white font-medium italic mb-4">{cmsConfig.pricing.premiumName}</h3>
                     </div>
-                    <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300">diamond</span>
+                    <span className="material-symbols-outlined text-[#ffe2ab] text-3xl opacity-80 group-hover:scale-110 transition-transform duration-300 notranslate" translate="no">diamond</span>
                   </div>
                   <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed mb-6 min-h-[40px]">{cmsConfig.pricing.premiumDesc}</p>
                   
