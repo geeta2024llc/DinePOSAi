@@ -512,7 +512,7 @@ export default function SuperAdminPage() {
 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
     { id: 1, time: '2m ago', actor: 'Vladislav Doronin (Admin)', action: 'Authorized menu update "Matsuhisa Caviar"', tenant: 'Aman Resorts', type: 'info' },
-    { id: 2, time: '12m ago', actor: 'Eric Ripert (Admin)', action: 'Authorized void check table 12 ($342.50)', tenant: 'Le Bernardin Group', type: 'warning' },
+    { id: 2, time: '12m ago', actor: 'Eric Ripert (Admin)', action: 'Authorized void check table 12 (¥34,250)', tenant: 'Le Bernardin Group', type: 'warning' },
     { id: 3, time: '45m ago', actor: 'System Daemon', action: 'Daily sales metrics synchronized', tenant: 'Soho House', type: 'success' },
     { id: 4, time: '1h ago', actor: 'Super Admin', action: 'Suspended business "Gaggan Anand" due to expired card billing', tenant: 'Gaggan Anand', type: 'security' },
     { id: 5, time: '2h ago', actor: 'Super Admin', action: 'Triggered password reset link generation for Nick Jones', tenant: 'Soho House', type: 'security' },
@@ -683,8 +683,8 @@ export default function SuperAdminPage() {
   const defaultReferralConfig: ReferralConfig = {
     programActive: true,
     commissionRate: 10,
-    rewardPerSignup: 150,
-    minPayoutThreshold: 100,
+    rewardPerSignup: 15000,
+    minPayoutThreshold: 10000,
     referralBaseUrl: 'https://dineposai.com/signup?ref=',
     cookieDuration: 30,
     autoRewardOnConversion: true,
@@ -899,8 +899,8 @@ export default function SuperAdminPage() {
 
   // Export payout history as CSV
   const handleExportPayoutHistory = () => {
-    const header = ['TX ID', 'Date', 'Ambassador', 'Amount (USD)', 'Note'];
-    const rows = payoutHistory.map(tx => [tx.id, tx.date, tx.ambassadorName, tx.amount.toFixed(2), tx.note]);
+    const header = ['TX ID', 'Date', 'Ambassador', 'Amount (JPY)', 'Note'];
+    const rows = payoutHistory.map(tx => [tx.id, tx.date, tx.ambassadorName, Math.round(tx.amount).toString(), tx.note]);
     const csv = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -974,7 +974,7 @@ export default function SuperAdminPage() {
     setShowAddReferralModal(false);
     setAddReferralTarget(null);
     setNewReferralData({ name: '', contact: '', services: [], status: 'Pending' });
-    triggerToast(`Referral "${newBiz.name}" logged for ${addReferralTarget.name}.${reward > 0 ? ` $${reward} reward queued.` : ''}`, 'success');
+    triggerToast(`Referral "${newBiz.name}" logged for ${addReferralTarget.name}.${reward > 0 ? ` ¥${reward.toLocaleString()} reward queued.` : ''}`, 'success');
     setAuditLogs(prev => [{
       id: Date.now(), time: 'Just now', actor: 'Super Admin',
       action: `Manually logged referral "${newBiz.name}" for ambassador "${addReferralTarget.name}" — status: ${newBiz.status}`,
@@ -996,12 +996,12 @@ export default function SuperAdminPage() {
           code: 'MARCUS421',
           bank: { bankName: 'Wells Fargo', accountNumber: '••••7821', routingNumber: '121000248', accountHolder: 'Marcus Nguyen LLC' },
           invitedBusinesses: [
-            { id: 'biz-1', name: 'Nobu Tokyo', contact: 'chef@nobu.com', joinedDate: '2026-03-18', status: 'Subscribed', services: ['POS', 'KDS', 'Analytics'], reward: 150 },
-            { id: 'biz-2', name: 'Sketch London', contact: 'info@sketch.uk', joinedDate: '2026-04-02', status: 'Active', services: ['POS', 'Self Checkout'], reward: 150 },
+            { id: 'biz-1', name: 'Nobu Tokyo', contact: 'chef@nobu.com', joinedDate: '2026-03-18', status: 'Subscribed', services: ['POS', 'KDS', 'Analytics'], reward: 15000 },
+            { id: 'biz-2', name: 'Sketch London', contact: 'info@sketch.uk', joinedDate: '2026-04-02', status: 'Active', services: ['POS', 'Self Checkout'], reward: 15000 },
             { id: 'biz-3', name: 'Osteria Francescana', contact: 'massimo@osteria.it', joinedDate: '2026-04-22', status: 'Pending', services: ['POS'], reward: 0 },
           ],
-          pendingRewards: 300,
-          paidRewards: 600,
+          pendingRewards: 30000,
+          paidRewards: 60000,
           joinedDate: '2026-01-10',
           status: 'active',
         },
@@ -1013,11 +1013,11 @@ export default function SuperAdminPage() {
           code: 'PRIYA882',
           bank: { bankName: 'HSBC UK', accountNumber: '••••3309', routingNumber: 'MIDLGB22', accountHolder: 'Priya Sharma Consulting' },
           invitedBusinesses: [
-            { id: 'biz-4', name: 'Hawksmoor Manchester', contact: 'gm@hawksmoor.com', joinedDate: '2026-02-14', status: 'Subscribed', services: ['POS', 'KDS'], reward: 150 },
-            { id: 'biz-5', name: 'Hakkasan Dubai', contact: 'dubai@hakkasan.com', joinedDate: '2026-05-01', status: 'Active', services: ['POS', 'AI Concierge', 'Analytics'], reward: 150 },
+            { id: 'biz-4', name: 'Hawksmoor Manchester', contact: 'gm@hawksmoor.com', joinedDate: '2026-02-14', status: 'Subscribed', services: ['POS', 'KDS'], reward: 15000 },
+            { id: 'biz-5', name: 'Hakkasan Dubai', contact: 'dubai@hakkasan.com', joinedDate: '2026-05-01', status: 'Active', services: ['POS', 'AI Concierge', 'Analytics'], reward: 15000 },
           ],
-          pendingRewards: 150,
-          paidRewards: 1050,
+          pendingRewards: 15000,
+          paidRewards: 105000,
           joinedDate: '2025-11-20',
           status: 'active',
         },
@@ -1045,7 +1045,7 @@ export default function SuperAdminPage() {
           bank: { bankName: 'RBC Royal Bank', accountNumber: '••••5501', routingNumber: '000300002', accountHolder: 'Christine LeBlanc' },
           invitedBusinesses: [],
           pendingRewards: 0,
-          paidRewards: 250,
+          paidRewards: 25000,
           joinedDate: '2025-09-15',
           status: 'suspended',
         },
@@ -1263,7 +1263,7 @@ export default function SuperAdminPage() {
     const amount = parseFloat(payoutAmount);
     if (isNaN(amount) || amount <= 0) { triggerToast('Invalid payout amount.', 'info'); return; }
     if (amount > payoutTarget.pendingRewards) {
-      triggerToast(`Amount exceeds pending balance of $${payoutTarget.pendingRewards.toFixed(2)}.`, 'info');
+      triggerToast(`Amount exceeds pending balance of ¥${payoutTarget.pendingRewards.toLocaleString()}.`, 'info');
       return;
     }
 
@@ -1984,7 +1984,7 @@ export default function SuperAdminPage() {
                     <span className="material-symbols-outlined text-amber-400 text-lg">payments</span>
                   </div>
                   <div>
-                    <h3 className="font-serif text-3xl font-bold text-[#ffc53d] tracking-wide">$142,890.45</h3>
+                    <h3 className="font-serif text-3xl font-bold text-[#ffc53d] tracking-wide">¥14,289,045</h3>
                     <p className="text-[10px] text-amber-400 font-bold mt-1">~ 12.5% vs yesterday</p>
                   </div>
                 </div>
@@ -2876,8 +2876,8 @@ export default function SuperAdminPage() {
                   { label: 'Ambassadors', value: ambassadors.length, sub: `${ambassadors.filter(a => a.status === 'active').length} active`, color: 'text-white' },
                   { label: 'Businesses Referred', value: ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0), sub: 'All time', color: 'text-violet-400' },
                   { label: 'Conversion Rate', value: ambassadors.length === 0 ? '0%' : `${Math.round((ambassadors.reduce((s, a) => s + a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length, 0) / Math.max(ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0), 1)) * 100)}%`, sub: 'Referred → subscribed', color: 'text-sky-400' },
-                  { label: 'Pending Payouts', value: `$${ambassadors.reduce((s, a) => s + a.pendingRewards, 0).toLocaleString()}`, sub: 'Awaiting release', color: 'text-amber-400' },
-                  { label: 'Total Paid Out', value: `$${ambassadors.reduce((s, a) => s + a.paidRewards, 0).toLocaleString()}`, sub: 'All time', color: 'text-emerald-400' },
+                  { label: 'Pending Payouts', value: `¥${ambassadors.reduce((s, a) => s + a.pendingRewards, 0).toLocaleString()}`, sub: 'Awaiting release', color: 'text-amber-400' },
+                  { label: 'Total Paid Out', value: `¥${ambassadors.reduce((s, a) => s + a.paidRewards, 0).toLocaleString()}`, sub: 'All time', color: 'text-emerald-400' },
                 ].map(kpi => (
                   <div key={kpi.label} className={`${theme.cardBg} border rounded-2xl p-5 flex flex-col justify-between`}>
                     <span className="font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">{kpi.label}</span>
@@ -2929,7 +2929,7 @@ export default function SuperAdminPage() {
                               <div className="grid grid-cols-2 gap-2 text-center">
                                 <div className="bg-white/[0.03] rounded-lg p-2">
                                   <p className="text-[8.5px] text-[#A69984]/50 font-bold uppercase tracking-widest">Total Earned</p>
-                                  <p className={`font-bold text-sm mt-0.5 ${medalColors[idx]}`}>${amb.totalEarned.toLocaleString()}</p>
+                                  <p className={`font-bold text-sm mt-0.5 ${medalColors[idx]}`}>¥{amb.totalEarned.toLocaleString()}</p>
                                 </div>
                                 <div className="bg-white/[0.03] rounded-lg p-2">
                                   <p className="text-[8.5px] text-[#A69984]/50 font-bold uppercase tracking-widest">Conversions</p>
@@ -2939,7 +2939,7 @@ export default function SuperAdminPage() {
                               {amb.pendingRewards > 0 && (
                                 <div className="flex items-center gap-1.5 bg-amber-500/8 border border-amber-500/15 rounded-lg px-3 py-1.5">
                                   <span className="material-symbols-outlined text-amber-400 text-xs">schedule</span>
-                                  <span className="text-amber-400 text-[9.5px] font-bold">${amb.pendingRewards.toFixed(2)} pending payout</span>
+                                  <span className="text-amber-400 text-[9.5px] font-bold">¥{amb.pendingRewards.toLocaleString()} pending payout</span>
                                 </div>
                               )}
                             </div>
@@ -3163,11 +3163,11 @@ export default function SuperAdminPage() {
                                 <div className="grid grid-cols-2 gap-3 text-right">
                                   <div>
                                     <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest">Pending</p>
-                                    <p className="text-amber-400 font-bold font-sans text-base">${amb.pendingRewards.toFixed(2)}</p>
+                                    <p className="text-amber-400 font-bold font-sans text-base">¥{amb.pendingRewards.toLocaleString()}</p>
                                   </div>
                                   <div>
                                     <p className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-widest">Paid Out</p>
-                                    <p className="text-emerald-400 font-bold font-sans text-base">${amb.paidRewards.toFixed(2)}</p>
+                                    <p className="text-emerald-400 font-bold font-sans text-base">¥{amb.paidRewards.toLocaleString()}</p>
                                   </div>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
@@ -3210,7 +3210,7 @@ export default function SuperAdminPage() {
                                     {amb.status === 'active' ? 'Suspend' : 'Reactivate'}
                                   </button>
                                   <button type="button"
-                                    onClick={() => { setPayoutTarget(amb); setPayoutAmount(amb.pendingRewards.toFixed(2)); setShowPayoutModal(true); }}
+                                    onClick={() => { setPayoutTarget(amb); setPayoutAmount(amb.pendingRewards.toString()); setShowPayoutModal(true); }}
                                     className={`px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 ${
                                       amb.pendingRewards > 0
                                         ? 'bg-[#ffc53d] text-[#2c1a00] hover:bg-[#ffb014] cursor-pointer'
@@ -3544,7 +3544,7 @@ export default function SuperAdminPage() {
                                       </div>
                                     </td>
                                     <td className="px-6 py-3.5 text-right">
-                                      <span className="text-[#ffc53d] font-bold text-sm">${(amb.paidRewards + amb.pendingRewards).toLocaleString()}</span>
+                                      <span className="text-[#ffc53d] font-bold text-sm">¥{(amb.paidRewards + amb.pendingRewards).toLocaleString()}</span>
                                     </td>
                                   </tr>
                                 );
@@ -3647,7 +3647,7 @@ export default function SuperAdminPage() {
                             { label: 'First 10 Ambassadors', goal: 10, current: ambassadors.length, icon: 'group' },
                             { label: '50 Total Referrals', goal: 50, current: totalReferrals, icon: 'share' },
                             { label: '25 Paid Conversions', goal: 25, current: totalConversions, icon: 'storefront' },
-                            { label: '$5,000 Revenue Attributed', goal: 5000, current: totalAttrRevenue, icon: 'attach_money', isCurrency: true },
+                            { label: '¥500,000 Revenue Attributed', goal: 500000, current: totalAttrRevenue, icon: 'payments', isCurrency: true },
                           ].map(ms => {
                             const pct = Math.min(Math.round((ms.current / ms.goal) * 100), 100);
                             const done = pct >= 100;
@@ -3659,7 +3659,7 @@ export default function SuperAdminPage() {
                                     <span className={`text-[10.5px] font-semibold ${done ? 'text-emerald-400' : 'text-[#A69984]/70'}`}>{ms.label}</span>
                                   </div>
                                   <span className={`text-[10px] font-bold ${done ? 'text-emerald-400' : 'text-white/50'}`}>
-                                    {ms.isCurrency ? `$${ms.current.toLocaleString()} / $${ms.goal.toLocaleString()}` : `${ms.current} / ${ms.goal}`}
+                                    {ms.isCurrency ? `¥${ms.current.toLocaleString()} / ¥${ms.goal.toLocaleString()}` : `${ms.current} / ${ms.goal}`}
                                   </span>
                                 </div>
                                 <div className="bg-white/5 rounded-full h-1.5">
@@ -3702,23 +3702,23 @@ export default function SuperAdminPage() {
                         <p className="text-[9px] text-[#A69984]/40 mt-1.5">Percentage of referred tenant's first payment awarded to ambassador.</p>
                       </div>
                       <div>
-                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Flat Reward per Signup ($)</label>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Flat Reward per Signup (¥)</label>
                         <div className="flex items-center gap-3">
                           <input
-                            aria-label="Flat Reward per Signup in USD"
+                            aria-label="Flat Reward per Signup in JPY"
                             type="number" min="0"
                             value={referralConfig.rewardPerSignup}
                             onChange={e => setReferralConfig(prev => ({ ...prev, rewardPerSignup: parseInt(e.target.value) || 0 }))}
                             className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
                           />
-                          <span className="text-[#A69984]/60 text-sm font-bold">USD</span>
+                          <span className="text-[#A69984]/60 text-sm font-bold">JPY</span>
                         </div>
                         <p className="text-[9px] text-[#A69984]/40 mt-1.5">Fixed bonus credited when a referred business activates their subscription.</p>
                       </div>
                       <div>
-                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Minimum Payout Threshold ($)</label>
+                        <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-2">Minimum Payout Threshold (¥)</label>
                         <input
-                          aria-label="Minimum Payout Threshold in USD"
+                          aria-label="Minimum Payout Threshold in JPY"
                           type="number" min="0"
                           value={referralConfig.minPayoutThreshold}
                           onChange={e => setReferralConfig(prev => ({ ...prev, minPayoutThreshold: parseInt(e.target.value) || 0 }))}
@@ -3958,7 +3958,7 @@ export default function SuperAdminPage() {
                           </p>
                         </div>
                         <div className="text-right flex flex-col items-end">
-                          <span className={`font-serif text-3xl font-bold text-[#ffc53d]`}>$148,500</span>
+                          <span className={`font-serif text-3xl font-bold text-[#ffc53d]`}>¥14,850,000</span>
                           <span className={`text-[10px] ${theme.textMuted} font-bold uppercase tracking-wider mt-0.5`}>Platform MRR</span>
                         </div>
                       </div>
@@ -7411,7 +7411,7 @@ export default function SuperAdminPage() {
               <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 rounded-xl p-4 flex items-start gap-3">
                 <span className="material-symbols-outlined text-[#ffc53d] text-base flex-shrink-0 mt-0.5">info</span>
                 <p className="text-[10px] text-[#ffe2ab]/80 font-semibold leading-relaxed">
-                  This ambassador will earn <strong className="text-[#ffc53d]">${referralConfig.rewardPerSignup}</strong> per signup + <strong className="text-[#ffc53d]">{referralConfig.commissionRate}%</strong> commission on first payment. Min payout threshold: <strong className="text-[#ffc53d]">${referralConfig.minPayoutThreshold}</strong>.
+                  This ambassador will earn <strong className="text-[#ffc53d]">¥{referralConfig.rewardPerSignup.toLocaleString()}</strong> per signup + <strong className="text-[#ffc53d]">{referralConfig.commissionRate}%</strong> commission on first payment. Min payout threshold: <strong className="text-[#ffc53d]">¥{referralConfig.minPayoutThreshold.toLocaleString()}</strong>.
                 </p>
               </div>
 
@@ -7813,9 +7813,9 @@ export default function SuperAdminPage() {
                       <ul className="space-y-3.5">
                         {[
                           `Rewards accumulate when a referred merchant completes their registration using your code.`,
-                          <>Flat reward per signup: <span className="text-[#ffc53d] font-bold">${referralConfig.rewardPerSignup}</span> per establishment.</>,
+                          <>Flat reward per signup: <span className="text-[#ffc53d] font-bold">¥{referralConfig.rewardPerSignup.toLocaleString()}</span> per establishment.</>,
                           <>Commission on first payment: <span className="text-[#ffc53d] font-bold">{referralConfig.commissionRate}%</span> of the referred tenant&apos;s first subscription charge.</>,
-                          <>Minimum payout threshold: <span className="text-[#ffc53d] font-bold">${referralConfig.minPayoutThreshold}</span>. Admin processes transfers within 3 business days.</>,
+                          <>Minimum payout threshold: <span className="text-[#ffc53d] font-bold">¥{referralConfig.minPayoutThreshold.toLocaleString()}</span>. Admin processes transfers within 3 business days.</>,
                           <>Cookie tracking window: <span className="text-[#ffc53d] font-bold">{referralConfig.cookieDuration} days</span> — referral attribution is maintained for returning visitors.</>,
                         ].map((item, i) => (
                           <li key={i} className="flex items-start gap-2.5 text-[10.5px] text-[#A69984]/60 font-medium leading-relaxed">
@@ -8427,7 +8427,7 @@ export default function SuperAdminPage() {
                 <div className="mb-5 flex items-start gap-3 bg-sky-500/8 border border-sky-500/20 rounded-xl p-4">
                   <span className="material-symbols-outlined text-sky-400 text-base flex-shrink-0 mt-0.5">info</span>
                   <p className="text-sky-300 text-[10.5px] font-medium leading-relaxed">
-                    Pending balance <span className="font-bold text-white">${payoutTarget.pendingRewards.toFixed(2)}</span> is below the minimum payout threshold of <span className="font-bold text-white">${referralConfig.minPayoutThreshold}</span>. You can still process a manual override payout below.
+                    Pending balance <span className="font-bold text-white">¥{payoutTarget.pendingRewards.toLocaleString()}</span> is below the minimum payout threshold of <span className="font-bold text-white">¥{referralConfig.minPayoutThreshold.toLocaleString()}</span>. You can still process a manual override payout below.
                   </p>
                 </div>
               )}
@@ -8473,12 +8473,12 @@ export default function SuperAdminPage() {
               <form onSubmit={handleProcessPayout} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Payout Amount (USD)</label>
+                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Payout Amount (JPY)</label>
                     <div className="relative">
-                      <span className="absolute left-3.5 top-3 text-[#A69984]/50 text-xs font-bold">$</span>
+                      <span className="absolute left-3.5 top-3 text-[#A69984]/50 text-xs font-bold">¥</span>
                       <input
-                        type="number" step="0.01" min="0.01" required
-                        placeholder="0.00"
+                        type="number" step="1" min="1" required
+                        placeholder="0"
                         aria-label="Payout amount"
                         value={payoutAmount}
                         onChange={e => setPayoutAmount(e.target.value)}
@@ -8488,8 +8488,8 @@ export default function SuperAdminPage() {
                   </div>
                   <div className="flex flex-col justify-end gap-1 pb-1">
                     <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-wider">Pending Balance</div>
-                    <div className="text-amber-400 font-bold text-lg font-serif">${payoutTarget.pendingRewards.toFixed(2)}</div>
-                    <div className="text-[9px] text-[#A69984]/35 font-semibold">Paid out: ${payoutTarget.paidRewards.toFixed(2)}</div>
+                    <div className="text-amber-400 font-bold text-lg font-serif">¥{payoutTarget.pendingRewards.toLocaleString()}</div>
+                    <div className="text-[9px] text-[#A69984]/35 font-semibold">Paid out: ¥{payoutTarget.paidRewards.toLocaleString()}</div>
                   </div>
                 </div>
 
@@ -8629,12 +8629,12 @@ export default function SuperAdminPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Monthly Fee (USD)</label>
+                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Monthly Fee (JPY)</label>
                     <input 
                       type="number" 
                       required
-                      aria-label="Monthly price USD"
-                      placeholder="299"
+                      aria-label="Monthly price JPY"
+                      placeholder="29900"
                       value={editingPlan.monthlyPrice}
                       onChange={(e) => setEditingPlan(prev => prev ? { ...prev, monthlyPrice: parseInt(e.target.value) || 0 } : null)}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
@@ -8746,7 +8746,7 @@ export default function SuperAdminPage() {
                           <td className="py-4 px-4 text-sm font-serif font-bold text-white">
                             {p.name}
                           </td>
-                          <td className="py-4 px-4 text-center text-amber-400 font-mono text-sm">${p.monthlyPrice}/mo</td>
+                          <td className="py-4 px-4 text-center text-amber-400 font-mono text-sm">¥{p.monthlyPrice}/mo</td>
                           <td className="py-4 px-4 text-center text-[#e5e2e1]/80">{p.terminalsLimit === 999 ? 'Unlimited' : p.terminalsLimit}</td>
                           <td className="py-4 px-4 text-center text-[#e5e2e1]/80">{p.storageLimitGB} GB</td>
                           <td className="py-4 px-4 text-right">

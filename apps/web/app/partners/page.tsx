@@ -53,8 +53,8 @@ interface Referral {
 const DEFAULT_CONFIG = {
   programActive: true,
   commissionRate: 10,
-  rewardPerSignup: 150,
-  minPayoutThreshold: 100,
+  rewardPerSignup: 15000,
+  minPayoutThreshold: 10000,
   referralBaseUrl: 'https://dineposai.com/signup?ref=',
   cookieDuration: 30,
 };
@@ -76,9 +76,9 @@ export default function PartnersPage() {
   const formatPolicyText = (policy: string) => {
     if (!policy) return '';
     return policy
-      .replace(/{rewardPerSignup}/g, `$${programConfig.rewardPerSignup}`)
+      .replace(/{rewardPerSignup}/g, `¥${programConfig.rewardPerSignup.toLocaleString()}`)
       .replace(/{commissionRate}/g, `${programConfig.commissionRate}%`)
-      .replace(/{minPayoutThreshold}/g, `$${programConfig.minPayoutThreshold}`)
+      .replace(/{minPayoutThreshold}/g, `¥${programConfig.minPayoutThreshold.toLocaleString()}`)
       .replace(/{cookieDuration}/g, `${programConfig.cookieDuration}`);
   };
 
@@ -154,11 +154,11 @@ export default function PartnersPage() {
           code: 'REF-ERIC-77',
           status: 'ACTIVE',
           joinedDate: '2024-03-12',
-          paidRewards: 300,
-          pendingRewards: 150,
+          paidRewards: 30000,
+          pendingRewards: 15000,
           invitedBusinesses: [
-            { id: 'TEN-4581', name: 'Bouchon Bakery', contact: 'Thomas Keller', joinedDate: '2026-05-20', status: 'Trial', services: ['POS Terminal', 'KDS Screen'], reward: 150 },
-            { id: 'TEN-2195', name: 'Gaggan Anand', contact: 'Gaggan Anand', joinedDate: '2025-02-15', status: 'Active Subscribed', services: ['POS Terminal', 'KDS Screen', 'AI Concierge'], reward: 300 }
+            { id: 'TEN-4581', name: 'Bouchon Bakery', contact: 'Thomas Keller', joinedDate: '2026-05-20', status: 'Trial', services: ['POS Terminal', 'KDS Screen'], reward: 15000 },
+            { id: 'TEN-2195', name: 'Gaggan Anand', contact: 'Gaggan Anand', joinedDate: '2025-02-15', status: 'Active Subscribed', services: ['POS Terminal', 'KDS Screen', 'AI Concierge'], reward: 30000 }
           ]
         },
         {
@@ -171,9 +171,9 @@ export default function PartnersPage() {
           status: 'ACTIVE',
           joinedDate: '2025-09-02',
           paidRewards: 0,
-          pendingRewards: 100,
+          pendingRewards: 10000,
           invitedBusinesses: [
-            { id: 'TEN-5512', name: 'Cafe Zenith', contact: 'Jane Doe', joinedDate: '2025-09-02', status: 'Demo Use', services: ['POS Terminal'], reward: 100 }
+            { id: 'TEN-5512', name: 'Cafe Zenith', contact: 'Jane Doe', joinedDate: '2025-09-02', status: 'Demo Use', services: ['POS Terminal'], reward: 10000 }
           ]
         },
         {
@@ -185,10 +185,10 @@ export default function PartnersPage() {
           code: 'REF-PIERRE-99',
           status: 'ACTIVE',
           joinedDate: '2023-11-05',
-          paidRewards: 400,
+          paidRewards: 40000,
           pendingRewards: 0,
           invitedBusinesses: [
-            { id: 'TEN-8821', name: 'The Obsidian Room', contact: 'Sergei Obosian', joinedDate: '2024-03-12', status: 'Active Subscribed', services: ['POS Terminal', 'KDS Screen', 'AI Concierge', 'Self-Checkout'], reward: 400 }
+            { id: 'TEN-8821', name: 'The Obsidian Room', contact: 'Sergei Obosian', joinedDate: '2024-03-12', status: 'Active Subscribed', services: ['POS Terminal', 'KDS Screen', 'AI Concierge', 'Self-Checkout'], reward: 40000 }
           ]
         }
       ];
@@ -391,7 +391,7 @@ export default function PartnersPage() {
                 },
                 {
                   label: 'Reward per Signup',
-                  value: `$${programConfig.rewardPerSignup}`,
+                  value: `¥${programConfig.rewardPerSignup.toLocaleString()}`,
                   icon: 'payments',
                   color: 'text-[#ffc53d]',
                 },
@@ -453,9 +453,9 @@ export default function PartnersPage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {[
-                  { label: 'Flat Reward per Signup', value: `$${programConfig.rewardPerSignup}`, desc: 'Credited when referred business activates their account', color: 'text-[#ffc53d]' },
+                  { label: 'Flat Reward per Signup', value: `¥${programConfig.rewardPerSignup.toLocaleString()}`, desc: 'Credited when referred business activates their account', color: 'text-[#ffc53d]' },
                   { label: 'Commission on 1st Payment', value: `${programConfig.commissionRate}%`, desc: 'Percentage of their first subscription payment', color: 'text-emerald-400' },
-                  { label: 'Minimum Payout Threshold', value: `$${programConfig.minPayoutThreshold}`, desc: 'Balance required before requesting a withdrawal', color: 'text-sky-400' },
+                  { label: 'Minimum Payout Threshold', value: `¥${programConfig.minPayoutThreshold.toLocaleString()}`, desc: 'Balance required before requesting a withdrawal', color: 'text-sky-400' },
                 ].map(p => (
                   <div key={p.label} className="bg-white/[0.03] border border-white/5 rounded-xl p-5">
                     <div className="text-[9.5px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-2">{p.label}</div>
@@ -712,7 +712,7 @@ export default function PartnersPage() {
                     <span className="material-symbols-outlined text-emerald-400 text-lg">trending_up</span>
                   </div>
                   <div className="mt-4">
-                    <h4 className="text-3xl font-serif font-bold text-[#ffc53d]">${currentUser.paidRewards + currentUser.pendingRewards}</h4>
+                    <h4 className="text-3xl font-serif font-bold text-[#ffc53d]">¥{(currentUser.paidRewards + currentUser.pendingRewards).toLocaleString()}</h4>
                     <p className="text-[9px] text-[#A69984]/40 font-bold mt-1 uppercase tracking-wider">Historical accruals</p>
                   </div>
                 </div>
@@ -724,7 +724,7 @@ export default function PartnersPage() {
                     <span className="material-symbols-outlined text-white/40 text-lg">check_circle</span>
                   </div>
                   <div className="mt-4">
-                    <h4 className="text-3xl font-serif font-bold text-white">${currentUser.paidRewards}</h4>
+                    <h4 className="text-3xl font-serif font-bold text-white">¥{currentUser.paidRewards.toLocaleString()}</h4>
                     <p className="text-[9px] text-[#A69984]/40 font-bold mt-1 uppercase tracking-wider">Transferred to Bank</p>
                   </div>
                 </div>
@@ -736,7 +736,7 @@ export default function PartnersPage() {
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse mt-1.5"></span>
                   </div>
                   <div className="mt-4">
-                    <h4 className="text-3xl font-serif font-bold text-amber-400">${currentUser.pendingRewards}</h4>
+                    <h4 className="text-3xl font-serif font-bold text-amber-400">¥{currentUser.pendingRewards.toLocaleString()}</h4>
                     <p className="text-[9px] text-[#A69984]/40 font-bold mt-1 uppercase tracking-wider">Awaiting Admin Payout</p>
                   </div>
                 </div>
@@ -797,7 +797,7 @@ export default function PartnersPage() {
                               </span>
                             </td>
                             <td className="py-4 px-3 text-right text-white font-mono font-bold text-sm">
-                              ${b.reward}
+                              ¥{b.reward.toLocaleString()}
                             </td>
                           </tr>
                         ))}
