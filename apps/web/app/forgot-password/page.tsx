@@ -15,72 +15,82 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col w-full min-h-screen bg-[#131210] items-center justify-center relative">
-      <div className="w-full max-w-md p-xl bg-[#1C1A17] rounded-xl border border-outline/10 shadow-2xl relative z-10 my-12 text-center">
+    <div className="flex-1 flex flex-col w-full min-h-screen bg-[#0e0d0c] items-center justify-center relative p-4">
+      {/* Dynamic Ambient Background Glows */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[350px] h-[350px] rounded-full bg-[#ffe2ab]/5 blur-[120px] pointer-events-none z-0"></div>
+      
+      <div className="w-full max-w-[420px] px-10 pt-12 pb-10 bg-[#161513]/85 backdrop-blur-2xl rounded-2xl border border-white/5 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9),inset_0_1px_1px_rgba(255,255,255,0.05)] relative z-10 my-12 transition-all duration-300 hover:border-white/10 hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.95)]">
         {isSubmitted ? (
-          <div className="space-y-xl py-lg">
-            <div className="flex justify-center">
-              <span className="material-symbols-outlined text-emerald-400 text-6xl font-light animate-bounce">check_circle</span>
+          <div className="space-y-6 py-4">
+            <div className="flex justify-center mb-2">
+              <span className="material-symbols-outlined text-[#ffe2ab] text-6xl font-extralight animate-pulse">check_circle</span>
             </div>
             <div>
-              <h1 className="font-display-lg text-3xl text-on-surface font-semibold mb-sm">Instructions Sent</h1>
-              <p className="font-body-md text-on-surface-variant text-sm px-4 leading-relaxed">
-                We have sent secure reset instructions to <strong className="text-white select-text">{email}</strong>. Please check your inbox and spam folder.
+              <h1 className="font-serif text-3xl font-bold text-white tracking-wide mb-3">Instructions Sent</h1>
+              <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed max-w-xs mx-auto px-2">
+                We have sent secure reset instructions to <strong className="text-white select-text font-bold">{email}</strong>. Please check your inbox and spam folder.
               </p>
             </div>
-            <div className="pt-sm">
-              <Link href="/login" className="inline-flex items-center gap-2 font-title-md text-primary text-sm hover:underline font-bold">
-                <span className="material-symbols-outlined text-sm">arrow_back</span> Return to Login
+            <div className="pt-4">
+              <Link href="/login" className="inline-flex items-center gap-2 text-[#ffe2ab] text-xs font-semibold tracking-wide hover:text-[#ffdca0] transition-colors duration-200">
+                <span className="material-symbols-outlined text-xs">arrow_back</span> Return to Login
               </Link>
             </div>
           </div>
         ) : (
           <>
-            <div className="mb-md flex justify-center">
-              <span className="material-symbols-outlined text-primary text-5xl font-light">lock_reset</span>
+            <div className="mb-4 flex justify-center">
+              <div className="w-12 h-12 rounded-full bg-[#ffe2ab]/10 border border-[#ffe2ab]/20 flex items-center justify-center text-[#ffe2ab]">
+                <span className="material-symbols-outlined text-xl leading-none">lock_reset</span>
+              </div>
             </div>
             
-            <div className="mb-xl">
-              <h1 className="font-display-lg text-4xl text-on-surface font-semibold mb-sm">Forgot Password</h1>
-              <p className="font-body-md text-on-surface-variant text-sm px-4">
+            <div className="mb-8 text-center">
+              <h1 className="font-serif text-3xl font-bold text-white tracking-wide mb-2.5">Forgot Password</h1>
+              <p className="font-sans text-xs text-[#A69984]/70 leading-relaxed max-w-xs mx-auto">
                 Enter your email address and we'll send you instructions to reset your password.
               </p>
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-lg text-left">
-              <div>
-                <label className="block font-label-sm text-on-surface-variant text-xs font-bold uppercase tracking-widest mb-xs">Email Address</label>
+            <form onSubmit={handleSubmit} className="space-y-6 text-left">
+              <div className="space-y-2">
+                <label className="block text-[#A69984] text-[10px] font-bold uppercase tracking-[0.12em] select-none">
+                  Email Address
+                </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-sm flex items-center pointer-events-none">
-                    <span className="material-symbols-outlined text-on-surface-variant text-lg">mail</span>
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#A69984]/40">
+                    <span className="material-symbols-outlined text-lg leading-none">mail</span>
                   </div>
                   <input 
                     type="email" 
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#131210] border border-outline/20 rounded-md pl-10 pr-md py-sm text-on-surface font-body-md focus:border-primary focus:outline-none transition-colors"
+                    className="w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15"
                     placeholder="manager@restaurant.com" 
                   />
                 </div>
               </div>
               
-              <button type="submit" className="w-full bg-primary text-on-primary font-title-md py-sm rounded-md hover:opacity-90 transition-all shadow-[0_4px_14px_0_rgba(255,191,0,0.15)] mt-xl flex items-center justify-center gap-2 cursor-pointer">
-                Send Reset Instructions <span className="material-symbols-outlined text-sm">arrow_forward</span>
+              <button 
+                type="submit" 
+                className="w-full bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest py-3.5 rounded-lg transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:shadow-[0_4px_24px_rgba(255,226,171,0.2)] hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-6"
+              >
+                Send Reset Instructions <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
               </button>
             </form>
             
-            <div className="mt-lg pt-sm text-center">
-              <Link href="/login" className="inline-flex items-center gap-2 font-title-md text-primary text-sm hover:underline font-bold">
-                <span className="material-symbols-outlined text-sm">arrow_back</span> Back to Login
+            <div className="mt-8 text-center border-t border-white/5 pt-5">
+              <Link href="/login" className="inline-flex items-center gap-2 text-[#ffe2ab] text-xs font-semibold tracking-wide hover:text-[#ffdca0] transition-colors duration-200">
+                <span className="material-symbols-outlined text-xs">arrow_back</span> Back to Login
               </Link>
             </div>
           </>
         )}
       </div>
       
-      <div className="absolute bottom-12 text-center w-full font-body-md text-on-surface-variant text-sm">
-        Need help? <Link href="/support" className="text-primary hover:underline">Contact Support</Link>
+      <div className="absolute bottom-8 text-center w-full font-sans text-[#A69984]/50 text-xs select-none">
+        Need help? <Link href="/support" className="text-[#ffe2ab] hover:underline font-bold transition-colors">Contact Support</Link>
       </div>
     </div>
   );

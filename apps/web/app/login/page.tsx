@@ -8,7 +8,7 @@ import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 // NOTE: Plaintext credentials below are intentional for local demo environment and quick operational role switching/testing.
 const credentialsMap = {
   'super-admin': { email: 'superadmin@dinepos.ai', password: 'superadmin123', target: '/super-admin', label: 'Super Admin' },
-  'admin': { email: 'admin@dinepos.ai', password: 'admin123', target: '/dashboard', label: 'Owner Admin' },
+  'admin': { email: 'admin@dinepos.ai', password: 'admin123', target: '/dashboard', label: 'Admin Owner' },
   'cashier': { email: 'cashier@dinepos.ai', password: 'cashier123', target: '/pos', label: 'Cashier Staff' },
   'kds': { email: 'kds@dinepos.ai', password: 'kds123', target: '/kds', label: 'KDS Staff' },
   'waiter': { email: 'waiter@dinepos.ai', password: 'waiter123', target: '/menu', label: 'Waiter Menu' },
@@ -179,7 +179,7 @@ export default function LoginPage() {
                 className="w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-10 py-3 text-white font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 appearance-none cursor-pointer"
               >
                 <option value="super-admin">Super Admin (Global System)</option>
-                <option value="admin">Owner Admin (Business Console)</option>
+                <option value="admin">Admin Owner (Restaurant/Business Console)</option>
                 <option value="cashier">Cashier Staff (Point of Sale)</option>
                 <option value="kds">KDS Staff (Kitchen Display)</option>
                 <option value="waiter">Waiter Staff (Digital Menu)</option>
@@ -309,7 +309,7 @@ export default function LoginPage() {
               className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <span className="material-symbols-outlined text-xs">storefront</span>
-              Owner Admin
+              Admin Owner
             </button>
             <button 
               type="button"

@@ -166,6 +166,34 @@ export default function CheckoutPage() {
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: 'percent' | 'fixed'; value: number; label: string } | null>(null);
   const [promoError, setPromoError] = useState('');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+  const [waiveGratuity, setWaiveGratuity] = useState(false);
+
+  const formatCurrency = (val: number) => {
+    const symbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CNY: '¥',
+      KRW: '₩',
+      JPY: '¥'
+    };
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.24,
+      KRW: 1340
+    };
+    const symbol = symbolMap[currency] || '$';
+    const rate = rateMap[currency] || 1;
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${symbol}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   const [exclusionsConfig, setExclusionsConfig] = useState({
     maxPrice: 40,
@@ -191,6 +219,10 @@ export default function CheckoutPage() {
       if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
       if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
       if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
+      const savedCurrency = localStorage.getItem('dinepos_currency');
+      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+        setCurrency(savedCurrency as any);
+      }
       const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
       if (savedExclusions) {
         try {
@@ -473,7 +505,7 @@ export default function CheckoutPage() {
   const tax = taxType === 'pre-tax'
     ? subtotal * taxRate
     : subtotal - (subtotal / (1 + taxRate));
-  const autoGratuityRate = activeTicket ? (activeTicket.gratuityRate || 0.20) : 0.20;
+  const autoGratuityRate = waiveGratuity ? 0.00 : (currency === 'JPY' ? 0.00 : (activeTicket ? (activeTicket.gratuityRate !== undefined && activeTicket.gratuityRate !== null ? activeTicket.gratuityRate : 0.20) : 0.20));
   const autoGratuity = subtotal * autoGratuityRate;
   
   // Read cashier-applied discount from activeTicket if present
@@ -778,7 +810,7 @@ export default function CheckoutPage() {
                                 )}
                               </div>
                               <div className="text-white/90 text-xs font-bold font-mono tracking-wider shrink-0">
-                                ${item.price.toFixed(2)}
+                                {formatCurrency(item.price)}
                               </div>
                             </div>
                           ))}
@@ -794,15 +826,36 @@ export default function CheckoutPage() {
                 <div className="space-y-2.5 text-xs text-[#A69984]/70">
                   <div className="flex justify-between items-center">
                     <span>{taxType === 'post-tax' ? 'Subtotal (Tax Incl.)' : 'Subtotal'}</span>
-                    <span className="text-white/80 font-bold font-mono">${subtotal.toFixed(2)}</span>
+                    <span className="text-white/80 font-bold font-mono">{formatCurrency(subtotal)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span>{taxType === 'post-tax' ? 'Included Tax' : 'Tax'} ({(taxRate * 100).toFixed(1)}%)</span>
-                    <span className="text-white/80 font-bold font-mono">${tax.toFixed(2)}</span>
+                    <span className="text-white/80 font-bold font-mono">{formatCurrency(tax)}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span>Auto-Gratuity (20%)</span>
-                    <span className="text-white/80 font-bold font-mono">${autoGratuity.toFixed(2)}</span>
+                    <span className="flex items-center gap-1.5">
+                      <span>Auto-Gratuity ({Math.round(autoGratuityRate * 100)}%)</span>
+                      {autoGratuityRate > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => setWaiveGratuity(true)}
+                          className="text-[#ffe2ab]/55 hover:text-rose-400 font-sans text-[9px] font-bold uppercase tracking-wider underline cursor-pointer border-none bg-transparent p-0"
+                        >
+                          Waive
+                        </button>
+                      ) : (
+                        (currency !== 'JPY' || (activeTicket && activeTicket.gratuityRate > 0)) && waiveGratuity && (
+                          <button
+                            type="button"
+                            onClick={() => setWaiveGratuity(false)}
+                            className="text-emerald-400 hover:text-emerald-355 font-sans text-[9px] font-bold uppercase tracking-wider underline cursor-pointer border-none bg-transparent p-0"
+                          >
+                            Add back
+                          </button>
+                        )
+                      )}
+                    </span>
+                    <span className="text-white/80 font-bold font-mono">{formatCurrency(autoGratuity)}</span>
                   </div>
                   {promoDiscountAmount > 0 && appliedPromo && (
                     <div className="flex justify-between items-center text-emerald-400">
@@ -810,7 +863,7 @@ export default function CheckoutPage() {
                         <span className="material-symbols-outlined text-[11px]">sell</span>
                         {appliedPromo.code} ({appliedPromo.label})
                       </span>
-                      <span className="font-bold font-mono">−${promoDiscountAmount.toFixed(2)}</span>
+                      <span className="font-bold font-mono">−{formatCurrency(promoDiscountAmount)}</span>
                     </div>
                   )}
                 </div>
@@ -862,7 +915,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between items-baseline select-none">
                   <span className="text-xs text-[#A69984] font-bold uppercase tracking-wider">TOTAL DUE</span>
                   <span className="text-[30px] font-bold text-[#ffe2ab] font-serif tracking-wider">
-                    ${total.toFixed(2)}
+                    {formatCurrency(total)}
                   </span>
                 </div>
               </div>
@@ -1178,7 +1231,7 @@ export default function CheckoutPage() {
                               </div>
                             </div>
                             <span className="text-emerald-400 font-mono font-bold text-sm">
-                              −${promoDiscountAmount.toFixed(2)}
+                              −{formatCurrency(promoDiscountAmount)}
                             </span>
                           </div>
                         )}
@@ -1225,7 +1278,7 @@ export default function CheckoutPage() {
             <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
               <div>
                 <h3 className="font-serif text-xl text-white font-medium">Split Bill Calculator</h3>
-                <p className="text-[10px] text-[#A69984]/50 font-sans font-bold uppercase tracking-wider mt-1">Table {displayTableNumber} • Total Due: ${total.toFixed(2)}</p>
+                <p className="text-[10px] text-[#A69984]/50 font-sans font-bold uppercase tracking-wider mt-1">Table {displayTableNumber} • Total Due: {formatCurrency(total)}</p>
               </div>
               <button 
                 onClick={() => setIsSplitOpen(false)}
@@ -1235,202 +1288,75 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Split Method switcher tabs */}
-            <div className="grid grid-cols-2 bg-[#0e0e0d] border border-white/5 rounded-xl p-1 gap-1 mb-6 font-sans shrink-0">
-              <button
-                onClick={() => setSplitMethod('evenly')}
-                className={`py-2 px-4 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer ${splitMethod === 'evenly' ? 'bg-white/5 text-white' : 'text-[#A69984]/50 hover:text-white'}`}
-              >
-                Split Evenly
-              </button>
-              <button
-                onClick={() => setSplitMethod('by-item')}
-                className={`py-2 px-4 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer ${splitMethod === 'by-item' ? 'bg-white/5 text-white' : 'text-[#A69984]/50 hover:text-white'}`}
-              >
-                Split By Item
-              </button>
-            </div>
-
-            {/* Content area based on method */}
+            {/* Content area */}
             <div className="flex-1 overflow-y-auto pr-1 space-y-6">
-              {splitMethod === 'evenly' ? (
-                <div className="space-y-6 font-sans">
-                  {/* Guest count selector */}
-                  <div className="bg-[#0e0e0d] border border-white/5 p-5 rounded-xl space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs text-[#A69984] font-bold uppercase tracking-wider">Number of Guests</span>
-                      <span className="text-white text-lg font-serif font-bold">{guestCount} Guests</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <button 
-                        onClick={() => setGuestCount(prev => Math.max(2, prev - 1))}
-                        disabled={guestCount <= 2}
-                        className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm font-bold">remove</span>
-                      </button>
-                      <input
-                        type="range"
-                        min="2"
-                        max="10"
-                        value={guestCount}
-                        onChange={(e) => setGuestCount(parseInt(e.target.value, 10))}
-                        aria-label="Number of guests"
-                        className="flex-grow accent-[#ffe2ab]"
-                      />
-                      <button 
-                        onClick={() => setGuestCount(prev => Math.min(10, prev + 1))}
-                        disabled={guestCount >= 10}
-                        className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm font-bold">add</span>
-                      </button>
-                    </div>
+              <div className="space-y-6 font-sans">
+                {/* Guest count selector */}
+                <div className="bg-[#0e0e0d] border border-white/5 p-5 rounded-xl space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-[#A69984] font-bold uppercase tracking-wider">Number of Guests</span>
+                    <span className="text-white text-lg font-serif font-bold">{guestCount} Guests</span>
                   </div>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => setGuestCount(prev => Math.max(2, prev - 1))}
+                      disabled={guestCount <= 2}
+                      className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm font-bold">remove</span>
+                    </button>
+                    <input
+                      type="range"
+                      min="2"
+                      max="10"
+                      value={guestCount}
+                      onChange={(e) => setGuestCount(parseInt(e.target.value, 10))}
+                      aria-label="Number of guests"
+                      className="flex-grow accent-[#ffe2ab]"
+                    />
+                    <button 
+                      onClick={() => setGuestCount(prev => Math.min(10, prev + 1))}
+                      disabled={guestCount >= 10}
+                      className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-sm font-bold">add</span>
+                    </button>
+                  </div>
+                </div>
 
-                  {/* Even portions display list */}
-                  <div className="space-y-3">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block">Portions Breakdown</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {Array.from({ length: guestCount }).map((_, idx) => {
-                        const guestLetter = String.fromCharCode(65 + idx); // A, B, C...
-                        const isPaid = paidGuests.includes(idx);
-                        const shareTotal = total / guestCount;
-                        return (
-                          <div key={idx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/5 text-white'}`}>
-                            <div>
-                              <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
-                              <div className="font-serif text-lg font-bold mt-1">${shareTotal.toFixed(2)}</div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                if (isPaid) {
+                {/* Even portions display list */}
+                <div className="space-y-3">
+                  <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block">Portions Breakdown</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {Array.from({ length: guestCount }).map((_, idx) => {
+                      const guestLetter = String.fromCharCode(65 + idx); // A, B, C...
+                      const isPaid = paidGuests.includes(idx);
+                      const shareTotal = total / guestCount;
+                      return (
+                        <div key={idx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/5 text-white'}`}>
+                          <div>
+                            <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
+                            <div className="font-serif text-lg font-bold mt-1">{formatCurrency(shareTotal)}</div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              if (isPaid) {
                                   setPaidGuests(prev => prev.filter(g => g !== idx));
-                                } else {
+                              } else {
                                   setPaidGuests(prev => [...prev, idx]);
                                   triggerToast(`Guest ${guestLetter}'s portion paid!`);
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50'}`}
-                            >
-                              {isPaid ? '✓ Paid' : 'Pay Portion'}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
+                              }
+                            }}
+                            className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50'}`}
+                          >
+                            {isPaid ? '✓ Paid' : 'Pay Portion'}
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ) : (
-                <div className="space-y-6 font-sans">
-                  {/* Guest count selector */}
-                  <div className="flex justify-between items-center bg-[#0e0e0d] border border-white/5 p-4 rounded-xl">
-                    <span className="text-xs text-[#A69984] font-bold uppercase tracking-wider">Split Parties</span>
-                    <div className="flex items-center gap-3">
-                      <button 
-                        onClick={() => {
-                          setGuestCount(prev => Math.max(2, prev - 1));
-                          setItemAssignments({});
-                          setPaidGuests([]);
-                        }}
-                        disabled={guestCount <= 2}
-                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm font-bold">remove</span>
-                      </button>
-                      <span className="text-white font-serif font-bold w-12 text-center">{guestCount}</span>
-                      <button 
-                        onClick={() => {
-                          setGuestCount(prev => Math.min(6, prev + 1));
-                          setItemAssignments({});
-                          setPaidGuests([]);
-                        }}
-                        disabled={guestCount >= 6}
-                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer"
-                      >
-                        <span className="material-symbols-outlined text-sm font-bold">add</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Itemized assignment list */}
-                  <div className="space-y-3.5">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block">Assign Items to Guests</span>
-                    <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-1">
-                      {getDisplayItems().map((item, idx) => {
-                        const assignedGuest = itemAssignments[idx] ?? -1;
-                        return (
-                          <div key={idx} className="p-4 bg-[#0e0e0d] border border-white/5 rounded-xl flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                            <div className="max-w-[50%]">
-                              <div className="text-xs text-white font-bold">{item.quantity}x {item.name}</div>
-                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-1">${item.price.toFixed(2)}</div>
-                            </div>
-                            
-                            {/* Guest selector circles */}
-                            <div className="flex items-center gap-1.5">
-                              {/* Shared circle */}
-                              <button
-                                onClick={() => setItemAssignments(prev => ({ ...prev, [idx]: -1 }))}
-                                className={`w-8 h-8 rounded-full font-bold text-[9px] uppercase transition-all cursor-pointer ${assignedGuest === -1 ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'bg-white/5 border border-white/5 text-[#A69984]'}`}
-                                title="Split evenly among all guests"
-                              >
-                                Shr
-                              </button>
-                              {/* Guest circles */}
-                              {Array.from({ length: guestCount }).map((_, gIdx) => {
-                                const guestLetter = String.fromCharCode(65 + gIdx);
-                                return (
-                                  <button
-                                    key={gIdx}
-                                    onClick={() => setItemAssignments(prev => ({ ...prev, [idx]: gIdx }))}
-                                    className={`w-8 h-8 rounded-full font-bold text-[10px] transition-all cursor-pointer ${assignedGuest === gIdx ? 'bg-white/10 border border-white/35 text-white' : 'bg-transparent border border-white/5 text-[#A69984]/40 hover:text-white'}`}
-                                    title={`Assign to Guest ${guestLetter}`}
-                                  >
-                                    {guestLetter}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Calculated totals breakdown */}
-                  <div className="space-y-3 pt-2">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block">Calculated Totals</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {guestTotals.map((gTotal, gIdx) => {
-                        const guestLetter = String.fromCharCode(65 + gIdx);
-                        const isPaid = paidGuests.includes(gIdx);
-                        return (
-                          <div key={gIdx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-white/5 border-white/5 text-white'}`}>
-                            <div>
-                              <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
-                              <div className="font-serif text-lg font-bold mt-1">${gTotal.total.toFixed(2)}</div>
-                              <div className="text-[9px] text-[#A69984]/50 mt-0.5 leading-none">Sub: ${gTotal.subtotal.toFixed(2)} • Tax: ${gTotal.tax.toFixed(2)}</div>
-                            </div>
-                            <button
-                              onClick={() => {
-                                if (isPaid) {
-                                  setPaidGuests(prev => prev.filter(g => g !== gIdx));
-                                } else {
-                                  setPaidGuests(prev => [...prev, gIdx]);
-                                  triggerToast(`Guest ${guestLetter}'s portion paid!`);
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50'}`}
-                            >
-                              {isPaid ? '✓ Paid' : 'Pay Portion'}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
+              </div>
             </div>
 
             {/* Footer Summary / Actions */}
@@ -1515,7 +1441,7 @@ export default function CheckoutPage() {
               <h3 className="font-serif text-2xl text-white mb-2 font-medium tracking-wide">Payment Completed</h3>
               
               <div className="font-sans text-[10.5px] text-[#ffe2ab] font-bold uppercase tracking-widest mb-4">
-                Table {displayTableNumber} • Invoice #DINE-88A92 • ${total.toFixed(2)}
+                Table {displayTableNumber} • Invoice #DINE-88A92 • {formatCurrency(total)}
               </div>
               
               <p className="text-[#A69984]/70 text-xs leading-relaxed mb-8 font-sans">

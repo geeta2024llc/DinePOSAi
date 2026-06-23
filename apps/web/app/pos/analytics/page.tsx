@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface Operator {
   name: string;
@@ -33,6 +35,7 @@ const AVAILABLE_OPERATORS: Operator[] = [
 ];
 
 export default function AnalyticsPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
 
@@ -197,7 +200,11 @@ export default function AnalyticsPage() {
     <div className="flex w-full min-h-screen bg-[#0a0a09] text-[#e5e2e1] font-sans antialiased overflow-x-hidden select-none">
       
       {/* SIDEBAR */}
-      <aside className="w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto">
+      <aside className={`bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto transition-all duration-300 ${
+        sidebarCollapsed 
+          ? 'w-0 p-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] p-8 opacity-100'
+      }`}>
         <div>
           {/* Brand */}
           <div className="mb-10 flex items-center">
@@ -272,6 +279,8 @@ export default function AnalyticsPage() {
 
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-grow flex flex-col min-h-screen relative bg-[#0e0e0e] px-12 pb-12">

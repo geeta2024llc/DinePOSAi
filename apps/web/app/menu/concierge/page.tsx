@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface CartItem {
   itemId: string;
@@ -26,10 +28,12 @@ interface ChatMessage {
 }
 
 export default function ConciergePage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
   
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -40,6 +44,32 @@ export default function ConciergePage() {
     showAIConcierge: true,
     enableSelfCheckout: true
   });
+
+  const formatCurrency = (val: number) => {
+    const symbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CNY: '¥',
+      KRW: '₩',
+      JPY: '¥'
+    };
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.24,
+      KRW: 1340
+    };
+    const symbol = symbolMap[currency] || '$';
+    const rate = rateMap[currency] || 1;
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${symbol}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   useEffect(() => {
     const savedTable = localStorage.getItem('dinepos_table_number');
@@ -91,6 +121,11 @@ export default function ConciergePage() {
       } catch (e) {
         console.error('Failed to parse exclusions config:', e);
       }
+    }
+
+    const savedCurrency = localStorage.getItem('dinepos_currency');
+    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+      setCurrency(savedCurrency as any);
     }
     
     setIsLoaded(true);
@@ -182,7 +217,7 @@ export default function ConciergePage() {
     }
 
     localStorage.setItem('dinepos_cart', JSON.stringify(cart));
-    triggerToast(`Added ${itemName} ($${price}) to Table ${tableNumber} order!`);
+    triggerToast(`Added ${itemName} (${formatCurrency(price)}) to Table ${tableNumber} order!`);
   };
 
   // Call Server Bell action
@@ -219,16 +254,16 @@ export default function ConciergePage() {
       const query = userText.toLowerCase();
 
       if (query.includes('risotto') || query.includes('truffle')) {
-        replyText = "Our Acquerello Mushroom Risotto ($32) features Carnaroli rice, foraged forest mushrooms, and fresh black winter truffle shavings. It pairs beautifully with a glass of decanted red wine.";
+        replyText = `Our Acquerello Mushroom Risotto (${formatCurrency(32)}) features Carnaroli rice, foraged forest mushrooms, and fresh black winter truffle shavings. It pairs beautifully with a glass of decanted red wine.`;
         suggestions = ['Order Risotto', 'Wine Pairings'];
       } else if (query.includes('cocktail') || query.includes('drink') || query.includes('menu')) {
         replyText = "Here are our signature house cocktails. I highly recommend the Royal Gold Old Fashioned, prepared with 12-year bourbon and smoked with cherrywood chips.";
         suggestions = ['Show Royal Gold', 'Emerald Gimlet'];
       } else if (query.includes('wagyu') || query.includes('meat') || query.includes('steak')) {
-        replyText = "Our Gold Leaf A5 Wagyu Ribeye ($185) features Miyazaki Wagyu seared over binchotan charcoal and brushed with a truffle glaze. It is our premier steak offering.";
+        replyText = `Our Gold Leaf A5 Wagyu Ribeye (${formatCurrency(185)}) features Miyazaki Wagyu seared over binchotan charcoal and brushed with a truffle glaze. It is our premier steak offering.`;
         suggestions = ['Order Wagyu', 'Recommend Pairings'];
       } else if (query.includes('sommelier') || query.includes('wine') || query.includes('red')) {
-        replyText = "For cellared full-bodied reds, the sommelier recommends our 2015 Château Margaux ($320) or our sommelier pick, the 2018 Opus One ($450). Both pair exceptionally well with prime steak.";
+        replyText = `For cellared full-bodied reds, the sommelier recommends our 2015 Château Margaux (${formatCurrency(320)}) or our sommelier pick, the 2018 Opus One (${formatCurrency(450)}). Both pair exceptionally well with prime steak.`;
         recommendations = [
           { id: 'rec-1', name: 'Château Margaux', price: 320, description: '2015 Bordeaux Blend. Rich, opulent, with notes of dark plum and cedar.' },
           { id: 'rec-2', name: 'Opus One', price: 450, description: '2018 Napa Valley. Elegant structure, cassis, and refined tannins.', isSommelierPick: true }
@@ -294,7 +329,11 @@ export default function ConciergePage() {
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#f5f5f5] font-sans overflow-hidden antialiased select-none relative">
       
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className="w-[280px] h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-20">
+      <aside className={`h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-20 transition-all duration-300 ${
+        sidebarCollapsed 
+          ? 'w-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px]'
+      }`}>
         <div>
           {/* Brand header */}
           <div className="p-8 pb-4">
@@ -359,6 +398,8 @@ export default function ConciergePage() {
           </button>
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN CHAT CONSOLE AREA */}
       <main className="flex-1 flex flex-col h-full bg-[#11100e] relative overflow-hidden">
@@ -443,7 +484,7 @@ export default function ConciergePage() {
                           <div className="mb-4">
                             <div className="flex justify-between items-baseline mb-1">
                               <h4 className="font-serif text-sm font-bold text-white tracking-wide">{rec.name}</h4>
-                              <span className="font-sans font-bold text-xs text-[#ffe2ab]">${rec.price}</span>
+                              <span className="font-sans font-bold text-xs text-[#ffe2ab]">{formatCurrency(rec.price)}</span>
                             </div>
                             <p className="font-sans text-[#A69984]/70 text-[10.5px] leading-relaxed">
                               {rec.description}

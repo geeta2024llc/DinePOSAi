@@ -29,14 +29,69 @@ export default function AmbassadorLoginPage() {
 
   // If already logged in, redirect straight to dashboard
   useEffect(() => {
-    const saved = localStorage.getItem('dinepos_active_referral_email');
-    if (saved) {
-      const stored = localStorage.getItem('dinepos_referrals');
-      if (stored) {
-        const referrals: Referral[] = JSON.parse(stored);
-        const found = referrals.find(r => r.email === saved);
-        if (found) {
-          router.replace('/partners');
+    if (typeof window !== 'undefined') {
+      const storedReferrals = localStorage.getItem('dinepos_referrals');
+      if (!storedReferrals) {
+        const initial = [
+          {
+            id: 'REF-001',
+            name: 'Eric Ripert',
+            email: 'chef@lebernardin.com',
+            phone: '+1 (212) 555-8821',
+            bank: { bankName: 'JPMorgan Chase', accountHolder: 'Le Bernardin LLC', accountNumber: '••••••••8291', routingNumber: '021000021' },
+            code: 'REF-ERIC-77',
+            status: 'ACTIVE',
+            joinedDate: '2024-03-12',
+            paidRewards: 30000,
+            pendingRewards: 15000,
+            invitedBusinesses: [
+              { id: 'TEN-4581', name: 'Bouchon Bakery', contact: 'Thomas Keller', joinedDate: '2026-05-20', status: 'Trial', services: ['POS Terminal', 'KDS Screen'], reward: 15000 },
+              { id: 'TEN-2195', name: 'Gaggan Anand', contact: 'Gaggan Anand', joinedDate: '2025-02-15', status: 'Active Subscribed', services: ['POS Terminal', 'KDS Screen', 'AI Concierge'], reward: 30000 }
+            ]
+          },
+          {
+            id: 'REF-002',
+            name: 'Ana Ros',
+            email: 'ana@hisafranko.com',
+            phone: '+386 41 555 120',
+            bank: { bankName: 'Nova Ljubljanska Banka', accountHolder: 'Hisa Franko d.o.o.', accountNumber: '••••••••9012', routingNumber: 'LJUBSI2X' },
+            code: 'REF-ANA-88',
+            status: 'ACTIVE',
+            joinedDate: '2025-09-02',
+            paidRewards: 0,
+            pendingRewards: 10000,
+            invitedBusinesses: [
+              { id: 'TEN-5512', name: 'Cafe Zenith', contact: 'Jane Doe', joinedDate: '2025-09-02', status: 'Demo Use', services: ['POS Terminal'], reward: 10000 }
+            ]
+          },
+          {
+            id: 'REF-003',
+            name: 'Pierre Gagnaire',
+            email: 'pierre@lumiere.com',
+            phone: '+33 1 44 39 54 54',
+            bank: { bankName: 'Société Générale', accountHolder: 'Gagnaire SA', accountNumber: '••••••••4567', routingNumber: 'SOGEFRPPXXX' },
+            code: 'REF-PIERRE-99',
+            status: 'ACTIVE',
+            joinedDate: '2023-11-05',
+            paidRewards: 40000,
+            pendingRewards: 0,
+            invitedBusinesses: [
+              { id: 'TEN-8821', name: 'The Obsidian Room', contact: 'Sergei Obosian', joinedDate: '2024-03-12', status: 'Active Subscribed', services: ['POS Terminal', 'KDS Screen', 'AI Concierge', 'Self-Checkout'], reward: 40000 }
+            ]
+          }
+        ];
+        localStorage.setItem('dinepos_referrals', JSON.stringify(initial));
+      }
+
+      const saved = localStorage.getItem('dinepos_active_referral_email');
+      if (saved) {
+        const stored = localStorage.getItem('dinepos_referrals');
+        if (stored) {
+          const referrals: any[] = JSON.parse(stored);
+          const found = referrals.find(r => r.email === saved);
+          if (found) {
+            router.replace('/partners');
+          }
         }
       }
     }

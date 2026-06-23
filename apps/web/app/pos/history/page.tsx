@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface Operator {
   name: string;
@@ -107,6 +109,7 @@ const mockTransactions: TransactionRecord[] = [
 ];
 
 export default function TransactionHistoryPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('today');
@@ -205,7 +208,11 @@ export default function TransactionHistoryPage() {
     <div className="flex w-full min-h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans antialiased overflow-x-hidden select-none">
       
       {/* LEFT SIDEBAR PANEL */}
-      <aside className="w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto">
+      <aside className={`bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto transition-all duration-300 ${
+        sidebarCollapsed 
+          ? 'w-0 p-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] p-8 opacity-100'
+      }`}>
         <div>
           {/* Brand/Console Title */}
           <div className="mb-10 select-none flex items-center">
@@ -301,6 +308,8 @@ export default function TransactionHistoryPage() {
 
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-grow flex flex-col min-h-screen relative bg-[#0e0e0d]">

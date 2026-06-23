@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 export default function KdsSettingsPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
 
@@ -56,7 +59,11 @@ export default function KdsSettingsPage() {
       )}
 
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 h-full`}>
+      <aside className={`fixed inset-y-0 left-0 bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 h-full ${
+        sidebarCollapsed 
+          ? 'w-0 lg:w-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] opacity-100'
+      }`}>
         <div>
           {/* Brand header */}
           <div className="p-8 pb-4">
@@ -105,6 +112,8 @@ export default function KdsSettingsPage() {
           </Link>
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN KITCHEN SETTINGS CONSOLE */}
       <main className="flex-1 flex flex-col h-full bg-[#11100e] relative overflow-hidden">

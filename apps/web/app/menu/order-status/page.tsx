@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { migrateCart, CartItem } from '../cartUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
@@ -83,6 +85,7 @@ const getItemPrice = (item: any): number => {
 };
 
 export default function OrderStatusPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [showReceipt, setShowReceipt] = useState(false);
   const [activeStep, setActiveStep] = useState(2); // 1 = Received, 2 = Cooking, 3 = Plating, 4 = Ready
   const [activeTicket, setActiveTicket] = useState<any>(null);
@@ -129,6 +132,33 @@ export default function OrderStatusPage() {
   ]);
 
   const [editingItemData, setEditingItemData] = useState<{ id: string; name: string; quantity: number; notes: string } | null>(null);
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+
+  const formatCurrency = (val: number) => {
+    const symbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CNY: '¥',
+      KRW: '₩',
+      JPY: '¥'
+    };
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.24,
+      KRW: 1340
+    };
+    const symbol = symbolMap[currency] || '$';
+    const rate = rateMap[currency] || 1;
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${symbol}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   useEffect(() => {
     const activeTicketId = localStorage.getItem('dinepos_active_ticket_id');
@@ -183,6 +213,10 @@ export default function OrderStatusPage() {
       } catch (e) {
         console.error('Failed to parse exclusions config:', e);
       }
+    }
+    const savedCurrency = localStorage.getItem('dinepos_currency');
+    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+      setCurrency(savedCurrency as any);
     }
     setIsLoaded(true);
   }, []);
@@ -509,7 +543,11 @@ export default function OrderStatusPage() {
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#f5f5f5] font-sans overflow-hidden antialiased select-none relative">
       
       {/* Sidebar navigation panel */}
-      <aside className="w-[280px] h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-20">
+      <aside className={`h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-20 transition-all duration-300 ${
+        sidebarCollapsed 
+          ? 'w-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px]'
+      }`}>
         <div>
           {/* Brand header */}
           <div className="p-8 pb-4">
@@ -560,6 +598,8 @@ export default function OrderStatusPage() {
           </div>
         )}
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full bg-[#11100e] relative overflow-hidden">
@@ -837,7 +877,7 @@ export default function OrderStatusPage() {
                         </div>
                         <div className="text-right">
                           <div className="text-white text-xs font-bold font-sans">x{item.qty}</div>
-                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">${itemTotal.toFixed(2)}</div>
+                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">{formatCurrency(itemTotal)}</div>
                         </div>
                       </div>
                     );
@@ -851,7 +891,7 @@ export default function OrderStatusPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-white text-xs font-bold font-sans">x2</div>
-                        <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">$590.00</div>
+                        <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">{formatCurrency(590)}</div>
                       </div>
                     </div>
 
@@ -862,7 +902,7 @@ export default function OrderStatusPage() {
                       </div>
                       <div className="text-right">
                         <div className="text-white text-xs font-bold font-sans">x1</div>
-                        <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">$150.00</div>
+                        <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">{formatCurrency(150)}</div>
                       </div>
                     </div>
                   </>
@@ -897,7 +937,7 @@ export default function OrderStatusPage() {
                         </div>
                         <div className="text-right">
                           <div className="text-white text-xs font-bold font-sans">x{ci.quantity}</div>
-                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">${itemTotal.toFixed(2)}</div>
+                          <div className="text-[#ffe2ab] text-xs font-bold font-sans mt-0.5">{formatCurrency(itemTotal)}</div>
                         </div>
                       </div>
                     );
@@ -910,15 +950,15 @@ export default function OrderStatusPage() {
             <div className="border-t border-white/5 pt-6 space-y-4 font-sans select-none">
               <div className="flex justify-between text-xs text-[#A69984]/60 font-bold uppercase tracking-wider">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>{formatCurrency(subtotal)}</span>
               </div>
               <div className="flex justify-between text-xs text-[#A69984]/60 font-bold uppercase tracking-wider border-b border-white/5 pb-4">
                 <span>Taxes & Fees ({(taxRate * 100).toFixed(1)}%)</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>{formatCurrency(tax)}</span>
               </div>
               <div className="flex justify-between text-base font-bold text-white pt-2">
                 <span className="font-serif text-lg">Total Due</span>
-                <span className="text-[#ffe2ab] text-xl font-bold font-serif">${total.toFixed(2)}</span>
+                <span className="text-[#ffe2ab] text-xl font-bold font-serif">{formatCurrency(total)}</span>
               </div>
               
               {exclusionsConfig.enableSelfCheckout ? (

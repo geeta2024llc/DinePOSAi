@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface StaffMember {
   id: string;
@@ -27,7 +29,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '21:00',
     hoursWorked: 7.5,
     tableAssignments: [],
-    phone: '+1 (555) 001-0001'
+    phone: '+81 90-1111-2221'
   },
   {
     id: 's2',
@@ -39,7 +41,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '23:00',
     hoursWorked: 5.2,
     tableAssignments: ['Table 12', 'Table 14', 'Table 16'],
-    phone: '+1 (555) 001-0002'
+    phone: '+81 90-1111-2222'
   },
   {
     id: 's3',
@@ -51,7 +53,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '22:00',
     hoursWorked: 4.8,
     tableAssignments: ['Table 04', 'Table 06'],
-    phone: '+1 (555) 001-0003'
+    phone: '+81 90-1111-2223'
   },
   {
     id: 's4',
@@ -63,7 +65,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '01:00',
     hoursWorked: 2.0,
     tableAssignments: ['Bar 01', 'Bar 02'],
-    phone: '+1 (555) 001-0004'
+    phone: '+81 90-1111-2224'
   },
   {
     id: 's5',
@@ -75,7 +77,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '22:00',
     hoursWorked: 6.0,
     tableAssignments: [],
-    phone: '+1 (555) 001-0005'
+    phone: '+81 90-1111-2225'
   },
   {
     id: 's6',
@@ -87,7 +89,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '22:00',
     hoursWorked: 6.1,
     tableAssignments: [],
-    phone: '+1 (555) 001-0006'
+    phone: '+81 90-1111-2226'
   },
   {
     id: 's7',
@@ -99,7 +101,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '21:00',
     hoursWorked: 5.5,
     tableAssignments: ['Reception'],
-    phone: '+1 (555) 001-0007'
+    phone: '+81 90-1111-2227'
   },
   {
     id: 's8',
@@ -111,7 +113,7 @@ const staffData: StaffMember[] = [
     shiftEnd: '—',
     hoursWorked: 0,
     tableAssignments: [],
-    phone: '+1 (555) 001-0008'
+    phone: '+81 90-1111-2228'
   }
 ];
 
@@ -149,6 +151,7 @@ const ALL_TABLES = [
 ];
 
 export default function PosStaffPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'break' | 'off'>('all');
   const [search, setSearch] = useState('');
@@ -353,7 +356,11 @@ export default function PosStaffPage() {
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative">
 
       {/* SIDEBAR */}
-      <aside className="w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto">
+      <aside className={`bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-20 lg:sticky lg:top-0 lg:h-screen overflow-y-auto transition-all duration-300 ${
+        sidebarCollapsed 
+          ? 'w-0 p-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] p-8 opacity-100'
+      }`}>
         <div>
           {/* Brand */}
           <div className="mb-10 flex items-center">
@@ -447,6 +454,8 @@ export default function PosStaffPage() {
           </div>
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN CONTENT */}
       <div className="flex-grow flex flex-col min-h-screen bg-[#11100e] overflow-hidden">
@@ -700,7 +709,7 @@ export default function PosStaffPage() {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. +1 (555) 001-0003"
+                    placeholder="e.g. +81 90-1234-5678"
                     value={formPhone}
                     onChange={e => setFormPhone(e.target.value)}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl p-3 text-white focus:outline-none focus:border-[#ffe2ab]/30"

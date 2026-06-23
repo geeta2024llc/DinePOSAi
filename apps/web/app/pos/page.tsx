@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { deductStockForOrder } from '../inventoryUtils';
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
@@ -183,6 +185,20 @@ const getTicketGratuityRate = (t: any): number => {
   if (t && t.type) {
     if (t.type === 'takeaway' || t.type === 'delivery') return 0.00;
   }
+  
+  if (typeof window !== 'undefined') {
+    const savedCurrency = localStorage.getItem('dinepos_currency');
+    if (savedCurrency === 'JPY') {
+      return 0.00;
+    }
+    const minCovers = parseInt(localStorage.getItem('dinepos_cashier_auto_gratuity_min_covers') || '6', 10);
+    const gratuityPct = parseInt(localStorage.getItem('dinepos_cashier_auto_gratuity_pct') || '20', 10);
+    const covers = t && typeof t.covers === 'number' ? t.covers : (t && typeof t.guests === 'number' ? t.guests : 1);
+    if (covers >= minCovers) {
+      return gratuityPct / 100;
+    }
+    return 0.00;
+  }
   return 0.20; // Default 20%
 };
 
@@ -256,6 +272,7 @@ const initialTickets: PosTicket[] = [
 ];
 
 export default function PosPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [tickets, setTickets] = useState<PosTicket[]>(initialTickets);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('ticket-1');
   const [quickFilter, setQuickFilter] = useState<'open' | 'payment' | 'vip'>('open');
@@ -269,6 +286,117 @@ export default function PosPage() {
   const [taxRateDineIn, setTaxRateDineIn] = useState(0.085);
   const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.085);
   const [taxRateDelivery, setTaxRateDelivery] = useState(0.085);
+
+  // Cashier Settings Preferences
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+  const [cashierTheme, setCashierTheme] = useState('gold-obsidian');
+  const [cashierScaling, setCashierScaling] = useState('standard');
+  const [cashierTipPresets, setCashierTipPresets] = useState<string[]>(['15', '18', '20']);
+  const [cashierAutoGratuityPct, setCashierAutoGratuityPct] = useState(20);
+  const [cashierAutoGratuityMinCovers, setCashierAutoGratuityMinCovers] = useState(6);
+  const [cashierLanguage, setCashierLanguage] = useState('en');
+
+  const t = (enText: string, jaText: string) => {
+    return cashierLanguage === 'ja' ? jaText : enText;
+  };
+
+  const formatMoney = (val: number) => {
+    const symbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CNY: '¥',
+      KRW: '₩',
+      JPY: '¥'
+    };
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.24,
+      KRW: 1340
+    };
+    const symbol = symbolMap[currency] || '$';
+    const rate = rateMap[currency] || 1;
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${symbol}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const getThemeStyles = () => {
+    if (cashierTheme === 'midnight') {
+      return `
+        /* Midnight Onyx overrides */
+        .text-\\[\\#ffe2ab\\] { color: #38bdf8 !important; }
+        .text-\\[\\#ffe2ab\\]\\/90 { color: rgba(56, 189, 248, 0.9) !important; }
+        .text-\\[\\#ffe2ab\\]\\/75 { color: rgba(56, 189, 248, 0.75) !important; }
+        .text-\\[\\#ffe2ab\\]\\/70 { color: rgba(56, 189, 248, 0.7) !important; }
+        .text-\\[\\#ffe2ab\\]\\/10 { color: rgba(56, 189, 248, 0.1) !important; }
+        .bg-\\[\\#ffe2ab\\] { background-color: #38bdf8 !important; }
+        .bg-\\[\\#ffe2ab\\]\\/10 { background-color: rgba(56, 189, 248, 0.1) !important; }
+        .bg-\\[\\#ffe2ab\\]\\/5 { background-color: rgba(56, 189, 248, 0.05) !important; }
+        .border-\\[\\#ffe2ab\\] { border-color: #38bdf8 !important; }
+        .border-\\[\\#ffe2ab\\]\\/20 { border-color: rgba(56, 189, 248, 0.2) !important; }
+        .border-\\[\\#ffe2ab\\]\\/30 { border-color: rgba(56, 189, 248, 0.3) !important; }
+        .hover\\:bg-\\[\\#ffdca0\\]:hover { background-color: #0ea5e9 !important; }
+        .text-\\[\\#402d00\\] { color: #0f172a !important; }
+        .text-\\[\\#402d00\\]\\/45 { color: rgba(15, 23, 42, 0.45) !important; }
+        .bg-\\[\\#11100e\\] { background-color: #0b0f19 !important; }
+        .bg-\\[\\#0e0e0d\\] { background-color: #070a12 !important; }
+        .bg-\\[\\#0e0e0e\\] { background-color: #070a12 !important; }
+        .bg-\\[\\#0a0a09\\] { background-color: #04060c !important; }
+        .bg-\\[\\#161513\\]\\/40 { background-color: rgba(15, 23, 42, 0.4) !important; }
+      `;
+    }
+    if (cashierTheme === 'emerald') {
+      return `
+        /* Emerald Luxe overrides */
+        .text-\\[\\#ffe2ab\\] { color: #10b981 !important; }
+        .text-\\[\\#ffe2ab\\]\\/90 { color: rgba(16, 185, 129, 0.9) !important; }
+        .text-\\[\\#ffe2ab\\]\\/75 { color: rgba(16, 185, 129, 0.75) !important; }
+        .text-\\[\\#ffe2ab\\]\\/70 { color: rgba(16, 185, 129, 0.7) !important; }
+        .text-\\[\\#ffe2ab\\]\\/10 { color: rgba(16, 185, 129, 0.1) !important; }
+        .bg-\\[\\#ffe2ab\\] { background-color: #10b981 !important; }
+        .bg-\\[\\#ffe2ab\\]\\/10 { background-color: rgba(16, 185, 129, 0.1) !important; }
+        .bg-\\[\\#ffe2ab\\]\\/5 { background-color: rgba(16, 185, 129, 0.05) !important; }
+        .border-\\[\\#ffe2ab\\] { border-color: #10b981 !important; }
+        .border-\\[\\#ffe2ab\\]\\/20 { border-color: rgba(16, 185, 129, 0.2) !important; }
+        .border-\\[\\#ffe2ab\\]\\/30 { border-color: rgba(16, 185, 129, 0.3) !important; }
+        .hover\\:bg-\\[\\#ffdca0\\]:hover { background-color: #059669 !important; }
+        .text-\\[\\#402d00\\] { color: #064e3b !important; }
+        .text-\\[\\#402d00\\]\\/45 { color: rgba(6, 78, 59, 0.45) !important; }
+        .bg-\\[\\#11100e\\] { background-color: #022c22 !important; }
+        .bg-\\[\\#0e0e0d\\] { background-color: #02251d !important; }
+        .bg-\\[\\#0e0e0e\\] { background-color: #02251d !important; }
+        .bg-\\[\\#0a0a09\\] { background-color: #011c16 !important; }
+        .bg-\\[\\#161513\\]\\/40 { background-color: rgba(2, 44, 34, 0.4) !important; }
+      `;
+    }
+    return '';
+  };
+
+  const scalingStyle = useMemo(() => {
+    if (cashierScaling === 'compact') {
+      return {
+        transform: 'scale(0.95)',
+        transformOrigin: 'top left',
+        width: '105.26%',
+        height: '105.26%',
+      };
+    }
+    if (cashierScaling === 'large') {
+      return {
+        transform: 'scale(1.05)',
+        transformOrigin: 'top left',
+        width: '95.24%',
+        height: '95.24%',
+      };
+    }
+    return {};
+  }, [cashierScaling]);
 
   // Digital Menu catalog states
   const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -306,7 +434,7 @@ export default function PosPage() {
   // Checkout Customer Details, Tips, and Notes states
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
-  const [tipMode, setTipMode] = useState<'none' | '15' | '18' | '20' | 'custom'>('none');
+  const [tipMode, setTipMode] = useState<string>('none');
   const [customTipAmount, setCustomTipAmount] = useState<number>(0);
   const [checkoutNotes, setCheckoutNotes] = useState('');
 
@@ -351,7 +479,6 @@ export default function PosPage() {
   const [activeOperator, setActiveOperator] = useState<Operator>(AVAILABLE_OPERATORS[0]);
   const [operatorModalOpen, setOperatorModalOpen] = useState(false);
 
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTaxType = localStorage.getItem('dinepos_tax_type');
@@ -364,6 +491,32 @@ export default function PosPage() {
       if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
       if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
       if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
+
+      const savedCurrency = localStorage.getItem('dinepos_currency');
+      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+        setCurrency(savedCurrency as any);
+      }
+
+      // Load cashier settings
+      const savedTheme = localStorage.getItem('dinepos_cashier_theme');
+      if (savedTheme) setCashierTheme(savedTheme);
+
+      const savedScaling = localStorage.getItem('dinepos_cashier_ui_scaling');
+      if (savedScaling) setCashierScaling(savedScaling);
+
+      const savedPresets = localStorage.getItem('dinepos_cashier_tip_presets');
+      if (savedPresets) {
+        setCashierTipPresets(savedPresets.split(',').map(s => s.trim()));
+      }
+
+      const savedAutoGratPct = localStorage.getItem('dinepos_cashier_auto_gratuity_pct');
+      if (savedAutoGratPct) setCashierAutoGratuityPct(parseInt(savedAutoGratPct, 10));
+
+      const savedAutoGratMinCovers = localStorage.getItem('dinepos_cashier_auto_gratuity_min_covers');
+      if (savedAutoGratMinCovers) setCashierAutoGratuityMinCovers(parseInt(savedAutoGratMinCovers, 10));
+
+      const savedLang = localStorage.getItem('dinepos_cashier_language');
+      if (savedLang) setCashierLanguage(savedLang);
 
       // Load tickets from dinepos_shared_tickets
       const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
@@ -587,9 +740,52 @@ export default function PosPage() {
           console.error('Failed to parse storage categories:', err);
         }
       }
+      if (e.key === 'dinepos_currency' && e.newValue) {
+        setCurrency(e.newValue as any);
+      }
+      if (e.key === 'dinepos_cashier_theme' && e.newValue) {
+        setCashierTheme(e.newValue);
+      }
+      if (e.key === 'dinepos_cashier_ui_scaling' && e.newValue) {
+        setCashierScaling(e.newValue);
+      }
+      if (e.key === 'dinepos_cashier_tip_presets' && e.newValue) {
+        setCashierTipPresets(e.newValue.split(',').map(s => s.trim()));
+      }
+      if (e.key === 'dinepos_cashier_auto_gratuity_pct' && e.newValue) {
+        setCashierAutoGratuityPct(parseInt(e.newValue, 10));
+      }
+      if (e.key === 'dinepos_cashier_auto_gratuity_min_covers' && e.newValue) {
+        setCashierAutoGratuityMinCovers(parseInt(e.newValue, 10));
+      }
+      if (e.key === 'dinepos_cashier_language' && e.newValue) {
+        setCashierLanguage(e.newValue);
+      }
     };
+    
+    const handleSettingsUpdated = () => {
+      const savedTheme = localStorage.getItem('dinepos_cashier_theme');
+      if (savedTheme) setCashierTheme(savedTheme);
+      const savedScaling = localStorage.getItem('dinepos_cashier_ui_scaling');
+      if (savedScaling) setCashierScaling(savedScaling);
+      const savedPresets = localStorage.getItem('dinepos_cashier_tip_presets');
+      if (savedPresets) setCashierTipPresets(savedPresets.split(',').map(s => s.trim()));
+      const savedAutoGratPct = localStorage.getItem('dinepos_cashier_auto_gratuity_pct');
+      if (savedAutoGratPct) setCashierAutoGratuityPct(parseInt(savedAutoGratPct, 10));
+      const savedAutoGratMinCovers = localStorage.getItem('dinepos_cashier_auto_gratuity_min_covers');
+      if (savedAutoGratMinCovers) setCashierAutoGratuityMinCovers(parseInt(savedAutoGratMinCovers, 10));
+      const savedLang = localStorage.getItem('dinepos_cashier_language');
+      if (savedLang) setCashierLanguage(savedLang);
+      const savedCurrency = localStorage.getItem('dinepos_currency');
+      if (savedCurrency) setCurrency(savedCurrency as any);
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('dinepos_settings_updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('dinepos_settings_updated', handleSettingsUpdated);
+    };
   }, []);
 
   const triggerToast = (message: string) => {
@@ -749,10 +945,8 @@ export default function PosPage() {
   // Tip calculation
   const tipAmount = selectedTicket ? (
     tipMode === 'none' ? 0 :
-    tipMode === '15' ? subtotal * 0.15 :
-    tipMode === '18' ? subtotal * 0.18 :
-    tipMode === '20' ? subtotal * 0.20 :
-    customTipAmount
+    tipMode === 'custom' ? customTipAmount :
+    subtotal * (parseFloat(tipMode) / 100)
   ) : 0;
 
   // Process transaction logic
@@ -829,9 +1023,12 @@ export default function PosPage() {
     if (!selectedTicket) return;
     setIsProcessing(true);
     const finalAmount = grandTotal + tipAmount;
-    let paymentDetail = `Authorizing ${checkoutPaymentMethod.toUpperCase()} payment of $${finalAmount.toFixed(2)} for ${selectedTicket.tableNumber}...`;
+    let paymentDetail = t(
+      `Authorizing ${checkoutPaymentMethod.toUpperCase()} payment of ${formatMoney(finalAmount)} for Table ${selectedTicket.tableNumber}...`,
+      `テーブル ${selectedTicket.tableNumber} の ${formatMoney(finalAmount)} の ${checkoutPaymentMethod.toUpperCase()} 決済を承認中...`
+    );
     if (customerName.trim()) {
-      paymentDetail = `[Customer: ${customerName.trim()}] ` + paymentDetail;
+      paymentDetail = `[${t('Customer', '顧客')}: ${customerName.trim()}] ` + paymentDetail;
     }
     triggerToast(paymentDetail);
     
@@ -917,18 +1114,18 @@ export default function PosPage() {
         percentValue: discountPercent
       };
       setAppliedDiscount(newDiscount);
-      triggerToast(`${discountPercent}% discount applied.`);
+      triggerToast(t(`${discountPercent}% discount applied.`, `${discountPercent}% の割引が適用されました。`));
     } else {
-      if (discountFixed <= 0) { triggerToast('Enter a valid discount amount.'); return; }
+      if (discountFixed <= 0) { triggerToast(t('Enter a valid discount amount.', '有効な割引額を入力してください。')); return; }
       const amount = Math.min(discountFixed, subtotal);
       newDiscount = {
         type: 'fixed',
         amount,
-        label: `$${discountFixed.toFixed(2)} Off`,
+        label: t(`${formatMoney(discountFixed)} Off`, `${formatMoney(discountFixed)} 割引`),
         fixedValue: discountFixed
       };
       setAppliedDiscount(newDiscount);
-      triggerToast(`$${discountFixed.toFixed(2)} discount applied.`);
+      triggerToast(t(`${formatMoney(discountFixed)} discount applied.`, `${formatMoney(discountFixed)} の割引が適用されました。`));
     }
 
     // Update tickets array with applied discount and recalculated cardAmount
@@ -980,6 +1177,30 @@ export default function PosPage() {
     triggerToast('Discount removed.');
   };
 
+  const handleUpdateGratuityRate = (ticketId: string, rate: number) => {
+    setTickets(prev => prev.map(t => {
+      if (t.id !== ticketId) return t;
+      
+      const sub = t.items.reduce((acc, it) => acc + (getItemPrice(it) * it.qty), 0);
+      let newAppliedDiscount = t.appliedDiscount ? { ...t.appliedDiscount } : null;
+      if (newAppliedDiscount) {
+        newAppliedDiscount.amount = recalculateDiscountAmount(sub, newAppliedDiscount);
+      }
+      const discAmt = newAppliedDiscount ? newAppliedDiscount.amount : 0;
+      const tTaxRate = getTicketTaxRate(t);
+      const itemTax = taxType === 'pre-tax' ? sub * tTaxRate : sub - (sub / (1 + tTaxRate));
+      const itemGrat = sub * rate;
+      const totalAmount = taxType === 'pre-tax' ? Math.max(0, sub + itemTax + itemGrat - discAmt) : Math.max(0, sub + itemGrat - discAmt);
+      
+      return {
+        ...t,
+        gratuityRate: rate,
+        cardAmount: totalAmount
+      };
+    }));
+    triggerToast(rate === 0 ? 'Gratuity waived for this ticket.' : 'Gratuity applied to this ticket.');
+  };
+
   // Filter listings
   const filteredTickets = useMemo(() => {
     return tickets.filter(t => {
@@ -995,7 +1216,11 @@ export default function PosPage() {
   }, [tickets, searchQuery, quickFilter]);
 
   return (
-    <div className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative">
+    <div 
+      className="flex w-full h-screen bg-[#0e0e0e] text-[#e5e2e1] font-sans overflow-hidden antialiased select-none relative"
+      style={scalingStyle}
+    >
+      <style dangerouslySetInnerHTML={{ __html: getThemeStyles() }} />
 
       {/* MOBILE SIDEBAR BACKDROP */}
       {sidebarOpen && (
@@ -1006,7 +1231,11 @@ export default function PosPage() {
       )}
 
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 overflow-y-auto`}>
+      <aside className={`fixed inset-y-0 left-0 bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 overflow-y-auto ${
+        sidebarCollapsed 
+          ? 'w-0 lg:w-0 p-0 lg:p-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] p-8 opacity-100'
+      }`}>
         <div>
           {/* Brand/Console Title */}
           <div className="mb-10 select-none flex items-center">
@@ -1018,7 +1247,7 @@ export default function PosPage() {
                 DinePosAi
               </Link>
               <span className="font-sans text-[8.5px] text-[#ffe2ab]/70 uppercase tracking-[0.2em] font-semibold mt-1 block">
-                Premium Suite
+                {t("Premium Suite", "プレミアムスイート")}
               </span>
             </div>
           </div>
@@ -1052,7 +1281,7 @@ export default function PosPage() {
               className="w-full py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-xs font-bold">add</span>
-              New Table Order
+              {t("New Table Order", "新規テーブル注文")}
             </button>
             <button 
               onClick={() => {
@@ -1081,7 +1310,7 @@ export default function PosPage() {
               className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-xs font-bold">shopping_bag</span>
-              Walk-in Customer
+              {t("Walk-in Customer", "お持ち帰り注文")}
             </button>
           </div>
 
@@ -1092,7 +1321,7 @@ export default function PosPage() {
             >
               <div className="flex items-center gap-4">
                 <span className="material-symbols-outlined text-lg leading-none">layers</span>
-                Floor Map
+                {t("Floor Map", "フロアマップ")}
               </div>
               <span className="absolute right-0 top-1/2 -translate-y-1/2 w-0.5 h-6 bg-[#ffe2ab] rounded-l"></span>
             </div>
@@ -1102,18 +1331,15 @@ export default function PosPage() {
               className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300"
             >
               <span className="material-symbols-outlined text-lg leading-none">receipt_long</span>
-              Orders
+              {t("Orders", "注文履歴")}
             </Link>
-
-
-
 
             <Link
               href="/pos/analytics"
               className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300"
             >
               <span className="material-symbols-outlined text-lg leading-none">trending_up</span>
-              Analytics
+              {t("Analytics", "分析")}
             </Link>
 
             <Link
@@ -1121,7 +1347,7 @@ export default function PosPage() {
               className="flex items-center gap-4 w-full px-4 py-3 rounded-xl font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 border border-transparent transition-all duration-300"
             >
               <span className="material-symbols-outlined text-lg leading-none">sell</span>
-              Discounts
+              {t("Discounts", "割引")}
             </Link>
           </nav>
         </div>
@@ -1133,7 +1359,7 @@ export default function PosPage() {
             className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-semibold text-xs w-full text-left uppercase tracking-wider"
           >
             <span className="material-symbols-outlined text-lg leading-none">settings</span>
-            Settings
+            {t("Settings", "設定")}
           </Link>
 
           <Link
@@ -1141,12 +1367,14 @@ export default function PosPage() {
             className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-all font-semibold text-xs w-full text-left uppercase tracking-wider"
           >
             <span className="material-symbols-outlined text-lg leading-none">logout</span>
-            Sign Out
+            {t("Sign Out", "サインアウト")}
           </Link>
 
 
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative bg-[#11100e]">
@@ -1164,7 +1392,7 @@ export default function PosPage() {
               <span className="material-symbols-outlined text-xl">menu</span>
             </button>
             <h2 className="font-serif text-[17px] lg:text-[20px] font-bold text-white tracking-wide leading-none">
-              Active Orders
+              {t("Active Orders", "処理中の注文")}
             </h2>
           </div>
 
@@ -1174,7 +1402,7 @@ export default function PosPage() {
               <span className="material-symbols-outlined absolute left-4 top-3 text-[#A69984]/40 text-base">search</span>
               <input
                 type="text"
-                placeholder="Search tables or guests..."
+                placeholder={t("Search tables or guests...", "テーブルまたは顧客を検索...")}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-[#161513] border border-white/5 rounded-xl pl-11 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 w-[140px] md:w-[200px] lg:w-[210px] xl:w-[260px] transition-colors"
@@ -1195,55 +1423,55 @@ export default function PosPage() {
                 onClick={() => setQuickFilter('open')}
                 className={`px-4 py-2 rounded-full font-sans text-[11px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${quickFilter === 'open' ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'text-[#A69984]/80 border border-white/5 hover:text-white'}`}
               >
-                All Open
+                {t("All Open", "すべての未決済")}
               </button>
               <button
                 onClick={() => setQuickFilter('payment')}
                 className={`px-4 py-2 rounded-full font-sans text-[11px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${quickFilter === 'payment' ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'text-[#A69984]/80 border border-white/5 hover:text-white'}`}
               >
-                Needs Payment
+                {t("Needs Payment", "要支払い")}
               </button>
               <button
                 onClick={() => setQuickFilter('vip')}
                 className={`px-4 py-2 rounded-full font-sans text-[11px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${quickFilter === 'vip' ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'text-[#A69984]/80 border border-white/5 hover:text-white'}`}
               >
-                VIP
+                {t("VIP", "VIP")}
               </button>
             </div>
 
             {/* List of active order cards */}
             <div className="flex-grow overflow-y-auto p-6 space-y-4">
               {filteredTickets.length > 0 ? (
-                filteredTickets.map(t => {
-                  const isActive = t.id === selectedTicketId;
+                filteredTickets.map(ticket => {
+                  const isActive = ticket.id === selectedTicketId;
                   return (
                     <div
-                      key={t.id}
-                      onClick={() => { setSelectedTicketId(t.id); setMobileView('detail'); }}
+                      key={ticket.id}
+                      onClick={() => { setSelectedTicketId(ticket.id); setMobileView('detail'); }}
                       className={`border rounded-2xl p-6 transition-all duration-300 cursor-pointer relative shadow-md ${isActive ? 'border-[#ffe2ab] bg-white/[0.01]' : 'border-white/5 hover:border-white/10 bg-[#161513]/40'}`}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          <h4 className="font-sans font-bold text-white text-base">{t.tableNumber}</h4>
-                          {t.isVip && (
+                          <h4 className="font-sans font-bold text-white text-base">{ticket.tableNumber}</h4>
+                          {ticket.isVip && (
                             <span className="bg-[#ffe2ab] text-[#402d00] font-sans font-black text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded select-none">
-                              VIP
+                              {t("VIP", "VIP")}
                             </span>
                           )}
-                          {t.isSplit && (
+                          {ticket.isSplit && (
                             <span className="bg-white/5 text-[#A69984]/60 font-sans font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded border border-white/5 select-none">
-                              Split Check
+                              {t("Split Check", "個別会計")}
                             </span>
                           )}
                         </div>
-                        <div className="font-sans font-bold text-base text-[#ffe2ab]">${getTicketCardAmount(t, taxType).toFixed(2)}</div>
+                        <div className="font-sans font-bold text-base text-[#ffe2ab]">{formatMoney(getTicketCardAmount(ticket, taxType))}</div>
                       </div>
 
                       <div className="flex justify-between items-center text-xs text-[#A69984]/65 font-medium mt-4">
-                        <span>Server: {t.serverName}</span>
+                        <span>{t("Server", "接客係")}: {ticket.serverName}</span>
                         <div className="flex items-center gap-1">
                           <span className="material-symbols-outlined text-[14px]">schedule</span>
-                          <span>{t.duration}</span>
+                          <span>{ticket.duration}</span>
                         </div>
                       </div>
                     </div>
@@ -1251,7 +1479,7 @@ export default function PosPage() {
                 })
               ) : (
                 <div className="text-center py-16 text-[#A69984]/40 font-sans text-xs select-none">
-                  No open orders matching selection filters.
+                  {t("No open orders matching selection filters.", "選択条件に一致する未決済注文はありません。")}
                 </div>
               )}
             </div>
@@ -1269,14 +1497,14 @@ export default function PosPage() {
                 className="lg:hidden flex items-center gap-2 px-5 py-3.5 border-b border-white/5 w-full text-left cursor-pointer hover:bg-white/[0.02] transition-colors"
               >
                 <span className="material-symbols-outlined text-sm text-[#ffe2ab]">arrow_back_ios</span>
-                <span className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#ffe2ab]">All Orders</span>
+                <span className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#ffe2ab]">{t("All Orders", "すべての注文")}</span>
               </button>
 
               {/* Ticket details header */}
               <div className="p-6 lg:p-8 border-b border-white/5 flex justify-between items-start flex-shrink-0 select-none">
                 <div className="flex items-start gap-4">
                   <div>
-                    <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">Current Ticket</span>
+                    <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">{t("Current Ticket", "現在の伝票")}</span>
                     <h3 className="font-serif text-[32px] text-white font-bold leading-none select-text">{selectedTicket.tableNumber}</h3>
                   </div>
                   <button 
@@ -1289,13 +1517,13 @@ export default function PosPage() {
                     className="px-4 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center gap-1.5 cursor-pointer ml-4 mt-1.5 select-none"
                   >
                     <span className="material-symbols-outlined text-sm font-bold">restaurant_menu</span>
-                    Add Menu Item
+                    {t("Add Menu Item", "メニュー追加")}
                   </button>
                 </div>
                 
                 <div className="text-right text-xs text-[#A69984]/70 font-semibold font-sans space-y-1">
-                  <div>Guests: {selectedTicket.guests}</div>
-                  <div className="select-text">Order {selectedTicket.orderNumber}</div>
+                  <div>{t("Guests: ", "人数: ")}{selectedTicket.guests}</div>
+                  <div className="select-text">{t("Order ", "注文 ")}{selectedTicket.orderNumber}</div>
                 </div>
               </div>
 
@@ -1303,9 +1531,9 @@ export default function PosPage() {
               <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col">
                 {/* Column Headers */}
                 <div className="grid grid-cols-12 text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest pb-3 border-b border-white/5 select-none">
-                  <div className="col-span-2 text-left">Qty</div>
-                  <div className="col-span-6 text-left">Item</div>
-                  <div className="col-span-3 text-right">Price</div>
+                  <div className="col-span-2 text-left">{t("Qty", "数量")}</div>
+                  <div className="col-span-6 text-left">{t("Item", "品名")}</div>
+                  <div className="col-span-3 text-right">{t("Price", "単価")}</div>
                   <div className="col-span-1 text-right"></div>
                 </div>
 
@@ -1362,10 +1590,10 @@ export default function PosPage() {
 
                       {/* Price */}
                       <div className="col-span-3 text-right font-sans text-sm pr-2">
-                        <div className="font-bold text-white/95">${getItemPrice(item).toFixed(2)}</div>
+                        <div className="font-bold text-white/95">{formatMoney(getItemPrice(item))}</div>
                         {item.qty > 1 && (
                           <div className="text-[10px] text-[#A69984]/60 font-semibold mt-0.5">
-                            Total: ${(getItemPrice(item) * item.qty).toFixed(2)}
+                            {t("Total: ", "小計: ")}{formatMoney(getItemPrice(item) * item.qty)}
                           </div>
                         )}
                       </div>
@@ -1392,16 +1620,31 @@ export default function PosPage() {
                 {/* Summary breakdowns */}
                 <div className="space-y-2.5 font-sans select-none text-xs font-semibold uppercase tracking-wider text-[#A69984]/75 border-b border-white/5 pb-4">
                   <div className="flex justify-between">
-                    <span>{taxType === 'post-tax' ? 'Subtotal (Tax Incl.)' : 'Subtotal'}</span>
-                    <span className="text-white">${subtotal.toFixed(2)}</span>
+                    <span>{taxType === 'post-tax' ? t('Subtotal (Tax Incl.)', '小計 (税込)') : t('Subtotal', '小計')}</span>
+                    <span className="text-white">{formatMoney(subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>{taxType === 'post-tax' ? 'Included Tax' : 'Tax'} ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
-                    <span className="text-white">${tax.toFixed(2)}</span>
+                    <span>{taxType === 'post-tax' ? t('Included Tax', '内消費税') : t('Tax', '消費税')} ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
+                    <span className="text-white">{formatMoney(tax)}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Gratuity (Suggested 20%)</span>
-                    <span className="text-white">${gratuity.toFixed(2)}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-2">
+                      <span>{t('Gratuity', 'サービス料')} (Suggested {selectedTicket ? (getTicketGratuityRate(selectedTicket) * 100).toFixed(0) : cashierAutoGratuityPct}%)</span>
+                      {selectedTicket && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentRate = getTicketGratuityRate(selectedTicket);
+                            const nextRate = currentRate > 0 ? 0.00 : (cashierAutoGratuityPct / 100);
+                            handleUpdateGratuityRate(selectedTicket.id, nextRate);
+                          }}
+                          className="px-2 py-0.5 bg-white/5 hover:bg-white/10 text-[#ffe2ab] border border-white/10 rounded font-sans text-[9px] uppercase tracking-wider transition-colors cursor-pointer select-none"
+                        >
+                          {getTicketGratuityRate(selectedTicket) > 0 ? t('Waive', '免除') : t('Apply', '適用')}
+                        </button>
+                      )}
+                    </span>
+                    <span className="text-white">{formatMoney(gratuity)}</span>
                   </div>
                   {discountAmount > 0 && appliedDiscount && (
                     <div className="flex justify-between text-emerald-400">
@@ -1409,16 +1652,16 @@ export default function PosPage() {
                         <span className="material-symbols-outlined text-[11px]">sell</span>
                         {appliedDiscount.label}
                       </span>
-                      <span>−${discountAmount.toFixed(2)}</span>
+                      <span>−{formatMoney(discountAmount)}</span>
                     </div>
                   )}
                 </div>
 
                 {/* Grand total */}
                 <div className="flex justify-between items-baseline select-none">
-                  <span className="font-sans font-bold text-xs uppercase tracking-wider text-[#A69984]">Grand Total</span>
+                  <span className="font-sans font-bold text-xs uppercase tracking-wider text-[#A69984]">{t('Grand Total', '総合計')}</span>
                   <span className="font-serif text-[38px] lg:text-[42px] font-bold text-[#ffe2ab] tracking-wide leading-none select-none">
-                    ${grandTotal.toFixed(2)}
+                    {formatMoney(grandTotal)}
                   </span>
                 </div>
 
@@ -1431,7 +1674,7 @@ export default function PosPage() {
                     className="w-full flex items-center justify-center gap-2 py-4 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md cursor-pointer hover:scale-[1.01]"
                   >
                     <span className="material-symbols-outlined text-base">credit_card</span>
-                    {isProcessing ? 'Processing...' : 'Process Payment'}
+                    {isProcessing ? t('Processing...', '処理中...') : t('Process Payment', '会計処理へ進む')}
                   </button>
                 </div>
 
@@ -1442,8 +1685,8 @@ export default function PosPage() {
             <div className="flex-grow flex items-center justify-center bg-[#11100e] text-[#A69984]/30 select-none">
               <div className="text-center">
                 <span className="material-symbols-outlined text-5xl mb-4 font-light">receipt</span>
-                <p className="font-serif text-lg text-white mb-1">No Active Ticket Selected</p>
-                <p className="font-sans text-xs">Select an open table check from the orders registry.</p>
+                <p className="font-serif text-lg text-white mb-1">{t('No Active Ticket Selected', '選択された伝票はありません')}</p>
+                <p className="font-sans text-xs">{t('Select an open table check from the orders registry.', '注文登録から未決済の伝票を選択してください。')}</p>
               </div>
             </div>
           )}
@@ -1463,8 +1706,8 @@ export default function PosPage() {
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
             
-            <h3 className="font-serif text-lg font-bold text-white mb-2">Switch Operator</h3>
-            <p className="text-[11px] text-[#A69984]/60 mb-5 font-medium uppercase tracking-wider">Select the active POS cashier</p>
+            <h3 className="font-serif text-lg font-bold text-white mb-2">{t('Switch Operator', 'オペレーター切替')}</h3>
+            <p className="text-[11px] text-[#A69984]/60 mb-5 font-medium uppercase tracking-wider">{t('Select the active POS cashier', 'アクティブなPOS担当者を選択してください')}</p>
             
             <div className="space-y-2">
               {AVAILABLE_OPERATORS.map((op) => (
@@ -1474,7 +1717,7 @@ export default function PosPage() {
                     setActiveOperator(op);
                     localStorage.setItem('dinepos_active_operator', JSON.stringify(op));
                     setOperatorModalOpen(false);
-                    triggerToast(`Operator switched to ${op.name}`);
+                    triggerToast(t(`Operator switched to ${op.name}`, `オペレーターが ${op.name} に切り替わりました`));
                   }}
                   className={`w-full flex items-center gap-4 p-3 rounded-xl border transition-all cursor-pointer ${
                     activeOperator.name === op.name
@@ -1521,7 +1764,7 @@ export default function PosPage() {
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
               {/* Payment Methods */}
               <div className="space-y-2.5">
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none">Payment Method</label>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none">{t("Payment Method", "支払い方法")}</label>
                 <div className="grid grid-cols-3 gap-3">
                   {(['card', 'cash', 'digital'] as const).map(method => (
                     <button
@@ -1538,7 +1781,7 @@ export default function PosPage() {
                         {method === 'card' ? 'credit_card' : method === 'cash' ? 'payments' : 'devices'}
                       </span>
                       <span className="font-sans font-bold text-[9px] uppercase tracking-wider">
-                        {method === 'card' ? 'Credit / Stripe' : method === 'cash' ? 'Cash' : 'Digital Wallet'}
+                        {method === 'card' ? t('Credit / Stripe', 'クレジットカード') : method === 'cash' ? t('Cash', '現金') : t('Digital Wallet', 'モバイル決済')}
                       </span>
                     </button>
                   ))}
@@ -1555,10 +1798,10 @@ export default function PosPage() {
                 >
                   <div className="flex items-center gap-2.5 font-sans">
                     <span className="material-symbols-outlined text-sm text-[#ffe2ab]">person</span>
-                    <span className="font-sans font-bold text-xs text-white">Customer Details</span>
+                    <span className="font-sans font-bold text-xs text-white">{t("Customer Details", "顧客情報")}</span>
                   </div>
                   <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{customerName ? customerName : 'Not Set'}</span>
+                    <span>{customerName ? customerName : t('Not Set', '未設定')}</span>
                     <span className="material-symbols-outlined text-base leading-none">
                       {customerDetailsVisible ? 'expand_less' : 'expand_more'}
                     </span>
@@ -1568,7 +1811,7 @@ export default function PosPage() {
                   <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1.5 font-sans">
-                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">Customer Name</label>
+                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">{t("Customer Name", "お名前")}</label>
                         <input
                           type="text"
                           placeholder="e.g. John Doe"
@@ -1578,7 +1821,7 @@ export default function PosPage() {
                         />
                       </div>
                       <div className="space-y-1.5 font-sans">
-                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">Phone Number</label>
+                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">{t("Phone Number", "電話番号")}</label>
                         <input
                           type="tel"
                           placeholder="e.g. (555) 000-0000"
@@ -1602,10 +1845,10 @@ export default function PosPage() {
                 >
                   <div className="flex items-center gap-2.5 font-sans">
                     <span className="material-symbols-outlined text-sm text-[#ffe2ab]">sell</span>
-                    <span className="font-sans font-bold text-xs text-white">Discount Settings</span>
+                    <span className="font-sans font-bold text-xs text-white">{t("Discount Settings", "割引設定")}</span>
                   </div>
                   <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{appliedDiscount ? appliedDiscount.label : 'No Discount'}</span>
+                    <span>{appliedDiscount ? appliedDiscount.label : t('No Discount', '割引なし')}</span>
                     <span className="material-symbols-outlined text-base leading-none">
                       {discountSettingsVisible ? 'expand_less' : 'expand_more'}
                     </span>
@@ -1614,14 +1857,14 @@ export default function PosPage() {
                 {discountSettingsVisible && (
                   <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
                     <div className="flex justify-between items-center select-none font-sans">
-                      <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-[#A69984]">Discount Settings</span>
+                      <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-[#A69984]">{t("Discount Settings", "割引設定")}</span>
                       {appliedDiscount && (
                         <button
                           type="button"
                           onClick={handleRemoveDiscount}
                           className="text-rose-400 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
                         >
-                          <span className="material-symbols-outlined text-xs">close</span> Remove Discount
+                          <span className="material-symbols-outlined text-xs">close</span> {t("Remove Discount", "割引解除")}
                         </button>
                       )}
                     </div>
@@ -1637,7 +1880,7 @@ export default function PosPage() {
                             discountMode === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
                           }`}
                         >
-                          {mode === 'percent' ? '% Rate' : mode === 'fixed' ? 'Fixed $' : 'Promo Code'}
+                          {mode === 'percent' ? t('% Rate', '％率') : mode === 'fixed' ? t('Fixed $', '定額') : t('Promo Code', 'プロモコード')}
                         </button>
                       ))}
                     </div>
@@ -1651,7 +1894,7 @@ export default function PosPage() {
                           max="100"
                           value={discountPercent || ''}
                           onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
-                          placeholder="Enter Percentage (e.g. 15)"
+                          placeholder={t("Enter Percentage (e.g. 15)", "割合を入力 (例: 15)")}
                           className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
                         />
                       )}
@@ -1661,7 +1904,7 @@ export default function PosPage() {
                           min="0"
                           value={discountFixed || ''}
                           onChange={(e) => setDiscountFixed(parseFloat(e.target.value) || 0)}
-                          placeholder="Enter Amount (e.g. 10.00)"
+                          placeholder={t("Enter Amount (e.g. 10.00)", "金額を入力 (例: 1000)")}
                           className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
                         />
                       )}
@@ -1670,7 +1913,7 @@ export default function PosPage() {
                           type="text"
                           value={promoCodeInput}
                           onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                          placeholder="ENTER PROMO CODE"
+                          placeholder={t("ENTER PROMO CODE", "プロモコードを入力")}
                           className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors tracking-widest font-mono"
                         />
                       )}
@@ -1679,7 +1922,7 @@ export default function PosPage() {
                         onClick={computeApplyDiscount}
                         className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
                       >
-                        Apply
+                        {t("Apply", "適用")}
                       </button>
                     </div>
 
@@ -1709,7 +1952,7 @@ export default function PosPage() {
                           </span>
                         </div>
                         <span className="text-emerald-400 font-mono font-bold text-xs">
-                          −${appliedDiscount.amount.toFixed(2)}
+                          −{formatMoney(appliedDiscount.amount)}
                         </span>
                       </div>
                     )}
@@ -1727,10 +1970,10 @@ export default function PosPage() {
                 >
                   <div className="flex items-center gap-2.5 font-sans">
                     <span className="material-symbols-outlined text-sm text-[#ffe2ab]">payments</span>
-                    <span className="font-sans font-bold text-xs text-white">Add Tip / Gratuity</span>
+                    <span className="font-sans font-bold text-xs text-white">{t("Add Tip / Gratuity", "チップ／サービス料追加")}</span>
                   </div>
                   <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{tipAmount > 0 ? `$${tipAmount.toFixed(2)}` : 'No Tip'}</span>
+                    <span>{tipAmount > 0 ? formatMoney(tipAmount) : t('No Tip', 'チップなし')}</span>
                     <span className="material-symbols-outlined text-base leading-none">
                       {tipsVisible ? 'expand_less' : 'expand_more'}
                     </span>
@@ -1739,30 +1982,35 @@ export default function PosPage() {
                 {tipsVisible && (
                   <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
                     <div className="grid grid-cols-5 gap-2 select-none">
-                      {(['none', '15', '18', '20', 'custom'] as const).map(mode => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setTipMode(mode)}
-                          className={`py-2 rounded-xl border font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
-                            tipMode === mode
-                              ? 'border-[#ffe2ab] bg-[#ffe2ab]/5 text-[#ffe2ab]'
-                              : 'border-white/5 bg-[#0e0e0d] text-[#A69984]/60 hover:text-white'
-                          }`}
-                        >
-                          {mode === 'none' ? 'No Tip' : mode === 'custom' ? 'Custom' : `${mode}%`}
-                        </button>
-                      ))}
+                      {['none', ...cashierTipPresets, 'custom'].map(mode => {
+                        const label = mode === 'none' ? t('No Tip', 'チップなし') : mode === 'custom' ? t('Custom', 'カスタム') : `${mode}%`;
+                        return (
+                          <button
+                            key={mode}
+                            type="button"
+                            onClick={() => setTipMode(mode)}
+                            className={`py-2 rounded-xl border font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
+                              tipMode === mode
+                                ? 'border-[#ffe2ab] bg-[#ffe2ab]/5 text-[#ffe2ab]'
+                                : 'border-white/5 bg-[#0e0e0d] text-[#A69984]/60 hover:text-white'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        );
+                      })}
                     </div>
-
+ 
                     {tipMode === 'custom' && (
                       <div className="space-y-1.5 animate-fade-in font-sans">
-                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider block select-none">Custom Tip Amount ($)</label>
+                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider block select-none">
+                          {t("Custom Tip Amount", "カスタムチップ額")} ({currency === 'JPY' ? '¥' : '$'})
+                        </label>
                         <input
                           type="number"
                           min="0"
-                          step="0.01"
-                          placeholder="Enter tip (e.g. 5.00)"
+                          step={currency === 'JPY' ? '1' : '0.01'}
+                          placeholder={currency === 'JPY' ? 'e.g. 500' : 'e.g. 5.00'}
                           value={customTipAmount || ''}
                           onChange={(e) => setCustomTipAmount(parseFloat(e.target.value) || 0)}
                           className="w-full sm:w-1/2 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
@@ -1772,7 +2020,7 @@ export default function PosPage() {
                   </div>
                 )}
               </div>
-
+ 
               {/* Receipt / Checkout Notes Accordion Card */}
               <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
                 <div 
@@ -1783,10 +2031,10 @@ export default function PosPage() {
                 >
                   <div className="flex items-center gap-2.5 font-sans">
                     <span className="material-symbols-outlined text-sm text-[#ffe2ab]">sticky_note_2</span>
-                    <span className="font-sans font-bold text-xs text-white">Checkout Notes / Instructions</span>
+                    <span className="font-sans font-bold text-xs text-white">{t("Checkout Notes / Instructions", "会計メモ・指示")}</span>
                   </div>
                   <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{checkoutNotes ? 'Note Added' : 'No Notes'}</span>
+                    <span>{checkoutNotes ? t('Note Added', 'メモあり') : t('No Notes', 'メモなし')}</span>
                     <span className="material-symbols-outlined text-base leading-none">
                       {notesVisible ? 'expand_less' : 'expand_more'}
                     </span>
@@ -1794,10 +2042,10 @@ export default function PosPage() {
                 </div>
                 {notesVisible && (
                   <div className="p-5 space-y-3 animate-fade-in bg-[#12110f]/20">
-                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none font-sans">Checkout Notes / Special Requests</label>
+                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none font-sans">{t("Checkout Notes / Special Requests", "会計メモ・特別リクエスト")}</label>
                     <textarea
                       rows={2}
-                      placeholder="Add notes for the receipt, billing split details, or payment exceptions..."
+                      placeholder={t("Add notes for the receipt, billing split details, or payment exceptions...", "領収書メモ、請求書分割の詳細、または支払いの例外を追加します...")}
                       value={checkoutNotes}
                       onChange={(e) => setCheckoutNotes(e.target.value)}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors resize-none"
@@ -1805,44 +2053,44 @@ export default function PosPage() {
                   </div>
                 )}
               </div>
-
+ 
               {/* Order Calculations Summary */}
               <div className="bg-[#0a0a09] border border-white/5 rounded-xl p-5 space-y-3 font-sans select-none">
                 <div className="flex justify-between text-xs text-[#A69984]/70">
-                  <span>Subtotal</span>
-                  <span className="text-white font-mono">${subtotal.toFixed(2)}</span>
+                  <span>{t("Subtotal", "小計")}</span>
+                  <span className="text-white font-mono">{formatMoney(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-xs text-[#A69984]/70">
-                  <span>Tax ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
-                  <span className="text-white font-mono">${tax.toFixed(2)}</span>
+                  <span>{t("Tax", "消費税")} ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
+                  <span className="text-white font-mono">{formatMoney(tax)}</span>
                 </div>
                 {gratuity > 0 && (
                   <div className="flex justify-between text-xs text-[#A69984]/70">
-                    <span>Gratuity</span>
-                    <span className="text-white font-mono">${gratuity.toFixed(2)}</span>
+                    <span>{t("Gratuity", "サービス料")}</span>
+                    <span className="text-white font-mono">{formatMoney(gratuity)}</span>
                   </div>
                 )}
                 {tipAmount > 0 && (
                   <div className="flex justify-between text-xs text-[#ffe2ab]/90">
-                    <span>Tip</span>
-                    <span className="text-[#ffe2ab] font-mono">${tipAmount.toFixed(2)}</span>
+                    <span>{t("Tip", "チップ")}</span>
+                    <span className="text-[#ffe2ab] font-mono">{formatMoney(tipAmount)}</span>
                   </div>
                 )}
                 {discountAmount > 0 && (
                   <div className="flex justify-between text-xs text-emerald-400">
-                    <span>Discount</span>
-                    <span className="font-mono">−${discountAmount.toFixed(2)}</span>
+                    <span>{t("Discount", "割引")}</span>
+                    <span className="font-mono">−{formatMoney(discountAmount)}</span>
                   </div>
                 )}
                 <div className="border-t border-white/5 pt-3 flex justify-between items-baseline">
-                  <span className="text-xs font-bold text-[#A69984] uppercase tracking-wider">Grand Total Due</span>
+                  <span className="text-xs font-bold text-[#A69984] uppercase tracking-wider">{t("Grand Total Due", "お支払い総計")}</span>
                   <span className="text-2xl font-bold text-[#ffe2ab] font-serif tracking-wider">
-                    ${(grandTotal + tipAmount).toFixed(2)}
+                    {formatMoney(grandTotal + tipAmount)}
                   </span>
                 </div>
               </div>
             </div>
-
+ 
             {/* Modal Actions Footer */}
             <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex flex-wrap sm:flex-nowrap gap-3 select-none">
               <button
@@ -1850,7 +2098,7 @@ export default function PosPage() {
                 onClick={() => setCheckoutModalOpen(false)}
                 className="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
               >
-                Cancel
+                {t("Cancel", "キャンセル")}
               </button>
               
               <button
@@ -1862,9 +2110,9 @@ export default function PosPage() {
                 className="flex-1 py-3 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm font-bold">call_split</span>
-                <span>Split Check</span>
+                <span>{t("Split Check", "個別会計")}</span>
               </button>
-
+ 
               <button
                 type="button"
                 onClick={handleCompleteCheckout}
@@ -1872,11 +2120,11 @@ export default function PosPage() {
                 className="flex-1 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer text-center flex items-center justify-center gap-2"
               >
                 {isProcessing ? (
-                  <span>Processing...</span>
+                  <span>{t("Processing...", "処理中...")}</span>
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                    <span>Complete Payment</span>
+                    <span>{t("Complete Payment", "支払い完了")}</span>
                   </>
                 )}
               </button>
@@ -1893,9 +2141,9 @@ export default function PosPage() {
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between select-none bg-[#0a0a09]">
               <div>
-                <h3 className="font-serif font-bold text-lg text-white">Split Check Calculator</h3>
+                <h3 className="font-serif font-bold text-lg text-white">{t('Split Check Calculator', '分割会計計算ツール')}</h3>
                 <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
-                  Table {selectedTicket.tableNumber} • Invoice #DINE-{selectedTicket.orderNumber.replace('#', '')}
+                  {t('Table', 'テーブル')} {selectedTicket.tableNumber} • {t('Invoice', '伝票')} #DINE-{selectedTicket.orderNumber.replace('#', '')}
                 </p>
               </div>
               <button
@@ -1922,7 +2170,7 @@ export default function PosPage() {
                       splitMethod === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
                     }`}
                   >
-                    {mode === 'evenly' ? 'Split Evenly' : 'Split By Item'}
+                    {mode === 'evenly' ? t('Split Evenly', '均等分割') : t('Split By Item', '品目別分割')}
                   </button>
                 ))}
               </div>
@@ -1936,8 +2184,8 @@ export default function PosPage() {
                   {/* Guest count selector */}
                   <div className="bg-[#161513]/40 border border-white/5 p-5 rounded-xl space-y-4 font-sans select-none shrink-0">
                     <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">Number of Split Parties</span>
-                      <span className="text-[#ffe2ab] text-sm font-bold font-serif">{splitGuestCount} Portions</span>
+                      <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">{t('Number of Split Parties', '分割人数')}</span>
+                      <span className="text-[#ffe2ab] text-sm font-bold font-serif">{splitGuestCount} {t('Portions', '等分')}</span>
                     </div>
                     <div className="flex items-center gap-4">
                       <button 
@@ -1990,7 +2238,7 @@ export default function PosPage() {
 
                   {/* Even portions display list */}
                   <div className="space-y-3 flex-grow overflow-y-auto">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">Portions Breakdown</span>
+                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">{t('Portions Breakdown', '分割内訳')}</span>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {Array.from({ length: splitGuestCount }).map((_, idx) => {
                         const guestLetter = String.fromCharCode(65 + idx); // A, B, C...
@@ -1999,8 +2247,8 @@ export default function PosPage() {
                         return (
                           <div key={idx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-[#161513]/20 border-white/5 text-white'}`}>
                             <div className="font-sans">
-                              <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
-                              <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">${shareTotal.toFixed(2)}</div>
+                              <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">{t('Guest', 'ゲスト')} {guestLetter}</div>
+                              <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">{formatMoney(shareTotal)}</div>
                             </div>
                             <button
                               type="button"
@@ -2009,17 +2257,17 @@ export default function PosPage() {
                                 if (isPaid) {
                                   newPaid = splitPaidGuests.filter(g => g !== idx);
                                   setSplitPaidGuests(newPaid);
-                                  triggerToast(`Guest ${guestLetter}'s payment refunded.`);
+                                  triggerToast(t(`Guest ${guestLetter}'s payment refunded.`, `ゲスト ${guestLetter} の支払いが払い戻されました。`));
                                 } else {
                                   newPaid = [...splitPaidGuests, idx];
                                   setSplitPaidGuests(newPaid);
-                                  triggerToast(`Guest ${guestLetter}'s portion of $${shareTotal.toFixed(2)} paid via ${checkoutPaymentMethod.toUpperCase()}!`);
+                                  triggerToast(t(`Guest ${guestLetter}'s portion of ${formatMoney(shareTotal)} paid via ${checkoutPaymentMethod.toUpperCase()}!`, `ゲスト ${guestLetter} の ${formatMoney(shareTotal)} の支払いが ${checkoutPaymentMethod.toUpperCase()} で完了しました！`));
                                 }
                                 updateTicketSplits({ splitPaidGuests: newPaid });
                               }}
                               className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500 hover:bg-emerald-600' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50 hover:bg-white/5'}`}
                             >
-                              {isPaid ? '✓ Paid' : 'Pay Portion'}
+                              {isPaid ? `✓ ${t('Paid', '支払済')}` : t('Pay Portion', '一部支払')}
                             </button>
                           </div>
                         );
@@ -2031,7 +2279,7 @@ export default function PosPage() {
                 <div className="space-y-6 flex-grow flex flex-col min-h-0">
                   {/* Guest count selector */}
                   <div className="flex justify-between items-center bg-[#161513]/40 border border-white/5 p-4 rounded-xl font-sans select-none shrink-0">
-                    <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">Split Parties</span>
+                    <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">{t('Split Parties', '分割数')}</span>
                     <div className="flex items-center gap-3">
                       <button 
                         type="button"
@@ -2058,7 +2306,7 @@ export default function PosPage() {
                       >
                         −
                       </button>
-                      <span className="text-white font-serif font-bold w-12 text-center text-sm">{splitGuestCount} Guests</span>
+                      <span className="text-white font-serif font-bold w-12 text-center text-sm">{splitGuestCount} {t('Guests', '名')}</span>
                       <button 
                         type="button"
                         onClick={() => {
@@ -2076,7 +2324,7 @@ export default function PosPage() {
 
                   {/* Itemized assignment list */}
                   <div className="space-y-3.5 flex-grow flex flex-col min-h-0">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">Assign Items to Guests</span>
+                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">{t('Assign Items to Guests', '品目をゲストに割り当て')}</span>
                     <div className="space-y-3 overflow-y-auto max-h-[220px] pr-1 flex-grow divide-y divide-white/5">
                       {selectedTicket.items.map((item, idx) => {
                         const assignedGuest = splitItemAssignments[idx] ?? -1;
@@ -2084,7 +2332,7 @@ export default function PosPage() {
                           <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                             <div className="max-w-[45%] font-sans">
                               <div className="text-xs text-white font-bold">{item.qty}x {item.name}</div>
-                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-0.5">${(getItemPrice(item) * item.qty).toFixed(2)}</div>
+                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-0.5">{formatMoney(getItemPrice(item) * item.qty)}</div>
                             </div>
                             
                             {/* Guest selector circles */}
@@ -2102,9 +2350,9 @@ export default function PosPage() {
                                     ? 'bg-[#ffe2ab] text-[#402d00] shadow' 
                                     : 'bg-white/5 border border-white/5 text-[#A69984]'
                                 }`}
-                                title="Split evenly among all guests"
+                                title={t('Split evenly among all guests', 'すべてのゲストで均等分割')}
                               >
-                                Shr
+                                {t('Shr', '共有')}
                               </button>
                               {/* Guest circles */}
                               {Array.from({ length: splitGuestCount }).map((_, gIdx) => {
@@ -2123,7 +2371,7 @@ export default function PosPage() {
                                         ? 'bg-white/10 border border-[#ffe2ab]/50 text-white' 
                                         : 'bg-transparent border border-white/5 text-[#A69984]/40 hover:text-white hover:border-white/15'
                                     }`}
-                                    title={`Assign to Guest ${guestLetter}`}
+                                    title={t(`Assign to Guest ${guestLetter}`, `ゲスト ${guestLetter} に割り当て`)}
                                   >
                                     {guestLetter}
                                   </button>
@@ -2172,7 +2420,7 @@ export default function PosPage() {
 
                     return (
                       <div className="space-y-3 pt-2 shrink-0">
-                        <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">Calculated Portions</span>
+                        <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">{t('Calculated Portions', '計算された分割分')}</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[160px] overflow-y-auto pr-1">
                           {totals.map((gTotal, gIdx) => {
                             const guestLetter = String.fromCharCode(65 + gIdx);
@@ -2180,10 +2428,10 @@ export default function PosPage() {
                             return (
                               <div key={gIdx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-[#161513]/20 border-white/5 text-white'}`}>
                                 <div className="font-sans">
-                                  <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">Guest {guestLetter}</div>
-                                  <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">${gTotal.total.toFixed(2)}</div>
+                                  <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">{t('Guest', 'ゲスト')} {guestLetter}</div>
+                                  <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">{formatMoney(gTotal.total)}</div>
                                   <div className="text-[9px] text-[#A69984]/45 mt-0.5 leading-none">
-                                    Sub: ${gTotal.subtotal.toFixed(2)} • Tax: ${gTotal.tax.toFixed(2)}
+                                    {t('Sub', '小計')}: {formatMoney(gTotal.subtotal)} • {t('Tax', '税')}: {formatMoney(gTotal.tax)}
                                   </div>
                                 </div>
                                 <button
@@ -2193,17 +2441,17 @@ export default function PosPage() {
                                     if (isPaid) {
                                       newPaid = splitPaidGuests.filter(g => g !== gIdx);
                                       setSplitPaidGuests(newPaid);
-                                      triggerToast(`Guest ${guestLetter}'s payment refunded.`);
+                                      triggerToast(t(`Guest ${guestLetter}'s payment refunded.`, `ゲスト ${guestLetter} の支払いが払い戻されました。`));
                                     } else {
                                       newPaid = [...splitPaidGuests, gIdx];
                                       setSplitPaidGuests(newPaid);
-                                      triggerToast(`Guest ${guestLetter}'s portion of $${gTotal.total.toFixed(2)} paid via ${checkoutPaymentMethod.toUpperCase()}!`);
+                                      triggerToast(t(`Guest ${guestLetter}'s portion of ${formatMoney(gTotal.total)} paid via ${checkoutPaymentMethod.toUpperCase()}!`, `ゲスト ${guestLetter} の ${formatMoney(gTotal.total)} の支払いが ${checkoutPaymentMethod.toUpperCase()} で完了しました！`));
                                     }
                                     updateTicketSplits({ splitPaidGuests: newPaid });
                                   }}
                                   className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500 hover:bg-emerald-600' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50 hover:bg-white/5'}`}
                                 >
-                                  {isPaid ? '✓ Paid' : 'Pay Portion'}
+                                  {isPaid ? `✓ ${t('Paid', '支払済')}` : t('Pay Portion', '一部支払')}
                                 </button>
                               </div>
                             );
@@ -2219,10 +2467,10 @@ export default function PosPage() {
             {/* Modal Actions Footer */}
             <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex items-center justify-between select-none shrink-0 font-sans mt-4">
               <div className="text-left">
-                <div className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">Portions Progress</div>
+                <div className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">{t('Portions Progress', '支払い状況')}</div>
                 <div className="text-white text-xs font-bold mt-1">
-                  {splitPaidGuests.length} of {splitGuestCount} Paid 
-                  {splitPaidGuests.length === splitGuestCount && <span className="text-emerald-400 ml-1.5">✓ Settled</span>}
+                  {splitPaidGuests.length} / {splitGuestCount} {t('Paid', '支払済')}
+                  {splitPaidGuests.length === splitGuestCount && <span className="text-emerald-400 ml-1.5">✓ {t('Settled', '精算済')}</span>}
                 </div>
               </div>
 
@@ -2233,11 +2481,11 @@ export default function PosPage() {
                     setSplitPaidGuests([]);
                     setSplitItemAssignments({});
                     updateTicketSplits({ splitPaidGuests: [], splitItemAssignments: {} });
-                    triggerToast('Splits reset.');
+                    triggerToast(t('Splits reset.', '分割設定をリセットしました。'));
                   }}
                   className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
                 >
-                  Reset
+                  {t('Reset', 'リセット')}
                 </button>
                 
                 {splitPaidGuests.length === splitGuestCount ? (
@@ -2247,14 +2495,14 @@ export default function PosPage() {
                       setIsProcessing(true);
                       setTimeout(() => {
                         setIsProcessing(false);
-                        closeActiveTicket(`Checkout completed! Ticket for ${selectedTicket.tableNumber} fully paid via split billing.`);
+                        closeActiveTicket(t(`Checkout completed! Ticket for Table ${selectedTicket.tableNumber} fully paid via split billing.`, `会計が完了しました！テーブル ${selectedTicket.tableNumber} の伝票は分割払いで全額支払われました。`));
                       }, 2000);
                     }}
                     disabled={isProcessing}
                     className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
                   >
                     <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                    <span>{isProcessing ? 'Processing...' : 'Finalize Paid Ticket'}</span>
+                    <span>{isProcessing ? t('Processing...', '処理中...') : t('Finalize Paid Ticket', '支払いを確定する')}</span>
                   </button>
                 ) : (
                   <button
@@ -2262,11 +2510,11 @@ export default function PosPage() {
                     onClick={() => {
                       updateTicketSplits({ isSplit: true });
                       setSplitModalOpen(false);
-                      triggerToast(`Saved split billing configurations for ${selectedTicket.tableNumber}.`);
+                      triggerToast(t(`Saved split billing configurations for Table ${selectedTicket.tableNumber}.`, `テーブル ${selectedTicket.tableNumber} の分割支払い設定を保存しました。`));
                     }}
                     className="px-5 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
                   >
-                    Save & Apply Splits
+                    {t('Save & Apply Splits', '分割設定を保存して適用')}
                   </button>
                 )}
               </div>
@@ -2284,9 +2532,9 @@ export default function PosPage() {
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none bg-[#0a0a09]">
               <div>
-                <h3 className="font-serif font-bold text-lg text-white">Digital Menu Catalog</h3>
+                <h3 className="font-serif font-bold text-lg text-white">{t('Digital Menu Catalog', 'デジタルメニューカタログ')}</h3>
                 <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
-                  Add products to {selectedTicket.tableNumber}
+                  {t('Add products to ', '商品を追加: ')}{selectedTicket.tableNumber}
                 </p>
               </div>
               
@@ -2296,7 +2544,7 @@ export default function PosPage() {
                   <span className="material-symbols-outlined absolute left-3 top-2.5 text-[#A69984]/40 text-sm">search</span>
                   <input
                     type="text"
-                    placeholder="Search menu..."
+                    placeholder={t('Search menu...', 'メニューを検索...')}
                     value={menuSearchQuery}
                     onChange={(e) => setMenuSearchQuery(e.target.value)}
                     className="bg-[#161513] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 w-[180px] sm:w-[220px] transition-colors"
@@ -2323,7 +2571,7 @@ export default function PosPage() {
                     : 'text-[#A69984]/80 bg-white/5 hover:text-white hover:bg-white/10'
                 }`}
               >
-                All Items
+                {t('All Items', '全商品')}
               </button>
               {categories.map((cat) => (
                 <button
@@ -2338,7 +2586,7 @@ export default function PosPage() {
                   {cat.icon && (
                     <span className="material-symbols-outlined text-xs leading-none">{cat.icon}</span>
                   )}
-                  {cat.name}
+                  {t(cat.name, cat.name === 'Our Special' ? 'おすすめ' : cat.name === 'Combo Set' ? 'コンボセット' : cat.name === 'Starters' ? '前菜' : cat.name === 'Main Course' ? 'メインコース' : cat.name === 'Desserts' ? 'デザート' : cat.name === 'Drinks' ? 'ドリンク' : cat.name)}
                 </button>
               ))}
             </div>
@@ -2347,6 +2595,7 @@ export default function PosPage() {
             <div className="flex-1 p-6 overflow-y-auto bg-[#12110f]">
               {(() => {
                 const filtered = menuItems.filter(item => {
+                  if (item.active === false) return false;
                   const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
                   const matchesSearch = item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
                                        (item.description && item.description.toLowerCase().includes(menuSearchQuery.toLowerCase()));
@@ -2357,7 +2606,7 @@ export default function PosPage() {
                   return (
                     <div className="h-full flex flex-col items-center justify-center text-[#A69984]/40 py-20 select-none">
                       <span className="material-symbols-outlined text-4xl mb-2 font-light">restaurant_menu</span>
-                      <p className="text-xs">No matching menu items found.</p>
+                      <p className="text-xs">{t('No matching menu items found.', '該当するメニューが見つかりません。')}</p>
                     </div>
                   );
                 }
@@ -2416,7 +2665,7 @@ export default function PosPage() {
                             {/* Info */}
                             <div className="flex justify-between items-start gap-2 mb-1.5">
                               <h4 className="font-serif font-bold text-sm text-white group-hover:text-[#ffe2ab] transition-colors line-clamp-1">{item.name}</h4>
-                              <span className="font-sans font-bold text-sm text-[#ffe2ab] shrink-0">${item.price.toFixed(2)}</span>
+                              <span className="font-sans font-bold text-sm text-[#ffe2ab] shrink-0">{formatMoney(item.price)}</span>
                             </div>
                             
                             <p className="text-[11px] text-[#A69984]/70 line-clamp-2 mb-3 h-[32px] overflow-hidden leading-relaxed select-text">
@@ -2446,7 +2695,7 @@ export default function PosPage() {
                                               }`}
                                             >
                                               {opt.name}
-                                              {opt.price ? ` (+$${opt.price})` : ''}
+                                              {opt.price ? ` (+${formatMoney(opt.price)})` : ''}
                                             </button>
                                           );
                                         })}
@@ -2462,7 +2711,7 @@ export default function PosPage() {
                           <div className="space-y-2.5 pt-2 border-t border-white/5">
                             <input
                               type="text"
-                              placeholder="Add kitchen note (e.g. Rare, No onions)"
+                              placeholder={t('Add kitchen note (e.g. Rare, No onions)', '厨房へのメモを追加 (例: レア、玉ねぎ抜き)')}
                               value={itemNotes[item.id] || ''}
                               onChange={(e) => setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
                               className="w-full bg-black/40 border border-white/5 rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder-white/25 focus:outline-none focus:border-[#ffe2ab]/25 transition-colors"
@@ -2476,7 +2725,7 @@ export default function PosPage() {
                                   className="flex-1 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg font-sans font-bold text-[9px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-0.5 cursor-pointer"
                                 >
                                   <span className="material-symbols-outlined text-[10px]">remove</span>
-                                  Remove 1
+                                  {t('Remove 1', '1つ減らす')}
                                 </button>
                                 <span className="px-2.5 py-1 bg-[#ffe2ab]/5 border border-[#ffe2ab]/25 text-[#ffe2ab] rounded-lg font-mono font-bold text-xs select-none">
                                   x{itemQtyInTicket}
@@ -2499,7 +2748,7 @@ export default function PosPage() {
                                   className="flex-1 py-1.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-lg font-sans font-bold text-[9px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-0.5 cursor-pointer"
                                 >
                                   <span className="material-symbols-outlined text-[10px]">add</span>
-                                  Add More
+                                  {t('Add More', 'さらに追加')}
                                 </button>
                               </div>
                             ) : (
@@ -2521,7 +2770,7 @@ export default function PosPage() {
                                 className="w-full py-2 bg-white/5 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] border border-white/10 hover:border-transparent rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-xs">add_circle</span>
-                                Add to Order
+                                {t('Add to Order', '注文に追加')}
                               </button>
                             )}
                           </div>

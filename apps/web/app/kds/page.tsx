@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface OrderItemOption {
   text: string;
@@ -158,6 +160,7 @@ const initialTickets: KdsTicket[] = [
 ];
 
 export default function KdsPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [tickets, setTickets] = useState<KdsTicket[]>(initialTickets);
   const [diningFilter, setDiningFilter] = useState<'all' | 'dine-in' | 'takeaway' | 'delivery'>('all');
   const [statusTab, setStatusTab] = useState<'pending' | 'cooking' | 'complete' | 'rejected'>('pending');
@@ -305,7 +308,11 @@ export default function KdsPage() {
       )}
 
       {/* SIDEBAR NAVIGATION PANEL */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 h-full`}>
+      <aside className={`fixed inset-y-0 left-0 bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:static lg:translate-x-0 h-full ${
+        sidebarCollapsed 
+          ? 'w-0 lg:w-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] opacity-100'
+      }`}>
         <div>
           {/* Brand header */}
           <div className="p-8 pb-4">
@@ -354,6 +361,8 @@ export default function KdsPage() {
           </Link>
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN KITCHEN CONSOLE */}
       <main className="flex-1 flex flex-col h-full bg-[#11100e] relative overflow-hidden">
@@ -537,13 +546,21 @@ export default function KdsPage() {
                               ON HOLD
                             </span>
                           )}
+                          {ticket.type === 'dine-in' && (
+                            <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px] font-bold">restaurant</span>
+                              Dine-in
+                            </span>
+                          )}
                           {ticket.type === 'takeaway' && (
-                            <span className="bg-sky-500/10 border border-sky-500/20 text-sky-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
+                            <span className="bg-sky-500/10 border border-sky-500/20 text-sky-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px] font-bold">local_mall</span>
                               Takeaway
                             </span>
                           )}
                           {ticket.type === 'delivery' && (
-                            <span className="bg-purple-500/10 border border-purple-500/20 text-purple-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm">
+                            <span className="bg-purple-500/10 border border-purple-500/20 text-purple-400 font-sans font-bold text-[9px] uppercase tracking-widest px-2 py-0.5 rounded shadow-sm flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px] font-bold">moped</span>
                               Delivery
                             </span>
                           )}

@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { migrateCart, generateCartKey } from './cartUtils';
 
 type SpicyLevel = 'Mild' | 'Normal' | 'Hot' | 'Super Hot';
@@ -17,6 +19,8 @@ interface MenuItem {
   allergens?: string[];
   spicyLevel?: SpicyLevel;
   mealPeriod?: 'lunch' | 'dinner' | 'both';
+  pairingId?: string;
+  active?: boolean;
 }
 
 interface CartItem {
@@ -264,6 +268,7 @@ const drinkPairings: { [itemId: string]: { id: string; name: string; price: numb
 };
 
 export default function DigitalMenuPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [items, setItems] = useState<MenuItem[]>(menuItems);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
   const [activeCategory, setActiveCategory] = useState<string>('starters');
@@ -299,7 +304,7 @@ export default function DigitalMenuPage() {
   }>({
     maxPrice: 40,
     excludedTags: ['Seafood'],
-    showAIConcierge: true,
+    showAIConcierge: false,
     enableSelfCheckout: true,
     enableTimeBasedMenu: false,
     lunchStart: '11:00',
@@ -433,6 +438,7 @@ export default function DigitalMenuPage() {
 
   // Language / currency state (synced with admin dashboard via localStorage)
   const [language, setLanguage] = useState<'en' | 'ja'>('en');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
 
   const [pairingToast, setPairingToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
@@ -442,12 +448,31 @@ export default function DigitalMenuPage() {
     setTimeout(() => setPairingToast(prev => ({ ...prev, show: false })), 3000);
   };
 
-  // Format currency based on current language
+  // Format currency based on current currency setting
   const formatCurrency = (val: number) => {
-    if (language === 'ja') {
-      return `¥${Math.round(val * 150).toLocaleString()}`;
+    const symbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CNY: '¥',
+      KRW: '₩',
+      JPY: '¥'
+    };
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.24,
+      KRW: 1340
+    };
+    const symbol = symbolMap[currency] || '$';
+    const rate = rateMap[currency] || 1;
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${symbol}${Math.round(converted).toLocaleString()}`;
     }
-    return `$${val.toFixed(2)}`;
+    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const cartPairings = useMemo(() => {
@@ -455,10 +480,28 @@ export default function DigitalMenuPage() {
     const cartItemIds = Object.values(cart).map(ci => ci.itemId);
     
     Object.values(cart).forEach(cartItem => {
-      const pairing = drinkPairings[cartItem.itemId];
+      const parentItem = items.find(m => m.id === cartItem.itemId);
+      let pairing = null;
+      
+      if (parentItem && parentItem.pairingId) {
+        const pairedDrink = items.find(i => i.id === parentItem.pairingId);
+        if (pairedDrink) {
+          pairing = {
+            id: pairedDrink.id,
+            name: pairedDrink.name,
+            price: pairedDrink.price,
+            image: pairedDrink.image || '/images/old_fashioned.png',
+            desc: pairedDrink.description || ''
+          };
+        }
+      }
+      
+      if (!pairing) {
+        pairing = drinkPairings[cartItem.itemId];
+      }
+
       if (pairing && !cartItemIds.includes(pairing.id)) {
         if (!pairings.some(p => p.id === pairing.id)) {
-          const parentItem = items.find(m => m.id === cartItem.itemId);
           pairings.push({
             parentItemName: parentItem ? parentItem.name : 'your dish',
             ...pairing
@@ -587,6 +630,10 @@ export default function DigitalMenuPage() {
     const savedLanguage = localStorage.getItem('dinepos_language') as 'en' | 'ja' | null;
     if (savedLanguage === 'en' || savedLanguage === 'ja') {
       setLanguage(savedLanguage);
+    }
+    const savedCurrency = localStorage.getItem('dinepos_currency');
+    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+      setCurrency(savedCurrency as any);
     }
     const savedTaxType = localStorage.getItem('dinepos_tax_type');
     if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
@@ -814,6 +861,7 @@ export default function DigitalMenuPage() {
   // Filtered menu items
   const filteredItems = useMemo(() => {
     return items.filter(item => {
+      if (item.active === false) return false;
       // Time-Based Menu filter check
       if (exclusionsConfig.enableTimeBasedMenu) {
         if (currentMealPeriod === 'lunch') {
@@ -1076,7 +1124,11 @@ export default function DigitalMenuPage() {
           onClick={() => setIsMobileSidebarOpen(false)} 
         />
       )}
-      <aside className={`fixed lg:relative top-0 left-0 w-[280px] h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed lg:relative top-0 left-0 h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-50 transition-all duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${
+        sidebarCollapsed 
+          ? 'w-0 lg:w-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] opacity-100'
+      }`}>
         <div>
           {/* Brand header */}
           <div className="p-8 pb-4 flex items-start justify-between">
@@ -1139,6 +1191,8 @@ export default function DigitalMenuPage() {
           </button>
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-full bg-[#11100e] relative overflow-hidden">
@@ -2407,7 +2461,7 @@ export default function DigitalMenuPage() {
                 <span className="material-symbols-outlined text-xl">admin_panel_settings</span>
               </div>
               <h3 className="text-white font-bold text-base tracking-wide">Admin Access Required</h3>
-              <p className="text-[#A69984]/60 text-xs mt-1 leading-relaxed">Enter Owner Admin credentials to temporarily unlock the table assignment.</p>
+              <p className="text-[#A69984]/60 text-xs mt-1 leading-relaxed">Enter Admin Owner credentials to temporarily unlock the table assignment.</p>
             </div>
 
             {adminAuthError && (

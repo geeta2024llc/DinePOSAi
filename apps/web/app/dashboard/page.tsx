@@ -1830,6 +1830,8 @@ export default function DashboardPage() {
   const [menuFormImage, setMenuFormImage] = useState('/images/wagyu_beef_tartare.png');
   const [menuFormTags, setMenuFormTags] = useState<string[]>([]);
   const [menuFormMealPeriod, setMenuFormMealPeriod] = useState<'lunch' | 'dinner' | 'both'>('both');
+  const [menuFormPairingId, setMenuFormPairingId] = useState<string>('');
+  const [pairingSearchQuery, setPairingSearchQuery] = useState<string>('');
 
   // Category Manager States
   const [categories, setCategories] = useState<any[]>([]);
@@ -2167,6 +2169,16 @@ export default function DashboardPage() {
     triggerToast(item.category === 'special' ? `Removed ${item.name} from Specials.` : `Marked ${item.name} as Special Dish!`, 'success');
   };
 
+  const handleToggleActive = (item: any) => {
+    const isActive = item.active !== false;
+    const updatedList = menuItemsList.map(m => 
+      m.id === item.id ? { ...m, active: !isActive } : m
+    );
+    setMenuItemsList(updatedList);
+    localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
+    triggerToast(isActive ? `Hid ${item.name} from Digital Menu.` : `Showed ${item.name} on Digital Menu!`, 'success');
+  };
+
   const handleDeleteMenuItem = (id: string) => {
     const updatedList = menuItemsList.filter(m => m.id !== id);
     setMenuItemsList(updatedList);
@@ -2199,7 +2211,8 @@ export default function DashboardPage() {
               description: menuFormDescription, 
               image: menuFormImage, 
               tags: menuFormTags,
-              mealPeriod: menuFormMealPeriod
+              mealPeriod: menuFormMealPeriod,
+              pairingId: menuFormPairingId
             }
           : m
       );
@@ -2216,7 +2229,9 @@ export default function DashboardPage() {
         description: menuFormDescription,
         image: menuFormImage,
         tags: menuFormTags,
-        mealPeriod: menuFormMealPeriod
+        mealPeriod: menuFormMealPeriod,
+        pairingId: menuFormPairingId,
+        active: true
       };
       updatedList = [...menuItemsList, newItem];
       triggerToast(`Successfully added menu item: ${menuFormName}`, 'success');
@@ -5500,6 +5515,8 @@ export default function DashboardPage() {
                       setMenuFormImage('/images/wagyu_beef_tartare.png');
                       setMenuFormTags([]);
                       setMenuFormMealPeriod('both');
+                      setMenuFormPairingId('');
+                      setPairingSearchQuery('');
                       setShowMenuAddEditModal(true);
                     }}
                     className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none"
@@ -5591,7 +5608,7 @@ export default function DashboardPage() {
                           else if (margin < 70) marginColor = 'text-amber-400';
 
                           return (
-                            <tr key={item.id} className={`hover:${t.cardHover} transition-colors`}>
+                            <tr key={item.id} className={`hover:${t.cardHover} transition-colors ${item.active === false ? 'opacity-55' : ''}`}>
                               <td className="px-6 py-4 flex items-center gap-3">
                                 <div className={`w-[48px] h-[48px] rounded-lg overflow-hidden border ${t.borderStrong} flex-shrink-0 bg-black`}>
                                   <img 
@@ -5635,6 +5652,12 @@ export default function DashboardPage() {
                                         {tag}
                                       </span>
                                     ))}
+                                    {item.active === false && (
+                                      <span className="px-1.5 py-0.5 bg-rose-500/10 border border-rose-500/25 rounded text-[8px] uppercase tracking-wide text-rose-400 font-extrabold flex items-center gap-0.5">
+                                        <span className="material-symbols-outlined text-[9px] leading-none">visibility_off</span>
+                                        Hidden
+                                      </span>
+                                    )}
                                   </div>
                                 </div>
                               </td>
@@ -5660,6 +5683,15 @@ export default function DashboardPage() {
                                     <span className={`material-symbols-outlined text-[15px] ${item.category === 'special' ? 'fill-amber-400' : ''}`}>auto_awesome</span>
                                   </button>
                                   <button type="button"
+                                    onClick={() => handleToggleActive(item)}
+                                    className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${item.active !== false ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'} cursor-pointer`}
+                                    title={item.active !== false ? "Hide from Digital Menu" : "Show on Digital Menu"}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">
+                                      {item.active !== false ? 'visibility' : 'visibility_off'}
+                                    </span>
+                                  </button>
+                                  <button type="button"
                                     onClick={() => {
                                       setEditingMenuItem(item);
                                       setMenuFormName(item.name);
@@ -5670,6 +5702,8 @@ export default function DashboardPage() {
                                       setMenuFormImage(item.image || '/images/wagyu_beef_tartare.png');
                                       setMenuFormTags(item.tags || []);
                                       setMenuFormMealPeriod(item.mealPeriod || 'both');
+                                      setMenuFormPairingId(item.pairingId || '');
+                                      setPairingSearchQuery('');
                                       setShowMenuAddEditModal(true);
                                     }}
                                     className={`w-8 h-8 rounded-lg flex items-center justify-center bg-transparent border ${t.borderStrong} hover:border-[#ffe2ab]/20 text-[#A69984] hover:text-[#ffe2ab] transition-colors cursor-pointer`}
@@ -8288,10 +8322,10 @@ export default function DashboardPage() {
               {/* Cost & Price Row */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-1.5`}>Unit Cost ($)</label>
+                  <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-1.5`}>Unit Cost ({currencySymbols[currency] || '$'})</label>
                   <input 
                     type="number" 
-                    step="0.01"
+                    step={currency === 'JPY' || currency === 'KRW' ? "1" : "0.01"}
                     min="0"
                     value={menuFormCost}
                     onChange={(e) => setMenuFormCost(parseFloat(e.target.value) || 0)}
@@ -8300,10 +8334,10 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div>
-                  <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-1.5`}>Customer Price ($)</label>
+                  <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-1.5`}>Customer Price ({currencySymbols[currency] || '$'})</label>
                   <input 
                     type="number" 
-                    step="0.01"
+                    step={currency === 'JPY' || currency === 'KRW' ? "1" : "0.01"}
                     min="0"
                     value={menuFormPrice}
                     onChange={(e) => setMenuFormPrice(parseFloat(e.target.value) || 0)}
@@ -8458,6 +8492,79 @@ export default function DashboardPage() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Recommended Beverage Pairing (Advanced Selector) */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2`}>Recommended Beverage Pairing</label>
+                <div className={`border ${t.inputBorder} ${t.inputBg} rounded-2xl p-4 space-y-3`}>
+                  {/* Search Bar */}
+                  <div className="relative">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-xs text-white/20">search</span>
+                    <input
+                      type="text"
+                      placeholder="Search drinks to pair..."
+                      value={pairingSearchQuery}
+                      onChange={(e) => setPairingSearchQuery(e.target.value)}
+                      className="bg-transparent border border-white/5 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-white/25 focus:outline-none focus:border-[#ffe2ab]/20 w-full transition-colors font-medium font-sans"
+                    />
+                  </div>
+
+                  {/* Drink Grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                    {/* None Option */}
+                    <button
+                      type="button"
+                      onClick={() => setMenuFormPairingId('')}
+                      className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left cursor-pointer ${
+                        menuFormPairingId === ''
+                          ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/30 text-[#ffe2ab]'
+                          : 'bg-black/20 border-white/5 hover:border-white/10 text-[#A69984]'
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs">
+                        ❌
+                      </div>
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider">None</div>
+                        <div className="text-[9px] text-[#A69984]/50">No recommendation</div>
+                      </div>
+                    </button>
+
+                    {/* Filtered Drinks */}
+                    {menuItemsList
+                      .filter(item => item.category === 'drinks')
+                      .filter(item => item.name.toLowerCase().includes(pairingSearchQuery.toLowerCase()))
+                      .map(drink => {
+                        const isSelected = menuFormPairingId === drink.id;
+                        return (
+                          <button
+                            type="button"
+                            key={drink.id}
+                            onClick={() => setMenuFormPairingId(drink.id)}
+                            className={`flex items-center gap-2 p-2 rounded-xl border transition-all text-left cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/30 text-[#ffe2ab] shadow-[0_0_12px_rgba(255,226,171,0.05)]'
+                                : 'bg-black/20 border-white/5 hover:border-white/10 text-[#A69984]'
+                            }`}
+                          >
+                            <img
+                              src={drink.image || '/images/old_fashioned.png'}
+                              alt={drink.name}
+                              className="w-8 h-8 rounded-lg object-cover bg-black"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/images/old_fashioned.png';
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-bold truncate leading-tight">{drink.name}</div>
+                              <div className="text-[9px] text-[#A69984]/65 font-mono mt-0.5">{formatCurrency(drink.price)}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                  </div>
                 </div>
               </div>
 

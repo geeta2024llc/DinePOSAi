@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { CmsConfig, getCmsConfig, saveCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 
 // Curated themes mirroring the admin console theme system for visual continuity
@@ -249,6 +251,7 @@ interface AuditLog {
   type: 'info' | 'warning' | 'success' | 'security';
 }
 export default function SuperAdminPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   // Dynamic aesthetic state loading
   const [globalAesthetic, setGlobalAesthetic] = useState('Midnight Black');
   const [customBg, setCustomBg] = useState('#0e0e0d');
@@ -1741,7 +1744,11 @@ export default function SuperAdminPage() {
         }`;
       })() }} />
       {/* LEFT SIDEBAR PANEL (GLOBAL CONSOLE CONTEXT) */}
-      <aside className={`h-full w-[280px] ${theme.sidebarBg} flex flex-col justify-between p-8 flex-shrink-0 z-20 border-r ${theme.border} overflow-y-auto`}>
+      <aside className={`h-full flex-shrink-0 z-20 border-r ${theme.border} overflow-y-auto transition-all duration-300 ${theme.sidebarBg} ${
+        sidebarCollapsed 
+          ? 'w-0 p-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] p-8'
+      }`}>
         <div>
           {/* Brand/Super Admin Console Header */}
           <div className="mb-10 select-none flex items-center">
@@ -1913,6 +1920,8 @@ export default function SuperAdminPage() {
           </Link>
         </div>
       </aside>
+
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
       {/* MAIN CONTENT WINDOW */}
       <div className={`flex-grow flex flex-col h-full relative ${theme.bg} overflow-hidden`}>
@@ -4205,7 +4214,7 @@ export default function SuperAdminPage() {
                     Admins & Access Control
                   </h1>
                   <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold mt-2">
-                    Manage business owners, account permissions, and resolve administrative access credentials.
+                    Manage admin owners (restaurant owners/managers), account permissions, and resolve administrative access credentials.
                   </p>
                 </div>
                 
@@ -4277,7 +4286,7 @@ export default function SuperAdminPage() {
               {/* Admin Directory Table */}
               <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
                 <div className="flex justify-between items-center select-none border-b border-white/5 pb-4">
-                  <h3 className="font-serif text-base text-white font-bold tracking-wide">Business Owners Registry</h3>
+                  <h3 className="font-serif text-base text-white font-bold tracking-wide">Admin Owners Registry</h3>
                   <span className="text-xs text-[#A69984]/50 font-semibold">{filteredAdmins.length} Admins registered</span>
                 </div>
 
@@ -8299,7 +8308,7 @@ export default function SuperAdminPage() {
         </div>
       )}
 
-      {/* MODAL 2: ADD NEW BUSINESS OWNER ADMIN */}
+      {/* MODAL 2: REGISTER NEW ADMIN OWNER */}
       {showAddAdminModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
           <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
@@ -8311,8 +8320,8 @@ export default function SuperAdminPage() {
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
 
-            <h3 className="font-serif text-white font-bold text-2xl mb-2">Register Business Owner</h3>
-            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Create the administrative owner credentials linked to an active Tenant.</p>
+            <h3 className="font-serif text-white font-bold text-2xl mb-2">Register Admin Owner</h3>
+            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Create the admin owner credentials linked to an active Tenant.</p>
             
             <form onSubmit={handleAddAdmin} className="space-y-5">
               <div>

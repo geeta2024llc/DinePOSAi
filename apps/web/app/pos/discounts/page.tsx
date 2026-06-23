@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface Operator {
   name: string;
@@ -55,8 +57,36 @@ const initialDiscounts: DiscountCode[] = [
 ];
 
 export default function DiscountsPage() {
+  const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [discounts, setDiscounts] = useState<DiscountCode[]>(initialDiscounts);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+
+  const formatCurrency = (val: number) => {
+    const symbolMap: Record<string, string> = {
+      USD: '$',
+      EUR: '€',
+      GBP: '£',
+      CNY: '¥',
+      KRW: '₩',
+      JPY: '¥'
+    };
+    const rateMap: Record<string, number> = {
+      USD: 1,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.24,
+      KRW: 1340
+    };
+    const symbol = symbolMap[currency] || '$';
+    const rate = rateMap[currency] || 1;
+    const converted = (parseFloat(val as any) || 0) * rate;
+    if (currency === 'JPY' || currency === 'KRW') {
+      return `${symbol}${Math.round(converted).toLocaleString()}`;
+    }
+    return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
 
   // Operator states
   const [activeOperator, setActiveOperator] = useState<Operator>(AVAILABLE_OPERATORS[0]);
@@ -71,6 +101,11 @@ export default function DiscountsPage() {
         } catch (e) {
           console.error(e);
         }
+      }
+
+      const savedCurrency = localStorage.getItem('dinepos_currency');
+      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+        setCurrency(savedCurrency as any);
       }
 
       const handleStorageChange = (e: StorageEvent) => {
@@ -191,7 +226,11 @@ export default function DiscountsPage() {
       )}
 
       {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 w-[280px] bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between p-8 flex-shrink-0 z-30 transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 overflow-y-auto`}>
+      <aside className={`fixed inset-y-0 left-0 bg-[#0a0a09] border-r border-white/5 flex flex-col justify-between flex-shrink-0 z-30 transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 overflow-y-auto ${
+        sidebarCollapsed 
+          ? 'w-0 lg:w-0 p-0 lg:p-0 opacity-0 pointer-events-none border-r-0' 
+          : 'w-[280px] p-8 opacity-100'
+      }`}>
         <div>
           {/* Brand */}
           <div className="mb-10 flex items-center">
@@ -263,6 +302,8 @@ export default function DiscountsPage() {
         </div>
       </aside>
 
+      <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
+
       {/* MAIN CONTENT */}
       <div className="flex-grow flex flex-col min-h-screen bg-[#11100e]">
 
@@ -295,7 +336,7 @@ export default function DiscountsPage() {
               { label: 'Total Codes', value: discounts.length, icon: 'confirmation_number', color: 'text-[#ffe2ab]' },
               { label: 'Active Codes', value: activeCount, icon: 'check_circle', color: 'text-emerald-400' },
               { label: 'Total Uses', value: totalUsage, icon: 'analytics', color: 'text-sky-400' },
-              { label: 'Fixed Savings', value: `$${estimatedSaved.toFixed(0)}`, icon: 'savings', color: 'text-violet-400' },
+              { label: 'Fixed Savings', value: formatCurrency(estimatedSaved), icon: 'savings', color: 'text-violet-400' },
             ].map(stat => (
               <div key={stat.label} className="bg-[#161513] border border-white/5 rounded-2xl p-4 lg:p-5">
                 <div className="flex items-center justify-between mb-3">
@@ -367,7 +408,7 @@ export default function DiscountsPage() {
                       {/* Type / Value */}
                       <div className="lg:col-span-2">
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase tracking-wider border ${d.type === 'percent' ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/20 text-[#ffe2ab]' : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'}`}>
-                          {d.type === 'percent' ? `${d.value}%` : `$${d.value}`} {d.type === 'percent' ? 'Off' : 'Fixed'}
+                          {d.type === 'percent' ? `${d.value}%` : formatCurrency(d.value)} {d.type === 'percent' ? 'Off' : 'Fixed'}
                         </span>
                       </div>
 
@@ -379,7 +420,7 @@ export default function DiscountsPage() {
                       {/* Min order */}
                       <div className="lg:col-span-1 lg:text-center text-xs font-bold text-[#A69984]/60">
                         <span className="lg:hidden text-[9px] text-[#A69984]/40 uppercase mr-1">Min:</span>
-                        {d.minOrder > 0 ? `$${d.minOrder}` : '—'}
+                        {d.minOrder > 0 ? formatCurrency(d.minOrder) : '—'}
                       </div>
 
                       {/* Usage */}
@@ -477,7 +518,7 @@ export default function DiscountsPage() {
                       onClick={() => setFormType(t)}
                       className={`py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${formType === t ? 'bg-white/8 text-white border border-white/10' : 'text-[#A69984]/50 hover:text-white'}`}
                     >
-                      {t === 'percent' ? '% Percentage Off' : '$ Fixed Amount Off'}
+                      {t === 'percent' ? '% Percentage Off' : `${currency === 'JPY' ? '¥' : '$'} Fixed Amount Off`}
                     </button>
                   ))}
                 </div>
@@ -486,7 +527,7 @@ export default function DiscountsPage() {
               {/* Value + Min Order */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>{formType === 'percent' ? 'Percentage (1–100) *' : 'Amount ($) *'}</label>
+                  <label className={labelCls}>{formType === 'percent' ? 'Percentage (1–100) *' : `Amount (${currency === 'JPY' ? '¥' : '$'}) *`}</label>
                   <input
                     type="number"
                     min="0"
@@ -498,7 +539,7 @@ export default function DiscountsPage() {
                   />
                 </div>
                 <div>
-                  <label className={labelCls}>Min Order ($)</label>
+                  <label className={labelCls}>Min Order ({currency === 'JPY' ? '¥' : '$'})</label>
                   <input
                     type="number"
                     min="0"
