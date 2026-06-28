@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getTenantSettings, updateTenantSettings, updateSettingsSchema } from '../controllers/tenant.controller.js';
+import { getTenantSettings, updateTenantSettings, updateSettingsSchema, onboardTenant, onboardTenantSchema } from '../controllers/tenant.controller.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { validateSchema } from '../middleware/validation.js';
 
@@ -9,5 +9,6 @@ router.use(requireAuth);
 
 router.get('/settings', requireRole(['SUPER_ADMIN', 'MANAGER']), getTenantSettings);
 router.patch('/settings', requireRole(['SUPER_ADMIN', 'MANAGER']), validateSchema(updateSettingsSchema), updateTenantSettings);
+router.post('/onboard', requireRole(['SUPER_ADMIN', 'MANAGER']), validateSchema(onboardTenantSchema), onboardTenant);
 
 export default router;

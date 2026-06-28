@@ -83,6 +83,7 @@ export default function LoginPage() {
         role: user.role,
         tenantId: tenant?.id,
         currency: tenant?.currency || 'JPY',
+        onboarded: tenant?.onboarded || false,
       }));
     }
   };
@@ -114,9 +115,15 @@ export default function LoginPage() {
 
         // Map roles to routes
         let targetRoute = '/dashboard';
-        if (user.role === 'SUPER_ADMIN') targetRoute = '/super-admin';
-        else if (user.role === 'CASHIER') targetRoute = '/pos';
-        else if (user.role === 'KITCHEN') targetRoute = '/kds';
+        if (user.role === 'SUPER_ADMIN') {
+          targetRoute = '/super-admin';
+        } else if (user.role === 'MANAGER') {
+          targetRoute = tenant?.onboarded ? '/dashboard' : '/onboarding';
+        } else if (user.role === 'CASHIER') {
+          targetRoute = '/pos';
+        } else if (user.role === 'KITCHEN') {
+          targetRoute = '/kds';
+        }
 
         router.push(targetRoute);
         return;

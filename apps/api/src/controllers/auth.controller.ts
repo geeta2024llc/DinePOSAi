@@ -134,7 +134,7 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
       success: true,
       data: {
         message: 'Account and restaurant workspace created successfully.',
-        tenant: { id: tenant.id, name: tenant.name, trialEndsAt: tenant.trial_ends_at },
+        tenant: { id: tenant.id, name: tenant.name, trialEndsAt: tenant.trial_ends_at, onboarded: tenant.onboarded },
         user: { id: user.id, name: user.name, email: user.email, role: user.role }
       }
     });
@@ -250,6 +250,7 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
           currency: tenant.currency,
           taxType: tenant.tax_type,
           taxRate: tenant.tax_rate,
+          onboarded: tenant.onboarded,
         }
       }
     });

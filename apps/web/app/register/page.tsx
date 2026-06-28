@@ -118,13 +118,15 @@ function RegisterForm() {
               role: user.role,
               tenantId: tenant?.id,
               currency: tenant?.currency || 'JPY',
+              onboarded: tenant?.onboarded || false,
             }));
           }
 
           // Handle referral code registration on success if provided
           handleReferralStorage();
           setIsLoading(false);
-          router.push('/dashboard');
+          const targetRoute = tenant?.onboarded ? '/dashboard' : '/onboarding';
+          router.push(targetRoute);
           return;
         }
       }

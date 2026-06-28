@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { apiRequest } from '@/utils/api';
 import {
@@ -926,6 +927,7 @@ const translations: Record<string, Record<string, string>> = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   // CMS Configuration State
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
 
@@ -975,11 +977,15 @@ export default function DashboardPage() {
         if (parsed.billingCycle) {
           setUpgradeBillingCycle(parsed.billingCycle);
         }
+        // Redirect MANAGER to onboarding if onboarding is incomplete
+        if (parsed.role === 'MANAGER' && parsed.onboarded === false) {
+          router.push('/onboarding');
+        }
       }
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [router]);
 
   // ==========================================
   // INVENTORY MANAGEMENT STATE

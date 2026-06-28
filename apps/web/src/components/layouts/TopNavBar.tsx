@@ -137,7 +137,7 @@ export default function TopNavBar() {
               } flex items-center gap-0.5 py-2`}
             >
               <span>Features</span>
-              <span className={`material-symbols-outlined text-[16px] transition-transform duration-300 ${isFeaturesOpen ? 'rotate-180 text-primary' : 'text-on-surface-variant/60'}`}>
+              <span className={`material-symbols-outlined notranslate text-[16px] transition-transform duration-300 ${isFeaturesOpen ? 'rotate-180 text-primary' : 'text-on-surface-variant/60'}`} translate="no">
                 keyboard_arrow_down
               </span>
             </Link>
@@ -190,7 +190,7 @@ export default function TopNavBar() {
             className="md:hidden text-primary p-2 focus:outline-none cursor-pointer"
             aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
           >
-            <span className="material-symbols-outlined text-2xl transition-transform duration-300 select-none">
+            <span className="material-symbols-outlined notranslate text-2xl transition-transform duration-300 select-none" translate="no">
               {isMobileMenuOpen ? 'close' : 'menu'}
             </span>
           </button>
@@ -214,14 +214,14 @@ export default function TopNavBar() {
                     className="flex gap-4 p-4 rounded-2xl hover:bg-white/[0.03] border border-transparent hover:border-white/5 transition-all duration-300 group/item"
                   >
                     <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0 transition-colors group-hover/item:border-primary/30 group-hover/item:bg-primary/5">
-                      <span className="material-symbols-outlined text-primary text-xl transition-transform group-hover/item:scale-110">
+                      <span className="material-symbols-outlined notranslate text-primary text-xl transition-transform group-hover/item:scale-110" translate="no">
                         {item.icon}
                       </span>
                     </div>
                     <div>
                       <h4 className="text-white font-semibold text-sm tracking-wide flex items-center gap-1 group-hover/item:text-primary transition-colors">
                         {item.title}
-                        <span className="material-symbols-outlined text-xs opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-1 transition-all">
+                        <span className="material-symbols-outlined notranslate text-xs opacity-0 group-hover/item:opacity-100 group-hover/item:translate-x-1 transition-all" translate="no">
                           arrow_forward
                         </span>
                       </h4>
@@ -254,7 +254,7 @@ export default function TopNavBar() {
                   className="relative z-10 mt-6 inline-flex items-center justify-center gap-2 bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] text-xs font-bold py-2.5 px-4 rounded-xl hover:shadow-[0_0_15px_rgba(255,226,171,0.3)] transition-all duration-300"
                 >
                   Book a Live Demo
-                  <span className="material-symbols-outlined text-xs">calendar_today</span>
+                  <span className="material-symbols-outlined notranslate text-xs" translate="no">calendar_today</span>
                 </Link>
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function TopNavBar() {
                 className="w-full flex items-center justify-between transition-colors duration-300 hover:text-white text-on-surface-variant font-medium py-1"
               >
                 <span>Features</span>
-                <span className={`material-symbols-outlined text-base transition-transform duration-300 ${isMobileFeaturesOpen ? 'rotate-180 text-primary' : 'opacity-50'}`}>
+                <span className={`material-symbols-outlined notranslate text-base transition-transform duration-300 ${isMobileFeaturesOpen ? 'rotate-180 text-primary' : 'opacity-50'}`} translate="no">
                   keyboard_arrow_down
                 </span>
               </button>
@@ -284,7 +284,7 @@ export default function TopNavBar() {
                     onClick={handleLinkClick}
                     className="flex items-center gap-3.5 text-sm text-on-surface-variant/80 hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-primary text-xl">point_of_sale</span>
+                    <span className="material-symbols-outlined notranslate text-primary text-xl" translate="no">point_of_sale</span>
                     <div>
                       <div className="font-semibold text-white">Intelligent POS</div>
                       <div className="text-[11px] text-on-surface-variant/60 font-light mt-0.5">Fluid table management & payments</div>
@@ -295,7 +295,7 @@ export default function TopNavBar() {
                     onClick={handleLinkClick}
                     className="flex items-center gap-3.5 text-sm text-on-surface-variant/80 hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-primary text-xl">kitchen</span>
+                    <span className="material-symbols-outlined notranslate text-primary text-xl" translate="no">kitchen</span>
                     <div>
                       <div className="font-semibold text-white">Kitchen Display</div>
                       <div className="text-[11px] text-on-surface-variant/60 font-light mt-0.5">Prioritized ticket firing times</div>
@@ -306,7 +306,7 @@ export default function TopNavBar() {
                     onClick={handleLinkClick}
                     className="flex items-center gap-3.5 text-sm text-on-surface-variant/80 hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-primary text-xl">diamond</span>
+                    <span className="material-symbols-outlined notranslate text-primary text-xl" translate="no">diamond</span>
                     <div>
                       <div className="font-semibold text-white">Guest Profiles</div>
                       <div className="text-[11px] text-on-surface-variant/60 font-light mt-0.5">VIP preferences & allergies</div>
@@ -317,7 +317,7 @@ export default function TopNavBar() {
                     onClick={handleLinkClick}
                     className="flex items-center gap-3.5 text-sm text-on-surface-variant/80 hover:text-white"
                   >
-                    <span className="material-symbols-outlined text-primary text-xl">support_agent</span>
+                    <span className="material-symbols-outlined notranslate text-primary text-xl" translate="no">support_agent</span>
                     <div>
                       <div className="font-semibold text-white">Global Concierge</div>
                       <div className="text-[11px] text-on-surface-variant/60 font-light mt-0.5">24/7 white-glove technical support</div>
@@ -329,7 +329,7 @@ export default function TopNavBar() {
                     className="text-xs text-primary font-bold tracking-wider uppercase flex items-center gap-1 mt-1 pl-1"
                   >
                     View All Solutions
-                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                    <span className="material-symbols-outlined notranslate text-xs" translate="no">arrow_forward</span>
                   </Link>
                 </div>
               )}
@@ -343,7 +343,7 @@ export default function TopNavBar() {
               }`}
             >
               <span>Partners</span>
-              <span className="material-symbols-outlined text-sm opacity-50">arrow_forward_ios</span>
+              <span className="material-symbols-outlined notranslate text-sm opacity-50" translate="no">arrow_forward_ios</span>
             </Link>
             <Link 
               href="/#pricing" 
@@ -353,7 +353,7 @@ export default function TopNavBar() {
               }`}
             >
               <span>Pricing</span>
-              <span className="material-symbols-outlined text-sm opacity-50">arrow_forward_ios</span>
+              <span className="material-symbols-outlined notranslate text-sm opacity-50" translate="no">arrow_forward_ios</span>
             </Link>
             <Link 
               href="/support" 
@@ -363,7 +363,7 @@ export default function TopNavBar() {
               }`}
             >
               <span>Contact Support</span>
-              <span className="material-symbols-outlined text-sm opacity-50">arrow_forward_ios</span>
+              <span className="material-symbols-outlined notranslate text-sm opacity-50" translate="no">arrow_forward_ios</span>
             </Link>
           </div>
           
