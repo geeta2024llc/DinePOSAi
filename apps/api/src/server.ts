@@ -9,6 +9,7 @@ import tenantRouter from './routes/tenant.routes.js';
 import tableRouter from './routes/table.routes.js';
 import menuRouter from './routes/menu.routes.js';
 import inventoryRouter from './routes/inventory.routes.js';
+import orderRouter from './routes/order.routes.js';
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ app.use('/api/tenant', tenantRouter);
 app.use('/api/tables', tableRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/orders', orderRouter);
 
 // Global Logging Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {

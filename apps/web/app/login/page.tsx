@@ -4,6 +4,18 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
+import { apiRequest } from '@/utils/api';
+
+// Helper to get or create device ID
+const getOrCreateDeviceId = (): string => {
+  if (typeof window === 'undefined') return 'server-side';
+  let deviceId = localStorage.getItem('dinepos_device_id');
+  if (!deviceId) {
+    deviceId = 'dev-' + Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('dinepos_device_id', deviceId);
+  }
+  return deviceId;
+};
 
 // NOTE: Plaintext credentials below are intentional for local demo environment and quick operational role switching/testing.
 const credentialsMap = {
@@ -60,6 +72,21 @@ export default function LoginPage() {
     }
   };
 
+  const handleAuthSuccess = (token: string, user: any, tenant: any) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_jwt_token', token);
+      localStorage.setItem('dinepos_logged_in_email', user.email);
+      localStorage.setItem('dinepos_user_account', JSON.stringify({
+        fullName: user.name,
+        email: user.email,
+        restaurantName: tenant?.name || 'My Restaurant',
+        role: user.role,
+        tenantId: tenant?.id,
+        currency: tenant?.currency || 'JPY',
+      }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -70,61 +97,137 @@ export default function LoginPage() {
     }
 
     const emailLower = email.toLowerCase().trim();
-    let isValid = false;
-    let targetRoute = '';
-
-    if (emailLower === 'superadmin@dinepos.ai' && password === 'superadmin123') {
-      isValid = true;
-      targetRoute = '/super-admin';
-    } else if (emailLower === 'admin@dinepos.ai' && password === 'admin123') {
-      isValid = true;
-      targetRoute = '/dashboard';
-    } else if (emailLower === 'cashier@dinepos.ai' && password === 'cashier123') {
-      isValid = true;
-      targetRoute = '/pos';
-    } else if (emailLower === 'kds@dinepos.ai' && password === 'kds123') {
-      isValid = true;
-      targetRoute = '/kds';
-    } else if (emailLower === 'waiter@dinepos.ai' && password === 'waiter123') {
-      isValid = true;
-      targetRoute = '/menu';
-    } else if (emailLower === 'customer@dinepos.ai' && password === 'customer123') {
-      isValid = true;
-      targetRoute = '/menu';
-    }
-
-    if (!isValid) {
-      setError('Invalid email or password. Please use the relatable password for the selected role.');
-      return;
-    }
-
     setIsLoading(true);
-    
-    // Simulate API delay for a high-end natural feedback experience
-    setTimeout(() => {
-      setIsLoading(false);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('dinepos_logged_in_email', emailLower);
+
+    try {
+      const deviceId = getOrCreateDeviceId();
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: emailLower, password, deviceId }),
+        useAuth: false,
+      });
+
+      if (response.success && response.data?.token) {
+        setIsLoading(false);
+        const { token, user, tenant } = response.data;
+        handleAuthSuccess(token, user, tenant);
+
+        // Map roles to routes
+        let targetRoute = '/dashboard';
+        if (user.role === 'SUPER_ADMIN') targetRoute = '/super-admin';
+        else if (user.role === 'CASHIER') targetRoute = '/pos';
+        else if (user.role === 'KITCHEN') targetRoute = '/kds';
+
+        router.push(targetRoute);
+        return;
       }
-      router.push(targetRoute);
-    }, 1200);
+
+      if (response.isOfflineFallback) {
+        console.log('[Auth] API is offline. Performing offline fallback validation.');
+        // Fallback to local storage credentials map verification
+        let isValid = false;
+        let targetRoute = '';
+
+        if (emailLower === 'superadmin@dinepos.ai' && password === 'superadmin123') {
+          isValid = true;
+          targetRoute = '/super-admin';
+        } else if (emailLower === 'admin@dinepos.ai' && password === 'admin123') {
+          isValid = true;
+          targetRoute = '/dashboard';
+        } else if (emailLower === 'cashier@dinepos.ai' && password === 'cashier123') {
+          isValid = true;
+          targetRoute = '/pos';
+        } else if (emailLower === 'kds@dinepos.ai' && password === 'kds123') {
+          isValid = true;
+          targetRoute = '/kds';
+        } else if (emailLower === 'waiter@dinepos.ai' && password === 'waiter123') {
+          isValid = true;
+          targetRoute = '/menu';
+        } else if (emailLower === 'customer@dinepos.ai' && password === 'customer123') {
+          isValid = true;
+          targetRoute = '/menu';
+        }
+
+        setTimeout(() => {
+          setIsLoading(false);
+          if (!isValid) {
+            setError('Invalid email or password. Please use the relatable password for the selected role.');
+            return;
+          }
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('dinepos_logged_in_email', emailLower);
+            // Setup a mock account structure for offline mode
+            localStorage.setItem('dinepos_user_account', JSON.stringify({
+              fullName: emailLower.split('@')[0],
+              email: emailLower,
+              restaurantName: 'Offline Demo Restaurant',
+              role: emailLower === 'superadmin@dinepos.ai' ? 'SUPER_ADMIN' : 'MANAGER',
+              currency: 'JPY',
+            }));
+          }
+          router.push(targetRoute);
+        }, 800);
+        return;
+      }
+
+      // If the API explicitly returned success: false with an error message
+      setIsLoading(false);
+      setError(response.error || 'Authentication failed. Please verify your credentials.');
+
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.message || 'An error occurred during authentication.');
+    }
   };
 
-  const handleDemoLogin = (role: 'super-admin' | 'admin' | 'cashier' | 'customer' | 'kds' | 'waiter') => {
+  const handleDemoLogin = async (role: 'super-admin' | 'admin' | 'cashier' | 'customer' | 'kds' | 'waiter') => {
     const creds = credentialsMap[role];
     setSelectedRole(role);
     setEmail(creds.email);
     setPassword(creds.password);
     setIsLoading(true);
     setError('');
-    
-    setTimeout(() => {
+
+    try {
+      const deviceId = getOrCreateDeviceId();
+      const response = await apiRequest('/api/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: creds.email, password: creds.password, deviceId }),
+        useAuth: false,
+      });
+
+      if (response.success && response.data?.token) {
+        setIsLoading(false);
+        const { token, user, tenant } = response.data;
+        handleAuthSuccess(token, user, tenant);
+        router.push(creds.target);
+        return;
+      }
+
+      // Offline or network error fallback
+      setTimeout(() => {
+        setIsLoading(false);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('dinepos_logged_in_email', creds.email);
+          localStorage.setItem('dinepos_user_account', JSON.stringify({
+            fullName: role.toUpperCase(),
+            email: creds.email,
+            restaurantName: 'Offline Demo Restaurant',
+            role: role === 'super-admin' ? 'SUPER_ADMIN' : 'MANAGER',
+            currency: 'JPY',
+          }));
+        }
+        router.push(creds.target);
+      }, 800);
+
+    } catch (err) {
       setIsLoading(false);
+      // Fallback
       if (typeof window !== 'undefined') {
         localStorage.setItem('dinepos_logged_in_email', creds.email);
       }
       router.push(creds.target);
-    }, 800);
+    }
   };
 
   return (

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
+import { apiRequest } from '@/utils/api';
 
 interface OrderItemOption {
   text: string;
@@ -159,6 +160,40 @@ const initialTickets: KdsTicket[] = [
   }
 ];
 
+// Helper to map DB orders to KdsTicket format
+const mapDbOrderToKdsTicket = (o: any): KdsTicket => {
+  const createdTime = new Date(o.createdAt).getTime();
+  const nowTime = new Date().getTime();
+  const secondsElapsed = Math.max(0, Math.floor((nowTime - createdTime) / 1000));
+  
+  let resolvedDiningType: 'dine-in' | 'takeaway' | 'delivery' = 'dine-in';
+  if (o.customerType === 'TAKE_OUT') resolvedDiningType = 'takeaway';
+  else if (o.customerType === 'DELIVERY') resolvedDiningType = 'delivery';
+
+  let resolvedStatus: 'pending' | 'cooking' | 'complete' | 'rejected' = 'pending';
+  if (o.status === 'COOKING') resolvedStatus = 'cooking';
+  else if (o.status === 'READY' || o.status === 'SERVED') resolvedStatus = 'complete';
+  else if (o.status === 'CANCELLED') resolvedStatus = 'rejected';
+
+  const mappedItems = o.items.map((i: any) => ({
+    name: i.name,
+    qty: i.quantity,
+    price: i.price,
+    notes: i.notes || undefined,
+    options: []
+  }));
+
+  return {
+    id: o.id,
+    tableNumber: o.tableName || (o.customerType === 'TAKE_OUT' ? 'Walk-in Takeaway' : o.customerType === 'DELIVERY' ? 'Delivery' : `Table ${o.orderNumber}`),
+    isVip: o.total >= 80,
+    secondsElapsed,
+    type: resolvedDiningType,
+    status: resolvedStatus,
+    items: mappedItems
+  };
+};
+
 export default function KdsPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [tickets, setTickets] = useState<KdsTicket[]>(initialTickets);
@@ -167,18 +202,36 @@ export default function KdsPage() {
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Load tickets on mount
-  useEffect(() => {
-    const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
-    if (sharedTicketsStr) {
-      try {
-        setTickets(JSON.parse(sharedTicketsStr));
-      } catch (e) {
-        console.error(e);
+  // Sync active orders from backend with offline fallback
+  const syncActiveOrders = async () => {
+    try {
+      const res = await apiRequest<any[]>('/api/orders');
+      if (res.success && res.data) {
+        const dbTickets = res.data.map(mapDbOrderToKdsTicket);
+        setTickets(dbTickets);
+        localStorage.setItem('dinepos_shared_tickets', JSON.stringify(dbTickets));
+      } else {
+        const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+        if (sharedTicketsStr) {
+          setTickets(JSON.parse(sharedTicketsStr));
+        }
       }
-    } else {
-      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(initialTickets));
+    } catch (err) {
+      console.error('[KDS] Failed syncing active orders:', err);
+      const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+      if (sharedTicketsStr) {
+        try {
+          setTickets(JSON.parse(sharedTicketsStr));
+        } catch (e) {}
+      }
     }
+  };
+
+  // Load tickets on mount and set up polling interval (5 seconds)
+  useEffect(() => {
+    syncActiveOrders();
+    const pollInterval = setInterval(syncActiveOrders, 5000);
+    return () => clearInterval(pollInterval);
   }, []);
 
   // Listen to StorageEvent updates
@@ -219,49 +272,94 @@ export default function KdsPage() {
     }, 3000);
   };
 
-  const handleStartCooking = (id: string, tableNumber: string) => {
+  const handleStartCooking = async (id: string, tableNumber: string) => {
     setTickets(prev => {
       const updated = prev.map(t => (t.id === id ? { ...t, status: 'cooking' as const } : t));
       localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
       return updated;
     });
     triggerToast(`${tableNumber} order moved to Cooking!`);
+
+    try {
+      await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'COOKING' })
+      });
+    } catch (err) {
+      console.error('[KDS] Failed updating status on server:', err);
+    }
   };
 
-  const handleCompleteOrder = (id: string, tableNumber: string) => {
+  const handleCompleteOrder = async (id: string, tableNumber: string) => {
     setTickets(prev => {
       const updated = prev.map(t => (t.id === id ? { ...t, status: 'complete' as const } : t));
       localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
       return updated;
     });
     triggerToast(`${tableNumber} order marked Ready!`);
+
+    try {
+      await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'READY' })
+      });
+    } catch (err) {
+      console.error('[KDS] Failed updating status on server:', err);
+    }
   };
 
-  const handleRejectOrder = (id: string, tableNumber: string) => {
+  const handleRejectOrder = async (id: string, tableNumber: string) => {
     setTickets(prev => {
       const updated = prev.map(t => (t.id === id ? { ...t, status: 'rejected' as const } : t));
       localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
       return updated;
     });
     triggerToast(`${tableNumber} order rejected.`);
+
+    try {
+      await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'CANCELLED' })
+      });
+    } catch (err) {
+      console.error('[KDS] Failed updating status on server:', err);
+    }
   };
 
-  const handleRestoreOrder = (id: string, tableNumber: string) => {
+  const handleRestoreOrder = async (id: string, tableNumber: string) => {
     setTickets(prev => {
       const updated = prev.map(t => (t.id === id ? { ...t, status: 'pending' as const } : t));
       localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
       return updated;
     });
     triggerToast(`${tableNumber} order restored.`);
+
+    try {
+      await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'PENDING' })
+      });
+    } catch (err) {
+      console.error('[KDS] Failed updating status on server:', err);
+    }
   };
 
-  const handleBumpOrder = (id: string, tableNumber: string) => {
+  const handleBumpOrder = async (id: string, tableNumber: string) => {
     setTickets(prev => {
       const updated = prev.filter(t => t.id !== id);
       localStorage.setItem('dinepos_shared_tickets', JSON.stringify(updated));
       return updated;
     });
     triggerToast(`${tableNumber} ticket archived.`);
+
+    try {
+      await apiRequest(`/api/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'SERVED' })
+      });
+    } catch (err) {
+      console.error('[KDS] Failed updating status on server:', err);
+    }
   };
 
   const formatTime = (totalSeconds: number) => {

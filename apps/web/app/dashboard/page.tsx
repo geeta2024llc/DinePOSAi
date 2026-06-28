@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
+import { apiRequest } from '@/utils/api';
 import {
   InventoryItem,
   MenuItemRecipe,
@@ -1616,6 +1617,9 @@ export default function DashboardPage() {
   const [establishmentName, setEstablishmentName] = useState('The Midnight Lounge');
   const [businessAddress, setBusinessAddress] = useState('101 Executive Blvd, Suite 400, Metro City');
   const [contactEmail, setContactEmail] = useState('admin@midnightlounge.com');
+  const [dineInEnabled, setDineInEnabled] = useState(true);
+  const [takeawayEnabled, setTakeawayEnabled] = useState(true);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
 
   // Routing Toggles States
   const [endOfDaySummary, setEndOfDaySummary] = useState(true);
@@ -1669,6 +1673,13 @@ export default function DashboardPage() {
       const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
       const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
       const savedTaxRateDelivery = localStorage.getItem('dinepos_tax_rate_delivery');
+      const dineInOk = localStorage.getItem('dinepos_dine_in_enabled') !== 'false';
+      const takeawayOk = localStorage.getItem('dinepos_takeaway_enabled') !== 'false';
+      const deliveryOk = localStorage.getItem('dinepos_delivery_enabled') !== 'false';
+
+      setDineInEnabled(dineInOk);
+      setTakeawayEnabled(takeawayOk);
+      setDeliveryEnabled(deliveryOk);
 
       if (savedBg) setCustomBg(savedBg);
       if (savedCardBg) setCustomCardBg(savedCardBg);
@@ -1820,6 +1831,7 @@ export default function DashboardPage() {
   const [menuItemsList, setMenuItemsList] = useState<any[]>([]);
   const [showMenuAddEditModal, setShowMenuAddEditModal] = useState(false);
   const [editingMenuItem, setEditingMenuItem] = useState<any | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Menu Editor Form States
   const [menuFormName, setMenuFormName] = useState('');
@@ -1861,28 +1873,6 @@ export default function DashboardPage() {
       { id: 'drink-2', name: 'Signature Emerald Gimlet', category: 'drinks', price: 22, cost: 6, description: 'Empress gin, fresh lime, botanical cucumber elixir, fresh mint essence, served in a chilled crystal coupette.', image: '/images/emerald_gimlet.png', tags: ['GF', 'Veg'] }
     ];
 
-    const savedMenu = localStorage.getItem('dinepos_menu_items');
-    if (savedMenu) {
-      try {
-        let loadedItems = JSON.parse(savedMenu);
-        if (!loadedItems.some((item: any) => item.category === 'combos')) {
-          const defaultCombos = [
-            { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, cost: 40, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
-            { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, cost: 20, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] }
-          ];
-          loadedItems = [...loadedItems, ...defaultCombos];
-          localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
-        }
-        setMenuItemsList(loadedItems);
-      } catch (e) {
-        console.error('Failed to parse menu items:', e);
-        setMenuItemsList(defaultMenuItems);
-      }
-    } else {
-      setMenuItemsList(defaultMenuItems);
-      localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
-    }
-
     const defaultCategories = [
       { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
       { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' },
@@ -1891,31 +1881,91 @@ export default function DashboardPage() {
       { id: 'desserts', name: 'Desserts', icon: 'icecream' },
       { id: 'drinks', name: 'Drinks', icon: 'local_bar' }
     ];
-    const savedCategories = localStorage.getItem('dinepos_menu_categories');
-    if (savedCategories) {
-      try {
-        let loadedCategories = JSON.parse(savedCategories);
-        loadedCategories = loadedCategories.map((c: any) => 
-          c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
-        );
-        if (!loadedCategories.some((c: any) => c.id === 'combos')) {
-          const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
-          if (specIdx !== -1) {
-            loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
-          } else {
-            loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
-          }
-        }
-        localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
-        setCategories(loadedCategories);
-      } catch (e) {
-        console.error('Failed to parse saved categories:', e);
-        setCategories(defaultCategories);
+
+    const loadMenuAndCategories = async () => {
+      const catRes = await apiRequest<any[]>('/api/menu/categories');
+      const itemRes = await apiRequest<any[]>('/api/menu/items');
+
+      if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+        const mappedCategories = catRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          icon: c.icon || 'restaurant'
+        }));
+        
+        const mappedItems = itemRes.data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          category: item.categoryId,
+          price: item.price,
+          cost: item.cost || Math.round(item.price * 0.3),
+          description: item.description || '',
+          image: item.imageUrl || '/images/wagyu_ribeye.png',
+          tags: item.tags || [],
+          mealPeriod: item.mealPeriod || 'both',
+          pairingId: item.pairingId || '',
+          active: item.isAvailable !== false
+        }));
+
+        setCategories(mappedCategories);
+        setMenuItemsList(mappedItems);
+        
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+        return;
       }
-    } else {
-      setCategories(defaultCategories);
-      localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
-    }
+
+      // Offline Fallback - load local storage
+      const savedMenu = localStorage.getItem('dinepos_menu_items');
+      if (savedMenu) {
+        try {
+          let loadedItems = JSON.parse(savedMenu);
+          if (!loadedItems.some((item: any) => item.category === 'combos')) {
+            const defaultCombos = [
+              { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, cost: 40, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
+              { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, cost: 20, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] }
+            ];
+            loadedItems = [...loadedItems, ...defaultCombos];
+            localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
+          }
+          setMenuItemsList(loadedItems);
+        } catch (e) {
+          console.error('Failed to parse menu items:', e);
+          setMenuItemsList(defaultMenuItems);
+        }
+      } else {
+        setMenuItemsList(defaultMenuItems);
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
+      }
+
+      const savedCategories = localStorage.getItem('dinepos_menu_categories');
+      if (savedCategories) {
+        try {
+          let loadedCategories = JSON.parse(savedCategories);
+          loadedCategories = loadedCategories.map((c: any) => 
+            c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
+          );
+          if (!loadedCategories.some((c: any) => c.id === 'combos')) {
+            const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
+            if (specIdx !== -1) {
+              loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+            } else {
+              loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+            }
+          }
+          localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
+          setCategories(loadedCategories);
+        } catch (e) {
+          console.error('Failed to parse saved categories:', e);
+          setCategories(defaultCategories);
+        }
+      } else {
+        setCategories(defaultCategories);
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
+      }
+    };
+
+    loadMenuAndCategories();
   }, []);
 
   useEffect(() => {
@@ -1943,6 +1993,15 @@ export default function DashboardPage() {
         if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
+      }
+      if (e.key === 'dinepos_dine_in_enabled' && e.newValue) {
+        setDineInEnabled(e.newValue !== 'false');
+      }
+      if (e.key === 'dinepos_takeaway_enabled' && e.newValue) {
+        setTakeawayEnabled(e.newValue !== 'false');
+      }
+      if (e.key === 'dinepos_delivery_enabled' && e.newValue) {
+        setDeliveryEnabled(e.newValue !== 'false');
       }
       if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
         setTaxRateDineIn(parseFloat(e.newValue));
@@ -2159,18 +2218,39 @@ export default function DashboardPage() {
     triggerToast(!pairedEpson ? 'Epson TM-m30II paired!' : 'Epson printer unpaired.', 'success');
   };
 
-  const handleToggleSpecial = (item: any) => {
+  const handleToggleSpecial = async (item: any) => {
     const updatedCategory = item.category === 'special' ? 'mains' : 'special';
+    
+    let targetCatId = updatedCategory;
+    if (updatedCategory === 'special') {
+      const specCat = categories.find(c => c.name.toLowerCase().includes('special') || c.id === 'special');
+      if (specCat) targetCatId = specCat.id;
+    } else {
+      const mainCat = categories.find(c => c.name.toLowerCase().includes('main') || c.id === 'mains');
+      if (mainCat) targetCatId = mainCat.id;
+    }
+
+    await apiRequest(`/api/menu/items/${item.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ categoryId: targetCatId })
+    });
+
     const updatedList = menuItemsList.map(m => 
-      m.id === item.id ? { ...m, category: updatedCategory } : m
+      m.id === item.id ? { ...m, category: targetCatId } : m
     );
     setMenuItemsList(updatedList);
     localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
     triggerToast(item.category === 'special' ? `Removed ${item.name} from Specials.` : `Marked ${item.name} as Special Dish!`, 'success');
   };
 
-  const handleToggleActive = (item: any) => {
+  const handleToggleActive = async (item: any) => {
     const isActive = item.active !== false;
+    
+    await apiRequest(`/api/menu/items/${item.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ isAvailable: !isActive })
+    });
+
     const updatedList = menuItemsList.map(m => 
       m.id === item.id ? { ...m, active: !isActive } : m
     );
@@ -2179,14 +2259,18 @@ export default function DashboardPage() {
     triggerToast(isActive ? `Hid ${item.name} from Digital Menu.` : `Showed ${item.name} on Digital Menu!`, 'success');
   };
 
-  const handleDeleteMenuItem = (id: string) => {
+  const handleDeleteMenuItem = async (id: string) => {
+    await apiRequest(`/api/menu/items/${id}`, {
+      method: 'DELETE'
+    });
+
     const updatedList = menuItemsList.filter(m => m.id !== id);
     setMenuItemsList(updatedList);
     localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
     triggerToast('Menu item deleted successfully.', 'success');
   };
 
-  const handleSaveMenuItem = (e: React.FormEvent) => {
+  const handleSaveMenuItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!menuFormName.trim()) {
       triggerToast('Item name is required.', 'info');
@@ -2197,94 +2281,236 @@ export default function DashboardPage() {
       return;
     }
 
-    let updatedList;
-    if (editingMenuItem) {
-      // Editing existing item
-      updatedList = menuItemsList.map(m => 
-        m.id === editingMenuItem.id 
-          ? { 
-              ...m, 
-              name: menuFormName, 
-              category: menuFormCategory, 
-              price: menuFormPrice, 
-              cost: menuFormCost, 
-              description: menuFormDescription, 
-              image: menuFormImage, 
-              tags: menuFormTags,
-              mealPeriod: menuFormMealPeriod,
-              pairingId: menuFormPairingId
-            }
-          : m
-      );
-      triggerToast(`Successfully updated menu item: ${menuFormName}`, 'success');
-    } else {
-      // Adding new item
-      const newId = `item-${Date.now()}`;
-      const newItem = {
-        id: newId,
-        name: menuFormName,
-        category: menuFormCategory,
-        price: menuFormPrice,
-        cost: menuFormCost,
-        description: menuFormDescription,
-        image: menuFormImage,
-        tags: menuFormTags,
-        mealPeriod: menuFormMealPeriod,
-        pairingId: menuFormPairingId,
-        active: true
-      };
-      updatedList = [...menuItemsList, newItem];
-      triggerToast(`Successfully added menu item: ${menuFormName}`, 'success');
-    }
+    setIsLoading(true);
 
-    setMenuItemsList(updatedList);
-    localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
-    setShowMenuAddEditModal(false);
-    setEditingMenuItem(null);
+    try {
+      let response;
+      if (editingMenuItem) {
+        response = await apiRequest(`/api/menu/items/${editingMenuItem.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            categoryId: menuFormCategory,
+            name: menuFormName,
+            description: menuFormDescription,
+            price: menuFormPrice,
+            imageUrl: menuFormImage,
+            isAvailable: true
+          })
+        });
+      } else {
+        response = await apiRequest('/api/menu/items', {
+          method: 'POST',
+          body: JSON.stringify({
+            categoryId: menuFormCategory,
+            name: menuFormName,
+            description: menuFormDescription,
+            price: menuFormPrice,
+            imageUrl: menuFormImage
+          })
+        });
+      }
+
+      setIsLoading(false);
+
+      if (response.success) {
+        const dbItem = response.data?.item || response.data;
+        const itemId = dbItem?.id || editingMenuItem?.id || `item-${Date.now()}`;
+        
+        let updatedList;
+        if (editingMenuItem) {
+          updatedList = menuItemsList.map(m => 
+            m.id === editingMenuItem.id 
+              ? { 
+                  ...m, 
+                  name: menuFormName, 
+                  category: menuFormCategory, 
+                  price: menuFormPrice, 
+                  cost: menuFormCost, 
+                  description: menuFormDescription, 
+                  image: menuFormImage, 
+                  tags: menuFormTags,
+                  mealPeriod: menuFormMealPeriod,
+                  pairingId: menuFormPairingId
+                }
+              : m
+          );
+          triggerToast(`Successfully updated menu item: ${menuFormName}`, 'success');
+        } else {
+          const newItem = {
+            id: itemId,
+            name: menuFormName,
+            category: menuFormCategory,
+            price: menuFormPrice,
+            cost: menuFormCost,
+            description: menuFormDescription,
+            image: menuFormImage,
+            tags: menuFormTags,
+            mealPeriod: menuFormMealPeriod,
+            pairingId: menuFormPairingId,
+            active: true
+          };
+          updatedList = [...menuItemsList, newItem];
+          triggerToast(`Successfully added menu item: ${menuFormName}`, 'success');
+        }
+
+        setMenuItemsList(updatedList);
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
+        setShowMenuAddEditModal(false);
+        setEditingMenuItem(null);
+        return;
+      }
+
+      if (response.isOfflineFallback) {
+        let updatedList;
+        if (editingMenuItem) {
+          updatedList = menuItemsList.map(m => 
+            m.id === editingMenuItem.id 
+              ? { 
+                  ...m, 
+                  name: menuFormName, 
+                  category: menuFormCategory, 
+                  price: menuFormPrice, 
+                  cost: menuFormCost, 
+                  description: menuFormDescription, 
+                  image: menuFormImage, 
+                  tags: menuFormTags,
+                  mealPeriod: menuFormMealPeriod,
+                  pairingId: menuFormPairingId
+                }
+              : m
+          );
+          triggerToast(`Successfully updated menu item: ${menuFormName} (Offline)`, 'success');
+        } else {
+          const newId = `item-${Date.now()}`;
+          const newItem = {
+            id: newId,
+            name: menuFormName,
+            category: menuFormCategory,
+            price: menuFormPrice,
+            cost: menuFormCost,
+            description: menuFormDescription,
+            image: menuFormImage,
+            tags: menuFormTags,
+            mealPeriod: menuFormMealPeriod,
+            pairingId: menuFormPairingId,
+            active: true
+          };
+          updatedList = [...menuItemsList, newItem];
+          triggerToast(`Successfully added menu item: ${menuFormName} (Offline)`, 'success');
+        }
+
+        setMenuItemsList(updatedList);
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
+        setShowMenuAddEditModal(false);
+        setEditingMenuItem(null);
+        return;
+      }
+
+      triggerToast(response.error || 'Failed to save menu item.', 'info');
+    } catch (err: any) {
+      setIsLoading(false);
+      triggerToast(err.message || 'Error saving menu item.', 'info');
+    }
   };
 
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!categoryFormName.trim()) {
       triggerToast('Category name is required.', 'info');
       return;
     }
 
-    let updatedList;
-    if (editingCategory) {
-      updatedList = categories.map(cat => 
-        cat.id === editingCategory.id 
-          ? { ...cat, name: categoryFormName, icon: categoryFormIcon }
-          : cat
-      );
-      triggerToast(`Category updated: ${categoryFormName}`, 'success');
-    } else {
-      const generatedId = categoryFormName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || `cat-${Date.now()}`;
-      if (categories.some(c => c.id === generatedId)) {
-        triggerToast('A category with a similar name already exists.', 'info');
+    try {
+      let response;
+      if (editingCategory) {
+        response = await apiRequest(`/api/menu/categories/${editingCategory.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: categoryFormName })
+        });
+      } else {
+        response = await apiRequest('/api/menu/categories', {
+          method: 'POST',
+          body: JSON.stringify({ name: categoryFormName })
+        });
+      }
+
+      if (response.success) {
+        const dbCategory = response.data?.category || response.data;
+        const catId = dbCategory?.id || editingCategory?.id || categoryFormName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        
+        let updatedList;
+        if (editingCategory) {
+          updatedList = categories.map(cat => 
+            cat.id === editingCategory.id 
+              ? { ...cat, name: categoryFormName, icon: categoryFormIcon }
+              : cat
+          );
+          triggerToast(`Category updated: ${categoryFormName}`, 'success');
+        } else {
+          const newCategory = {
+            id: catId,
+            name: categoryFormName,
+            icon: categoryFormIcon
+          };
+          updatedList = [...categories, newCategory];
+          triggerToast(`Category added: ${categoryFormName}`, 'success');
+        }
+
+        setCategories(updatedList);
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(updatedList));
+        setEditingCategory(null);
+        setCategoryFormName('');
+        setCategoryFormIcon('restaurant');
         return;
       }
-      const newCategory = {
-        id: generatedId,
-        name: categoryFormName,
-        icon: categoryFormIcon
-      };
-      updatedList = [...categories, newCategory];
-      triggerToast(`Category added: ${categoryFormName}`, 'success');
-    }
 
-    setCategories(updatedList);
-    localStorage.setItem('dinepos_menu_categories', JSON.stringify(updatedList));
-    setEditingCategory(null);
-    setCategoryFormName('');
-    setCategoryFormIcon('restaurant');
+      if (response.isOfflineFallback) {
+        let updatedList;
+        if (editingCategory) {
+          updatedList = categories.map(cat => 
+            cat.id === editingCategory.id 
+              ? { ...cat, name: categoryFormName, icon: categoryFormIcon }
+              : cat
+          );
+          triggerToast(`Category updated: ${categoryFormName} (Offline)`, 'success');
+        } else {
+          const generatedId = categoryFormName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || `cat-${Date.now()}`;
+          if (categories.some(c => c.id === generatedId)) {
+            triggerToast('A category with a similar name already exists.', 'info');
+            return;
+          }
+          const newCategory = {
+            id: generatedId,
+            name: categoryFormName,
+            icon: categoryFormIcon
+          };
+          updatedList = [...categories, newCategory];
+          triggerToast(`Category added: ${categoryFormName} (Offline)`, 'success');
+        }
+
+        setCategories(updatedList);
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(updatedList));
+        setEditingCategory(null);
+        setCategoryFormName('');
+        setCategoryFormIcon('restaurant');
+        return;
+      }
+
+      triggerToast(response.error || 'Failed to save category.', 'info');
+    } catch (err: any) {
+      triggerToast(err.message || 'Error saving category.', 'info');
+    }
   };
 
-  const handleDeleteCategory = (id: string) => {
+  const handleDeleteCategory = async (id: string) => {
     if (categories.length <= 1) {
       triggerToast('Cannot delete the last category. At least one category must exist.', 'info');
       return;
     }
+
+    await apiRequest(`/api/menu/categories/${id}`, {
+      method: 'DELETE'
+    });
 
     const updatedCategories = categories.filter(c => c.id !== id);
     setCategories(updatedCategories);
@@ -4729,6 +4955,91 @@ export default function DashboardPage() {
                         disabled={!showCustomFooter}
                         className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-white/20 focus:outline-none transition-colors font-medium ${!showCustomFooter ? 'opacity-40' : 'focus:border-[#ffe2ab]/40'}`}
                       />
+                    </div>
+                  </div>
+
+                  {/* Dining Modes Configuration */}
+                  <div className={`${t.cardBgOpaque} rounded-2xl p-7 shadow-xl space-y-5`}>
+                    <div className="flex items-center gap-2 mb-5">
+                      <span className={`material-symbols-outlined ${t.accent} text-lg`}>restaurant_menu</span>
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide select-none`}>Dining Modes</h3>
+                    </div>
+                    <p className={`text-[11px] ${t.textMuted} -mt-2 leading-relaxed`}>
+                      Enable or disable dining options available to customers in the digital menu and cashier terminals.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+                      {/* Dine-in Toggle */}
+                      <div className="flex flex-col justify-between bg-[#0e0e0d]/30 p-4 border border-white/5 rounded-xl space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#ffe2ab] text-sm">restaurant</span>
+                          <h4 className="text-xs font-bold text-white leading-none">Dine-In</h4>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVal = !dineInEnabled;
+                              setDineInEnabled(newVal);
+                              localStorage.setItem('dinepos_dine_in_enabled', String(newVal));
+                              window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_dine_in_enabled', newValue: String(newVal) }));
+                              triggerToast(newVal ? 'Dine-In enabled!' : 'Dine-In disabled.', 'success');
+                            }}
+                            className={`w-9 h-5 rounded-full p-0.5 transition-colors ${dineInEnabled ? t.accentBg : 'bg-white/20'}`}
+                          >
+                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${dineInEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Takeaway Toggle */}
+                      <div className="flex flex-col justify-between bg-[#0e0e0d]/30 p-4 border border-white/5 rounded-xl space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#38bdf8] text-sm">takeout_dining</span>
+                          <h4 className="text-xs font-bold text-white leading-none">Take Away</h4>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVal = !takeawayEnabled;
+                              setTakeawayEnabled(newVal);
+                              localStorage.setItem('dinepos_takeaway_enabled', String(newVal));
+                              window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_takeaway_enabled', newValue: String(newVal) }));
+                              triggerToast(newVal ? 'Take Away enabled!' : 'Take Away disabled.', 'success');
+                            }}
+                            className={`w-9 h-5 rounded-full p-0.5 transition-colors ${takeawayEnabled ? t.accentBg : 'bg-white/20'}`}
+                          >
+                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${takeawayEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Delivery Toggle */}
+                      <div className="flex flex-col justify-between bg-[#0e0e0d]/30 p-4 border border-white/5 rounded-xl space-y-3">
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-[#fb923c] text-sm">moped</span>
+                          <h4 className="text-xs font-bold text-white leading-none">Delivery</h4>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newVal = !deliveryEnabled;
+                              setDeliveryEnabled(newVal);
+                              localStorage.setItem('dinepos_delivery_enabled', String(newVal));
+                              window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_delivery_enabled', newValue: String(newVal) }));
+                              triggerToast(newVal ? 'Delivery enabled!' : 'Delivery disabled.', 'success');
+                            }}
+                            className={`w-9 h-5 rounded-full p-0.5 transition-colors ${deliveryEnabled ? t.accentBg : 'bg-white/20'}`}
+                          >
+                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${deliveryEnabled ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 

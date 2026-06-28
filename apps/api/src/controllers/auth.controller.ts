@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { supabase } from '../utils/supabase.js';
 import { ApiResponse, UserRole } from '@dineposai/shared-types';
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-key-at-least-32-chars-long' : '');
 if (!JWT_SECRET) {
   throw new Error('FATAL: JWT_SECRET environment variable is not set. Server will not start.');
 }

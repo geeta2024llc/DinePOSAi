@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
+import { apiRequest } from '@/utils/api';
 
 function RegisterForm() {
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
@@ -70,44 +71,125 @@ function RegisterForm() {
     if (!agreeToTerms) { setError('Please agree to the Terms and Privacy Policy to continue.'); return; }
     setIsLoading(true);
 
-    const joinedDate = new Date().toISOString().split('T')[0];
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 14); // 14 days trial duration
-    const expiryStr = expiryDate.toISOString().split('T')[0];
+    const emailLower = email.toLowerCase().trim();
 
-    const userAccount = {
-      fullName,
-      email: email.toLowerCase(),
-      restaurantName,
-      tier: selectedTier,
-      plan: 'TRIAL',
-      joinedDate,
-      expiryDate: expiryStr,
-    };
-    
     try {
-      localStorage.setItem('dinepos_user_account', JSON.stringify(userAccount));
-      localStorage.setItem('dinepos_logged_in_email', email.toLowerCase());
-    } catch (err) {
-      console.error('Failed to write user account to localStorage:', err);
-    }
+      // 1. Call the backend signup endpoint
+      const signupResponse = await apiRequest('/api/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({
+          businessName: restaurantName,
+          name: fullName,
+          email: emailLower,
+          password: password,
+          country: 'Japan', // default country
+        }),
+        useAuth: false,
+      });
 
-    if (referralCode.trim()) {
-      try {
-        const stored = localStorage.getItem('dinepos_referrals');
-        if (stored) {
-          const referrals = JSON.parse(stored);
-          const idx = referrals.findIndex((r: { code: string }) => r.code.toUpperCase() === referralCode.trim().toUpperCase());
-          if (idx !== -1) {
-            referrals[idx].invitedBusinesses.push({ id: `TEN-${Math.floor(1000 + Math.random() * 9000)}`, name: restaurantName, contact: fullName, joinedDate: new Date().toISOString().split('T')[0], status: 'Demo Use', services: ['POS Terminal', 'KDS Screen'], reward: rewardPerSignup });
-            referrals[idx].pendingRewards += rewardPerSignup;
-            localStorage.setItem('dinepos_referrals', JSON.stringify(referrals));
-            window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_referrals', newValue: JSON.stringify(referrals) }));
+      if (signupResponse.success) {
+        // 2. Automatically log in after successful signup
+        const deviceId = typeof window !== 'undefined' 
+          ? localStorage.getItem('dinepos_device_id') || 'dev-' + Math.random().toString(36).substring(2, 15)
+          : 'server-side';
+
+        const loginResponse = await apiRequest('/api/auth/login', {
+          method: 'POST',
+          body: JSON.stringify({
+            email: emailLower,
+            password: password,
+            deviceId,
+          }),
+          useAuth: false,
+        });
+
+        if (loginResponse.success && loginResponse.data?.token) {
+          const { token, user, tenant } = loginResponse.data;
+          
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('dinepos_jwt_token', token);
+            localStorage.setItem('dinepos_logged_in_email', user.email);
+            localStorage.setItem('dinepos_user_account', JSON.stringify({
+              fullName: user.name,
+              email: user.email,
+              restaurantName: tenant?.name || restaurantName,
+              tier: selectedTier,
+              plan: tenant?.plan || 'TRIAL',
+              role: user.role,
+              tenantId: tenant?.id,
+              currency: tenant?.currency || 'JPY',
+            }));
           }
+
+          // Handle referral code registration on success if provided
+          handleReferralStorage();
+          setIsLoading(false);
+          router.push('/dashboard');
+          return;
         }
-      } catch { /* */ }
+      }
+
+      // If offline, perform fallback mock signup logic
+      if (signupResponse.isOfflineFallback) {
+        console.log('[Register] API is offline. Performing offline registration fallback.');
+        const joinedDate = new Date().toISOString().split('T')[0];
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + 14); // 14 days trial duration
+        const expiryStr = expiryDate.toISOString().split('T')[0];
+
+        const userAccount = {
+          fullName,
+          email: emailLower,
+          restaurantName,
+          tier: selectedTier,
+          plan: 'TRIAL',
+          joinedDate,
+          expiryDate: expiryStr,
+        };
+
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('dinepos_user_account', JSON.stringify(userAccount));
+          localStorage.setItem('dinepos_logged_in_email', emailLower);
+        }
+
+        handleReferralStorage();
+        setTimeout(() => { setIsLoading(false); router.push('/dashboard'); }, 800);
+        return;
+      }
+
+      // If the API server specifically returned validation or other error
+      setIsLoading(false);
+      setError(signupResponse.error || 'Registration failed. Please check your credentials and try again.');
+
+    } catch (err: any) {
+      setIsLoading(false);
+      setError(err.message || 'An error occurred during registration.');
     }
-    setTimeout(() => { setIsLoading(false); router.push('/dashboard'); }, 1500);
+  };
+
+  const handleReferralStorage = () => {
+    if (!referralCode.trim()) return;
+    try {
+      const stored = localStorage.getItem('dinepos_referrals');
+      if (stored) {
+        const referrals = JSON.parse(stored);
+        const idx = referrals.findIndex((r: { code: string }) => r.code.toUpperCase() === referralCode.trim().toUpperCase());
+        if (idx !== -1) {
+          referrals[idx].invitedBusinesses.push({ 
+            id: `TEN-${Math.floor(1000 + Math.random() * 9000)}`, 
+            name: restaurantName, 
+            contact: fullName, 
+            joinedDate: new Date().toISOString().split('T')[0], 
+            status: 'Demo Use', 
+            services: ['POS Terminal', 'KDS Screen'], 
+            reward: rewardPerSignup 
+          });
+          referrals[idx].pendingRewards += rewardPerSignup;
+          localStorage.setItem('dinepos_referrals', JSON.stringify(referrals));
+          window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_referrals', newValue: JSON.stringify(referrals) }));
+        }
+      }
+    } catch { /* */ }
   };
 
   const inputClass = (active?: boolean) =>

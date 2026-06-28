@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { migrateCart, generateCartKey } from './cartUtils';
+import { apiRequest } from '@/utils/api';
 
 type SpicyLevel = 'Mild' | 'Normal' | 'Hot' | 'Super Hot';
 
@@ -278,6 +279,10 @@ export default function DigitalMenuPage() {
 
 
   const [diningOption, setDiningOption] = useState<'all' | 'dine-in' | 'takeaway' | 'delivery'>('dine-in');
+  const [dineInEnabled, setDineInEnabled] = useState(true);
+  const [takeawayEnabled, setTakeawayEnabled] = useState(true);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
+  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('dinepos_dining_option', diningOption);
@@ -520,9 +525,29 @@ export default function DigitalMenuPage() {
     if (savedCart) {
       setCart(migrateCart(savedCart));
     }
+    const dineInOk = localStorage.getItem('dinepos_dine_in_enabled') !== 'false';
+    const takeawayOk = localStorage.getItem('dinepos_takeaway_enabled') !== 'false';
+    const deliveryOk = localStorage.getItem('dinepos_delivery_enabled') !== 'false';
+    setDineInEnabled(dineInOk);
+    setTakeawayEnabled(takeawayOk);
+    setDeliveryEnabled(deliveryOk);
+
+    let initialDiningOption = 'dine-in';
+    if (dineInOk) initialDiningOption = 'dine-in';
+    else if (takeawayOk) initialDiningOption = 'takeaway';
+    else if (deliveryOk) initialDiningOption = 'delivery';
+
     const savedDiningOption = localStorage.getItem('dinepos_dining_option');
-    if (savedDiningOption === 'all' || savedDiningOption === 'dine-in' || savedDiningOption === 'takeaway' || savedDiningOption === 'delivery') {
-      setDiningOption(savedDiningOption as any);
+    if (savedDiningOption === 'dine-in' && dineInOk) {
+      setDiningOption('dine-in');
+    } else if (savedDiningOption === 'takeaway' && takeawayOk) {
+      setDiningOption('takeaway');
+    } else if (savedDiningOption === 'delivery' && deliveryOk) {
+      setDiningOption('delivery');
+    } else if (savedDiningOption === 'all' && (dineInOk || takeawayOk || deliveryOk)) {
+      setDiningOption('all');
+    } else {
+      setDiningOption(initialDiningOption as any);
     }
     const savedTable = localStorage.getItem('dinepos_table_number');
     if (savedTable) {
@@ -541,44 +566,6 @@ export default function DigitalMenuPage() {
       }
     }
     
-    const savedMenu = localStorage.getItem('dinepos_menu_items');
-    if (savedMenu) {
-      try {
-        let loadedItems = JSON.parse(savedMenu);
-        if (!loadedItems.some((item: any) => item.category === 'combos')) {
-          const defaultCombos = [
-            {
-              id: 'combo-1',
-              name: 'Imperial Signature Combo',
-              category: 'combos',
-              price: 120,
-              description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.',
-              image: '/images/wagyu_ribeye.png',
-              tags: ['Non-Veg'],
-              allergens: ['Dairy', 'Gluten']
-            },
-            {
-              id: 'combo-2',
-              name: 'Royal Vegetarian Tasting Set',
-              category: 'combos',
-              price: 75,
-              description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.',
-              image: '/images/mushroom_risotto.png',
-              tags: ['Veg', 'GF'],
-              allergens: ['Dairy']
-            }
-          ];
-          loadedItems = [...loadedItems, ...defaultCombos];
-          localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
-        }
-        setItems(loadedItems);
-      } catch (e) {
-        console.error('Failed to parse saved menu:', e);
-      }
-    } else {
-      localStorage.setItem('dinepos_menu_items', JSON.stringify(menuItems));
-    }
-
     const defaultCategories = [
       { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
       { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' },
@@ -587,34 +574,111 @@ export default function DigitalMenuPage() {
       { id: 'desserts', name: 'Desserts', icon: 'icecream' },
       { id: 'drinks', name: 'Drinks', icon: 'local_bar' }
     ];
-    const savedCategories = localStorage.getItem('dinepos_menu_categories');
-    let loadedCategories = defaultCategories;
-    if (savedCategories) {
-      try {
-        loadedCategories = JSON.parse(savedCategories);
-        // Clean up or migrate old name if present in localStorage
-        loadedCategories = loadedCategories.map((c: any) => 
-          c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
-        );
-        if (!loadedCategories.some((c: any) => c.id === 'combos')) {
-          const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
-          if (specIdx !== -1) {
-            loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
-          } else {
-            loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
-          }
+
+    const loadMenuAndCategories = async () => {
+      const catRes = await apiRequest<any[]>('/api/menu/categories');
+      const itemRes = await apiRequest<any[]>('/api/menu/items');
+
+      if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+        const mappedCategories = catRes.data.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          icon: c.icon || 'restaurant'
+        }));
+        
+        const mappedItems = itemRes.data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          category: item.categoryId,
+          price: item.price,
+          description: item.description || '',
+          image: item.imageUrl || '/images/wagyu_ribeye.png',
+          tags: item.tags || [],
+          allergens: item.allergens || [],
+          active: item.isAvailable !== false
+        }));
+
+        setCategories(mappedCategories);
+        setItems(mappedItems);
+        
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+        
+        if (mappedCategories.length > 0) {
+          setActiveCategory(mappedCategories[0].id);
         }
-        localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
-      } catch (e) {
-        console.error('Failed to parse saved categories:', e);
+        return;
       }
-    } else {
-      localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
-    }
-    setCategories(loadedCategories);
-    if (loadedCategories.length > 0) {
-      setActiveCategory(loadedCategories[0].id);
-    }
+
+      // Offline Fallback - load local storage
+      const savedMenu = localStorage.getItem('dinepos_menu_items');
+      if (savedMenu) {
+        try {
+          let loadedItems = JSON.parse(savedMenu);
+          if (!loadedItems.some((item: any) => item.category === 'combos')) {
+            const defaultCombos = [
+              {
+                id: 'combo-1',
+                name: 'Imperial Signature Combo',
+                category: 'combos',
+                price: 120,
+                description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.',
+                image: '/images/wagyu_ribeye.png',
+                tags: ['Non-Veg'],
+                allergens: ['Dairy', 'Gluten']
+              },
+              {
+                id: 'combo-2',
+                name: 'Royal Vegetarian Tasting Set',
+                category: 'combos',
+                price: 75,
+                description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.',
+                image: '/images/mushroom_risotto.png',
+                tags: ['Veg', 'GF'],
+                allergens: ['Dairy']
+              }
+            ];
+            loadedItems = [...loadedItems, ...defaultCombos];
+            localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
+          }
+          setItems(loadedItems);
+        } catch (e) {
+          console.error('Failed to parse saved menu:', e);
+        }
+      } else {
+        localStorage.setItem('dinepos_menu_items', JSON.stringify(menuItems));
+      }
+
+      const savedCategories = localStorage.getItem('dinepos_menu_categories');
+      let loadedCategories = defaultCategories;
+      if (savedCategories) {
+        try {
+          loadedCategories = JSON.parse(savedCategories);
+          loadedCategories = loadedCategories.map((c: any) => 
+            c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
+          );
+          if (!loadedCategories.some((c: any) => c.id === 'combos')) {
+            const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
+            if (specIdx !== -1) {
+              loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+            } else {
+              loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
+            }
+          }
+          localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
+        } catch (e) {
+          console.error('Failed to parse saved categories:', e);
+        }
+      } else {
+        localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
+      }
+      setCategories(loadedCategories);
+      if (loadedCategories.length > 0) {
+        setActiveCategory(loadedCategories[0].id);
+      }
+    };
+
+    loadMenuAndCategories();
     
     // Determine active role from logged in email
     const loggedInEmail = localStorage.getItem('dinepos_logged_in_email');
@@ -679,6 +743,36 @@ export default function DigitalMenuPage() {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
       }
+      if (e.key === 'dinepos_dine_in_enabled') {
+        const val = e.newValue !== 'false';
+        setDineInEnabled(val);
+        if (!val && diningOption === 'dine-in') {
+          const takeawayOk = localStorage.getItem('dinepos_takeaway_enabled') !== 'false';
+          const deliveryOk = localStorage.getItem('dinepos_delivery_enabled') !== 'false';
+          if (takeawayOk) setDiningOption('takeaway');
+          else if (deliveryOk) setDiningOption('delivery');
+        }
+      }
+      if (e.key === 'dinepos_takeaway_enabled') {
+        const val = e.newValue !== 'false';
+        setTakeawayEnabled(val);
+        if (!val && diningOption === 'takeaway') {
+          const dineInOk = localStorage.getItem('dinepos_dine_in_enabled') !== 'false';
+          const deliveryOk = localStorage.getItem('dinepos_delivery_enabled') !== 'false';
+          if (dineInOk) setDiningOption('dine-in');
+          else if (deliveryOk) setDiningOption('delivery');
+        }
+      }
+      if (e.key === 'dinepos_delivery_enabled') {
+        const val = e.newValue !== 'false';
+        setDeliveryEnabled(val);
+        if (!val && diningOption === 'delivery') {
+          const dineInOk = localStorage.getItem('dinepos_dine_in_enabled') !== 'false';
+          const takeawayOk = localStorage.getItem('dinepos_takeaway_enabled') !== 'false';
+          if (dineInOk) setDiningOption('dine-in');
+          else if (takeawayOk) setDiningOption('takeaway');
+        }
+      }
       if (e.key === 'dinepos_exclusions_config' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
@@ -716,6 +810,7 @@ export default function DigitalMenuPage() {
     { sender: 'ai', text: 'Welcome to DinePOS AI. I am your culinary concierge. How can I assist you with the menu today? (e.g. asking for pairings or dietary info)' }
   ]);
   const [isAILoading, setIsAILoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Lock body scroll when modal/drawer is open
   useEffect(() => {
@@ -989,21 +1084,15 @@ export default function DigitalMenuPage() {
     }
   };
 
-  const handlePlaceOrder = () => {
-    // Validate cart integrity: check if all items in cart exist in menuItems list
+  const handlePlaceOrder = async () => {
+    // Validate cart integrity
     const invalidItems = Object.values(cart).filter(ci => !items.some(m => m.id === ci.itemId));
     if (invalidItems.length > 0) {
       triggerPairingToast("Cart contains unavailable items. Please review your selections.");
       return;
     }
     
-    // Generate order ID
     let savedOrderId = localStorage.getItem('dinepos_order_id');
-    if (!savedOrderId) {
-      savedOrderId = `DP-${Math.floor(10000 + Math.random() * 90000)}`;
-      localStorage.setItem('dinepos_order_id', savedOrderId);
-    }
-    
     const activeEmail = localStorage.getItem('dinepos_logged_in_email') || 'customer@dinepos.ai';
     
     // Retrieve tax rates
@@ -1021,11 +1110,10 @@ export default function DigitalMenuPage() {
         ? taxRateDelivery
         : taxRateDineIn;
 
-    // Compile ticket items
+    // Compile ticket items for local state sync
     const ticketItems = Object.values(cart).map(cartItem => {
       const itemObj = items.find(m => m.id === cartItem.itemId);
       
-      // Calculate item modifiers extra price
       let modifierExtra = 0;
       cartItem.modifiers.forEach(modName => {
         const configs = itemModifiersConfig[cartItem.itemId] || [];
@@ -1039,7 +1127,6 @@ export default function DigitalMenuPage() {
       
       const unitPrice = (itemObj ? itemObj.price : 0) + modifierExtra;
       
-      // Format options to match KdsTicket/PosTicket options type
       const optionsMapped = cartItem.modifiers.map(mod => {
         const isAllergy = mod.toLowerCase().includes('allergy') || mod.toLowerCase().includes('no ');
         return {
@@ -1058,48 +1145,124 @@ export default function DigitalMenuPage() {
       };
     });
 
-    const newTicket = {
-      id: savedOrderId,
-      orderNumber: savedOrderId.replace('DP-', ''),
-      tableNumber: `Table ${tableNumber.toString().padStart(2, '0')}`,
-      serverName: activeEmail === 'waiter@dinepos.ai' ? 'Michael T.' : 'Self Service',
-      guests: 2,
-      type: resolvedDiningType,
-      status: 'pending' as const,
-      paymentStatus: 'unpaid' as const,
-      isVip: ticketItems.some(i => i.price >= 80),
-      secondsElapsed: 0,
-      items: ticketItems,
-      taxRate: taxRate,
-      gratuityRate: 0.20,
-      createdAt: new Date().toISOString()
-    };
+    // Compile backend payload items
+    const backendItems = Object.values(cart).map(cartItem => {
+      const itemObj = items.find(m => m.id === cartItem.itemId);
+      
+      let modifierExtra = 0;
+      cartItem.modifiers.forEach(modName => {
+        const configs = itemModifiersConfig[cartItem.itemId] || [];
+        for (const config of configs) {
+          const opt = config.options.find(o => o.name === modName);
+          if (opt?.price) {
+            modifierExtra += opt.price;
+          }
+        }
+      });
+      
+      const unitPrice = (itemObj ? itemObj.price : 0) + modifierExtra;
+      const isUuid = cartItem.itemId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 
-    // Load existing shared tickets and append/update
-    const existingSharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
-    let sharedTickets = [];
-    if (existingSharedTicketsStr) {
-      try {
-        sharedTickets = JSON.parse(existingSharedTicketsStr);
-      } catch (e) {
-        console.error(e);
+      return {
+        menuItemId: isUuid ? cartItem.itemId : null,
+        name: itemObj ? itemObj.name : 'Unknown Item',
+        quantity: cartItem.quantity,
+        price: unitPrice,
+        notes: cartItem.notes || null
+      };
+    });
+
+    const subtotal = ticketItems.reduce((acc, item) => acc + (item.price * item.qty), 0);
+    const tax = Math.round(subtotal * taxRate);
+    const discount = 0;
+    const total = subtotal + tax;
+
+    let dbCustomerType: 'DINE_IN' | 'TAKE_OUT' | 'DELIVERY' = 'DINE_IN';
+    if (resolvedDiningType === 'takeaway') dbCustomerType = 'TAKE_OUT';
+    else if (resolvedDiningType === 'delivery') dbCustomerType = 'DELIVERY';
+
+    try {
+      setIsLoading(true);
+      
+      const resolvedTableName = resolvedDiningType === 'takeaway'
+        ? 'Walk-in Takeaway'
+        : resolvedDiningType === 'delivery'
+          ? 'Delivery'
+          : `Table ${tableNumber.toString().padStart(2, '0')}`;
+
+      const response = await apiRequest('/api/orders', {
+        method: 'POST',
+        body: JSON.stringify({
+          tableId: null,
+          tableName: resolvedTableName,
+          customerType: dbCustomerType,
+          subtotal,
+          tax,
+          discount,
+          total,
+          items: backendItems
+        })
+      });
+
+      setIsLoading(false);
+      let finalOrderId = savedOrderId || `DP-${Math.floor(10000 + Math.random() * 90000)}`;
+
+      if (response.success && response.data?.orderId) {
+        finalOrderId = response.data.orderId;
+        console.log(`[Order] Placed on database backend successfully: ${finalOrderId}`);
+      } else if (response.isOfflineFallback) {
+        console.warn('[Order] API is offline. Performing offline local storage fallback.');
+      } else {
+        console.error('[Order] Backend order submission returned error:', response.error);
       }
-    }
-    // Remove if there is an existing unpaid ticket with the same ID to prevent duplicates
-    sharedTickets = sharedTickets.filter((t: any) => t.id !== savedOrderId);
-    sharedTickets.push(newTicket);
-    localStorage.setItem('dinepos_shared_tickets', JSON.stringify(sharedTickets));
-    localStorage.setItem('dinepos_active_ticket_id', savedOrderId);
 
-    setIsCartOpen(false);
-    setOrderSubmitted(true);
-    localStorage.setItem('dinepos_order_submitted', 'true');
-    // Save order selections in localStorage
-    localStorage.setItem('dinepos_placed_order', JSON.stringify(cart));
-    // Clear cart on successful order
-    setTimeout(() => {
-      setCart({});
-    }, 500);
+      const newTicket = {
+        id: finalOrderId,
+        orderNumber: finalOrderId.length > 8 ? finalOrderId.substring(0, 8).toUpperCase() : finalOrderId.replace('DP-', ''),
+        tableNumber: `Table ${tableNumber.toString().padStart(2, '0')}`,
+        serverName: activeEmail === 'waiter@dinepos.ai' ? 'Michael T.' : 'Self Service',
+        guests: 2,
+        type: resolvedDiningType,
+        status: 'pending' as const,
+        paymentStatus: 'unpaid' as const,
+        isVip: ticketItems.some(i => i.price >= 80),
+        secondsElapsed: 0,
+        items: ticketItems,
+        taxRate: taxRate,
+        gratuityRate: 0.20,
+        createdAt: new Date().toISOString()
+      };
+
+      // Load existing shared tickets and append/update
+      const existingSharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
+      let sharedTickets = [];
+      if (existingSharedTicketsStr) {
+        try {
+          sharedTickets = JSON.parse(existingSharedTicketsStr);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      sharedTickets = sharedTickets.filter((t: any) => t.id !== finalOrderId);
+      sharedTickets.push(newTicket);
+      
+      localStorage.setItem('dinepos_shared_tickets', JSON.stringify(sharedTickets));
+      localStorage.setItem('dinepos_active_ticket_id', finalOrderId);
+      localStorage.setItem('dinepos_order_id', finalOrderId);
+
+      setIsCartOpen(false);
+      setOrderSubmitted(true);
+      localStorage.setItem('dinepos_order_submitted', 'true');
+      localStorage.setItem('dinepos_placed_order', JSON.stringify(cart));
+      
+      setTimeout(() => {
+        setCart({});
+      }, 500);
+
+    } catch (err: any) {
+      setIsLoading(false);
+      console.error('[Order] Failed placing order:', err);
+    }
   };
 
   const handleDismissOrderSubmitted = () => {
@@ -1223,42 +1386,48 @@ export default function DigitalMenuPage() {
           <div className="hidden lg:flex items-center gap-4 select-none">
             {/* Dining Options Capsule */}
             <div className="flex bg-[#12110f] border border-white/5 rounded-full p-1 shadow-inner gap-1">
-              <button
-                type="button"
-                onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
-                className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
-                  diningOption === 'dine-in'
-                    ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_14px_rgba(255,226,171,0.35)] px-4 gap-1.5'
-                    : 'text-[#A69984]/80 hover:text-[#ffe2ab] hover:bg-[#ffe2ab]/10'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px] leading-none">restaurant</span>
-                {diningOption === 'dine-in' && <span className="animate-fade-in whitespace-nowrap">Dine-in</span>}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
-                className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
-                  diningOption === 'takeaway'
-                    ? 'bg-[#38bdf8] text-[#0c4a6e] shadow-[0_4px_14px_rgba(56,189,248,0.35)] px-4 gap-1.5'
-                    : 'text-[#A69984]/80 hover:text-[#38bdf8] hover:bg-[#38bdf8]/10'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px] leading-none">takeout_dining</span>
-                {diningOption === 'takeaway' && <span className="animate-fade-in whitespace-nowrap">Takeaway</span>}
-              </button>
-              <button
-                type="button"
-                onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
-                className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
-                  diningOption === 'delivery'
-                    ? 'bg-[#fb923c] text-[#7c2d12] shadow-[0_4px_14px_rgba(251,146,60,0.35)] px-4 gap-1.5'
-                    : 'text-[#A69984]/80 hover:text-[#fb923c] hover:bg-[#fb923c]/10'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[15px] leading-none">moped</span>
-                {diningOption === 'delivery' && <span className="animate-fade-in whitespace-nowrap">Delivery</span>}
-              </button>
+              {dineInEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
+                  className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
+                    diningOption === 'dine-in'
+                      ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_14px_rgba(255,226,171,0.35)] px-4 gap-1.5'
+                      : 'text-[#A69984]/80 hover:text-[#ffe2ab] hover:bg-[#ffe2ab]/10'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px] leading-none">restaurant</span>
+                  {diningOption === 'dine-in' && <span className="animate-fade-in whitespace-nowrap">Dine-in</span>}
+                </button>
+              )}
+              {takeawayEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
+                  className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
+                    diningOption === 'takeaway'
+                      ? 'bg-[#38bdf8] text-[#0c4a6e] shadow-[0_4px_14px_rgba(56,189,248,0.35)] px-4 gap-1.5'
+                      : 'text-[#A69984]/80 hover:text-[#38bdf8] hover:bg-[#38bdf8]/10'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px] leading-none">takeout_dining</span>
+                  {diningOption === 'takeaway' && <span className="animate-fade-in whitespace-nowrap">Takeaway</span>}
+                </button>
+              )}
+              {deliveryEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
+                  className={`px-3 py-2 rounded-full font-sans text-xs uppercase tracking-wider font-bold transition-all duration-300 flex items-center justify-center cursor-pointer ${
+                    diningOption === 'delivery'
+                      ? 'bg-[#fb923c] text-[#7c2d12] shadow-[0_4px_14px_rgba(251,146,60,0.35)] px-4 gap-1.5'
+                      : 'text-[#A69984]/80 hover:text-[#fb923c] hover:bg-[#fb923c]/10'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px] leading-none">moped</span>
+                  {diningOption === 'delivery' && <span className="animate-fade-in whitespace-nowrap">Delivery</span>}
+                </button>
+              )}
             </div>
 
             {/* Elegant Spacing Divider */}
@@ -1361,39 +1530,45 @@ export default function DigitalMenuPage() {
             <div className="space-y-1.5">
               <label className="block text-[9px] uppercase font-bold text-[#A69984]/50 tracking-wider">Dining Option</label>
               <div className="flex bg-[#12110f] border border-white/5 rounded-xl p-1 gap-1">
-                <button 
-                  onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
-                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
-                    diningOption === 'dine-in' 
-                      ? 'bg-[#ffe2ab] text-[#402d00] gap-1.5 px-3' 
-                      : 'text-[#A69984]/80 px-2'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[13px]">restaurant</span>
-                  {diningOption === 'dine-in' && <span className="animate-fade-in whitespace-nowrap">Dine-in</span>}
-                </button>
-                <button 
-                  onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
-                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
-                    diningOption === 'takeaway' 
-                      ? 'bg-[#38bdf8] text-[#0c4a6e] gap-1.5 px-3' 
-                      : 'text-[#A69984]/80 px-2'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[13px]">takeout_dining</span>
-                  {diningOption === 'takeaway' && <span className="animate-fade-in whitespace-nowrap">Takeaway</span>}
-                </button>
-                <button 
-                  onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
-                  className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
-                    diningOption === 'delivery' 
-                      ? 'bg-[#fb923c] text-[#7c2d12] gap-1.5 px-3' 
-                      : 'text-[#A69984]/80 px-2'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[13px]">moped</span>
-                  {diningOption === 'delivery' && <span className="animate-fade-in whitespace-nowrap">Delivery</span>}
-                </button>
+                {dineInEnabled && (
+                  <button 
+                    onClick={() => setDiningOption(diningOption === 'dine-in' ? 'all' : 'dine-in')}
+                    className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
+                      diningOption === 'dine-in' 
+                        ? 'bg-[#ffe2ab] text-[#402d00] gap-1.5 px-3' 
+                        : 'text-[#A69984]/80 px-2'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[13px]">restaurant</span>
+                    {diningOption === 'dine-in' && <span className="animate-fade-in whitespace-nowrap">Dine-in</span>}
+                  </button>
+                )}
+                {takeawayEnabled && (
+                  <button 
+                    onClick={() => setDiningOption(diningOption === 'takeaway' ? 'all' : 'takeaway')}
+                    className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
+                      diningOption === 'takeaway' 
+                        ? 'bg-[#38bdf8] text-[#0c4a6e] gap-1.5 px-3' 
+                        : 'text-[#A69984]/80 px-2'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[13px]">takeout_dining</span>
+                    {diningOption === 'takeaway' && <span className="animate-fade-in whitespace-nowrap">Takeaway</span>}
+                  </button>
+                )}
+                {deliveryEnabled && (
+                  <button 
+                    onClick={() => setDiningOption(diningOption === 'delivery' ? 'all' : 'delivery')}
+                    className={`flex-1 py-2 rounded-lg font-sans text-[11px] uppercase tracking-wider font-bold transition-all flex items-center justify-center cursor-pointer ${
+                      diningOption === 'delivery' 
+                        ? 'bg-[#fb923c] text-[#7c2d12] gap-1.5 px-3' 
+                        : 'text-[#A69984]/80 px-2'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[13px]">moped</span>
+                    {diningOption === 'delivery' && <span className="animate-fade-in whitespace-nowrap">Delivery</span>}
+                  </button>
+                )}
               </div>
             </div>
 

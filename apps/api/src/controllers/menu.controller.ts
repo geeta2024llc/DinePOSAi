@@ -196,3 +196,168 @@ export const createMenuItem = async (req: AuthenticatedRequest, res: Response<Ap
     res.status(500).json({ success: false, error: error.message || 'Error creating menu item.' });
   }
 };
+
+// 5. UPDATE A CATEGORY
+export const updateCategory = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  const { id } = req.params;
+  const { name } = req.body;
+
+  if (!tenantId) {
+    return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  }
+
+  try {
+    const { data: category, error } = await supabase
+      .from('categories')
+      .update({ name })
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select()
+      .single();
+
+    if (error || !category) {
+      return res.status(500).json({ success: false, error: `Failed to update category: ${error?.message}` });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Category updated successfully.',
+        category: {
+          id: category.id,
+          name: category.name,
+          isActive: category.is_active,
+        }
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error updating category.' });
+  }
+};
+
+// 6. DELETE A CATEGORY
+export const deleteCategory = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  const { id } = req.params;
+
+  if (!tenantId) {
+    return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('categories')
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', tenantId);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: `Failed to delete category: ${error.message}` });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Category deleted successfully.'
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error deleting category.' });
+  }
+};
+
+// 7. UPDATE A MENU ITEM
+export const updateMenuItemSchema = z.object({
+  categoryId: z.string().uuid('Invalid category ID').optional(),
+  name: z.string().min(1, 'Menu item name is required').optional(),
+  description: z.string().optional(),
+  price: z.number().min(0, 'Price cannot be negative').optional(),
+  imageUrl: z.string().url('Invalid image URL').optional(),
+  isAvailable: z.boolean().optional(),
+});
+
+export const updateMenuItem = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  const { id } = req.params;
+  const body = req.body;
+
+  if (!tenantId) {
+    return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  }
+
+  try {
+    const updateData: any = {};
+    if (body.categoryId) updateData.category_id = body.categoryId;
+    if (body.name) updateData.name = body.name;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.price !== undefined) updateData.price = body.price;
+    if (body.imageUrl !== undefined) updateData.image_url = body.imageUrl;
+    if (body.isAvailable !== undefined) updateData.is_available = body.isAvailable;
+
+    const { data: item, error } = await supabase
+      .from('menu_items')
+      .update(updateData)
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select()
+      .single();
+
+    if (error || !item) {
+      return res.status(500).json({ success: false, error: `Failed to update menu item: ${error?.message}` });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Menu item updated successfully.',
+        item: {
+          id: item.id,
+          categoryId: item.category_id,
+          name: item.name,
+          price: parseFloat(item.price),
+          description: item.description,
+          isAvailable: item.is_available,
+        }
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error updating menu item.' });
+  }
+};
+
+// 8. DELETE A MENU ITEM
+export const deleteMenuItem = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  const { id } = req.params;
+
+  if (!tenantId) {
+    return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('menu_items')
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', tenantId);
+
+    if (error) {
+      return res.status(500).json({ success: false, error: `Failed to delete menu item: ${error.message}` });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Menu item deleted successfully.'
+      }
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error deleting menu item.' });
+  }
+};
+

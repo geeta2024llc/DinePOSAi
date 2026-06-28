@@ -111,17 +111,19 @@ const getItemPrice = (item: any): number => {
 
 export default function CheckoutPage() {
   // Guest Information state
-  const [firstName, setFirstName] = useState('Alexander');
-  const [lastName, setLastName] = useState('Sterling');
-  const [email, setEmail] = useState('alexander.s@example.com');
-  const [specialRequests, setSpecialRequests] = useState('Celebrating anniversary.');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
+  const [contactNumber, setContactNumber] = useState('');
+  const [deliveryLocation, setDeliveryLocation] = useState('');
 
   // Payment Selection state: 'stripe' (Self-checkout restricted to Stripe)
   const [paymentMethod, setPaymentMethod] = useState<'stripe'>('stripe');
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
-  const [cardName, setCardName] = useState('ALEXANDER STERLING');
+  const [cardName, setCardName] = useState('');
 
   // Stripe connection states
   const [stripeLinked, setStripeLinked] = useState(false);
@@ -606,6 +608,28 @@ export default function CheckoutPage() {
 
   const handleConfirmAndPay = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!firstName.trim()) {
+      triggerToast('Please enter your First Name.', 'info');
+      return;
+    }
+    if (!lastName.trim()) {
+      triggerToast('Please enter your Last Name.', 'info');
+      return;
+    }
+    if (!email.trim() || !email.includes('@')) {
+      triggerToast('Please enter a valid Email Address.', 'info');
+      return;
+    }
+    if (diningOption === 'delivery') {
+      if (!contactNumber.trim()) {
+        triggerToast('Please enter your Contact Number.', 'info');
+        return;
+      }
+      if (!deliveryLocation.trim()) {
+        triggerToast('Please enter your Delivery Location.', 'info');
+        return;
+      }
+    }
     if (!stripeLinked) {
       triggerToast('Stripe payment integration is not configured. Unable to pay.', 'info');
       return;
@@ -987,13 +1011,13 @@ export default function CheckoutPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Email Address</label>
+                      <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Email Address *</label>
                       <input 
                         type="email" 
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
-                        placeholder="alexander.s@example.com"
+                        placeholder="e.g. name@example.com"
                       />
                     </div>
                     <div>
@@ -1003,10 +1027,34 @@ export default function CheckoutPage() {
                         value={specialRequests}
                         onChange={(e) => setSpecialRequests(e.target.value)}
                         className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
-                        placeholder="e.g. Allergy details, table preferences"
+                        placeholder="e.g. Allergy details"
                       />
                     </div>
                   </div>
+                  {diningOption === 'delivery' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-white/5 animate-fade-in">
+                      <div>
+                        <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Contact Number *</label>
+                        <input 
+                          type="tel" 
+                          value={contactNumber}
+                          onChange={(e) => setContactNumber(e.target.value)}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
+                          placeholder="e.g. +81 90 1234 5678"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">Delivery Location *</label>
+                        <input 
+                          type="text" 
+                          value={deliveryLocation}
+                          onChange={(e) => setDeliveryLocation(e.target.value)}
+                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-sans"
+                          placeholder="e.g. 1-chome Shibuya, Tokyo"
+                        />
+                      </div>
+                    </div>
+                  )}
                       {/* Secure Checkout Badge */}
                 <div className="bg-[#12110f]/60 border border-white/5 rounded-2xl p-4 max-w-xl mx-auto mb-6 lg:mb-10 flex items-center justify-between font-sans select-none">
                   <div className="flex items-center gap-3">

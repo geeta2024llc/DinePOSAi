@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { deductStockForOrder } from '../inventoryUtils';
+import { apiRequest } from '@/utils/api';
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
   'DINE10': { type: 'percent', value: 10, label: '10% Off' },
@@ -271,6 +272,53 @@ const initialTickets: PosTicket[] = [
   }
 ];
 
+const mapDbOrderToPosTicket = (o: any, taxDineIn = 0.085, taxTakeaway = 0.085, taxDelivery = 0.085): PosTicket => {
+  let resolvedDiningType: 'dine-in' | 'takeaway' | 'delivery' = 'dine-in';
+  let tTaxRate = taxDineIn;
+  if (o.customerType === 'TAKE_OUT') {
+    resolvedDiningType = 'takeaway';
+    tTaxRate = taxTakeaway;
+  } else if (o.customerType === 'DELIVERY') {
+    resolvedDiningType = 'delivery';
+    tTaxRate = taxDelivery;
+  }
+
+  const createdTime = new Date(o.createdAt).getTime();
+  const nowTime = new Date().getTime();
+  const diffMins = Math.max(1, Math.floor((nowTime - createdTime) / 60000));
+  const duration = `${diffMins}m`;
+
+  const mappedItems = o.items.map((i: any) => ({
+    name: i.name,
+    qty: i.quantity,
+    price: i.price,
+    note: i.notes || undefined,
+    options: []
+  }));
+
+  const needsPayment = o.status !== 'SERVED' && o.status !== 'CANCELLED';
+
+  return {
+    id: o.id,
+    tableNumber: o.tableName || (o.customerType === 'TAKE_OUT' ? 'Walk-in Takeaway' : o.customerType === 'DELIVERY' ? 'Delivery' : `Table ${o.orderNumber}`),
+    serverName: o.customerType === 'DINE_IN' ? 'Self Service' : 'POS Cashier',
+    duration,
+    isVip: o.total >= 80,
+    needsPayment,
+    cardAmount: o.total,
+    guests: o.customerType === 'DINE_IN' ? 2 : 1,
+    orderNumber: `#${o.orderNumber}`,
+    items: mappedItems,
+    taxRate: tTaxRate,
+    gratuityRate: resolvedDiningType === 'dine-in' ? 0.20 : 0.00,
+    appliedDiscount: o.discount > 0 ? {
+      type: 'fixed',
+      amount: o.discount,
+      label: `$${o.discount.toFixed(2)} Off`
+    } : null
+  };
+};
+
 export default function PosPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [tickets, setTickets] = useState<PosTicket[]>(initialTickets);
@@ -286,6 +334,9 @@ export default function PosPage() {
   const [taxRateDineIn, setTaxRateDineIn] = useState(0.085);
   const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.085);
   const [taxRateDelivery, setTaxRateDelivery] = useState(0.085);
+  const [dineInEnabled, setDineInEnabled] = useState(true);
+  const [takeawayEnabled, setTakeawayEnabled] = useState(true);
+  const [deliveryEnabled, setDeliveryEnabled] = useState(true);
 
   // Cashier Settings Preferences
   const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
@@ -492,6 +543,13 @@ export default function PosPage() {
       if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
       if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
 
+      const dineInOk = localStorage.getItem('dinepos_dine_in_enabled') !== 'false';
+      const takeawayOk = localStorage.getItem('dinepos_takeaway_enabled') !== 'false';
+      const deliveryOk = localStorage.getItem('dinepos_delivery_enabled') !== 'false';
+      setDineInEnabled(dineInOk);
+      setTakeawayEnabled(takeawayOk);
+      setDeliveryEnabled(deliveryOk);
+
       const savedCurrency = localStorage.getItem('dinepos_currency');
       if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
         setCurrency(savedCurrency as any);
@@ -559,19 +617,6 @@ export default function PosPage() {
         { id: 'drink-2', name: 'Signature Emerald Gimlet', category: 'drinks', price: 22, description: 'Empress gin, fresh lime, botanical cucumber elixir, fresh mint essence, served in a chilled crystal coupette.', image: '/images/emerald_gimlet.png', tags: ['GF', 'Veg'] }
       ];
 
-      const savedMenu = localStorage.getItem('dinepos_menu_items');
-      if (savedMenu) {
-        try {
-          setMenuItems(JSON.parse(savedMenu));
-        } catch (e) {
-          console.error('Failed to parse menu items:', e);
-          setMenuItems(defaultMenuItems);
-        }
-      } else {
-        setMenuItems(defaultMenuItems);
-        localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
-      }
-
       // Load digital menu categories
       const defaultCategories = [
         { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
@@ -581,19 +626,67 @@ export default function PosPage() {
         { id: 'desserts', name: 'Desserts', icon: 'icecream' },
         { id: 'drinks', name: 'Drinks', icon: 'local_bar' }
       ];
-      const savedCategories = localStorage.getItem('dinepos_menu_categories');
-      if (savedCategories) {
-        try {
-          setCategories(JSON.parse(savedCategories));
-        } catch (e) {
-          console.error('Failed to parse categories:', e);
-          setCategories(defaultCategories);
+
+      const loadMenuAndCategories = async () => {
+        const catRes = await apiRequest<any[]>('/api/menu/categories');
+        const itemRes = await apiRequest<any[]>('/api/menu/items');
+
+        if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+          const mappedCategories = catRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            icon: c.icon || 'restaurant'
+          }));
+          
+          const mappedItems = itemRes.data.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            category: item.categoryId,
+            price: item.price,
+            description: item.description || '',
+            image: item.imageUrl || '/images/wagyu_ribeye.png',
+            tags: item.tags || []
+          }));
+
+          setCategories(mappedCategories);
+          setMenuItems(mappedItems);
+          
+          localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+          setIsLoaded(true);
+          return;
         }
-      } else {
-        setCategories(defaultCategories);
-        localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
-      }
-      setIsLoaded(true);
+
+        // Offline Fallback
+        const savedMenu = localStorage.getItem('dinepos_menu_items');
+        if (savedMenu) {
+          try {
+            setMenuItems(JSON.parse(savedMenu));
+          } catch (e) {
+            console.error('Failed to parse menu items:', e);
+            setMenuItems(defaultMenuItems);
+          }
+        } else {
+          setMenuItems(defaultMenuItems);
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
+        }
+
+        const savedCategories = localStorage.getItem('dinepos_menu_categories');
+        if (savedCategories) {
+          try {
+            setCategories(JSON.parse(savedCategories));
+          } catch (e) {
+            console.error('Failed to parse categories:', e);
+            setCategories(defaultCategories);
+          }
+        } else {
+          setCategories(defaultCategories);
+          localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
+        }
+        setIsLoaded(true);
+      };
+
+      loadMenuAndCategories();
     }
   }, []);
 
@@ -717,6 +810,15 @@ export default function PosPage() {
           setTaxType(e.newValue as 'pre-tax' | 'post-tax');
         }
       }
+      if (e.key === 'dinepos_dine_in_enabled' && e.newValue) {
+        setDineInEnabled(e.newValue !== 'false');
+      }
+      if (e.key === 'dinepos_takeaway_enabled' && e.newValue) {
+        setTakeawayEnabled(e.newValue !== 'false');
+      }
+      if (e.key === 'dinepos_delivery_enabled' && e.newValue) {
+        setDeliveryEnabled(e.newValue !== 'false');
+      }
       if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
         setTaxRateDineIn(parseFloat(e.newValue) / 100);
       }
@@ -787,6 +889,38 @@ export default function PosPage() {
       window.removeEventListener('dinepos_settings_updated', handleSettingsUpdated);
     };
   }, []);
+
+  // Poll active tickets from the database
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const syncActiveTickets = async () => {
+      try {
+        const res = await apiRequest<any[]>('/api/orders');
+        if (res.success && res.data) {
+          const dbTickets = res.data.map((o: any) => 
+            mapDbOrderToPosTicket(o, taxRateDineIn, taxRateTakeaway, taxRateDelivery)
+          );
+          
+          if (dbTickets.length > 0) {
+            setTickets(dbTickets);
+            setSelectedTicketId(prev => {
+              if (!prev || !dbTickets.some(t => t.id === prev)) {
+                return dbTickets[0].id;
+              }
+              return prev;
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[POS] Failed syncing active tickets:', err);
+      }
+    };
+
+    syncActiveTickets();
+    const interval = setInterval(syncActiveTickets, 5000);
+    return () => clearInterval(interval);
+  }, [isLoaded, taxRateDineIn, taxRateTakeaway, taxRateDelivery]);
 
   const triggerToast = (message: string) => {
     setToast({ show: true, message });
@@ -1072,6 +1206,18 @@ export default function PosPage() {
       // Deduct ingredient stock based on the items in the paid ticket
       deductStockForOrder(selectedTicket.items);
 
+      // Update order status on the backend database
+      const orderId = selectedTicket.id;
+      const isUuid = orderId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      if (isUuid) {
+        apiRequest(`/api/orders/${orderId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'SERVED' })
+        }).catch(err => {
+          console.error('[POS] Failed to update order status on server:', err);
+        });
+      }
+
       let successMsg = `Payment validated! ${selectedTicket.tableNumber} ticket closed.`;
       if (checkoutNotes.trim()) {
         successMsg += ` Note saved: "${checkoutNotes.trim()}"`;
@@ -1254,64 +1400,68 @@ export default function PosPage() {
 
           {/* Order Action Buttons */}
           <div className="grid grid-cols-1 gap-2 mb-8 select-none">
-            <button 
-              onClick={() => {
-                const newId = `ticket-${Date.now()}`;
-                const tableNum = Math.floor(1 + Math.random() * 20);
-                const orderNum = Math.floor(1000 + Math.random() * 9000);
-                const newTicket: PosTicket = {
-                  id: newId,
-                  tableNumber: `Table ${tableNum < 10 ? '0' + tableNum : tableNum}`,
-                  serverName: 'J. Smith',
-                  duration: '1m',
-                  needsPayment: true,
-                  cardAmount: 76.00,
-                  guests: 2,
-                  orderNumber: `#${orderNum}`,
-                  taxRate: taxRateDineIn,
-                  gratuityRate: 0.20,
-                  items: [
-                    { qty: 2, name: 'Truffle Risotto', price: 76.00 }
-                  ]
-                };
-                setTickets(prev => [newTicket, ...prev]);
-                setSelectedTicketId(newId);
-                triggerToast(`New order initialized for Table ${tableNum}!`);
-              }}
-              className="w-full py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-xs font-bold">add</span>
-              {t("New Table Order", "新規テーブル注文")}
-            </button>
-            <button 
-              onClick={() => {
-                const newId = `ticket-${Date.now()}`;
-                const orderNum = Math.floor(1000 + Math.random() * 9000);
-                const newTicket: PosTicket = {
-                  id: newId,
-                  tableNumber: 'Walk-in Takeaway',
-                  serverName: 'J. Smith',
-                  duration: '1m',
-                  needsPayment: true,
-                  cardAmount: 45.00,
-                  guests: 1,
-                  orderNumber: `#${orderNum}`,
-                  taxRate: taxRateTakeaway,
-                  gratuityRate: 0.00, // No auto-gratuity for takeaway
-                  items: [
-                    { qty: 1, name: 'Truffle Burrata Salad', price: 26.00 },
-                    { qty: 1, name: 'Signature Emerald Gimlet', price: 19.00 }
-                  ]
-                };
-                setTickets(prev => [newTicket, ...prev]);
-                setSelectedTicketId(newId);
-                triggerToast('Walk-in takeaway order initialized!');
-              }}
-              className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-xs font-bold">shopping_bag</span>
-              {t("Walk-in Customer", "お持ち帰り注文")}
-            </button>
+            {dineInEnabled && (
+              <button 
+                onClick={() => {
+                  const tableNum = Math.floor(1 + Math.random() * 30);
+                  const newId = `ticket-${Date.now()}`;
+                  const orderNum = Math.floor(1000 + Math.random() * 9000);
+                  const newTicket: PosTicket = {
+                    id: newId,
+                    tableNumber: tableNum.toString(),
+                    serverName: 'J. Smith',
+                    duration: '1m',
+                    needsPayment: false,
+                    cardAmount: 76.00,
+                    guests: 2,
+                    orderNumber: `#${orderNum}`,
+                    taxRate: taxRateDineIn,
+                    gratuityRate: 0.20,
+                    items: [
+                      { qty: 2, name: 'Truffle Risotto', price: 76.00 }
+                    ]
+                  };
+                  setTickets(prev => [newTicket, ...prev]);
+                  setSelectedTicketId(newId);
+                  triggerToast(`New order initialized for Table ${tableNum}!`);
+                }}
+                className="w-full py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xs font-bold">add</span>
+                {t("New Table Order", "新規テーブル注文")}
+              </button>
+            )}
+            {takeawayEnabled && (
+              <button 
+                onClick={() => {
+                  const newId = `ticket-${Date.now()}`;
+                  const orderNum = Math.floor(1000 + Math.random() * 9000);
+                  const newTicket: PosTicket = {
+                    id: newId,
+                    tableNumber: 'Walk-in Takeaway',
+                    serverName: 'J. Smith',
+                    duration: '1m',
+                    needsPayment: true,
+                    cardAmount: 45.00,
+                    guests: 1,
+                    orderNumber: `#${orderNum}`,
+                    taxRate: taxRateTakeaway,
+                    gratuityRate: 0.00, // No auto-gratuity for takeaway
+                    items: [
+                      { qty: 1, name: 'Truffle Burrata Salad', price: 26.00 },
+                      { qty: 1, name: 'Signature Emerald Gimlet', price: 19.00 }
+                    ]
+                  };
+                  setTickets(prev => [newTicket, ...prev]);
+                  setSelectedTicketId(newId);
+                  triggerToast('Walk-in takeaway order initialized!');
+                }}
+                className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xs font-bold">shopping_bag</span>
+                {t("Walk-in Customer", "お持ち帰り注文")}
+              </button>
+            )}
           </div>
 
           {/* Navigation Links */}
