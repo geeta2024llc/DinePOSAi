@@ -6,6 +6,7 @@ import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { deductStockForOrder } from '../inventoryUtils';
 import { apiRequest } from '@/utils/api';
+import ReceiptPrintModal, { ReceiptData } from '@/components/ui/ReceiptPrintModal';
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
   'DINE10': { type: 'percent', value: 10, label: '10% Off' },
@@ -328,6 +329,9 @@ export default function PosPage() {
   
   // Transaction processing loader state
   const [isProcessing, setIsProcessing] = useState(false);
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [pendingCloseMsg, setPendingCloseMsg] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
@@ -1222,8 +1226,47 @@ export default function PosPage() {
       if (checkoutNotes.trim()) {
         successMsg += ` Note saved: "${checkoutNotes.trim()}"`;
       }
-      closeActiveTicket(successMsg);
+      
+      // Build receipt data and show receipt modal
+      const dateObj2 = new Date();
+      const dateOptions2: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
+      const timeOptions2: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+      const receiptItems = selectedTicket.items.map((item: any) => ({
+        name: item.name,
+        qty: item.qty,
+        price: getItemPrice(item),
+        modifiers: item.options ? item.options.map((o: any) => o.text) : []
+      }));
+      setReceiptData({
+        restaurantName: 'DinePOS Restaurant',
+        orderId: `#ORD-${selectedTicket.id.replace('ticket-', '').slice(0, 4).toUpperCase()}`,
+        tableLabel: selectedTicket.tableNumber,
+        serverName: activeOperator.name,
+        dateTime: `${dateObj2.toLocaleDateString('en-US', dateOptions2)} ${dateObj2.toLocaleTimeString('en-US', timeOptions2)}`,
+        items: receiptItems,
+        subtotal,
+        tax,
+        taxLabel: taxType === 'pre-tax' ? `Tax (${(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)` : `Tax (incl.)`,
+        discount: discountAmount,
+        discountLabel: appliedDiscount ? appliedDiscount.label : 'Discount',
+        gratuity: gratuity + tipAmount,
+        total: grandTotal + tipAmount,
+        paymentMethod: checkoutPaymentMethod.toUpperCase() === 'CASH' ? 'Cash' : 'Card',
+        paymentDetails: checkoutPaymentMethod.toUpperCase() === 'CASH' ? '' : '•••• 4242',
+        currency,
+      });
+      setPendingCloseMsg(successMsg);
+      setReceiptModalOpen(true);
     }, 2000);
+  };
+
+  const handleReceiptClose = () => {
+    setReceiptModalOpen(false);
+    if (pendingCloseMsg) {
+      closeActiveTicket(pendingCloseMsg);
+      setPendingCloseMsg('');
+    }
+    setReceiptData(null);
   };
 
   const handleSplitBill = () => {
@@ -1386,7 +1429,7 @@ export default function PosPage() {
           {/* Brand/Console Title */}
           <div className="mb-10 select-none flex items-center">
             <div className="w-9 h-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-[#ffe2ab] flex-shrink-0 select-none mr-3">
-              <span className="material-symbols-outlined text-[19px] font-black leading-none text-[#ffe2ab]">flatware</span>
+              <span className="material-symbols-outlined notranslate text-[19px] font-black leading-none text-[#ffe2ab]" translate="no">flatware</span>
             </div>
             <div>
               <Link href="/" className="font-serif font-bold text-[#ffe2ab] text-[22px] tracking-wide block hover:opacity-85 transition-opacity leading-none">
@@ -2944,6 +2987,16 @@ export default function PosPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* PRINT RECEIPT MODAL */}
+      {receiptData && (
+        <ReceiptPrintModal
+          isOpen={receiptModalOpen}
+          onClose={handleReceiptClose}
+          receiptData={receiptData}
+          formatCurrency={formatMoney}
+        />
       )}
 
       {/* INTERACTIVE TOAST FEEDBACK NOTIFICATION */}

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { migrateCart } from '../cartUtils';
+import ReceiptPrintModal, { ReceiptData } from '@/components/ui/ReceiptPrintModal';
 import { deductStockForOrder } from '../../inventoryUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
@@ -143,6 +144,8 @@ export default function CheckoutPage() {
   // Checkout flow state
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStep, setProcessingStep] = useState(0); // 0 = Idle, 1 = Encryption, 2 = Validation, 3 = Completed
+  const [receiptModalOpen, setReceiptModalOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   
   // Dynamic State
   const [cart, setCart] = useState<{ [cartKey: string]: CartItem }>({});
@@ -714,6 +717,35 @@ export default function CheckoutPage() {
           return { name: item ? item.name : '', qty: cartItem.quantity };
         }).filter(x => x.name !== '');
         deductStockForOrder(itemsToDeduct);
+
+        // Build receipt data for print modal
+        const rcptDateObj = new Date();
+        const rcptDateOpts: Intl.DateTimeFormatOptions = { month: 'short', day: '2-digit', year: 'numeric' };
+        const rcptTimeOpts: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
+        const rcptItems = getDisplayItems().map(di => ({
+          name: di.name,
+          qty: di.quantity,
+          price: di.price / di.quantity,
+          modifiers: di.modifiers || []
+        }));
+        setReceiptData({
+          restaurantName: 'DinePOS Restaurant',
+          orderId: `#ORD-${orderId.replace('DP-', '')}`,
+          tableLabel: `Table ${displayTableNumber}`,
+          serverName: activeTicket ? activeTicket.serverName : 'Self Service',
+          dateTime: `${rcptDateObj.toLocaleDateString('en-US', rcptDateOpts)} ${rcptDateObj.toLocaleTimeString('en-US', rcptTimeOpts)}`,
+          items: rcptItems,
+          subtotal,
+          tax,
+          taxLabel: taxType === 'pre-tax' ? `Tax (${(taxRate * 100).toFixed(1)}%)` : 'Tax (incl.)',
+          discount: promoDiscountAmount,
+          discountLabel: appliedPromo ? appliedPromo.label : (activeTicket?.appliedDiscount ? activeTicket.appliedDiscount.label : 'Discount'),
+          gratuity: autoGratuity,
+          total,
+          paymentMethod: 'Stripe Card',
+          paymentDetails: `•••• ${cardNumber.replace(/\s/g, '').slice(-4) || '4242'}`,
+          currency,
+        });
 
         // Clean up cart and placed order upon successful payment validation
         localStorage.removeItem('dinepos_cart');
@@ -1497,10 +1529,18 @@ export default function CheckoutPage() {
               </p>
               
               <div className="space-y-3 font-sans">
+                <button
+                  type="button"
+                  onClick={() => setReceiptModalOpen(true)}
+                  className="w-full py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm font-bold">receipt_long</span>
+                  Print Receipt
+                </button>
                 <Link 
                   href="/menu"
                   onClick={() => { setIsProcessing(false); setProcessingStep(0); }}
-                  className="block w-full py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-all text-center"
+                  className="block w-full py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl font-bold text-xs uppercase tracking-widest transition-all text-center"
                 >
                   Return to Menu
                 </Link>
@@ -1534,6 +1574,16 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* PRINT RECEIPT MODAL */}
+      {receiptData && (
+        <ReceiptPrintModal
+          isOpen={receiptModalOpen}
+          onClose={() => setReceiptModalOpen(false)}
+          receiptData={receiptData}
+          formatCurrency={formatCurrency}
+        />
       )}
 
     </div>

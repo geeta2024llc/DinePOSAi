@@ -1214,6 +1214,14 @@ export default function DigitalMenuPage() {
         console.warn('[Order] API is offline. Performing offline local storage fallback.');
       } else {
         console.error('[Order] Backend order submission returned error:', response.error);
+        if (response.error?.includes('Authentication required') || response.error?.includes('Bearer token') || response.error?.includes('token')) {
+          triggerPairingToast("Session expired or authentication required. Redirecting to login...");
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 2000);
+        } else {
+          triggerPairingToast(`Order failed: ${response.error}`);
+        }
       }
 
       const newTicket = {

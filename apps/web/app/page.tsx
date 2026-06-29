@@ -87,7 +87,7 @@ export default function HomePage() {
           <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
             {/* Primary Glow Button */}
             <Link href="/register" className="group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-title-md font-bold text-base px-9 py-4 rounded-full transition-all duration-500 transform hover:-translate-y-1 flex items-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)]">
-              <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.heroPrimaryCtaText} <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span></span>
+              <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.heroPrimaryCtaText} <span className="material-symbols-outlined notranslate text-sm transform group-hover:translate-x-1 transition-transform duration-300" translate="no">arrow_forward</span></span>
               {/* Shine effect */}
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
             </Link>
@@ -126,7 +126,7 @@ export default function HomePage() {
               <div className="relative z-10 w-full md:w-1/2 flex flex-col h-full justify-between">
                 <div>
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
-                    <span className="material-symbols-outlined text-primary text-2xl">point_of_sale</span>
+                    <span className="material-symbols-outlined notranslate text-primary text-2xl" translate="no">point_of_sale</span>
                   </div>
                   <h3 className="font-display-lg text-4xl text-on-surface mb-sm font-semibold tracking-tight">{cmsConfig.homepage.posTitle}</h3>
                   <p className="font-body-md text-on-surface-variant/80 text-lg leading-relaxed font-light">
@@ -134,7 +134,7 @@ export default function HomePage() {
                   </p>
                 </div>
                 <Link className="font-label-sm text-primary uppercase tracking-[0.15em] mt-12 inline-flex items-center gap-2 hover:text-primary-fixed transition-colors group/link w-fit" href="/pos">
-                  Discover POS <span className="material-symbols-outlined text-sm transform group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
+                  Discover POS <span className="material-symbols-outlined notranslate text-sm transform group-hover/link:translate-x-1 transition-transform" translate="no">arrow_forward</span>
                 </Link>
               </div>
             </div>
@@ -143,7 +143,7 @@ export default function HomePage() {
             <div className="lg:col-span-4 bg-gradient-to-br from-[#1c1b1b]/80 to-[#0e0e0e]/90 backdrop-blur-3xl rounded-3xl p-8 md:p-12 relative overflow-hidden group border border-white/5 shadow-2xl transition-all duration-700 hover:-translate-y-1 hover:border-primary/30 flex flex-col justify-between">
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
-                  <span className="material-symbols-outlined text-primary text-xl">kitchen</span>
+                  <span className="material-symbols-outlined notranslate text-primary text-xl" translate="no">kitchen</span>
                 </div>
                 <h3 className="font-display-lg text-3xl text-on-surface mb-xs font-semibold tracking-tight">{cmsConfig.homepage.kdsTitle}</h3>
                 <p className="font-body-md text-on-surface-variant/80 text-base leading-relaxed font-light">
@@ -172,7 +172,7 @@ export default function HomePage() {
               </div>
               <div>
                 <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
-                  <span className="material-symbols-outlined text-primary text-xl">support_agent</span>
+                  <span className="material-symbols-outlined notranslate text-primary text-xl" translate="no">support_agent</span>
                 </div>
                 <h3 className="font-display-lg text-3xl text-on-surface mb-xs font-semibold tracking-tight">{cmsConfig.homepage.conciergeTitle}</h3>
                 <p className="font-body-md text-on-surface-variant/80 text-base leading-relaxed font-light">
@@ -180,7 +180,7 @@ export default function HomePage() {
                 </p>
               </div>
               <Link className="font-label-sm text-primary uppercase tracking-[0.15em] mt-12 inline-flex items-center gap-2 hover:text-primary-fixed transition-colors group/link w-fit relative z-10" href="/support">
-                Get Support <span className="material-symbols-outlined text-sm transform group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
+                Get Support <span className="material-symbols-outlined notranslate text-sm transform group-hover/link:translate-x-1 transition-transform" translate="no">arrow_forward</span>
               </Link>
             </div>
 
@@ -189,7 +189,7 @@ export default function HomePage() {
               <div className="relative z-10 w-full md:w-3/5 flex flex-col h-full justify-between">
                 <div>
                   <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-md backdrop-blur-md">
-                    <span className="material-symbols-outlined text-primary text-2xl">diamond</span>
+                    <span className="material-symbols-outlined notranslate text-primary text-2xl" translate="no">diamond</span>
                   </div>
                   <h3 className="font-display-lg text-4xl text-on-surface mb-sm font-semibold tracking-tight">{cmsConfig.homepage.guestTitle}</h3>
                   <p className="font-body-md text-on-surface-variant/80 text-lg leading-relaxed font-light mb-sm">
@@ -197,7 +197,7 @@ export default function HomePage() {
                   </p>
                 </div>
                 <Link className="font-label-sm text-primary uppercase tracking-[0.15em] mt-12 inline-flex items-center gap-2 hover:text-primary-fixed transition-colors group/link w-fit" href="/login">
-                  Manage Guests <span className="material-symbols-outlined text-sm transform group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
+                  Manage Guests <span className="material-symbols-outlined notranslate text-sm transform group-hover/link:translate-x-1 transition-transform" translate="no">arrow_forward</span>
                 </Link>
               </div>
               <div className="absolute right-0 bottom-0 w-1/2 h-full hidden md:flex items-end justify-end opacity-50 group-hover:opacity-100 transition-opacity duration-1000 pointer-events-none overflow-hidden rounded-br-3xl">
@@ -311,7 +311,7 @@ export default function HomePage() {
                 <ul className="space-y-4 mb-8">
                   {cmsConfig.pricing.starterFeatures.split(',').map((feature) => (
                     <li key={feature.trim()} className="flex items-start gap-3 text-[#A69984]/90 font-sans text-xs leading-relaxed">
-                      <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                      <span className="material-symbols-outlined notranslate text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5" translate="no">check_circle</span>
                       <span>{feature.trim()}</span>
                     </li>
                   ))}
@@ -359,7 +359,7 @@ export default function HomePage() {
                     const isBold = trimmed.startsWith('Everything in');
                     return (
                       <li key={trimmed} className={`flex items-start gap-3 ${isBold ? 'text-white' : 'text-[#A69984]/90'} font-sans text-xs leading-relaxed`}>
-                        <span className="material-symbols-outlined text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                        <span className="material-symbols-outlined notranslate text-[#ffe2ab] text-[18px] flex-shrink-0 mt-0.5" translate="no">check_circle</span>
                         <span className={isBold ? 'font-semibold' : ''}>{trimmed}</span>
                       </li>
                     );
@@ -403,7 +403,7 @@ export default function HomePage() {
                     const isBold = trimmed.startsWith('Everything in');
                     return (
                       <li key={trimmed} className={`flex items-start gap-3 ${isBold ? 'text-white' : 'text-[#A69984]/90'} font-sans text-xs leading-relaxed`}>
-                        <span className="material-symbols-outlined text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5">check_circle</span>
+                        <span className="material-symbols-outlined notranslate text-[#ffe2ab]/90 text-[18px] flex-shrink-0 mt-0.5" translate="no">check_circle</span>
                         <span className={isBold ? 'font-semibold' : ''}>{trimmed}</span>
                       </li>
                     );
@@ -432,7 +432,7 @@ export default function HomePage() {
             <div className="flex flex-wrap justify-center gap-x-8 gap-y-4 font-sans text-xs font-semibold text-[#ffe2ab]">
               {cmsConfig.homepage.trialFeatures.split(',').map((feature) => (
                 <div key={feature.trim()} className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[16px]">done</span> {feature.trim()}
+                  <span className="material-symbols-outlined notranslate text-[16px]" translate="no">done</span> {feature.trim()}
                 </div>
               ))}
             </div>
@@ -469,7 +469,7 @@ export default function HomePage() {
             ].map(stat => (
               <div key={stat.label} className="bg-white/[0.02] backdrop-blur-xl rounded-2xl p-8 text-center border border-white/[0.05] group hover:-translate-y-1 hover:bg-white/[0.04] transition-all duration-500 shadow-xl">
                 <div className="w-16 h-16 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                  <span className="material-symbols-outlined text-[#ffe2ab] text-3xl group-hover:drop-shadow-[0_0_10px_rgba(255,226,171,0.5)] transition-all duration-500">{stat.icon}</span>
+                  <span className="material-symbols-outlined notranslate text-[#ffe2ab] text-3xl group-hover:drop-shadow-[0_0_10px_rgba(255,226,171,0.5)] transition-all duration-500" translate="no">{stat.icon}</span>
                 </div>
                 <div className="font-display-lg text-4xl text-white font-bold mb-3 tracking-tight">{stat.value}</div>
                 <div className="font-sans text-[#A69984]/70 text-xs uppercase tracking-[0.15em] font-medium">{stat.label}</div>
@@ -510,7 +510,7 @@ export default function HomePage() {
                 <div className="absolute -top-6 -right-6 font-display-lg text-[10rem] text-white/[0.02] font-bold leading-none select-none group-hover:text-white/[0.04] transition-colors duration-500">{step.step}</div>
                 
                 <div className={`w-14 h-14 rounded-2xl ${step.bg} border flex items-center justify-center backdrop-blur-md relative z-10`}>
-                  <span className={`material-symbols-outlined text-2xl ${step.color}`}>{step.icon}</span>
+                  <span className={`material-symbols-outlined notranslate text-2xl ${step.color}`} translate="no">{step.icon}</span>
                 </div>
                 <div className="relative z-10">
                   <h3 className="font-display-lg text-2xl text-white font-semibold mb-4">{step.title}</h3>
@@ -526,7 +526,7 @@ export default function HomePage() {
               href="/partners"
               className="group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-title-md font-bold text-base px-9 py-4 rounded-full transition-all duration-500 transform hover:-translate-y-1 flex items-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)]"
             >
-              <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.ambassadorPrimaryCtaText} <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span></span>
+              <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.ambassadorPrimaryCtaText} <span className="material-symbols-outlined notranslate text-sm transform group-hover:translate-x-1 transition-transform duration-300" translate="no">arrow_forward</span></span>
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
             </Link>
             <Link
@@ -563,7 +563,7 @@ export default function HomePage() {
                   aria-label="Previous testimonial"
                   className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-[#ffe2ab] hover:text-[#2c1a00] hover:border-[#ffe2ab] transition-all duration-300 cursor-pointer shadow-md focus:outline-none"
                 >
-                  <span className="material-symbols-outlined text-lg leading-none">arrow_back</span>
+                  <span className="material-symbols-outlined notranslate text-lg leading-none" translate="no">arrow_back</span>
                 </button>
                 <button
                   type="button"
@@ -571,7 +571,7 @@ export default function HomePage() {
                   aria-label="Next testimonial"
                   className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-[#ffe2ab] hover:text-[#2c1a00] hover:border-[#ffe2ab] transition-all duration-300 cursor-pointer shadow-md focus:outline-none"
                 >
-                  <span className="material-symbols-outlined text-lg leading-none">arrow_forward</span>
+                  <span className="material-symbols-outlined notranslate text-lg leading-none" translate="no">arrow_forward</span>
                 </button>
               </div>
             </div>
@@ -580,7 +580,7 @@ export default function HomePage() {
             <div className="w-full lg:w-2/3">
               <div className="bg-gradient-to-b from-white/[0.03] to-white/[0.01] rounded-3xl p-8 md:p-12 border border-white/[0.06] shadow-[0_12px_45px_rgba(0,0,0,0.5)] backdrop-blur-md relative overflow-hidden transition-all duration-500 min-h-[320px] flex flex-col justify-between group">
                 {/* Background double quote icon watermark */}
-                <span className="material-symbols-outlined absolute -top-6 -right-6 text-[10rem] text-white/[0.02] font-light leading-none pointer-events-none select-none">
+                <span className="material-symbols-outlined notranslate absolute -top-6 -right-6 text-[10rem] text-white/[0.02] font-light leading-none pointer-events-none select-none" translate="no">
                   format_quote
                 </span>
                 
@@ -645,7 +645,7 @@ export default function HomePage() {
             >
               <span className="relative z-10 flex items-center gap-2">
                 {cmsConfig.homepage.ctaSectionPrimaryText} 
-                <span className="material-symbols-outlined text-sm transform group-hover:translate-x-1 transition-transform duration-300">arrow_forward</span>
+                <span className="material-symbols-outlined notranslate text-sm transform group-hover:translate-x-1 transition-transform duration-300" translate="no">arrow_forward</span>
               </span>
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
             </Link>
