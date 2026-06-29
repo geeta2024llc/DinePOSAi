@@ -768,14 +768,12 @@ export default function PosPage() {
             serverName: 'J. Smith',
             duration: '1m',
             needsPayment: true,
-            cardAmount: 76.00,
+            cardAmount: 0,
             guests: 2,
             orderNumber: `#${orderNum}`,
             taxRate: taxRateDineIn,
             gratuityRate: 0.20,
-            items: [
-              { qty: 2, name: 'Truffle Risotto', price: 76.00 }
-            ]
+            items: []
           };
           setTickets(prev => [newTicket, ...prev]);
           setSelectedTicketId(newId);
@@ -789,15 +787,12 @@ export default function PosPage() {
             serverName: 'J. Smith',
             duration: '1m',
             needsPayment: true,
-            cardAmount: 45.00,
+            cardAmount: 0,
             guests: 1,
             orderNumber: `#${orderNum}`,
             taxRate: taxRateTakeaway,
             gratuityRate: 0.00,
-            items: [
-              { qty: 1, name: 'Truffle Burrata Salad', price: 26.00 },
-              { qty: 1, name: 'Signature Emerald Gimlet', price: 19.00 }
-            ]
+            items: []
           };
           setTickets(prev => [newTicket, ...prev]);
           setSelectedTicketId(newId);
@@ -901,6 +896,13 @@ export default function PosPage() {
     const syncActiveTickets = async () => {
       try {
         const res = await apiRequest<any[]>('/api/orders');
+        if (!res.success) {
+          if (res.error?.includes('Authentication required') || res.error?.includes('token') || res.error?.includes('Unauthorized')) {
+            console.warn('[POS] Authentication failed. Redirecting to login.');
+            window.location.href = '/login';
+            return;
+          }
+        }
         if (res.success && res.data) {
           const dbTickets = res.data.map((o: any) => 
             mapDbOrderToPosTicket(o, taxRateDineIn, taxRateTakeaway, taxRateDelivery)
@@ -1257,7 +1259,7 @@ export default function PosPage() {
       });
       setPendingCloseMsg(successMsg);
       setReceiptModalOpen(true);
-    }, 2000);
+    }, 300);
   };
 
   const handleReceiptClose = () => {
@@ -2336,7 +2338,7 @@ export default function PosPage() {
               <div>
                 <h3 className="font-serif font-bold text-lg text-white">{t('Split Check Calculator', '分割会計計算ツール')}</h3>
                 <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
-                  {t('Table', 'テーブル')} {selectedTicket.tableNumber} • {t('Invoice', '伝票')} #DINE-{selectedTicket.orderNumber.replace('#', '')}
+                  {t('Table', 'テーブル')} {selectedTicket.tableNumber} • {t('Invoice', '伝票')} #DINE-{selectedTicket.orderNumber?.replace('#', '') || ''}
                 </p>
               </div>
               <button

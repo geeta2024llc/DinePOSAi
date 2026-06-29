@@ -21,42 +21,42 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
-            const setup = () => {
-              const handleIcons = (root) => {
-                if (!root) return;
-                const icons = root.getElementsByClassName('material-symbols-outlined');
-                for (let i = 0; i < icons.length; i++) {
-                  const icon = icons[i];
-                  if (!icon.classList.contains('notranslate')) {
-                    icon.classList.add('notranslate');
-                  }
-                  icon.setAttribute('translate', 'no');
+            const handleClean = (root) => {
+              if (!root) return;
+              const icons = root.getElementsByClassName('material-symbols-outlined');
+              for (let i = 0; i < icons.length; i++) {
+                const icon = icons[i];
+                if (!icon.classList.contains('notranslate')) {
+                  icon.classList.add('notranslate');
                 }
-              };
-              
-              handleIcons(document.body);
-              
-              const observer = new MutationObserver((mutations) => {
-                for (let i = 0; i < mutations.length; i++) {
-                  const mutation = mutations[i];
-                  for (let j = 0; j < mutation.addedNodes.length; j++) {
-                    const node = mutation.addedNodes[j];
-                    if (node.nodeType === 1) {
-                      if (node.classList && node.classList.contains('material-symbols-outlined')) {
-                        if (!node.classList.contains('notranslate')) {
-                          node.classList.add('notranslate');
-                        }
-                        node.setAttribute('translate', 'no');
-                      }
-                      handleIcons(node);
-                    }
-                  }
-                }
-              });
-              
-              if (document.body) {
-                observer.observe(document.body, { childList: true, subtree: true });
+                icon.setAttribute('translate', 'no');
               }
+              if (root.removeAttribute) {
+                if (root.hasAttribute && root.hasAttribute('bis_skin_checked')) {
+                  root.removeAttribute('bis_skin_checked');
+                }
+                const badDivs = root.querySelectorAll ? root.querySelectorAll('[bis_skin_checked]') : [];
+                for (let i = 0; i < badDivs.length; i++) {
+                  badDivs[i].removeAttribute('bis_skin_checked');
+                }
+              }
+            };
+
+            const observer = new MutationObserver((mutations) => {
+              for (let i = 0; i < mutations.length; i++) {
+                const mutation = mutations[i];
+                for (let j = 0; j < mutation.addedNodes.length; j++) {
+                  const node = mutation.addedNodes[j];
+                  if (node.nodeType === 1) {
+                    handleClean(node);
+                  }
+                }
+              }
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+
+            const setup = () => {
+              handleClean(document.body);
             };
 
             if (document.readyState === 'loading') {
