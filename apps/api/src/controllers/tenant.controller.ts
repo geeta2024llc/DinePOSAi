@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { supabase } from '../utils/supabase.js';
 import { ApiResponse } from '@dineposai/shared-types';
 import { AuthenticatedRequest } from '../middleware/auth.js';
@@ -217,5 +218,171 @@ export const onboardTenant = async (req: AuthenticatedRequest, res: Response<Api
 
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Error during onboarding.' });
+  }
+};
+
+// Staff validation schemas
+export const createStaffSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  role: z.enum(['SUPER_ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN']),
+});
+
+export const updateStaffSchema = z.object({
+  name: z.string().min(1).optional(),
+  email: z.string().email('Invalid email format').optional(),
+  password: z.string().min(8).optional(),
+  role: z.enum(['SUPER_ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN']).optional(),
+  isActive: z.boolean().optional(),
+});
+
+// 4. GET ALL STAFF/USERS
+export const getTenantUsers = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, name, email, role, is_active, created_at, last_login')
+      .eq('tenant_id', tenantId)
+      .order('name', { ascending: true });
+
+    if (error) return res.status(500).json({ success: false, error: error.message });
+
+    res.json({
+      success: true,
+      data: users
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error fetching users.' });
+  }
+};
+
+// 5. CREATE STAFF USER
+export const createTenantUser = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+
+  const { name, email, password, role } = req.body;
+
+  try {
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: 'Email address is already in use.' });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        tenant_id: tenantId,
+        name,
+        email,
+        password_hash: passwordHash,
+        role,
+        is_active: true
+      })
+      .select('id, name, email, role, is_active, created_at')
+      .single();
+
+    if (error || !newUser) {
+      return res.status(500).json({ success: false, error: `Failed to create user: ${error?.message}` });
+    }
+
+    res.status(201).json({
+      success: true,
+      data: newUser
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error creating user.' });
+  }
+};
+
+// 6. UPDATE STAFF USER
+export const updateTenantUser = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  const { id } = req.params;
+  
+  if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+
+  const { name, email, password, role, isActive } = req.body;
+
+  try {
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .single();
+
+    if (!existingUser) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    const updates: any = {};
+    if (name !== undefined) updates.name = name;
+    if (email !== undefined) updates.email = email;
+    if (role !== undefined) updates.role = role;
+    if (isActive !== undefined) updates.is_active = isActive;
+    if (password !== undefined) {
+      updates.password_hash = await bcrypt.hash(password, 12);
+    }
+    updates.updated_at = new Date().toISOString();
+
+    const { data: updatedUser, error } = await supabase
+      .from('users')
+      .update(updates)
+      .eq('id', id)
+      .eq('tenant_id', tenantId)
+      .select('id, name, email, role, is_active, created_at, updated_at')
+      .single();
+
+    if (error || !updatedUser) {
+      return res.status(500).json({ success: false, error: `Failed to update user: ${error?.message}` });
+    }
+
+    res.json({
+      success: true,
+      data: updatedUser
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error updating user.' });
+  }
+};
+
+// 7. DELETE STAFF USER
+export const deleteTenantUser = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  const { id } = req.params;
+
+  if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+
+  if (req.user?.id === id) {
+    return res.status(400).json({ success: false, error: 'You cannot delete your own user account.' });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('users')
+      .delete()
+      .eq('id', id)
+      .eq('tenant_id', tenantId);
+
+    if (error) return res.status(500).json({ success: false, error: error.message });
+
+    res.json({
+      success: true,
+      data: { message: 'User deleted successfully.' }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error deleting user.' });
   }
 };

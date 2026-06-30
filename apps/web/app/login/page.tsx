@@ -325,6 +325,13 @@ export default function LoginPage() {
           </button>
         </form>
 
+        {/* Sign up prompt link */}
+        <div className="mt-5 text-center border-t border-white/5 pt-4 text-xs font-sans text-[#A69984]/70 select-none">
+          Don't have an account?{' '}
+          <Link href="/register" className="text-[#ffe2ab] hover:text-[#ffdca0] font-semibold transition-colors duration-200 ml-1 hover:underline">
+            Sign Up
+          </Link>
+        </div>
 
         {/* Muted bottom operational guideline text */}
         <div className="mt-6 text-center text-[#A69984]/40 font-sans text-[10px] leading-relaxed select-none uppercase tracking-[0.06em]">

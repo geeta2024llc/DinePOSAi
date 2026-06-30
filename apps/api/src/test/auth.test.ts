@@ -8,7 +8,7 @@ describe('Auth Validation Schemas', () => {
         businessName: 'Deluxe Diner',
         name: 'John Doe',
         email: 'john.doe@dineposai.com',
-        password: 'securePassword123',
+        password: 'securePassword123!',
         country: 'Japan'
       };
       
@@ -37,7 +37,7 @@ describe('Auth Validation Schemas', () => {
         businessName: 'Deluxe Diner',
         name: 'John Doe',
         email: 'not-an-email',
-        password: 'securePassword123'
+        password: 'securePassword123!'
       };
 
       const parsed = signupSchema.safeParse(badEmailInput);
