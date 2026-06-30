@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
+import { apiRequest } from '@/utils/api';
 
 interface CartItem {
   itemId: string;
@@ -231,7 +232,7 @@ export default function ConciergePage() {
   };
 
   // Submit User Message and respond dynamically
-  const submitUserMessage = (userText: string) => {
+  const submitUserMessage = async (userText: string) => {
     if (!userText.trim()) return;
 
     // Append user message
@@ -245,7 +246,52 @@ export default function ConciergePage() {
     setInput('');
     setIsTyping(true);
 
-    // Simulate AI Chef reasoning and response
+    try {
+      // Map message history to send to backend (excluding ID)
+      const mappedHistory = messages.map(m => ({
+        sender: m.sender,
+        text: m.text
+      }));
+
+      // Retrieve tenant account ID if onboarded/stored
+      const storedAccount = localStorage.getItem('dinepos_user_account');
+      let tenantId = undefined;
+      if (storedAccount) {
+        try {
+          const parsed = JSON.parse(storedAccount);
+          tenantId = parsed.tenant?.id || parsed.id;
+        } catch (e) {}
+      }
+
+      const chatRes = await apiRequest('/api/concierge/chat', {
+        method: 'POST',
+        useAuth: false, // public access
+        body: JSON.stringify({
+          message: userText,
+          tableNumber,
+          tenantId,
+          history: mappedHistory
+        })
+      });
+
+      if (chatRes.success && chatRes.data) {
+        const { reply, suggestions: replySug, recommendations: replyRec } = chatRes.data;
+        const newAuraMsg: ChatMessage = {
+          id: `msg-aura-${Date.now()}`,
+          sender: 'aura',
+          text: reply,
+          suggestions: replySug && replySug.length > 0 ? replySug : undefined,
+          recommendations: replyRec && replyRec.length > 0 ? replyRec : undefined
+        };
+        setMessages(prev => [...prev, newAuraMsg]);
+        setIsTyping(false);
+        return;
+      }
+    } catch (e) {
+      console.warn('[Concierge] Direct AI concierge chat request failed, running offline fallback:', e);
+    }
+
+    // Fallback Rules Engine
     setTimeout(() => {
       let replyText = "Aura Concierge is analyzing your request. We recommend exploring our chef's signature seasonal entrees or pairing your selections with our reserve wine collection.";
       let suggestions: string[] = [];

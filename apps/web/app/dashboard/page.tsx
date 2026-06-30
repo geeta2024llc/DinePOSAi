@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { apiRequest } from '@/utils/api';
 import {
@@ -928,6 +928,7 @@ const translations: Record<string, Record<string, string>> = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   // CMS Configuration State
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
 
@@ -969,7 +970,35 @@ export default function DashboardPage() {
     try {
       const stored = localStorage.getItem('dinepos_user_account');
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = JSON.parse(stored);
+        
+        const upgradeStatus = searchParams.get('upgrade');
+        const queryTier = searchParams.get('tier');
+        const queryCycle = searchParams.get('cycle');
+        
+        if (upgradeStatus === 'success') {
+          const newExpiry = new Date();
+          if (queryCycle === 'annual') {
+            newExpiry.setFullYear(newExpiry.getFullYear() + 1);
+          } else {
+            newExpiry.setMonth(newExpiry.getMonth() + 1);
+          }
+          const expiryStr = newExpiry.toISOString().split('T')[0];
+          
+          parsed = {
+            ...parsed,
+            plan: 'ACTIVE',
+            tier: queryTier || 'Starter',
+            billingCycle: queryCycle || 'monthly',
+            expiryDate: expiryStr
+          };
+          localStorage.setItem('dinepos_user_account', JSON.stringify(parsed));
+          
+          // Clear query params from URL quietly
+          window.history.replaceState({}, '', window.location.pathname);
+          triggerToast('Your billing subscription was upgraded successfully!', 'success');
+        }
+        
         setUserAccount(parsed);
         if (parsed.tier) {
           setSelectedUpgradeTier(parsed.tier as any);
@@ -985,7 +1014,7 @@ export default function DashboardPage() {
     } catch (e) {
       console.error(e);
     }
-  }, [router]);
+  }, [router, searchParams]);
 
   // ==========================================
   // INVENTORY MANAGEMENT STATE
@@ -8320,30 +8349,24 @@ export default function DashboardPage() {
                 Cancel
               </button>
               <button type="button"
-                onClick={() => {
-                  const newExpiry = new Date();
-                  if (upgradeBillingCycle === 'annual') {
-                    newExpiry.setFullYear(newExpiry.getFullYear() + 1);
-                  } else {
-                    newExpiry.setMonth(newExpiry.getMonth() + 1);
+                onClick={async () => {
+                  try {
+                    const upgradeRes = await apiRequest('/api/billing/checkout', {
+                      method: 'POST',
+                      body: JSON.stringify({
+                        tier: selectedUpgradeTier,
+                        billingCycle: upgradeBillingCycle
+                      })
+                    });
+
+                    if (upgradeRes.success && upgradeRes.data?.url) {
+                      window.location.href = upgradeRes.data.url;
+                    } else {
+                      triggerToast(upgradeRes.error || 'Failed to start billing upgrade.', 'info');
+                    }
+                  } catch (err: any) {
+                    triggerToast(err.message || 'Billing service is currently unavailable.', 'info');
                   }
-                  const expiryStr = newExpiry.toISOString().split('T')[0];
-
-                  const updatedUser = {
-                    ...userAccount,
-                    plan: 'ACTIVE',
-                    tier: selectedUpgradeTier,
-                    billingCycle: upgradeBillingCycle,
-                    expiryDate: expiryStr
-                  };
-
-                  localStorage.setItem('dinepos_user_account', JSON.stringify(updatedUser));
-                  setUserAccount(updatedUser as any);
-                  setShowPlanUpgradeModal(false);
-                  triggerToast(`Successfully subscribed to the ${selectedUpgradeTier === 'Starter' ? cmsConfig.pricing.starterName : selectedUpgradeTier === 'Growth' ? cmsConfig.pricing.growthName : cmsConfig.pricing.premiumName} package!`, 'success');
-                  
-                  // dispatch storage/update event
-                  window.dispatchEvent(new Event('storage'));
                 }}
                 className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
               >

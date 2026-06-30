@@ -2,15 +2,37 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { apiRequest } from '@/utils/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email.trim()) {
-      setIsSubmitted(true);
+    if (!email.trim()) return;
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const res = await apiRequest('/api/auth/forgot-password', {
+        method: 'POST',
+        useAuth: false,
+        body: JSON.stringify({ email })
+      });
+
+      if (res.success) {
+        setIsSubmitted(true);
+      } else {
+        setError(res.error || 'Failed to send reset instructions. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'An error occurred. Please try again later.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -52,7 +74,13 @@ export default function ForgotPasswordPage() {
               </p>
             </div>
             
-            <form onSubmit={handleSubmit} className="space-y-6 text-left">
+            <form onSubmit={handleSubmit} className="space-y-5 text-left">
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/15 text-red-400 text-xs rounded-lg font-sans">
+                  {error}
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="block text-[#A69984] text-[10px] font-bold uppercase tracking-[0.12em] select-none">
                   Email Address
@@ -64,9 +92,10 @@ export default function ForgotPasswordPage() {
                   <input 
                     type="email" 
                     required
+                    disabled={isLoading}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15"
+                    className="w-full bg-[#12110f]/90 border border-white/10 rounded-lg pl-11 pr-4 py-3 text-white placeholder-[#A69984]/35 font-sans text-sm focus:border-[#ffe2ab]/40 focus:outline-none transition-all duration-300 hover:border-white/15 disabled:opacity-50"
                     placeholder="manager@restaurant.com" 
                   />
                 </div>
@@ -74,9 +103,16 @@ export default function ForgotPasswordPage() {
               
               <button 
                 type="submit" 
-                className="w-full bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest py-3.5 rounded-lg transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:shadow-[0_4px_24px_rgba(255,226,171,0.2)] hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-6"
+                disabled={isLoading}
+                className="w-full bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest py-3.5 rounded-lg transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)] hover:shadow-[0_4px_24px_rgba(255,226,171,0.2)] hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer mt-6 disabled:opacity-50 disabled:pointer-events-none"
               >
-                Send Reset Instructions <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-[#402d00]/30 border-t-[#402d00] rounded-full animate-spin" />
+                ) : (
+                  <>
+                    Send Reset Instructions <span className="material-symbols-outlined text-sm font-black">arrow_forward</span>
+                  </>
+                )}
               </button>
             </form>
             

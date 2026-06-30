@@ -10,6 +10,8 @@ import tableRouter from './routes/table.routes.js';
 import menuRouter from './routes/menu.routes.js';
 import inventoryRouter from './routes/inventory.routes.js';
 import orderRouter from './routes/order.routes.js';
+import conciergeRouter from './routes/concierge.routes.js';
+import billingRouter from './routes/billing.routes.js';
 
 dotenv.config();
 
@@ -80,6 +82,8 @@ app.use('/api/tables', tableRouter);
 app.use('/api/menu', menuRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/orders', orderRouter);
+app.use('/api/concierge', conciergeRouter);
+app.use('/api/billing', billingRouter);
 
 // Health Check Endpoint
 app.get('/health', (req: Request, res: Response<ApiResponse>) => {
