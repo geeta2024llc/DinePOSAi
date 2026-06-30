@@ -65,14 +65,6 @@ const authRateLimit = (req: Request, res: Response<ApiResponse>, next: NextFunct
   next();
 };
 
-// Mount API Routes
-app.use('/api/auth', authRateLimit, authRouter);
-app.use('/api/tenant', tenantRouter);
-app.use('/api/tables', tableRouter);
-app.use('/api/menu', menuRouter);
-app.use('/api/inventory', inventoryRouter);
-app.use('/api/orders', orderRouter);
-
 // Global Logging Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (process.env.NODE_ENV !== 'production') {
@@ -80,6 +72,14 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   }
   next();
 });
+
+// Mount API Routes
+app.use('/api/auth', authRateLimit, authRouter);
+app.use('/api/tenant', tenantRouter);
+app.use('/api/tables', tableRouter);
+app.use('/api/menu', menuRouter);
+app.use('/api/inventory', inventoryRouter);
+app.use('/api/orders', orderRouter);
 
 // Health Check Endpoint
 app.get('/health', (req: Request, res: Response<ApiResponse>) => {

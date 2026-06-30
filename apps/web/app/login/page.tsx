@@ -17,16 +17,6 @@ const getOrCreateDeviceId = (): string => {
   return deviceId;
 };
 
-// NOTE: Plaintext credentials below are intentional for local demo environment and quick operational role switching/testing.
-const credentialsMap = {
-  'super-admin': { email: 'superadmin@dinepos.ai', password: 'superadmin123', target: '/super-admin', label: 'Super Admin' },
-  'admin': { email: 'admin@dinepos.ai', password: 'admin123', target: '/dashboard', label: 'Admin Owner' },
-  'cashier': { email: 'cashier@dinepos.ai', password: 'cashier123', target: '/pos', label: 'Cashier Staff' },
-  'kds': { email: 'kds@dinepos.ai', password: 'kds123', target: '/kds', label: 'KDS Staff' },
-  'waiter': { email: 'waiter@dinepos.ai', password: 'waiter123', target: '/menu', label: 'Waiter Menu' },
-  'customer': { email: 'customer@dinepos.ai', password: 'customer123', target: '/menu', label: 'Customer Menu' },
-};
-
 export default function LoginPage() {
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
 
@@ -56,20 +46,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Pre-fill super-admin credentials by default on mount
-  useEffect(() => {
-    setEmail('superadmin@dinepos.ai');
-    setPassword('superadmin123');
-  }, []);
-
   const handleRoleChange = (role: string) => {
     setSelectedRole(role);
-    if (role in credentialsMap) {
-      const creds = credentialsMap[role as keyof typeof credentialsMap];
-      setEmail(creds.email);
-      setPassword(creds.password);
-      setError('');
-    }
+    setError('');
   };
 
   const handleAuthSuccess = (token: string, user: any, tenant: any) => {
@@ -187,55 +166,6 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async (role: 'super-admin' | 'admin' | 'cashier' | 'customer' | 'kds' | 'waiter') => {
-    const creds = credentialsMap[role];
-    setSelectedRole(role);
-    setEmail(creds.email);
-    setPassword(creds.password);
-    setIsLoading(true);
-    setError('');
-
-    try {
-      const deviceId = getOrCreateDeviceId();
-      const response = await apiRequest('/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email: creds.email, password: creds.password, deviceId }),
-        useAuth: false,
-      });
-
-      if (response.success && response.data?.token) {
-        setIsLoading(false);
-        const { token, user, tenant } = response.data;
-        handleAuthSuccess(token, user, tenant);
-        router.push(creds.target);
-        return;
-      }
-
-      // Offline or network error fallback
-      setTimeout(() => {
-        setIsLoading(false);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('dinepos_logged_in_email', creds.email);
-          localStorage.setItem('dinepos_user_account', JSON.stringify({
-            fullName: role.toUpperCase(),
-            email: creds.email,
-            restaurantName: 'Offline Demo Restaurant',
-            role: role === 'super-admin' ? 'SUPER_ADMIN' : 'MANAGER',
-            currency: 'JPY',
-          }));
-        }
-        router.push(creds.target);
-      }, 800);
-
-    } catch (err) {
-      setIsLoading(false);
-      // Fallback
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('dinepos_logged_in_email', creds.email);
-      }
-      router.push(creds.target);
-    }
-  };
 
   return (
     <div className="flex-1 flex flex-col w-full min-h-screen bg-[#0e0e0e] items-center justify-center relative overflow-hidden font-sans">
@@ -395,70 +325,6 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Quick Role Login Section */}
-        <div className="mt-8 pt-6 border-t border-white/5 space-y-4">
-          <div className="text-center">
-            <span className="text-[#A69984] text-[10px] font-bold uppercase tracking-[0.15em] select-none">
-              {cmsConfig.auth.loginDemoTitle}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button 
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleDemoLogin('super-admin')}
-              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-xs">admin_panel_settings</span>
-              Super Admin
-            </button>
-            <button 
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleDemoLogin('admin')}
-              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-xs">storefront</span>
-              Admin Owner
-            </button>
-            <button 
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleDemoLogin('cashier')}
-              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-xs">point_of_sale</span>
-              Cashier POS
-            </button>
-            <button 
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleDemoLogin('kds')}
-              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-xs">chef_hat</span>
-              Kitchen KDS
-            </button>
-            <button 
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleDemoLogin('waiter')}
-              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-xs">restaurant_menu</span>
-              Waiter Menu
-            </button>
-            <button 
-              type="button"
-              disabled={isLoading}
-              onClick={() => handleDemoLogin('customer')}
-              className="bg-white/5 border border-white/10 hover:border-[#ffe2ab]/30 text-white hover:text-[#ffe2ab] rounded-lg py-2.5 px-2 text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span className="material-symbols-outlined text-xs">menu_book</span>
-              Customer Menu
-            </button>
-          </div>
-        </div>
 
         {/* Muted bottom operational guideline text */}
         <div className="mt-6 text-center text-[#A69984]/40 font-sans text-[10px] leading-relaxed select-none uppercase tracking-[0.06em]">

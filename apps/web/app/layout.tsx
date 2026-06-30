@@ -1,5 +1,6 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { AuthProvider } from './authContext';
 import { PrinterProvider } from './printerContext';
 
 export const metadata: Metadata = {
@@ -68,9 +69,11 @@ export default function RootLayout({
         ` }} />
       </head>
       <body className="bg-surface-container-lowest text-on-surface antialiased overflow-x-hidden min-h-screen flex flex-col" suppressHydrationWarning>
-        <PrinterProvider>
-          {children}
-        </PrinterProvider>
+        <AuthProvider>
+          <PrinterProvider>
+            {children}
+          </PrinterProvider>
+        </AuthProvider>
       </body>
     </html>
   );

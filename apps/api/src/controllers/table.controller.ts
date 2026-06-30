@@ -114,6 +114,7 @@ export const updateTableStatus = async (req: AuthenticatedRequest, res: Response
       .from('tables')
       .update({ status })
       .eq('id', tableId)
+      .eq('tenant_id', tenantId)
       .select()
       .single();
 

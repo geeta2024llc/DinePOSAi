@@ -35,6 +35,7 @@ function RegisterForm() {
   const [restaurantName, setRestaurantName] = useState('');
   const [password, setPassword] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [country, setCountry] = useState('Japan');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -82,7 +83,7 @@ function RegisterForm() {
           name: fullName,
           email: emailLower,
           password: password,
-          country: 'Japan', // default country
+          country: country,
         }),
         useAuth: false,
       });
@@ -388,6 +389,29 @@ function RegisterForm() {
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">mail</span>
                 <input type="email" required placeholder="name@restaurant.com" value={email} onChange={e => setEmail(e.target.value)} className={inputClass()} />
+              </div>
+            </div>
+
+            {/* Country Selector */}
+            <div className="space-y-2">
+              <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm">
+                Country <span className="text-[#ffe2ab]/70">*</span>
+              </label>
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">public</span>
+                <select
+                  value={country}
+                  onChange={e => setCountry(e.target.value)}
+                  className={`${inputClass()} appearance-none pr-10`}
+                >
+                  <option value="Japan" className="bg-[#121211] text-white">Japan</option>
+                  <option value="United States" className="bg-[#121211] text-white">United States</option>
+                  <option value="United Kingdom" className="bg-[#121211] text-white">United Kingdom</option>
+                  <option value="Germany" className="bg-[#121211] text-white">Germany</option>
+                  <option value="South Korea" className="bg-[#121211] text-white">South Korea</option>
+                  <option value="China" className="bg-[#121211] text-white">China</option>
+                </select>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/20 pointer-events-none">expand_more</span>
               </div>
             </div>
 

@@ -41,6 +41,72 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response<ApiRe
   let { tableId, tableName, customerType, subtotal, tax, discount, total, items } = req.body;
 
   try {
+    // Fetch tenant details for tax rate validation
+    const { data: tenant } = await supabase
+      .from('tenants')
+      .select('tax_rate, tax_type')
+      .eq('id', tenantId)
+      .single();
+
+    const officialTaxRate = tenant ? parseFloat(tenant.tax_rate as any) / 100 : 0.085;
+
+    // Fetch all menu items for this tenant to check prices
+    const { data: dbMenuItems } = await supabase
+      .from('menu_items')
+      .select('id, name, price')
+      .eq('tenant_id', tenantId);
+
+    const dbItemsMap = new Map<string, { id: string; price: number }>();
+    const dbItemsByNameMap = new Map<string, { id: string; price: number }>();
+    
+    if (dbMenuItems) {
+      dbMenuItems.forEach(item => {
+        dbItemsMap.set(item.id, { id: item.id, price: parseFloat(item.price) });
+        dbItemsByNameMap.set(item.name.toLowerCase().trim(), { id: item.id, price: parseFloat(item.price) });
+      });
+    }
+
+    // Recalculate prices from database
+    let computedSubtotal = 0;
+    const validatedItems = items.map((item: any) => {
+      let matchedItem = null;
+      
+      // Match by ID if valid UUID
+      const isUuid = item.menuItemId && item.menuItemId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+      if (isUuid) {
+        matchedItem = dbItemsMap.get(item.menuItemId);
+      }
+      
+      // Match by Name if not matched by ID
+      if (!matchedItem) {
+        matchedItem = dbItemsByNameMap.get(item.name.toLowerCase().trim());
+      }
+      
+      const resolvedPrice = matchedItem ? matchedItem.price : item.price;
+      const resolvedItemId = matchedItem ? matchedItem.id : (isUuid ? item.menuItemId : null);
+      
+      computedSubtotal += resolvedPrice * item.quantity;
+      
+      return {
+        ...item,
+        menuItemId: resolvedItemId,
+        price: resolvedPrice
+      };
+    });
+
+    // Compute tax and total
+    const resolvedDiscount = Math.min(discount || 0, computedSubtotal);
+    const isNoTax = tenant && tenant.tax_type === 'NONE';
+    const computedTax = isNoTax ? 0 : computedSubtotal * officialTaxRate;
+    const computedTotal = isNoTax ? (computedSubtotal - resolvedDiscount) : (computedSubtotal + computedTax - resolvedDiscount);
+
+    // Override the parameters to insert
+    subtotal = computedSubtotal;
+    tax = computedTax;
+    discount = resolvedDiscount;
+    total = computedTotal;
+    items = validatedItems;
+
     // If tableId is missing but tableName is provided, resolve it
     if (!tableId && tableName) {
       const { data: existingTable } = await supabase

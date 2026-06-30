@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { UserRole, ApiResponse } from '@dineposai/shared-types';
+import { supabase } from '../utils/supabase.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-key-at-least-32-chars-long' : '');
 if (!JWT_SECRET) {
@@ -17,7 +18,7 @@ export interface AuthenticatedRequest extends Request {
 }
 
 // Verify JWT access token attached to authorization header
-export const requireAuth = (
+export const requireAuth = async (
   req: AuthenticatedRequest,
   res: Response<ApiResponse>,
   next: NextFunction
@@ -40,6 +41,20 @@ export const requireAuth = (
       role: UserRole;
       email: string;
     };
+
+    // DB session check (single-session enforcement & revocation validation)
+    const { data: session } = await supabase
+      .from('sessions')
+      .select('id')
+      .eq('user_id', decoded.id)
+      .maybeSingle();
+
+    if (!session) {
+      return res.status(401).json({
+        success: false,
+        error: 'Session terminated or invalidated. Please log in again.'
+      });
+    }
 
     req.user = decoded;
     next();

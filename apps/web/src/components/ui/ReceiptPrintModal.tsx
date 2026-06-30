@@ -32,6 +32,16 @@ interface ReceiptPrintModalProps {
 
 type BluetoothStep = 'idle' | 'scanning' | 'connecting' | 'sending' | 'done' | 'error';
 
+const escapeHtml = (unsafe: string | null | undefined): string => {
+  if (!unsafe) return '';
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+};
+
 export default function ReceiptPrintModal({ isOpen, onClose, receiptData, formatCurrency }: ReceiptPrintModalProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [btStep, setBtStep] = useState<BluetoothStep>('idle');
@@ -114,7 +124,7 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Receipt - ${receiptData.orderId}</title>
+          <title>Receipt - ${escapeHtml(receiptData.orderId)}</title>
           <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Playfair+Display:wght@700;800&family=Roboto+Mono:wght@700&family=Material+Symbols+Outlined" />
           <style>
             * { 
@@ -331,26 +341,26 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
           <div class="receipt-container">
             <div class="header">
               <span class="logo-icon">restaurant</span>
-              <h4 class="restaurant-name">${receiptData.restaurantName}</h4>
+              <h4 class="restaurant-name">${escapeHtml(receiptData.restaurantName)}</h4>
               <p class="subtitle">Official Transaction Receipt</p>
             </div>
 
             <table class="info-table">
               <tr>
                 <td class="info-label">Order</td>
-                <td class="info-value">${receiptData.orderId}</td>
+                <td class="info-value">${escapeHtml(receiptData.orderId)}</td>
               </tr>
               <tr>
                 <td class="info-label">Table</td>
-                <td class="info-value">${receiptData.tableLabel}</td>
+                <td class="info-value">${escapeHtml(receiptData.tableLabel)}</td>
               </tr>
               <tr>
                 <td class="info-label">Server</td>
-                <td class="info-value">${receiptData.serverName}</td>
+                <td class="info-value">${escapeHtml(receiptData.serverName)}</td>
               </tr>
               <tr>
                 <td class="info-label">Date/Time</td>
-                <td class="info-value">${receiptData.dateTime}</td>
+                <td class="info-value">${escapeHtml(receiptData.dateTime)}</td>
               </tr>
             </table>
 
@@ -367,10 +377,10 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
                     <td>
                       <span class="item-name">
                         ${item.qty > 1 ? `<span class="item-qty">${item.qty}x</span>` : ''}
-                        ${item.name}
+                        ${escapeHtml(item.name)}
                       </span>
                       ${item.modifiers && item.modifiers.length > 0 ? `
-                        <div class="item-mods">(${item.modifiers.join(', ')})</div>
+                        <div class="item-mods">(${item.modifiers.map(m => escapeHtml(m)).join(', ')})</div>
                       ` : ''}
                     </td>
                     <td class="item-price">${formatCurrency(item.price * item.qty)}</td>
@@ -385,12 +395,12 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
                 <td class="totals-val">${formatCurrency(receiptData.subtotal)}</td>
               </tr>
               <tr>
-                <td class="totals-label">${receiptData.taxLabel}</td>
+                <td class="totals-label">${escapeHtml(receiptData.taxLabel)}</td>
                 <td class="totals-val">${formatCurrency(receiptData.tax)}</td>
               </tr>
               ${receiptData.discount > 0 ? `
                 <tr>
-                  <td class="totals-label" style="font-weight: 700;">${receiptData.discountLabel || 'Discount'}</td>
+                  <td class="totals-label" style="font-weight: 700;">${escapeHtml(receiptData.discountLabel || 'Discount')}</td>
                   <td class="totals-val" style="font-weight: 800;">-${formatCurrency(receiptData.discount)}</td>
                 </tr>
               ` : ''}
@@ -410,9 +420,9 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
               <div class="payment-row">
                 <div class="payment-method">
                   <span class="payment-icon">credit_card</span>
-                  <span>${receiptData.paymentMethod}</span>
+                  <span>${escapeHtml(receiptData.paymentMethod)}</span>
                 </div>
-                <span style="font-family: 'Roboto Mono', monospace; font-weight: 700; color: #000;">${receiptData.paymentDetails}</span>
+                <span style="font-family: 'Roboto Mono', monospace; font-weight: 700; color: #000;">${escapeHtml(receiptData.paymentDetails)}</span>
               </div>
               <div class="verified-badge">
                 <span class="verified-icon">verified</span>

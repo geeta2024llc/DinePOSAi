@@ -63,15 +63,61 @@ export async function apiRequest<T = any>(
   const finalOptions: RequestInit = {
     ...fetchOptions,
     headers,
+    credentials: 'include',
   };
 
   try {
     const response = await fetch(url, finalOptions);
     
-    // Handle unauthorized/session expired
-    if (response.status === 401 && typeof window !== 'undefined') {
-      // Clear token if it's invalid
+    // Handle unauthorized/session expired -> try to refresh
+    if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
+      try {
+        const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include'
+        });
+
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json();
+          if (refreshData.success && refreshData.data?.token) {
+            const newToken = refreshData.data.token;
+            localStorage.setItem('dinepos_jwt_token', newToken);
+            
+            // Retry the original request
+            const retryHeaders = new Headers(finalOptions.headers || {});
+            retryHeaders.set('Authorization', `Bearer ${newToken}`);
+            const retryOptions = { ...finalOptions, headers: retryHeaders };
+            const retryRes = await fetch(url, retryOptions);
+            
+            const retryContentType = retryRes.headers.get('content-type');
+            let retryDataObj;
+            if (retryContentType && retryContentType.includes('application/json')) {
+              retryDataObj = await retryRes.json();
+            } else {
+              retryDataObj = { message: await retryRes.text() };
+            }
+
+            if (!retryRes.ok) {
+              return {
+                success: false,
+                error: retryDataObj.error || `HTTP error! Status: ${retryRes.status}`,
+              };
+            }
+            return {
+              success: true,
+              data: retryDataObj.data !== undefined ? retryDataObj.data : retryDataObj,
+            };
+          }
+        }
+      } catch (refreshErr) {
+        console.error('[API Client] Silent token refresh failed:', refreshErr);
+      }
+
+      // If refresh failed or was bypassed, clean up token
       localStorage.removeItem('dinepos_jwt_token');
+      localStorage.removeItem('dinepos_user_account');
+      window.dispatchEvent(new Event('dinepos_unauthorized'));
     }
 
     const contentType = response.headers.get('content-type');

@@ -24,6 +24,7 @@ export interface Tenant {
   taxRate: number;
   plan: TenantPlan;
   status: TenantStatus;
+  onboarded: boolean;
   trialEndsAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -48,6 +49,7 @@ export interface Session {
   userId: string;
   tenantId: string;
   deviceId: string;
+  refreshToken: string;
   ipAddress: string | null;
   userAgent: string | null;
   expiresAt: string;
