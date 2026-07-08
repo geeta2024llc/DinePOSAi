@@ -635,7 +635,7 @@ DECLARE
   v_trial_ends TIMESTAMP WITH TIME ZONE;
   v_result JSONB;
 BEGIN
-  v_trial_ends := NOW() + INTERVAL '14 days';
+  v_trial_ends := NOW() + INTERVAL '7 days';
   
   INSERT INTO tenants (name, country, timezone, currency, tax_type, tax_rate, plan, status, trial_ends_at)
   VALUES (p_business_name, p_country, p_timezone, p_currency, 'NONE', 0.00, 'TRIAL', 'ACTIVE', v_trial_ends)
@@ -646,7 +646,7 @@ BEGIN
   RETURNING id INTO v_user_id;
   
   v_result := jsonb_build_object(
-    'tenant', jsonb_build_object('id', v_tenant_id, 'name', p_business_name, 'trialEndsAt', v_trial_ends, 'onboarded', FALSE),
+    'tenant', jsonb_build_object('id', v_tenant_id, 'name', p_business_name, 'trialEndsAt', v_trial_ends, 'plan', 'TRIAL', 'onboarded', FALSE),
     'user', jsonb_build_object('id', v_user_id, 'name', p_name, 'email', p_email, 'role', 'MANAGER')
   );
   
@@ -655,3 +655,16 @@ EXCEPTION WHEN OTHERS THEN
   RAISE EXCEPTION '%', SQLERRM;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================================
+-- 32. Platform Settings table
+-- ============================================================
+CREATE TABLE IF NOT EXISTS platform_settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE platform_settings ENABLE ROW LEVEL SECURITY;
+

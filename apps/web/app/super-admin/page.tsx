@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { CmsConfig, getCmsConfig, saveCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
+import { recordActivity, getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
+import { apiRequest } from '@/utils/api';
+
 
 // Curated themes mirroring the admin console theme system for visual continuity
 const themes = {
@@ -287,13 +290,28 @@ export default function SuperAdminPage() {
   const hBorder = isLightTheme ? 'hover:border-black/20' : 'hover:border-white/20';
 
   // Sidebar tab matching mockup
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'promocodes' | 'settings' | 'support' | 'analytics' | 'cms'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'access' | 'health' | 'referrals' | 'payments' | 'promocodes' | 'settings' | 'support' | 'analytics' | 'cms' | 'activity-log'>('overview');
 
   const [cmsConfig, setCmsConfig] = useState<CmsConfig>(defaultCmsConfig);
 
   useEffect(() => {
     setCmsConfig(getCmsConfig());
   }, []);
+
+  // Activity Log Tab States
+  const [logsList, setLogsList] = useState<any[]>([]);
+  const [logsSearch, setLogsSearch] = useState('');
+  const [logsFilter, setLogsFilter] = useState('All');
+  const [logsPage, setLogsPage] = useState(1);
+
+  // Load activity logs
+  useEffect(() => {
+    if (activeTab === 'activity-log') {
+      getActivityLogs().then((logs) => {
+        setLogsList(logs);
+      });
+    }
+  }, [activeTab]);
 
   const [cmsSubTab, setCmsSubTab] = useState<'homepage' | 'pricing' | 'support' | 'partners' | 'auth' | 'legal'>('homepage');
 
@@ -315,8 +333,89 @@ export default function SuperAdminPage() {
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showEditAdminModal, setShowEditAdminModal] = useState(false);
+  const [selectedAdminToEdit, setSelectedAdminToEdit] = useState<AdminUser | null>(null);
+  const [editAdminData, setEditAdminData] = useState({ name: '', email: '', tenant: '', status: 'ACTIVE' as AdminUser['status'] });
+
+  // Stripe Linking State
+  const [stripeLinked, setStripeLinked] = useState(false);
+  const [stripeSecretKeyInput, setStripeSecretKeyInput] = useState('');
+  const [stripeWebhookSecretInput, setStripeWebhookSecretInput] = useState('');
+  const [stripeLoading, setStripeLoading] = useState(true);
+  const [showStripeModal, setShowStripeModal] = useState(false);
+
+  // Fetch Stripe connection configuration
+  const fetchStripeConfig = async () => {
+    setStripeLoading(true);
+    try {
+      const res = await apiRequest('/api/billing/config');
+      if (res.success && res.data) {
+        setStripeLinked(res.data.isLinked);
+      }
+    } catch (err) {
+      console.error('Failed to load Stripe configuration:', err);
+    } finally {
+      setStripeLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStripeConfig();
+  }, []);
+
+  const handleLinkStripe = async () => {
+    if (!stripeSecretKeyInput.trim()) {
+      triggerToast('Stripe Secret Key is required.', 'info');
+      return;
+    }
+
+    try {
+      const res = await apiRequest('/api/billing/config', {
+        method: 'POST',
+        body: JSON.stringify({
+          stripeSecretKey: stripeSecretKeyInput.trim(),
+          stripeWebhookSecret: stripeWebhookSecretInput.trim()
+        })
+      });
+
+      if (res.success) {
+        triggerToast('Stripe account linked successfully!', 'success');
+        setStripeLinked(true);
+        setShowStripeModal(false);
+        setStripeSecretKeyInput('');
+        setStripeWebhookSecretInput('');
+      } else {
+        triggerToast(res.error || 'Failed to link Stripe.', 'info');
+      }
+    } catch (err: any) {
+      triggerToast('Error: ' + err.message, 'info');
+    }
+  };
+
+  const handleUnlinkStripe = async () => {
+    if (!confirm('Are you sure you want to unlink your Stripe account? System subscriptions will fall back to default environmental configuration.')) {
+      return;
+    }
+
+    try {
+      const res = await apiRequest('/api/billing/config/unlink', {
+        method: 'POST'
+      });
+
+      if (res.success) {
+        triggerToast('Stripe account unlinked successfully.', 'success');
+        setStripeLinked(false);
+      } else {
+        triggerToast(res.error || 'Failed to unlink Stripe.', 'info');
+      }
+    } catch (err: any) {
+      triggerToast('Error: ' + err.message, 'info');
+    }
+  };
+
 
   // Support Ticket state & types
+
   interface SupportTicket {
     id: string;
     establishment: string;
@@ -1207,6 +1306,14 @@ export default function SuperAdminPage() {
     setNewPromoData({ code: '', description: '', discountType: 'percentage', discountValue: '', applicablePlan: 'all', maxUses: '', expiresAt: '' });
     setShowCreatePromoModal(false);
     triggerToast(`Promo code "${created.code}" created!`, 'success');
+    
+    recordActivity(
+      'Create Promo Code',
+      `Created promo code "${created.code}" — ${created.discountType === 'percentage' ? `${created.discountValue}% off` : `$${created.discountValue} flat`}`,
+      'Settings',
+      { promoId: created.id, code: created.code }
+    );
+
     setAuditLogs(prev => [{
       id: Date.now(), time: 'Just now', actor: 'Super Admin',
       action: `Created promo code "${created.code}" — ${created.discountType === 'percentage' ? `${created.discountValue}% off` : `$${created.discountValue} flat`} on ${created.applicablePlan === 'all' ? 'all plans' : (saasPlans.find(s => s.id === created.applicablePlan)?.name || created.applicablePlan)}`,
@@ -1214,7 +1321,7 @@ export default function SuperAdminPage() {
     }, ...prev]);
   };
 
-  const handleTogglePromoStatus = (id: string) => {
+  const handleTogglePromoStatus = async (id: string) => {
     const updated = promoCodes.map(p => {
       if (p.id !== id || p.status === 'expired') return p;
       return { ...p, status: (p.status === 'active' ? 'inactive' : 'active') as 'active' | 'inactive' };
@@ -1223,6 +1330,16 @@ export default function SuperAdminPage() {
     localStorage.setItem('dinepos_promo_codes', JSON.stringify(updated));
     const code = updated.find(p => p.id === id);
     triggerToast(`Promo code "${code?.code}" is now ${code?.status}.`, 'success');
+    
+    if (code) {
+      await recordActivity(
+        'Toggle Promo Code Status',
+        `${code.status === 'active' ? 'Activated' : 'Deactivated'} promo code "${code.code}"`,
+        'Settings',
+        { promoId: code.id, code: code.code, status: code.status }
+      );
+    }
+
     setAuditLogs(prev => [{
       id: Date.now(), time: 'Just now', actor: 'Super Admin',
       action: `${code?.status === 'active' ? 'Activated' : 'Deactivated'} promo code "${code?.code}"`,
@@ -1230,12 +1347,20 @@ export default function SuperAdminPage() {
     }, ...prev]);
   };
 
-  const handleDeletePromoCode = (id: string, code: string) => {
+  const handleDeletePromoCode = async (id: string, code: string) => {
     const updated = promoCodes.filter(p => p.id !== id);
     setPromoCodes(updated);
     localStorage.setItem('dinepos_promo_codes', JSON.stringify(updated));
     if (selectedPromoCode?.id === id) setSelectedPromoCode(null);
     triggerToast(`Promo code "${code}" permanently deleted.`, 'success');
+    
+    await recordActivity(
+      'Delete Promo Code',
+      `Permanently deleted promo code "${code}"`,
+      'Settings',
+      { promoId: id, code }
+    );
+
     setAuditLogs(prev => [{
       id: Date.now(), time: 'Just now', actor: 'Super Admin',
       action: `Permanently deleted promo code "${code}"`,
@@ -1398,12 +1523,54 @@ export default function SuperAdminPage() {
     e.preventDefault();
     if (!selectedTenant) return;
     
+    // Auto status alignment based on selected plan
+    let alignedStatus = selectedTenant.status;
+    if (selectedTenant.plan === 'EXPIRED') alignedStatus = 'EXPIRED' as any;
+    else if (selectedTenant.plan === 'SUSPENDED') alignedStatus = 'SUSPENDED';
+    else alignedStatus = 'ACTIVE';
+
+    const updatedTenant = { 
+      ...selectedTenant, 
+      status: alignedStatus, 
+      expiryDate: editingExpiryDate 
+    };
+
     setTenants(prev => prev.map(t => 
       t.id === selectedTenant.id 
-        ? { ...selectedTenant, expiryDate: editingExpiryDate } 
+        ? updatedTenant
         : t
     ));
     
+    // Sync with currently logged-in user if it is the same tenant
+    if (typeof window !== 'undefined') {
+      const loggedIn = localStorage.getItem('dinepos_user_account');
+      if (loggedIn) {
+        try {
+          const parsed = JSON.parse(loggedIn);
+          const currentTenantId = parsed.tenant?.id || parsed.tenantId;
+          
+          if (currentTenantId === selectedTenant.id) {
+            if (parsed.tenant) {
+              parsed.tenant.plan = selectedTenant.plan;
+              parsed.tenant.name = selectedTenant.name;
+              parsed.tenant.trialEndsAt = selectedTenant.plan === 'TRIAL' ? editingExpiryDate : undefined;
+              parsed.tenant.subscriptionExpiresAt = selectedTenant.plan !== 'TRIAL' ? editingExpiryDate : undefined;
+            }
+            parsed.plan = selectedTenant.plan;
+            parsed.restaurantName = selectedTenant.name;
+            parsed.trialEndsAt = selectedTenant.plan === 'TRIAL' ? editingExpiryDate : undefined;
+            parsed.subscriptionExpiresAt = selectedTenant.plan !== 'TRIAL' ? editingExpiryDate : undefined;
+            parsed.tier = selectedTenant.tier;
+            
+            localStorage.setItem('dinepos_user_account', JSON.stringify(parsed));
+            window.dispatchEvent(new Event('storage'));
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    }
+
     setShowTenantDetailsModal(false);
     triggerToast(`Tenant subscription settings for ${selectedTenant.name} updated successfully.`, 'success');
     
@@ -1412,7 +1579,7 @@ export default function SuperAdminPage() {
         id: Date.now(),
         time: 'Just now',
         actor: 'Super Admin',
-        action: `Updated settings (Tier, Terminals, Expiry: ${editingExpiryDate}) for tenant "${selectedTenant.name}"`,
+        action: `Updated settings (Tier: ${selectedTenant.tier}, Plan: ${selectedTenant.plan}, Terminals: ${selectedTenant.terminals}, Expiry: ${editingExpiryDate}) for tenant "${selectedTenant.name}"`,
         tenant: selectedTenant.name,
         type: 'info'
       },
@@ -1421,7 +1588,7 @@ export default function SuperAdminPage() {
   };
 
   // Add new admin user logic
-  const handleAddAdmin = (e: React.FormEvent) => {
+  const handleAddAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAdminData.name || !newAdminData.email || !newAdminData.tenant) {
       triggerToast('Please fill in all admin fields.', 'info');
@@ -1440,6 +1607,13 @@ export default function SuperAdminPage() {
     setShowAddAdminModal(false);
     triggerToast(`Admin account for "${created.name}" created!`, 'success');
 
+    await recordActivity(
+      'Create Admin Account',
+      `Created admin user "${created.name}" (${created.email}) for ${created.tenant}`,
+      'Security',
+      { adminId: created.id, name: created.name, email: created.email, tenant: created.tenant }
+    );
+
     setAuditLogs(prev => [
       {
         id: Date.now(),
@@ -1454,11 +1628,18 @@ export default function SuperAdminPage() {
   };
 
   // Tenant suspension/activation
-  const toggleTenantStatus = (id: string, name: string, currentStatus: Tenant['status']) => {
+  const toggleTenantStatus = async (id: string, name: string, currentStatus: Tenant['status']) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     setTenants(prev => prev.map(t => t.id === id ? { ...t, status: nextStatus, plan: nextStatus === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE' } : t));
     triggerToast(`Tenant "${name}" is now ${nextStatus.toLowerCase()}`, 'success');
     
+    await recordActivity(
+      'Toggle Tenant Status',
+      `${nextStatus === 'SUSPENDED' ? 'Suspended' : 'Re-activated'} business tenant "${name}"`,
+      'System',
+      { tenantId: id, tenantName: name, newStatus: nextStatus }
+    );
+
     setAuditLogs(prev => [
       {
         id: Date.now(),
@@ -1473,10 +1654,17 @@ export default function SuperAdminPage() {
   };
 
   // Admin account toggle status
-  const toggleAdminStatus = (id: string, name: string, currentStatus: AdminUser['status']) => {
+  const toggleAdminStatus = async (id: string, name: string, currentStatus: AdminUser['status']) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
     setAdmins(prev => prev.map(a => a.id === id ? { ...a, status: nextStatus } : a));
     triggerToast(`Admin "${name}" is now ${nextStatus.toLowerCase()}`, 'success');
+
+    await recordActivity(
+      'Toggle Admin Account Status',
+      `${nextStatus === 'SUSPENDED' ? 'Suspended' : 'Activated'} admin account for "${name}"`,
+      'Security',
+      { adminId: id, adminName: name, newStatus: nextStatus }
+    );
 
     setAuditLogs(prev => [
       {
@@ -1499,7 +1687,7 @@ export default function SuperAdminPage() {
     setShowResetPasswordModal(true);
   };
 
-  const handleResetPasswordSubmit = (e: React.FormEvent) => {
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword !== confirmPassword) {
       triggerToast('Passcodes do not match or are empty.', 'info');
@@ -1507,6 +1695,13 @@ export default function SuperAdminPage() {
     }
     setShowResetPasswordModal(false);
     triggerToast(`Passcode updated successfully for ${selectedAdmin?.name}!`, 'success');
+
+    await recordActivity(
+      'Security',
+      `Manually changed passcode/password for Admin "${selectedAdmin?.name}"`,
+      'Security',
+      { adminId: selectedAdmin?.id, adminName: selectedAdmin?.name }
+    );
 
     setAuditLogs(prev => [
       {
@@ -1523,7 +1718,7 @@ export default function SuperAdminPage() {
   };
 
   // Support Ticket Handler: Reply to a ticket
-  const handleTicketReply = (e: React.FormEvent) => {
+  const handleTicketReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTicket || !ticketReplyText.trim()) return;
 
@@ -1542,6 +1737,13 @@ export default function SuperAdminPage() {
     localStorage.setItem('dinepos_support_tickets', JSON.stringify(updatedTickets));
     triggerToast(`Replied to ticket ${selectedTicket.id} and set to RESOLVED.`, 'success');
     
+    await recordActivity(
+      'Reply to Support Ticket',
+      `Resolved support ticket ${selectedTicket.id} from ${selectedTicket.establishment}`,
+      'System',
+      { ticketId: selectedTicket.id, establishment: selectedTicket.establishment }
+    );
+
     // Add audit log
     setAuditLogs(prev => [
       {
@@ -1561,7 +1763,7 @@ export default function SuperAdminPage() {
   };
 
   // Support Ticket Handler: Update Status
-  const handleTicketStatusChange = (ticketId: string, newStatus: SupportTicket['status']) => {
+  const handleTicketStatusChange = async (ticketId: string, newStatus: SupportTicket['status']) => {
     const updatedTickets = tickets.map(t => {
       if (t.id === ticketId) {
         return { ...t, status: newStatus };
@@ -1575,6 +1777,13 @@ export default function SuperAdminPage() {
     if (selectedTicket && selectedTicket.id === ticketId) {
       setSelectedTicket(prev => prev ? { ...prev, status: newStatus } : null);
     }
+
+    await recordActivity(
+      'Update Ticket Status',
+      `Updated ticket ${ticketId} status to ${newStatus}`,
+      'System',
+      { ticketId, status: newStatus }
+    );
 
     setAuditLogs(prev => [
       {
@@ -1590,7 +1799,7 @@ export default function SuperAdminPage() {
   };
 
   // Support Ticket Handler: Delete Ticket
-  const handleTicketDelete = (ticketId: string) => {
+  const handleTicketDelete = async (ticketId: string) => {
     const updatedTickets = tickets.filter(t => t.id !== ticketId);
     setTickets(updatedTickets);
     localStorage.setItem('dinepos_support_tickets', JSON.stringify(updatedTickets));
@@ -1598,6 +1807,13 @@ export default function SuperAdminPage() {
     if (selectedTicket && selectedTicket.id === ticketId) {
       setSelectedTicket(null);
     }
+
+    await recordActivity(
+      'Delete Support Ticket',
+      `Deleted support ticket ${ticketId}`,
+      'System',
+      { ticketId }
+    );
   };
 
   // SaaS Plans Handler: Save plan modifications
@@ -1899,6 +2115,18 @@ export default function SuperAdminPage() {
               <span className="material-symbols-outlined text-lg leading-none">web</span>
               <span>CMS Content</span>
             </button>
+            {/* Activity Log */}
+            <button type="button"
+              onClick={() => { setActiveTab('activity-log'); setSearchQuery(''); }}
+              className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeTab === 'activity-log'
+                  ? `${theme.accentBg} ${theme.accentText} rounded-xl`
+                  : `${theme.textMuted} ${hText} ${hBg} rounded-xl`
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg leading-none">history</span>
+              <span>Activity Log</span>
+            </button>
           </nav>
         </div>
 
@@ -1912,7 +2140,7 @@ export default function SuperAdminPage() {
             <span>Documentation</span>
           </button>
           <Link 
-            href="/login"
+            href="/login?logout=true"
             className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} ${hText} ${hBg} rounded-xl`}
           >
             <span className="material-symbols-outlined text-lg leading-none">logout</span>
@@ -4007,42 +4235,64 @@ export default function SuperAdminPage() {
                   <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl min-h-[250px] flex flex-col justify-between`}>
                     <div className="space-y-4">
                       <div className="flex justify-between items-center select-none">
-                        <h3 className={`font-serif text-sm text-white font-bold tracking-wide`}>Payment Gateways</h3>
-                        <button type="button" 
-                          onClick={() => triggerToast('Opening platform payment processor settings...', 'info')}
-                          className="text-[9.5px] text-[#ffe2ab] font-bold tracking-widest hover:text-white uppercase transition-colors cursor-pointer"
-                        >
-                          Edit
-                        </button>
+                        <h3 className={`font-serif text-sm text-white font-bold tracking-wide`}>Stripe Platform Integration</h3>
+                        {stripeLinked && (
+                          <button type="button" 
+                            onClick={handleUnlinkStripe}
+                            className="text-[9.5px] text-rose-400 font-bold tracking-widest hover:text-rose-300 uppercase transition-colors cursor-pointer"
+                          >
+                            Unlink
+                          </button>
+                        )}
                       </div>
 
-                      {/* Mock Stripe Integration */}
-                      <div className={`${theme.inputBg}/50 border ${theme.border} rounded-xl p-5 flex items-center justify-between`}>
-                        <div className="flex items-center gap-4">
-                          <div className={`w-10 h-8 rounded border ${theme.borderStrong} bg-black/40 flex items-center justify-center`}>
-                            <span className="material-symbols-outlined text-[#e5e2e1]/70 text-lg">credit_card</span>
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-1 font-sans text-xs font-bold text-white tracking-widest">
-                              Stripe Payout <span className="text-sm font-mono font-bold text-white tracking-normal ml-1">4242</span>
+                      {stripeLoading ? (
+                        <div className="flex items-center justify-center py-6 text-white/40">
+                          <span className="animate-spin material-symbols-outlined text-lg">sync</span>
+                        </div>
+                      ) : stripeLinked ? (
+                        <div className={`${theme.inputBg}/50 border border-emerald-500/20 bg-emerald-500/[0.02] rounded-xl p-5 flex items-center justify-between`}>
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-8 rounded border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center">
+                              <span className="material-symbols-outlined text-emerald-400 text-lg">account_balance_wallet</span>
                             </div>
-                            <div className={`text-[9.5px] ${theme.textMuted} font-bold mt-1`}>Expires 12/25</div>
+                            <div>
+                              <div className="flex items-center gap-1.5 font-sans text-xs font-bold text-white">
+                                Stripe Connected
+                              </div>
+                              <div className={`text-[9.5px] text-emerald-400/80 font-bold mt-1`}>Status: Active (Receiving Payments)</div>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded border border-emerald-500/20 bg-emerald-500/10 text-[8.5px] text-emerald-400 font-bold uppercase tracking-wider select-none leading-none">
+                            Live
+                          </span>
+                        </div>
+                      ) : (
+                        <div className={`${theme.inputBg}/50 border border-amber-500/20 bg-amber-500/[0.02] rounded-xl p-5 flex items-center justify-between`}>
+                          <div className="flex items-center gap-4">
+                            <div className="w-10 h-8 rounded border border-amber-500/30 bg-amber-500/10 flex items-center justify-center">
+                              <span className="material-symbols-outlined text-amber-400 text-lg">link_off</span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5 font-sans text-xs font-bold text-white">
+                                Stripe Unlinked
+                              </div>
+                              <div className={`text-[9.5px] text-amber-400/80 font-bold mt-1`}>Reverting to environmental credentials</div>
+                            </div>
                           </div>
                         </div>
-
-                        <span className="px-2 py-0.5 rounded border border-white/10 text-[8.5px] text-[#A69984]/50 font-bold uppercase tracking-wider select-none leading-none">
-                          Default
-                        </span>
-                      </div>
+                      )}
                     </div>
 
-                    <button type="button" 
-                      onClick={() => triggerToast('Opening gateway setup helper...', 'info')}
-                      className={`w-full py-3 bg-transparent border border-dashed ${theme.borderStrong} hover:border-white/20 text-[#A69984] font-sans font-bold text-[9.5px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-4`}
-                    >
-                      <span className="material-symbols-outlined text-sm font-bold">add</span>
-                      Add Backup Gateway
-                    </button>
+                    {!stripeLinked && (
+                      <button type="button" 
+                        onClick={() => setShowStripeModal(true)}
+                        className={`w-full py-3 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab]/20 text-[#ffe2ab] font-sans font-bold text-[9.5px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-4`}
+                      >
+                        <span className="material-symbols-outlined text-sm font-bold">add_card</span>
+                        Link Stripe Credentials
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -4324,6 +4574,21 @@ export default function SuperAdminPage() {
                           </td>
                           <td className="py-4 px-4 text-right space-x-2">
                             <button type="button" 
+                              onClick={() => {
+                                setSelectedAdminToEdit(a);
+                                setEditAdminData({
+                                  name: a.name,
+                                  email: a.email,
+                                  tenant: a.tenant,
+                                  status: a.status
+                                });
+                                setShowEditAdminModal(true);
+                              }}
+                              className="text-[10px] border border-white/10 hover:border-white/20 text-[#ffe2ab] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                            <button type="button" 
                               onClick={() => handleOpenResetModal(a)}
                               className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
                             >
@@ -4338,6 +4603,17 @@ export default function SuperAdminPage() {
                               }`}
                             >
                               {a.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                            </button>
+                            <button type="button" 
+                              onClick={() => {
+                                if (confirm(`Are you sure you want to delete admin ${a.name}?`)) {
+                                  setAdmins(prev => prev.filter(adm => adm.id !== a.id));
+                                  triggerToast(`Admin "${a.name}" deleted!`, 'success');
+                                }
+                              }}
+                              className="text-[10px] border border-red-500/25 hover:border-red-500/40 text-red-400 px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                            >
+                              Delete
                             </button>
                           </td>
                         </tr>
@@ -4594,8 +4870,14 @@ export default function SuperAdminPage() {
                 </div>
                 <div>
                   <button type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       saveCmsConfig(cmsConfig);
+                      await recordActivity(
+                        'Settings',
+                        `Published updates to CMS configuration (${cmsSubTab.toUpperCase()})`,
+                        'Settings',
+                        { subTab: cmsSubTab }
+                      );
                       setAuditLogs(prev => [
                         {
                           id: Date.now(),
@@ -7288,6 +7570,210 @@ export default function SuperAdminPage() {
             );
           })()}
 
+          {/* TAB: ACTIVITY LOGS */}
+          {activeTab === 'activity-log' && (
+            <div className="space-y-8 animate-fade-in duration-300 font-sans">
+              {/* Header Title Block */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6 select-none">
+                <div>
+                  <h2 className="font-serif text-[38px] font-bold text-white tracking-wide leading-none">
+                    System Activity Logs
+                  </h2>
+                  <p className="font-sans text-[12.5px] text-[#A69984] mt-3 font-semibold">
+                    Global audit log trail for Super Admins tracking multi-tenant updates, system configuration changes, and registration events.
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm('Are you sure you want to clear all system activity logs? This action cannot be undone.')) {
+                      await clearActivityLogs();
+                      const updated = await getActivityLogs();
+                      setLogsList(updated);
+                      triggerToast('System activity logs cleared successfully.', 'success');
+                    }
+                  }}
+                  className="px-5 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                  Clear System Logs
+                </button>
+              </div>
+
+              {/* SEARCH & FILTERS BAR */}
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-[#0e0e0d]/30 border border-white/5 p-4 rounded-2xl select-none">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  {['All', 'Tenants', 'Settings', 'Support', 'Security'].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => { setLogsFilter(cat); setLogsPage(1); }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        logsFilter === cat
+                          ? `bg-[#ffc53d] text-black`
+                          : `bg-white/5 text-[#A69984] hover:bg-white/10`
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-64">
+                  <span className="material-symbols-outlined absolute left-3.5 top-3 text-[#A69984]/50 text-sm">search</span>
+                  <input
+                    type="text"
+                    value={logsSearch}
+                    onChange={(e) => { setLogsSearch(e.target.value); setLogsPage(1); }}
+                    placeholder="Search system logs..."
+                    className="w-full bg-[#161513] border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 transition-colors font-medium"
+                  />
+                </div>
+              </div>
+
+              {/* LOG ENTRIES TABLE */}
+              <div className="bg-[#161513]/90 border border-white/5 rounded-2xl shadow-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-[9.5px] uppercase tracking-wider font-bold text-[#A69984]/50 select-none">
+                        <th className="py-4 px-6">Timestamp</th>
+                        <th className="py-4 px-4">Actor</th>
+                        <th className="py-4 px-4">Event</th>
+                        <th className="py-4 px-4">Description</th>
+                        <th className="py-4 px-6 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {(() => {
+                        const filtered = logsList.filter(log => {
+                          const matchesCat = logsFilter === 'All' || log.category?.toLowerCase() === logsFilter.toLowerCase();
+                          const matchesSearch = !logsSearch || 
+                            log.message?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                            log.actor?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                            log.action?.toLowerCase().includes(logsSearch.toLowerCase());
+                          return matchesCat && matchesSearch;
+                        });
+
+                        const perPage = 10;
+                        const totalPages = Math.ceil(filtered.length / perPage) || 1;
+                        const startIdx = (logsPage - 1) * perPage;
+                        const paginated = filtered.slice(startIdx, startIdx + perPage);
+
+                        return (
+                          <>
+                            {paginated.map((log, idx) => {
+                              let catBadge = 'bg-white/5 text-white/70';
+                              if (log.category === 'Tenants') catBadge = 'bg-sky-500/10 border border-sky-500/20 text-sky-400';
+                              else if (log.category === 'Support') catBadge = 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
+                              else if (log.category === 'Settings') catBadge = 'bg-amber-500/10 border border-amber-500/20 text-amber-400';
+                              else if (log.category === 'Security') catBadge = 'bg-purple-500/10 border border-purple-500/20 text-purple-400';
+
+                              return (
+                                <tr key={log.id || idx} className="hover:bg-white/[0.01] transition-colors">
+                                  <td className="py-4 px-6 font-mono text-[10px] whitespace-nowrap text-[#A69984]">
+                                    {new Date(log.timestamp).toLocaleString()}
+                                  </td>
+                                  <td className="py-4 px-4 font-bold text-white whitespace-nowrap">
+                                    {log.actor || 'System'}
+                                  </td>
+                                  <td className="py-4 px-4 whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-wide font-black ${catBadge}`}>
+                                      {log.action}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 text-xs text-[#c5b9a5] leading-relaxed min-w-[250px]">
+                                    {log.message}
+                                  </td>
+                                  <td className="py-4 px-6 text-right whitespace-nowrap">
+                                    {log.metadata && Object.keys(log.metadata).length > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          alert(JSON.stringify(log.metadata, null, 2));
+                                        }}
+                                        className="px-2.5 py-1 bg-white/5 hover:bg-white/10 text-white rounded text-[10px] font-sans font-bold transition-all cursor-pointer"
+                                      >
+                                        View Data
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-white/20">-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            
+                            {filtered.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className="py-12 text-center text-xs text-[#A69984]/50">
+                                  No system activity log entries matched the filters.
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Footer */}
+                {(() => {
+                  const filtered = logsList.filter(log => {
+                    const matchesCat = logsFilter === 'All' || log.category?.toLowerCase() === logsFilter.toLowerCase();
+                    const matchesSearch = !logsSearch || 
+                      log.message?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                      log.actor?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                      log.action?.toLowerCase().includes(logsSearch.toLowerCase());
+                    return matchesCat && matchesSearch;
+                  });
+                  const perPage = 10;
+                  const totalPages = Math.ceil(filtered.length / perPage) || 1;
+
+                  return (
+                    <div className="p-4 border-t border-white/5 bg-white/[0.01] flex justify-between items-center select-none text-xs text-[#A69984]/80 font-sans">
+                      <div>
+                        Showing <span className="font-bold text-white">{filtered.length > 0 ? (logsPage - 1) * perPage + 1 : 0}</span> to{' '}
+                        <span className="font-bold text-white">{Math.min(logsPage * perPage, filtered.length)}</span> of{' '}
+                        <span className="font-bold text-white">{filtered.length}</span> log entries
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={logsPage === 1}
+                          onClick={() => setLogsPage(prev => Math.max(prev - 1, 1))}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                            logsPage === 1 ? 'opacity-30 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">chevron_left</span>
+                        </button>
+                        
+                        <span className="font-mono text-xs font-bold px-2">
+                          {logsPage} / {totalPages}
+                        </span>
+                        
+                        <button
+                          type="button"
+                          disabled={logsPage === totalPages}
+                          onClick={() => setLogsPage(prev => Math.min(prev + 1, totalPages))}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                            logsPage === totalPages ? 'opacity-30 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">chevron_right</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
         </div>
 
       </div>
@@ -8046,6 +8532,64 @@ export default function SuperAdminPage() {
         </div>
       )}
 
+      {/* MODAL 0: LINK STRIPE Platform credentials */}
+      {showStripeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            
+            <button type="button" 
+              onClick={() => setShowStripeModal(false)}
+              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <h3 className="font-serif text-white font-bold text-2xl mb-2">Link Stripe Platform Account</h3>
+            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Enter your Stripe API credentials to charge restaurant subscribers.</p>
+            
+            <div className="space-y-5">
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Stripe Secret Key (sk_live_... / sk_test_...)</label>
+                <input 
+                  type="password" 
+                  required
+                  placeholder="sk_test_..."
+                  value={stripeSecretKeyInput}
+                  onChange={(e) => setStripeSecretKeyInput(e.target.value)}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Stripe Webhook Secret (whsec_...) - Optional</label>
+                <input 
+                  type="password" 
+                  placeholder="whsec_..."
+                  value={stripeWebhookSecretInput}
+                  onChange={(e) => setStripeWebhookSecretInput(e.target.value)}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
+                />
+              </div>
+
+              <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 p-3 rounded-lg flex gap-2.5 items-start">
+                <span className="material-symbols-outlined text-[#ffc53d] text-sm mt-0.5">info</span>
+                <p className="text-[10px] text-[#A69984] leading-relaxed">
+                  Stripe key details will be stored securely in the platform registry. Leave Webhook Secret blank to fall back to environment configurations.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLinkStripe}
+                className="w-full py-4 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer shadow-lg"
+              >
+                Link Stripe Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 1: ADD NEW BUSINESS TENANT */}
       {showAddTenantModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
@@ -8158,8 +8702,8 @@ export default function SuperAdminPage() {
                   </span>
                 </div>
                 
-                {/* Editable Fields */}
-                <div className="grid grid-cols-2 gap-4 text-xs">
+                 {/* Editable Fields */}
+                <div className="grid grid-cols-3 gap-4 text-xs">
                   <div>
                     <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Subscription Tier</label>
                     <div className="relative">
@@ -8172,6 +8716,41 @@ export default function SuperAdminPage() {
                         <option value="Starter">Starter</option>
                         <option value="Growth">Growth</option>
                         <option value="Business">Business</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Access Plan</label>
+                    <div className="relative">
+                      <select
+                        aria-label="Access Plan"
+                        value={selectedTenant.plan || 'TRIAL'}
+                        onChange={(e) => setSelectedTenant(prev => prev ? { ...prev, plan: e.target.value as any } : null)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 cursor-pointer appearance-none pr-8 font-semibold"
+                      >
+                        <option value="TRIAL">TRIAL</option>
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="EXPIRED">EXPIRED</option>
+                        <option value="SUSPENDED">SUSPENDED</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[#A69984]/60 text-[9.5px] font-bold uppercase tracking-wider mb-1.5">Account Status</label>
+                    <div className="relative">
+                      <select
+                        aria-label="Account Status"
+                        value={selectedTenant.status || 'ACTIVE'}
+                        onChange={(e) => setSelectedTenant(prev => prev ? { ...prev, status: e.target.value as any } : null)}
+                        className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45 cursor-pointer appearance-none pr-8 font-semibold"
+                      >
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="SUSPENDED">SUSPENDED</option>
+                        <option value="EXPIRED">EXPIRED</option>
                       </select>
                       <span className="material-symbols-outlined absolute right-2 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
                     </div>
@@ -8371,10 +8950,128 @@ export default function SuperAdminPage() {
                 >
                   Cancel
                 </button>
-                <button type="button" 
+                 <button type="submit" 
                   className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
                 >
                   Create Admin
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2.5: EDIT ADMIN OWNER */}
+      {showEditAdminModal && selectedAdminToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
+          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
+            
+            <button type="button" 
+              onClick={() => { setShowEditAdminModal(false); setSelectedAdminToEdit(null); }}
+              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">close</span>
+            </button>
+
+            <h3 className="font-serif text-white font-bold text-2xl mb-2">Edit Admin Owner</h3>
+            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Modify the admin owner credentials and details.</p>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setAdmins(prev => prev.map(a => 
+                a.id === selectedAdminToEdit.id 
+                  ? { ...a, name: editAdminData.name, email: editAdminData.email, tenant: editAdminData.tenant, status: editAdminData.status } 
+                  : a
+              ));
+              setShowEditAdminModal(false);
+              setSelectedAdminToEdit(null);
+              triggerToast(`Admin "${editAdminData.name}" updated successfully.`, 'success');
+              
+              await recordActivity(
+                'Edit Admin Details',
+                `Edited details of admin "${editAdminData.name}" (${editAdminData.email})`,
+                'Security',
+                { adminId: selectedAdminToEdit.id, name: editAdminData.name, email: editAdminData.email, tenant: editAdminData.tenant, status: editAdminData.status }
+              );
+
+              setAuditLogs(logs => [
+                {
+                  id: Date.now(),
+                  time: 'Just now',
+                  actor: 'Super Admin',
+                  action: `Edited details of admin "${editAdminData.name}"`,
+                  tenant: 'Access Control',
+                  type: 'info'
+                },
+                ...logs
+              ]);
+            }} className="space-y-5">
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Owner Full Name</label>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Thomas Keller"
+                  value={editAdminData.name}
+                  onChange={(e) => setEditAdminData(prev => ({ ...prev, name: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Work Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  placeholder="e.g. keller@bouchon.com"
+                  value={editAdminData.email}
+                  onChange={(e) => setEditAdminData(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Linked Restaurant (Tenant)</label>
+                <select
+                  aria-label="Linked restaurant tenant"
+                  value={editAdminData.tenant}
+                  onChange={(e) => setEditAdminData(prev => ({ ...prev, tenant: e.target.value }))}
+                  required
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                >
+                  <option value="">-- Choose Tenant --</option>
+                  {tenants.map(t => (
+                    <option key={t.id} value={t.name}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Account Status</label>
+                <select
+                  aria-label="Account status"
+                  value={editAdminData.status}
+                  onChange={(e) => setEditAdminData(prev => ({ ...prev, status: e.target.value as any }))}
+                  required
+                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="SUSPENDED">SUSPENDED</option>
+                  <option value="INACTIVE">INACTIVE</option>
+                </select>
+              </div>
+
+              <div className="pt-4 flex gap-4">
+                <button type="button" 
+                  onClick={() => { setShowEditAdminModal(false); setSelectedAdminToEdit(null); }}
+                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="submit" 
+                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

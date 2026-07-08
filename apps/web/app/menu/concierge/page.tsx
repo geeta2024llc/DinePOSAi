@@ -34,7 +34,7 @@ export default function ConciergePage() {
   const [isTyping, setIsTyping] = useState(true);
   const [isListening, setIsListening] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
-  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW' | 'NPR'>('USD');
   
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -53,7 +53,8 @@ export default function ConciergePage() {
       GBP: '£',
       CNY: '¥',
       KRW: '₩',
-      JPY: '¥'
+      JPY: '¥',
+      NPR: 'Rs.'
     };
     const rateMap: Record<string, number> = {
       USD: 1,
@@ -61,12 +62,13 @@ export default function ConciergePage() {
       EUR: 0.92,
       GBP: 0.79,
       CNY: 7.24,
-      KRW: 1340
+      KRW: 1340,
+      NPR: 133
     };
     const symbol = symbolMap[currency] || '$';
     const rate = rateMap[currency] || 1;
     const converted = (parseFloat(val as any) || 0) * rate;
-    if (currency === 'JPY' || currency === 'KRW') {
+    if (currency === 'JPY' || currency === 'KRW' || currency === 'NPR') {
       return `${symbol}${Math.round(converted).toLocaleString()}`;
     }
     return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -125,7 +127,7 @@ export default function ConciergePage() {
     }
 
     const savedCurrency = localStorage.getItem('dinepos_currency');
-    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW', 'NPR'].includes(savedCurrency || '')) {
       setCurrency(savedCurrency as any);
     }
     

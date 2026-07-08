@@ -2,6 +2,7 @@ import './globals.css';
 import type { Metadata } from 'next';
 import { AuthProvider } from './authContext';
 import { PrinterProvider } from './printerContext';
+import DemoBanner from '@/components/DemoBanner';
 
 export const metadata: Metadata = {
   title: 'DinePOS AI - Modern Hospitality Systems',
@@ -22,6 +23,87 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
+            try {
+              let currentError = console.error;
+              Object.defineProperty(console, 'error', {
+                get() {
+                  return function(...args) {
+                    const message = args.map(arg => {
+                      try {
+                        return typeof arg === 'string' ? arg : JSON.stringify(arg);
+                      } catch (e) {
+                        return String(arg);
+                      }
+                    }).join(' ');
+
+                    if (
+                      message.includes('hydration') || 
+                      message.includes('Hydration') || 
+                      message.includes('bis_skin_checked') || 
+                      message.includes('notranslate') ||
+                      message.includes('translate="no"')
+                    ) {
+                      console.warn("[Hydration Overruled]", ...args);
+                      return;
+                    }
+                    if (currentError) {
+                      currentError.apply(console, args);
+                    }
+                  };
+                },
+                set(newVal) {
+                  currentError = newVal;
+                },
+                configurable: true
+              });
+            } catch (e) {}
+
+            try {
+              const originalSet = Element.prototype.setAttribute;
+              Element.prototype.setAttribute = function(name, value) {
+                if (name === 'bis_skin_checked') return;
+                originalSet.apply(this, arguments);
+              };
+              
+              const originalSetNS = Element.prototype.setAttributeNS;
+              Element.prototype.setAttributeNS = function(ns, name, value) {
+                if (name === 'bis_skin_checked') return;
+                originalSetNS.apply(this, arguments);
+              };
+
+              const originalSetNode = Element.prototype.setAttributeNode;
+              Element.prototype.setAttributeNode = function(attr) {
+                if (attr && attr.name === 'bis_skin_checked') return null;
+                return originalSetNode.apply(this, arguments);
+              };
+
+              const originalSetNodeNS = Element.prototype.setAttributeNodeNS;
+              Element.prototype.setAttributeNodeNS = function(attr) {
+                if (attr && attr.name === 'bis_skin_checked') return null;
+                return originalSetNodeNS.apply(this, arguments);
+              };
+
+              if (Element.prototype.toggleAttribute) {
+                const originalToggle = Element.prototype.toggleAttribute;
+                Element.prototype.toggleAttribute = function(name, force) {
+                  if (name === 'bis_skin_checked') return false;
+                  return originalToggle.apply(this, arguments);
+                };
+              }
+
+              const originalSetNamedItem = NamedNodeMap.prototype.setNamedItem;
+              NamedNodeMap.prototype.setNamedItem = function(attr) {
+                if (attr && attr.name === 'bis_skin_checked') return null;
+                return originalSetNamedItem.apply(this, arguments);
+              };
+
+              const originalSetNamedItemNS = NamedNodeMap.prototype.setNamedItemNS;
+              NamedNodeMap.prototype.setNamedItemNS = function(attr) {
+                if (attr && attr.name === 'bis_skin_checked') return null;
+                return originalSetNamedItemNS.apply(this, arguments);
+              };
+            } catch (e) {}
+
             const handleClean = (root) => {
               if (!root) return;
               const icons = root.getElementsByClassName('material-symbols-outlined');
@@ -72,6 +154,7 @@ export default function RootLayout({
         <AuthProvider>
           <PrinterProvider>
             {children}
+            <DemoBanner />
           </PrinterProvider>
         </AuthProvider>
       </body>

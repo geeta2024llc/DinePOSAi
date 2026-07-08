@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../app/authContext';
 
@@ -12,7 +12,7 @@ interface AuthGuardProps {
 export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
+  const isAuthorized = !isLoading && isAuthenticated && (!allowedRoles || allowedRoles.includes(user?.role as any));
 
   useEffect(() => {
     if (!isLoading) {
@@ -31,13 +31,11 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
         } else {
           router.push('/');
         }
-      } else {
-        setAuthorized(true);
       }
     }
   }, [isLoading, isAuthenticated, user, allowedRoles, router]);
 
-  if (isLoading || !authorized) {
+  if (isLoading || !isAuthorized) {
     return (
       <div className="fixed inset-0 z-50 bg-[#0e0e0e] flex flex-col items-center justify-center font-sans">
         {/* Ambient background glow */}

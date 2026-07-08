@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiRequest } from '@/utils/api';
+import { useAuth } from '../authContext';
 
 const COUNTRIES = [
   { name: 'Japan', currency: 'JPY', timezone: 'Asia/Tokyo' },
@@ -12,10 +13,12 @@ const COUNTRIES = [
   { name: 'Germany', currency: 'EUR', timezone: 'Europe/Berlin' },
   { name: 'South Korea', currency: 'KRW', timezone: 'Asia/Seoul' },
   { name: 'China', currency: 'CNY', timezone: 'Asia/Shanghai' },
+  { name: 'Nepal', currency: 'NPR', timezone: 'Asia/Kathmandu' },
 ];
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { refreshAuth } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -93,10 +96,6 @@ export default function OnboardingPage() {
       if (!phone.trim()) { setError('Please enter a business phone number.'); return; }
       if (!address.trim()) { setError('Please enter your restaurant address.'); return; }
     }
-    if (currentStep === 3) {
-      if (!itemName.trim()) { setError('Please enter a name for your first menu item.'); return; }
-      if (itemPrice <= 0) { setError('Please enter a price greater than 0.'); return; }
-    }
     setCurrentStep(prev => prev + 1);
   };
 
@@ -114,15 +113,8 @@ export default function OnboardingPage() {
       currency,
       taxType,
       taxRate,
-      categories: categoriesList,
-      menuItems: [
-        {
-          categoryName: itemCategory,
-          name: itemName,
-          price: itemPrice,
-          description: itemDescription,
-        }
-      ]
+      categories: ['Starters', 'Mains', 'Drinks'],
+      menuItems: []
     };
 
     try {
@@ -160,6 +152,7 @@ export default function OnboardingPage() {
           localStorage.setItem('dinepos_tax_rate_delivery', (taxRate * 0.8).toString());
         }
 
+        await refreshAuth();
         router.push('/dashboard');
       } else {
         setError(response.error || 'Failed to complete onboarding. Please try again.');
@@ -199,8 +192,7 @@ export default function OnboardingPage() {
             {[
               { num: 1, label: 'Profile' },
               { num: 2, label: 'Taxes' },
-              { num: 3, label: 'Menu Setup' },
-              { num: 4, label: 'Activation' }
+              { num: 3, label: 'Activation' }
             ].map(step => (
               <div key={step.num} className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
@@ -349,93 +341,8 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* STEP 3: INITIAL MENU SETUP */}
+            {/* STEP 3: REVIEW & ACTIVATE */}
             {currentStep === 3 && (
-              <div className="space-y-6">
-                <div>
-                  <h2 className="text-2xl font-bold text-[#ffe2ab] mb-2 font-serif">Setup Your Initial Menu</h2>
-                  <p className="text-sm text-white/60 leading-relaxed font-light">Create category tags and your first dish. This ensures the digital catalog has content ready to test immediately.</p>
-                </div>
-
-                {/* Categories */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-white/50">Menu Categories</label>
-                  <div className="flex flex-wrap gap-2 p-3 bg-white/[0.02] border border-white/5 rounded-xl min-h-[50px]">
-                    {categoriesList.map(cat => (
-                      <span key={cat} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 text-white text-xs font-semibold">
-                        {cat}
-                        <button type="button" onClick={() => handleRemoveCategory(cat)} className="material-symbols-outlined text-xs hover:text-rose-400 transition-colors">close</button>
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <input 
-                      type="text" 
-                      placeholder="Add custom category... (e.g. Desserts)" 
-                      value={newCategoryName} 
-                      onChange={e => setNewCategoryName(e.target.value)} 
-                      className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2 text-white text-sm focus:outline-none"
-                    />
-                    <button type="button" onClick={handleAddCategory} className="px-4 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab]/20 text-[#ffe2ab] font-bold text-xs uppercase tracking-wider rounded-xl transition-colors">Add</button>
-                  </div>
-                </div>
-
-                {/* First Menu Item */}
-                <div className="space-y-4 border-t border-white/5 pt-4">
-                  <label className="block text-xs font-bold uppercase tracking-wider text-white/50">Your First Menu Item</label>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="sm:col-span-2 space-y-2">
-                      <label className="block text-[10px] uppercase text-white/40">Item Name <span className="text-[#ffe2ab]">*</span></label>
-                      <input 
-                        type="text" 
-                        placeholder="A5 Miyazaki Wagyu Ribeye" 
-                        value={itemName} 
-                        onChange={e => setItemName(e.target.value)} 
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-[10px] uppercase text-white/40">Price ({currency}) <span className="text-[#ffe2ab]">*</span></label>
-                      <input 
-                        type="number" 
-                        min="0"
-                        placeholder="185" 
-                        value={itemPrice || ''} 
-                        onChange={e => setItemPrice(parseFloat(e.target.value) || 0)} 
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <label className="block text-[10px] uppercase text-white/40">Category</label>
-                      <select 
-                        value={itemCategory} 
-                        onChange={e => setItemCategory(e.target.value)} 
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
-                      >
-                        {categoriesList.map(c => <option key={c} value={c} className="bg-[#121211]">{c}</option>)}
-                      </select>
-                    </div>
-                    <div className="sm:col-span-2 space-y-2">
-                      <label className="block text-[10px] uppercase text-white/40">Description</label>
-                      <input 
-                        type="text" 
-                        placeholder="Premium seared steak with truffle glaze..." 
-                        value={itemDescription} 
-                        onChange={e => setItemDescription(e.target.value)} 
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 4: REVIEW & ACTIVATE */}
-            {currentStep === 4 && (
               <div className="space-y-6">
                 <div>
                   <h2 className="text-2xl font-bold text-[#ffe2ab] mb-2 font-serif">Activate Your Workspace</h2>
@@ -475,18 +382,6 @@ export default function OnboardingPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Catalog Summary Card */}
-                <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3">
-                  <div className="flex items-center gap-2 text-white/40 border-b border-white/5 pb-2">
-                    <span className="material-symbols-outlined text-sm leading-none text-[#ffe2ab]">menu_book</span>
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Initial Menu Catalog</span>
-                  </div>
-                  <div className="text-xs space-y-1.5 font-light">
-                    <p className="flex justify-between"><span className="text-white/40">Categories to Create:</span> <span className="font-semibold">{categoriesList.join(', ')}</span></p>
-                    <p className="flex justify-between"><span className="text-white/40">First Menu Item:</span> <span className="font-semibold">{itemName} ({itemCategory} — {currency} {itemPrice})</span></p>
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -507,7 +402,7 @@ export default function OnboardingPage() {
               <div />
             )}
 
-            {currentStep < 4 ? (
+            {currentStep < 3 ? (
               <button
                 type="button"
                 onClick={handleNextStep}

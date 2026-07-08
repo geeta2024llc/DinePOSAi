@@ -451,7 +451,7 @@ export default function KdsPage() {
             Settings
           </Link>
           <Link
-            href="/login"
+            href="/login?logout=true"
             className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-all font-sans font-semibold text-xs w-full text-left uppercase tracking-wider"
           >
             <span className="material-symbols-outlined text-lg leading-none">logout</span>

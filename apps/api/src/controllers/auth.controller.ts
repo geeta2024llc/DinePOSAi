@@ -27,6 +27,7 @@ const COUNTRY_DEFAULTS: Record<string, { timezone: string; currency: string }> =
   'Singapore':      { timezone: 'Asia/Singapore',    currency: 'SGD' },
   'South Korea':    { timezone: 'Asia/Seoul',        currency: 'KRW' },
   'China':          { timezone: 'Asia/Shanghai',     currency: 'CNY' },
+  'Nepal':          { timezone: 'Asia/Kathmandu',    currency: 'NPR' },
 };
 
 // Input Validation Schemas
@@ -228,6 +229,8 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
           taxType: tenant.tax_type,
           taxRate: tenant.tax_rate,
           onboarded: tenant.onboarded,
+          plan: tenant.plan,
+          trialEndsAt: tenant.trial_ends_at,
         }
       }
     });
@@ -329,6 +332,8 @@ export const refresh = async (req: Request, res: Response<ApiResponse>) => {
           taxType: tenant.tax_type,
           taxRate: tenant.tax_rate,
           onboarded: tenant.onboarded,
+          plan: tenant.plan,
+          trialEndsAt: tenant.trial_ends_at,
         }
       }
     });

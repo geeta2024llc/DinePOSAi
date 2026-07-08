@@ -343,7 +343,7 @@ export default function PosPage() {
   const [deliveryEnabled, setDeliveryEnabled] = useState(true);
 
   // Cashier Settings Preferences
-  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW' | 'NPR'>('USD');
   const [cashierTheme, setCashierTheme] = useState('gold-obsidian');
   const [cashierScaling, setCashierScaling] = useState('standard');
   const [cashierTipPresets, setCashierTipPresets] = useState<string[]>(['15', '18', '20']);
@@ -362,7 +362,8 @@ export default function PosPage() {
       GBP: '£',
       CNY: '¥',
       KRW: '₩',
-      JPY: '¥'
+      JPY: '¥',
+      NPR: 'Rs.'
     };
     const rateMap: Record<string, number> = {
       USD: 1,
@@ -370,12 +371,13 @@ export default function PosPage() {
       EUR: 0.92,
       GBP: 0.79,
       CNY: 7.24,
-      KRW: 1340
+      KRW: 1340,
+      NPR: 133
     };
     const symbol = symbolMap[currency] || '$';
     const rate = rateMap[currency] || 1;
     const converted = (parseFloat(val as any) || 0) * rate;
-    if (currency === 'JPY' || currency === 'KRW') {
+    if (currency === 'JPY' || currency === 'KRW' || currency === 'NPR') {
       return `${symbol}${Math.round(converted).toLocaleString()}`;
     }
     return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -555,7 +557,7 @@ export default function PosPage() {
       setDeliveryEnabled(deliveryOk);
 
       const savedCurrency = localStorage.getItem('dinepos_currency');
-      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW', 'NPR'].includes(savedCurrency || '')) {
         setCurrency(savedCurrency as any);
       }
 
@@ -1558,7 +1560,7 @@ export default function PosPage() {
           </Link>
 
           <Link
-            href="/login"
+            href="/login?logout=true"
             className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-all font-semibold text-xs w-full text-left uppercase tracking-wider"
           >
             <span className="material-symbols-outlined text-lg leading-none">logout</span>

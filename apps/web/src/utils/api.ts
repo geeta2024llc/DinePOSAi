@@ -30,7 +30,7 @@ export async function checkBackendOnline(): Promise<boolean> {
     
     clearTimeout(timeoutId);
     return response.ok;
-  } catch (e) {
+  } catch {
     return false;
   }
 }

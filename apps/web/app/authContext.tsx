@@ -18,6 +18,10 @@ interface AuthTenant {
   taxType: 'VAT' | 'GST' | 'NONE';
   taxRate: number;
   onboarded: boolean;
+  plan?: string;
+  trialEndsAt?: string;
+  subscriptionExpiresAt?: string;
+  billingCycle?: 'monthly' | 'annual';
 }
 
 interface AuthContextType {
@@ -28,6 +32,7 @@ interface AuthContextType {
   login: (token: string, user: AuthUser, tenant: AuthTenant) => void;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
+  updateTenant: (partial: Partial<AuthTenant>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -47,7 +52,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(stored);
           if (parsed.user && parsed.tenant) {
             setUser(parsed.user);
-            setTenant(parsed.tenant);
+            setTenant({
+              ...parsed.tenant,
+              plan: parsed.tenant.plan || parsed.plan,
+              trialEndsAt: parsed.tenant.trialEndsAt || parsed.trialEndsAt,
+              subscriptionExpiresAt: parsed.tenant.subscriptionExpiresAt || parsed.subscriptionExpiresAt,
+              billingCycle: parsed.tenant.billingCycle || parsed.billingCycle,
+            });
+          } else if (parsed.email && parsed.role) {
+            // Support flat user account structure used by other application pages
+            setUser({
+              id: parsed.id || parsed.userId || 'offline-user-id',
+              name: parsed.fullName || parsed.name || 'User',
+              email: parsed.email,
+              role: parsed.role,
+            });
+            setTenant({
+              id: parsed.tenantId || 'offline-tenant-id',
+              name: parsed.restaurantName || 'My Restaurant',
+              currency: parsed.currency || 'JPY',
+              taxType: parsed.taxType || 'NONE',
+              taxRate: parsed.taxRate || 0,
+              onboarded: parsed.onboarded !== false,
+              plan: parsed.plan,
+              trialEndsAt: parsed.trialEndsAt,
+              subscriptionExpiresAt: parsed.subscriptionExpiresAt,
+              billingCycle: parsed.billingCycle,
+            });
           }
         } catch (e) {
           localStorage.removeItem('dinepos_user_account');
@@ -73,7 +104,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTenant(tenant);
     if (typeof window !== 'undefined') {
       localStorage.setItem('dinepos_jwt_token', token);
-      localStorage.setItem('dinepos_user_account', JSON.stringify({ user, tenant }));
+      localStorage.setItem('dinepos_user_account', JSON.stringify({
+        user,
+        tenant,
+        id: user.id,
+        fullName: user.name,
+        name: user.name,
+        email: user.email,
+        restaurantName: tenant.name,
+        role: user.role,
+        tenantId: tenant.id,
+        currency: tenant.currency,
+        taxType: tenant.taxType,
+        taxRate: tenant.taxRate,
+        onboarded: tenant.onboarded,
+        plan: tenant.plan,
+        trialEndsAt: tenant.trialEndsAt,
+        subscriptionExpiresAt: tenant.subscriptionExpiresAt,
+        billingCycle: tenant.billingCycle,
+      }));
     }
 
     // Role-based post-login navigation
@@ -131,10 +180,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateTenant = (partial: Partial<AuthTenant>) => {
+    setTenant(prev => {
+      if (!prev) return null;
+      const updated = { ...prev, ...partial };
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('dinepos_user_account');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed.tenant) {
+              parsed.tenant = { ...parsed.tenant, ...partial };
+            }
+            // Update flat keys as well
+            if (partial.plan) parsed.plan = partial.plan;
+            if (partial.trialEndsAt) parsed.trialEndsAt = partial.trialEndsAt;
+            if (partial.subscriptionExpiresAt) parsed.subscriptionExpiresAt = partial.subscriptionExpiresAt;
+            if (partial.billingCycle) parsed.billingCycle = partial.billingCycle;
+            if (partial.currency) parsed.currency = partial.currency;
+            if (partial.onboarded !== undefined) parsed.onboarded = partial.onboarded;
+            if (partial.name) parsed.restaurantName = partial.name;
+            localStorage.setItem('dinepos_user_account', JSON.stringify(parsed));
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+      return updated;
+    });
+  };
+
   const isAuthenticated = !!user;
 
   return (
-    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, login, logout, refreshAuth }}>
+    <AuthContext.Provider value={{ user, tenant, isAuthenticated, isLoading, login, logout, refreshAuth, updateTenant }}>
       {children}
     </AuthContext.Provider>
   );

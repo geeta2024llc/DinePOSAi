@@ -44,6 +44,11 @@ export class EscposEncoder {
     return this;
   }
 
+  pulseDrawer(pin: 0 | 1 = 0, onTime: number = 48, offTime: number = 240) {
+    this.buffer.push(0x1b, 0x70, pin, onTime, offTime);
+    return this;
+  }
+
   getBytes(): Uint8Array {
     return new Uint8Array(this.buffer);
   }

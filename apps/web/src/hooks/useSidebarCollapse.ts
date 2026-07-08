@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export function useSidebarCollapse() {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  useEffect(() => {
-    const collapsed = localStorage.getItem('dinepos_sidebar_collapsed') === 'true';
-    setSidebarCollapsed(collapsed);
-  }, []);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dinepos_sidebar_collapsed') === 'true';
+    }
+    return false;
+  });
 
   const toggleSidebar = () => {
     const nextVal = !sidebarCollapsed;

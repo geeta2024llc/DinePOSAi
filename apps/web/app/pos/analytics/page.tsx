@@ -272,7 +272,7 @@ export default function AnalyticsPage() {
             <span className="material-symbols-outlined text-lg leading-none">settings</span>
             Settings
           </Link>
-          <Link href="/login" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
+          <Link href="/login?logout=true" className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-all font-semibold text-xs w-full uppercase tracking-wider">
             <span className="material-symbols-outlined text-lg leading-none">logout</span>
             Sign Out
           </Link>

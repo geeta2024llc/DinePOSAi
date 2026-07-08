@@ -5,9 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { apiRequest } from '@/utils/api';
+import { useAuth } from '../authContext';
 
 function RegisterForm() {
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
+  const { login: ctxLogin } = useAuth();
 
   useEffect(() => {
     const config = getCmsConfig();
@@ -108,26 +110,21 @@ function RegisterForm() {
           const { token, user, tenant } = loginResponse.data;
           
           if (typeof window !== 'undefined') {
-            localStorage.setItem('dinepos_jwt_token', token);
             localStorage.setItem('dinepos_logged_in_email', user.email);
+            // Storing tier and plan in localStorage for dashboard check
+            const storedAccount = JSON.parse(localStorage.getItem('dinepos_user_account') || '{}');
             localStorage.setItem('dinepos_user_account', JSON.stringify({
-              fullName: user.name,
-              email: user.email,
-              restaurantName: tenant?.name || restaurantName,
+              ...storedAccount,
               tier: selectedTier,
               plan: tenant?.plan || 'TRIAL',
-              role: user.role,
-              tenantId: tenant?.id,
-              currency: tenant?.currency || 'JPY',
-              onboarded: tenant?.onboarded || false,
+              trialEndsAt: tenant?.trialEndsAt
             }));
           }
 
           // Handle referral code registration on success if provided
           handleReferralStorage();
           setIsLoading(false);
-          const targetRoute = tenant?.onboarded ? '/dashboard' : '/onboarding';
-          router.push(targetRoute);
+          ctxLogin(token, user, tenant);
           return;
         }
       }
@@ -135,28 +132,33 @@ function RegisterForm() {
       // If offline, perform fallback mock signup logic
       if (signupResponse.isOfflineFallback) {
         console.log('[Register] API is offline. Performing offline registration fallback.');
-        const joinedDate = new Date().toISOString().split('T')[0];
-        const expiryDate = new Date();
-        expiryDate.setDate(expiryDate.getDate() + 14); // 14 days trial duration
-        const expiryStr = expiryDate.toISOString().split('T')[0];
 
-        const userAccount = {
-          fullName,
+        const mockUser = {
+          id: 'offline-user-id',
+          name: fullName,
           email: emailLower,
-          restaurantName,
-          tier: selectedTier,
+          role: 'MANAGER' as any,
+        };
+        const mockTenant = {
+          id: 'offline-tenant-id',
+          name: restaurantName,
+          currency: 'JPY',
+          taxType: 'NONE' as any,
+          taxRate: 0,
+          onboarded: false, // Let them go to onboarding wizard
           plan: 'TRIAL',
-          joinedDate,
-          expiryDate: expiryStr,
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         };
 
         if (typeof window !== 'undefined') {
-          localStorage.setItem('dinepos_user_account', JSON.stringify(userAccount));
           localStorage.setItem('dinepos_logged_in_email', emailLower);
         }
 
         handleReferralStorage();
-        setTimeout(() => { setIsLoading(false); router.push('/dashboard'); }, 800);
+        setTimeout(() => { 
+          setIsLoading(false); 
+          ctxLogin('offline-mock-jwt-token', mockUser, mockTenant); 
+        }, 800);
         return;
       }
 
@@ -410,6 +412,7 @@ function RegisterForm() {
                   <option value="Germany" className="bg-[#121211] text-white">Germany</option>
                   <option value="South Korea" className="bg-[#121211] text-white">South Korea</option>
                   <option value="China" className="bg-[#121211] text-white">China</option>
+                  <option value="Nepal" className="bg-[#121211] text-white">Nepal</option>
                 </select>
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/20 pointer-events-none">expand_more</span>
               </div>

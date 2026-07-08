@@ -84,12 +84,18 @@ export default function HomePage() {
             {cmsConfig.homepage.heroSubtitle}
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
+          <div className="flex flex-col sm:flex-row gap-5 items-center justify-center flex-wrap">
             {/* Primary Glow Button */}
             <Link href="/register" className="group relative bg-gradient-to-r from-[#ffe2ab] to-[#cc9d31] text-[#261a00] font-title-md font-bold text-base px-9 py-4 rounded-full transition-all duration-500 transform hover:-translate-y-1 flex items-center gap-2 overflow-hidden shadow-[0_10px_30px_rgba(255,226,171,0.25)] hover:shadow-[0_15px_40px_rgba(255,226,171,0.4)]">
               <span className="relative z-10 flex items-center gap-2">{cmsConfig.homepage.heroPrimaryCtaText} <span className="material-symbols-outlined notranslate text-sm transform group-hover:translate-x-1 transition-transform duration-300" translate="no">arrow_forward</span></span>
               {/* Shine effect */}
               <div className="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] pointer-events-none"></div>
+            </Link>
+
+            {/* Get Started Free Button */}
+            <Link href="/register" className="group border border-emerald-500/40 bg-emerald-500/8 hover:bg-emerald-500/15 backdrop-blur-md font-title-md font-semibold text-emerald-300 hover:text-emerald-200 px-9 py-4 rounded-full transition-all duration-300 transform hover:-translate-y-1 flex items-center gap-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_6px_#34d399] shrink-0" />
+              Get Started Free
             </Link>
             
             {/* Secondary Glass Button */}

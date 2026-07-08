@@ -132,7 +132,7 @@ export default function OrderStatusPage() {
   ]);
 
   const [editingItemData, setEditingItemData] = useState<{ id: string; name: string; quantity: number; notes: string } | null>(null);
-  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW' | 'NPR'>('USD');
 
   const formatCurrency = (val: number) => {
     const symbolMap: Record<string, string> = {
@@ -141,7 +141,8 @@ export default function OrderStatusPage() {
       GBP: '£',
       CNY: '¥',
       KRW: '₩',
-      JPY: '¥'
+      JPY: '¥',
+      NPR: 'Rs.'
     };
     const rateMap: Record<string, number> = {
       USD: 1,
@@ -149,12 +150,13 @@ export default function OrderStatusPage() {
       EUR: 0.92,
       GBP: 0.79,
       CNY: 7.24,
-      KRW: 1340
+      KRW: 1340,
+      NPR: 133
     };
     const symbol = symbolMap[currency] || '$';
     const rate = rateMap[currency] || 1;
     const converted = (parseFloat(val as any) || 0) * rate;
-    if (currency === 'JPY' || currency === 'KRW') {
+    if (currency === 'JPY' || currency === 'KRW' || currency === 'NPR') {
       return `${symbol}${Math.round(converted).toLocaleString()}`;
     }
     return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -215,7 +217,7 @@ export default function OrderStatusPage() {
       }
     }
     const savedCurrency = localStorage.getItem('dinepos_currency');
-    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+    if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW', 'NPR'].includes(savedCurrency || '')) {
       setCurrency(savedCurrency as any);
     }
     setIsLoaded(true);

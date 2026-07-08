@@ -14,7 +14,7 @@ export function formatCurrency(value: number, currency: string = 'JPY'): string 
       minimumFractionDigits: currency === 'JPY' || currency === 'KRW' ? 0 : 2,
       maximumFractionDigits: currency === 'JPY' || currency === 'KRW' ? 0 : 2,
     }).format(value);
-  } catch (e) {
+  } catch {
     const symbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : '¥';
     const isZeroDecimal = currency === 'JPY' || currency === 'KRW';
     return `${symbol}${value.toFixed(isZeroDecimal ? 0 : 2)}`;

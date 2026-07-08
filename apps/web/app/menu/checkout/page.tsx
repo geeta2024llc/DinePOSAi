@@ -166,12 +166,15 @@ export default function CheckoutPage() {
   const [taxRateDineIn, setTaxRateDineIn] = useState(0.10);
   const [taxRateTakeaway, setTaxRateTakeaway] = useState(0.08);
   const [taxRateDelivery, setTaxRateDelivery] = useState(0.08);
+  const [dineInActive, setDineInActive] = useState(true);
+  const [takeawayActive, setTakeawayActive] = useState(true);
+  const [deliveryActive, setDeliveryActive] = useState(true);
 
   // Promo code / discount
   const [promoInput, setPromoInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; type: 'percent' | 'fixed'; value: number; label: string } | null>(null);
   const [promoError, setPromoError] = useState('');
-  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW'>('USD');
+  const [currency, setCurrency] = useState<'USD' | 'JPY' | 'EUR' | 'GBP' | 'CNY' | 'KRW' | 'NPR'>('USD');
   const [waiveGratuity, setWaiveGratuity] = useState(false);
 
   const formatCurrency = (val: number) => {
@@ -181,7 +184,8 @@ export default function CheckoutPage() {
       GBP: '£',
       CNY: '¥',
       KRW: '₩',
-      JPY: '¥'
+      JPY: '¥',
+      NPR: 'Rs.'
     };
     const rateMap: Record<string, number> = {
       USD: 1,
@@ -189,12 +193,13 @@ export default function CheckoutPage() {
       EUR: 0.92,
       GBP: 0.79,
       CNY: 7.24,
-      KRW: 1340
+      KRW: 1340,
+      NPR: 133
     };
     const symbol = symbolMap[currency] || '$';
     const rate = rateMap[currency] || 1;
     const converted = (parseFloat(val as any) || 0) * rate;
-    if (currency === 'JPY' || currency === 'KRW') {
+    if (currency === 'JPY' || currency === 'KRW' || currency === 'NPR') {
       return `${symbol}${Math.round(converted).toLocaleString()}`;
     }
     return `${symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -213,9 +218,33 @@ export default function CheckoutPage() {
       if (savedTaxType === 'pre-tax' || savedTaxType === 'post-tax') {
         setTaxType(savedTaxType as 'pre-tax' | 'post-tax');
       }
+      const storedDineIn = localStorage.getItem('dinepos_service_dine_in');
+      const storedTakeaway = localStorage.getItem('dinepos_service_take_away');
+      const storedDelivery = localStorage.getItem('dinepos_service_delivery');
+      
+      const isDineIn = storedDineIn !== 'false';
+      const isTakeaway = storedTakeaway !== 'false';
+      const isDelivery = storedDelivery !== 'false';
+      
+      setDineInActive(isDineIn);
+      setTakeawayActive(isTakeaway);
+      setDeliveryActive(isDelivery);
+
       const savedDiningOption = localStorage.getItem('dinepos_dining_option');
       if (savedDiningOption === 'dine-in' || savedDiningOption === 'takeaway' || savedDiningOption === 'delivery') {
-        setDiningOption(savedDiningOption);
+        // Only set if active
+        if (savedDiningOption === 'dine-in' && isDineIn) setDiningOption('dine-in');
+        else if (savedDiningOption === 'takeaway' && isTakeaway) setDiningOption('takeaway');
+        else if (savedDiningOption === 'delivery' && isDelivery) setDiningOption('delivery');
+        else {
+          if (isDineIn) setDiningOption('dine-in');
+          else if (isTakeaway) setDiningOption('takeaway');
+          else if (isDelivery) setDiningOption('delivery');
+        }
+      } else {
+        if (isDineIn) setDiningOption('dine-in');
+        else if (isTakeaway) setDiningOption('takeaway');
+        else if (isDelivery) setDiningOption('delivery');
       }
       const savedTaxRateDineIn = localStorage.getItem('dinepos_tax_rate_dine_in');
       const savedTaxRateTakeaway = localStorage.getItem('dinepos_tax_rate_takeaway');
@@ -225,7 +254,7 @@ export default function CheckoutPage() {
       if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
       if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
       const savedCurrency = localStorage.getItem('dinepos_currency');
-      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW'].includes(savedCurrency || '')) {
+      if (['USD', 'JPY', 'EUR', 'GBP', 'CNY', 'KRW', 'NPR'].includes(savedCurrency || '')) {
         setCurrency(savedCurrency as any);
       }
       const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
@@ -1019,6 +1048,53 @@ export default function CheckoutPage() {
                 {/* Guest Information Section */}
                 <div className="max-w-2xl mx-auto w-full bg-[#161513] border border-white/5 rounded-2xl p-6 shadow-xl space-y-4 font-sans select-none mb-8">
                   <h3 className="font-serif text-sm text-[#ffe2ab] uppercase font-bold tracking-wider">Guest Information</h3>
+                  
+                  {/* Dining/Service Option Selection */}
+                  <div className="mb-4">
+                    <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2 select-none">Select Service Mode</label>
+                    <div className="grid grid-cols-3 gap-2 bg-[#0e0e0d] p-1 rounded-xl border border-white/5">
+                      {dineInActive && (
+                        <button
+                          type="button"
+                          onClick={() => setDiningOption('dine-in')}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            diningOption === 'dine-in'
+                              ? 'bg-[#ffe2ab] text-[#402d00] shadow'
+                              : 'text-[#A69984]/65 hover:text-white'
+                          }`}
+                        >
+                          Dine In
+                        </button>
+                      )}
+                      {takeawayActive && (
+                        <button
+                          type="button"
+                          onClick={() => setDiningOption('takeaway')}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            diningOption === 'takeaway'
+                              ? 'bg-[#ffe2ab] text-[#402d00] shadow'
+                              : 'text-[#A69984]/65 hover:text-white'
+                          }`}
+                        >
+                          Take Away
+                        </button>
+                      )}
+                      {deliveryActive && (
+                        <button
+                          type="button"
+                          onClick={() => setDiningOption('delivery')}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            diningOption === 'delivery'
+                              ? 'bg-[#ffe2ab] text-[#402d00] shadow'
+                              : 'text-[#A69984]/65 hover:text-white'
+                          }`}
+                        >
+                          Delivery
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-[#A69984]/70 text-[9px] font-bold uppercase tracking-wider mb-2">First Name</label>

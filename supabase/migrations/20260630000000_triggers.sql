@@ -158,7 +158,7 @@ DECLARE
   v_trial_ends TIMESTAMP WITH TIME ZONE;
   v_result JSONB;
 BEGIN
-  v_trial_ends := NOW() + INTERVAL '14 days';
+  v_trial_ends := NOW() + INTERVAL '7 days';
   
   -- Insert tenant
   INSERT INTO tenants (
@@ -206,6 +206,7 @@ BEGIN
       'id', v_tenant_id,
       'name', p_business_name,
       'trialEndsAt', v_trial_ends,
+      'plan', 'TRIAL',
       'onboarded', FALSE
     ),
     'user', jsonb_build_object(

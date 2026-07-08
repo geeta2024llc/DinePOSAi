@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { apiRequest } from '@/utils/api';
+import { recordActivity, getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
 import {
   InventoryItem,
   MenuItemRecipe,
@@ -950,10 +951,16 @@ export default function DashboardPage() {
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
 
   // Sidebar tab selection state
-  const [activeTab, setActiveTab] = useState<'general' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu' | 'analytics' | 'inventory'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'receipts' | 'invoices' | 'payments' | 'hardware' | 'staff' | 'security' | 'menu' | 'analytics' | 'inventory' | 'activity-log'>('general');
   const [analyticsRange, setAnalyticsRange] = useState<'today' | 'week' | 'month' | '30days'>('week');
   const [dashAuditSearch, setDashAuditSearch] = useState('');
   const [dashAuditPage, setDashAuditPage] = useState(1);
+
+  // Activity Log Tab States
+  const [logsList, setLogsList] = useState<any[]>([]);
+  const [logsSearch, setLogsSearch] = useState('');
+  const [logsFilter, setLogsFilter] = useState('All');
+  const [logsPage, setLogsPage] = useState(1);
 
   const [userAccount, setUserAccount] = useState<{
     fullName: string;
@@ -971,6 +978,28 @@ export default function DashboardPage() {
       const stored = localStorage.getItem('dinepos_user_account');
       if (stored) {
         let parsed = JSON.parse(stored);
+
+        // Normalize / Flatten nested structure if present
+        if (parsed && parsed.user && parsed.tenant) {
+          parsed = {
+            ...parsed,
+            fullName: parsed.user.name,
+            email: parsed.user.email,
+            restaurantName: parsed.tenant.name,
+            role: parsed.user.role,
+            tenantId: parsed.tenant.id,
+            currency: parsed.tenant.currency,
+            onboarded: parsed.tenant.onboarded,
+            plan: parsed.tenant.plan || parsed.plan || 'TRIAL',
+            tier: parsed.tier || parsed.tenant.tier || 'Growth',
+            trialEndsAt: parsed.tenant.trialEndsAt || parsed.trialEndsAt,
+            subscriptionExpiresAt: parsed.tenant.subscriptionExpiresAt || parsed.subscriptionExpiresAt,
+            billingCycle: parsed.billingCycle || parsed.tenant.billingCycle,
+            expiryDate: parsed.expiryDate || parsed.tenant.subscriptionExpiresAt || parsed.tenant.trialEndsAt || parsed.subscriptionExpiresAt || parsed.trialEndsAt || ''
+          };
+        } else if (parsed && !parsed.expiryDate) {
+          parsed.expiryDate = parsed.subscriptionExpiresAt || parsed.trialEndsAt || '';
+        }
         
         const upgradeStatus = searchParams.get('upgrade');
         const queryTier = searchParams.get('tier');
@@ -1015,6 +1044,15 @@ export default function DashboardPage() {
       console.error(e);
     }
   }, [router, searchParams]);
+
+  // Load activity logs
+  useEffect(() => {
+    if (activeTab === 'activity-log') {
+      getActivityLogs().then((logs) => {
+        setLogsList(logs);
+      });
+    }
+  }, [activeTab]);
 
   // ==========================================
   // INVENTORY MANAGEMENT STATE
@@ -2702,6 +2740,18 @@ export default function DashboardPage() {
               <span className="material-symbols-outlined text-lg leading-none">inventory_2</span>
               <span>{tr.inventory}</span>
             </button>
+            {/* Activity Log */}
+            <button type="button"
+              onClick={() => setActiveTab('activity-log')}
+              className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${
+                activeTab === 'activity-log'
+                  ? `${t.accentBg} ${t.accentText} rounded-xl`
+                  : `${t.textMuted} ${hText} ${hBg} rounded-xl`
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg leading-none">history</span>
+              <span>Activity Log</span>
+            </button>
           </nav>
         </div>
         
@@ -2749,7 +2799,7 @@ export default function DashboardPage() {
               <div className="bg-rose-500/10 border-b border-rose-500/20 px-12 py-3.5 flex items-center justify-between text-xs text-rose-400 font-sans z-30 select-none">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-base">error</span>
-                  <span>Your 14-day free trial has <strong>expired</strong>. Please upgrade your plan to restore full operations.</span>
+                  <span>Your 7-day free trial has <strong>expired</strong>. Please upgrade your plan to restore full operations.</span>
                 </div>
                 <button
                   onClick={() => setShowPlanUpgradeModal(true)}
@@ -2770,7 +2820,7 @@ export default function DashboardPage() {
             </div>
             <h2 className="font-serif text-3xl text-white font-bold mb-3">Your Free Trial Has Expired</h2>
             <p className="font-sans text-xs text-[#A69984]/75 max-w-md leading-relaxed mb-8">
-              Your 14-day free trial of DinePOS AI has concluded. Upgrade to a paid tier now to restore FOH terminals, kitchen displays, and telemetry services.
+              Your 7-day free trial of DinePOS AI has concluded. Upgrade to a paid tier now to restore FOH terminals, kitchen displays, and telemetry services.
             </p>
             <div className="flex gap-4">
               <button
@@ -3365,9 +3415,10 @@ export default function DashboardPage() {
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => {
+                                      onClick={async () => {
                                         if (confirm(`Are you sure you want to delete ${member.name}?`)) {
                                           setStaffMembers(staffMembers.filter(m => m.id !== member.id));
+                                          await recordActivity('staff_deleted', `Deleted employee ${member.name}`, 'Staff', { id: member.id, role: member.role });
                                           triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
                                         }
                                       }}
@@ -3894,7 +3945,7 @@ export default function DashboardPage() {
                             {tr.currentPlan}
                           </span>
                           <h3 className={`font-serif text-3xl font-bold ${t.text} mt-2.5`}>
-                            {userAccount ? `${userAccount.tier === 'Starter' ? cmsConfig.pricing.starterName : userAccount.tier === 'Growth' ? cmsConfig.pricing.growthName : userAccount.tier === 'Business' ? cmsConfig.pricing.premiumName : userAccount.tier} ${userAccount.plan === 'TRIAL' ? '(14-Day Trial)' : ''}` : tr.planName}
+                            {userAccount ? `${userAccount.tier === 'Starter' ? cmsConfig.pricing.starterName : userAccount.tier === 'Growth' ? cmsConfig.pricing.growthName : userAccount.tier === 'Business' ? cmsConfig.pricing.premiumName : userAccount.tier} ${userAccount.plan === 'TRIAL' ? '(7-Day Trial)' : ''}` : tr.planName}
                           </h3>
                           <p className={`text-[11px] ${t.textMutedLight} font-semibold mt-1`}>
                             {userAccount && userAccount.plan === 'TRIAL' 
@@ -3907,7 +3958,7 @@ export default function DashboardPage() {
                             {getDisplayPlanPrice()}
                           </span>
                           <span className={`text-xs ${t.textMuted} font-semibold`}>
-                            {userAccount && userAccount.plan === 'TRIAL' ? ' / 14 days' : ' / month'}
+                            {userAccount && userAccount.plan === 'TRIAL' ? ' / 7 days' : ' / month'}
                           </span>
                         </div>
                       </div>
@@ -5014,11 +5065,17 @@ export default function DashboardPage() {
                           <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               const newVal = !dineInEnabled;
                               setDineInEnabled(newVal);
                               localStorage.setItem('dinepos_dine_in_enabled', String(newVal));
                               window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_dine_in_enabled', newValue: String(newVal) }));
+                              await recordActivity(
+                                'service_modes_changed',
+                                `Toggled Dine-In service mode to ${newVal ? 'Enabled' : 'Disabled'}`,
+                                'Settings',
+                                { mode: 'Dine-In', enabled: newVal }
+                              );
                               triggerToast(newVal ? 'Dine-In enabled!' : 'Dine-In disabled.', 'success');
                             }}
                             className={`w-9 h-5 rounded-full p-0.5 transition-colors ${dineInEnabled ? t.accentBg : 'bg-white/20'}`}
@@ -5038,11 +5095,17 @@ export default function DashboardPage() {
                           <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               const newVal = !takeawayEnabled;
                               setTakeawayEnabled(newVal);
                               localStorage.setItem('dinepos_takeaway_enabled', String(newVal));
                               window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_takeaway_enabled', newValue: String(newVal) }));
+                              await recordActivity(
+                                'service_modes_changed',
+                                `Toggled Takeaway service mode to ${newVal ? 'Enabled' : 'Disabled'}`,
+                                'Settings',
+                                { mode: 'Takeaway', enabled: newVal }
+                              );
                               triggerToast(newVal ? 'Take Away enabled!' : 'Take Away disabled.', 'success');
                             }}
                             className={`w-9 h-5 rounded-full p-0.5 transition-colors ${takeawayEnabled ? t.accentBg : 'bg-white/20'}`}
@@ -5062,11 +5125,17 @@ export default function DashboardPage() {
                           <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               const newVal = !deliveryEnabled;
                               setDeliveryEnabled(newVal);
                               localStorage.setItem('dinepos_delivery_enabled', String(newVal));
                               window.dispatchEvent(new StorageEvent('storage', { key: 'dinepos_delivery_enabled', newValue: String(newVal) }));
+                              await recordActivity(
+                                'service_modes_changed',
+                                `Toggled Delivery service mode to ${newVal ? 'Enabled' : 'Disabled'}`,
+                                'Settings',
+                                { mode: 'Delivery', enabled: newVal }
+                              );
                               triggerToast(newVal ? 'Delivery enabled!' : 'Delivery disabled.', 'success');
                             }}
                             className={`w-9 h-5 rounded-full p-0.5 transition-colors ${deliveryEnabled ? t.accentBg : 'bg-white/20'}`}
@@ -7271,8 +7340,212 @@ export default function DashboardPage() {
             </div>
           )}
 
+          {/* TAB: ACTIVITY LOGS */}
+          {activeTab === 'activity-log' && (
+            <div className="space-y-8 animate-fade-in duration-300 font-sans">
+              {/* Header Title Block */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6 select-none">
+                <div>
+                  <h2 className={`font-serif text-[38px] font-bold ${t.accent} tracking-wide leading-none`}>
+                    Activity Logs
+                  </h2>
+                  <p className={`font-sans text-[12.5px] ${t.textMuted} mt-3 font-semibold`}>
+                    Track administrative actions, staff updates, and configuration adjustments on your account.
+                  </p>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (confirm('Are you sure you want to clear all activity logs? This action cannot be undone.')) {
+                      await clearActivityLogs();
+                      const updated = await getActivityLogs();
+                      setLogsList(updated);
+                      triggerToast('Activity logs cleared successfully.', 'success');
+                    }
+                  }}
+                  className={`px-5 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2`}
+                >
+                  <span className="material-symbols-outlined text-sm">delete_sweep</span>
+                  Clear Logs
+                </button>
+              </div>
+
+              {/* SEARCH & FILTERS BAR */}
+              <div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-[#0e0e0d]/30 border border-white/5 p-4 rounded-2xl select-none">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                  {['All', 'Staff', 'Settings', 'Billing', 'Security'].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => { setLogsFilter(cat); setLogsPage(1); }}
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        logsFilter === cat
+                          ? `${t.accentBg} ${t.accentText}`
+                          : `bg-white/5 text-[#A69984] hover:bg-white/10`
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative w-full md:w-64">
+                  <span className={`material-symbols-outlined absolute left-3.5 top-3 ${t.textMutedDark} text-sm`}>search</span>
+                  <input
+                    type="text"
+                    value={logsSearch}
+                    onChange={(e) => { setLogsSearch(e.target.value); setLogsPage(1); }}
+                    placeholder="Search logs..."
+                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-10 pr-4 py-2.5 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                  />
+                </div>
+              </div>
+
+              {/* LOG ENTRIES TABLE */}
+              <div className={`${t.cardBgOpaque} rounded-2xl border shadow-xl overflow-hidden`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse text-left text-xs">
+                    <thead>
+                      <tr className={`border-b ${t.borderStrong} text-[9.5px] uppercase tracking-wider font-bold ${t.textMuted} select-none`}>
+                        <th className="py-4 px-6">Timestamp</th>
+                        <th className="py-4 px-4">Actor</th>
+                        <th className="py-4 px-4">Event</th>
+                        <th className="py-4 px-4">Description</th>
+                        <th className="py-4 px-6 text-right">Details</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${t.divider}`}>
+                      {(() => {
+                        const filtered = logsList.filter(log => {
+                          const matchesCat = logsFilter === 'All' || log.category?.toLowerCase() === logsFilter.toLowerCase();
+                          const matchesSearch = !logsSearch || 
+                            log.message?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                            log.actor?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                            log.action?.toLowerCase().includes(logsSearch.toLowerCase());
+                          return matchesCat && matchesSearch;
+                        });
+
+                        const perPage = 10;
+                        const totalPages = Math.ceil(filtered.length / perPage) || 1;
+                        const startIdx = (logsPage - 1) * perPage;
+                        const paginated = filtered.slice(startIdx, startIdx + perPage);
+
+                        return (
+                          <>
+                            {paginated.map((log, idx) => {
+                              let catBadge = 'bg-white/5 text-white/70';
+                              if (log.category === 'Staff') catBadge = 'bg-sky-500/10 border border-sky-500/20 text-sky-400';
+                              else if (log.category === 'Billing') catBadge = 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
+                              else if (log.category === 'Settings') catBadge = 'bg-amber-500/10 border border-amber-500/20 text-amber-400';
+                              else if (log.category === 'Security') catBadge = 'bg-purple-500/10 border border-purple-500/20 text-purple-400';
+
+                              return (
+                                <tr key={log.id || idx} className={`hover:bg-white/[0.01] transition-colors`}>
+                                  <td className="py-4 px-6 font-mono text-[10px] whitespace-nowrap text-[#A69984]">
+                                    {new Date(log.timestamp).toLocaleString()}
+                                  </td>
+                                  <td className="py-4 px-4 font-bold text-white whitespace-nowrap">
+                                    {log.actor || 'System'}
+                                  </td>
+                                  <td className="py-4 px-4 whitespace-nowrap">
+                                    <span className={`px-2 py-0.5 rounded text-[9px] uppercase tracking-wide font-black ${catBadge}`}>
+                                      {log.action}
+                                    </span>
+                                  </td>
+                                  <td className={`py-4 px-4 text-xs ${t.textMuted} leading-relaxed min-w-[250px]`}>
+                                    {log.message}
+                                  </td>
+                                  <td className="py-4 px-6 text-right whitespace-nowrap">
+                                    {log.metadata && Object.keys(log.metadata).length > 0 ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          alert(JSON.stringify(log.metadata, null, 2));
+                                        }}
+                                        className={`px-2.5 py-1 bg-white/5 hover:${t.cardHover} ${t.text} rounded text-[10px] font-sans font-bold transition-all cursor-pointer`}
+                                      >
+                                        View Data
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-white/20">-</span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            
+                            {filtered.length === 0 && (
+                              <tr>
+                                <td colSpan={5} className={`py-12 text-center text-xs ${t.textMuted}`}>
+                                  No activity log entries matched the filters.
+                                </td>
+                              </tr>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination Footer */}
+                {(() => {
+                  const filtered = logsList.filter(log => {
+                    const matchesCat = logsFilter === 'All' || log.category?.toLowerCase() === logsFilter.toLowerCase();
+                    const matchesSearch = !logsSearch || 
+                      log.message?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                      log.actor?.toLowerCase().includes(logsSearch.toLowerCase()) ||
+                      log.action?.toLowerCase().includes(logsSearch.toLowerCase());
+                    return matchesCat && matchesSearch;
+                  });
+                  const perPage = 10;
+                  const totalPages = Math.ceil(filtered.length / perPage) || 1;
+
+                  return (
+                    <div className={`p-4 border-t ${t.border} ${t.inputBg}/30 flex justify-between items-center select-none text-xs text-[#A69984]/80 font-sans`}>
+                      <div>
+                        Showing <span className="font-bold text-white">{filtered.length > 0 ? (logsPage - 1) * perPage + 1 : 0}</span> to{' '}
+                        <span className="font-bold text-white">{Math.min(logsPage * perPage, filtered.length)}</span> of{' '}
+                        <span className="font-bold text-white">{filtered.length}</span> log entries
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          disabled={logsPage === 1}
+                          onClick={() => setLogsPage(prev => Math.max(prev - 1, 1))}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                            logsPage === 1 ? 'opacity-30 cursor-not-allowed' : `bg-white/5 hover:${t.cardHover}`
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">chevron_left</span>
+                        </button>
+                        
+                        <span className="font-mono text-xs font-bold px-2">
+                          {logsPage} / {totalPages}
+                        </span>
+                        
+                        <button
+                          type="button"
+                          disabled={logsPage === totalPages}
+                          onClick={() => setLogsPage(prev => Math.min(prev + 1, totalPages))}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+                            logsPage === totalPages ? 'opacity-30 cursor-not-allowed' : `bg-white/5 hover:${t.cardHover}`
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-sm">chevron_right</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
           {/* Fallback Placeholder tab for other sections */}
-          {activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && activeTab !== 'analytics' && activeTab !== 'inventory' && (
+          {activeTab !== 'receipts' && activeTab !== 'staff' && activeTab !== 'payments' && activeTab !== 'hardware' && activeTab !== 'general' && activeTab !== 'security' && activeTab !== 'menu' && activeTab !== 'analytics' && activeTab !== 'inventory' && activeTab !== 'activity-log' && (
             <div className={`text-center py-36 select-none border border-dashed ${t.border} rounded-2xl ${t.inputBg}/30`}>
               <span className={`material-symbols-outlined text-5xl ${t.accent} opacity-40 motion-safe:animate-pulse font-light mb-4 block`}>construction</span>
               <h3 className={`font-serif text-xl ${t.text} mb-2 tracking-wide capitalize`}>{activeTab} Dashboard Panel</h3>
@@ -7992,7 +8265,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <form onSubmit={(e) => {
+            <form onSubmit={async (e) => {
               e.preventDefault();
               if (!newEmployee.name.trim()) {
                 triggerToast('Please enter an employee name.', 'info');
@@ -8005,6 +8278,12 @@ export default function DashboardPage() {
                     : member
                 );
                 setStaffMembers(updatedMembers);
+                await recordActivity(
+                  'staff_updated',
+                  `Updated details for employee ${newEmployee.name}`,
+                  'Staff',
+                  { id: editingEmployee.id, role: newEmployee.role }
+                );
                 triggerToast(`Successfully updated employee ${newEmployee.name}!`, 'success');
               } else {
                 const newId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
@@ -8017,6 +8296,12 @@ export default function DashboardPage() {
                   avatar: ''
                 };
                 setStaffMembers([...staffMembers, addedMember]);
+                await recordActivity(
+                  'staff_created',
+                  `Created employee ${newEmployee.name} with role ${newEmployee.role}`,
+                  'Staff',
+                  { id: newId, role: newEmployee.role }
+                );
                 triggerToast(`Successfully added employee ${addedMember.name}!`, 'success');
               }
               setShowAddEmployeeModal(false);

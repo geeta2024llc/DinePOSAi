@@ -12,8 +12,38 @@ import inventoryRouter from './routes/inventory.routes.js';
 import orderRouter from './routes/order.routes.js';
 import conciergeRouter from './routes/concierge.routes.js';
 import billingRouter from './routes/billing.routes.js';
+import auditRouter from './routes/audit.routes.js';
 
 dotenv.config();
+
+// Pre-flight check for required environment variables
+const REQUIRED_ENV = [
+  'JWT_SECRET',
+  'SUPABASE_URL',
+  'SUPABASE_SERVICE_ROLE_KEY'
+];
+
+const MISSING_ENV = REQUIRED_ENV.filter(key => !process.env[key]);
+if (MISSING_ENV.length > 0) {
+  console.error('\x1b[31m%s\x1b[0m', '❌ CRITICAL ERROR: Missing required environment variables:');
+  MISSING_ENV.forEach(key => console.error(`   - ${key}`));
+  console.error('\x1b[31m%s\x1b[0m', 'Backend server cannot start without these variables. Please configure them in apps/api/.env');
+  process.exit(1);
+}
+
+// Warn about test keys and weak secrets in production
+if (process.env.NODE_ENV === 'production') {
+  if (process.env.STRIPE_SECRET_KEY && process.env.STRIPE_SECRET_KEY.startsWith('sk_test_')) {
+    console.warn('\x1b[33m%s\x1b[0m', '⚠️ WARNING: STRIPE_SECRET_KEY is using a test mode key (sk_test_...) in production environment!');
+  }
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.warn('\x1b[33m%s\x1b[0m', '⚠️ WARNING: STRIPE_SECRET_KEY is not defined. Stripe checkout operations will fall back to simulated upgrades.');
+  }
+  if (process.env.JWT_SECRET && process.env.JWT_SECRET.length < 32) {
+    console.warn('\x1b[33m%s\x1b[0m', '⚠️ WARNING: JWT_SECRET has less than 32 characters. It is highly recommended to use a longer high-entropy key for production.');
+  }
+}
+
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -84,6 +114,7 @@ app.use('/api/inventory', inventoryRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/concierge', conciergeRouter);
 app.use('/api/billing', billingRouter);
+app.use('/api/audit', auditRouter);
 
 // Health Check Endpoint
 app.get('/health', (req: Request, res: Response<ApiResponse>) => {

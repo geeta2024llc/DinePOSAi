@@ -68,6 +68,12 @@ export default function ReceiptPreviewPage() {
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
 
+  // Restaurant branding (from admin settings)
+  const [restaurantLogo, setRestaurantLogo] = useState<string | null>(null);
+  const [restaurantName, setRestaurantName] = useState('DinePosAi');
+  const [restaurantAddress, setRestaurantAddress] = useState('1200 Gastronomy Way, Suite 400\nNew York, NY 10001');
+  const [showLogoOnReceipt, setShowLogoOnReceipt] = useState(true);
+
   const { config: printerConfig, status: printerStatus, logs: printerLogs, printReceipt: dispatchPrintReceipt, setConfig: setPrinterConfig } = usePrinter();
 
   // Bluetooth print console logs states
@@ -90,29 +96,32 @@ export default function ReceiptPreviewPage() {
       if (savedTaxRateDineIn) setTaxRateDineIn(parseFloat(savedTaxRateDineIn) / 100);
       if (savedTaxRateTakeaway) setTaxRateTakeaway(parseFloat(savedTaxRateTakeaway) / 100);
       if (savedTaxRateDelivery) setTaxRateDelivery(parseFloat(savedTaxRateDelivery) / 100);
+
+      // Restaurant branding
+      const savedLogo = localStorage.getItem('dinepos_restaurant_logo');
+      if (savedLogo) setRestaurantLogo(savedLogo);
+      const savedName = localStorage.getItem('dinepos_establishment_name');
+      if (savedName) setRestaurantName(savedName);
+      const savedAddr = localStorage.getItem('dinepos_business_address');
+      if (savedAddr) setRestaurantAddress(savedAddr);
+      const savedShowLogo = localStorage.getItem('dinepos_receipt_show_logo');
+      if (savedShowLogo === 'false') setShowLogoOnReceipt(false);
     }
   }, []);
 
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'dinepos_tax_type' && e.newValue) {
-        if (e.newValue === 'pre-tax' || e.newValue === 'post-tax') {
-          setTaxType(e.newValue as 'pre-tax' | 'post-tax');
-        }
+      if (e.key === 'dinepos_restaurant_logo') {
+        setRestaurantLogo(e.newValue || null);
       }
-      if (e.key === 'dinepos_dining_option' && e.newValue) {
-        if (e.newValue === 'dine-in' || e.newValue === 'takeaway' || e.newValue === 'delivery') {
-          setDiningOption(e.newValue);
-        }
+      if (e.key === 'dinepos_establishment_name' && e.newValue) {
+        setRestaurantName(e.newValue);
       }
-      if (e.key === 'dinepos_tax_rate_dine_in' && e.newValue) {
-        setTaxRateDineIn(parseFloat(e.newValue) / 100);
+      if (e.key === 'dinepos_business_address' && e.newValue) {
+        setRestaurantAddress(e.newValue);
       }
-      if (e.key === 'dinepos_tax_rate_takeaway' && e.newValue) {
-        setTaxRateTakeaway(parseFloat(e.newValue) / 100);
-      }
-      if (e.key === 'dinepos_tax_rate_delivery' && e.newValue) {
-        setTaxRateDelivery(parseFloat(e.newValue) / 100);
+      if (e.key === 'dinepos_receipt_show_logo') {
+        setShowLogoOnReceipt(e.newValue !== 'false');
       }
     };
     window.addEventListener('storage', handleStorageChange);
@@ -367,16 +376,25 @@ export default function ReceiptPreviewPage() {
               ⚠️ Showing Sample Receipt
             </div>
           )}
-          <h2 className="font-serif font-black text-2xl tracking-wide text-black mb-1">DinePosAi</h2>
+          {/* Restaurant Logo */}
+          {showLogoOnReceipt && restaurantLogo && (
+            <div className="flex justify-center mb-3">
+              <img
+                src={restaurantLogo}
+                alt="Restaurant logo"
+                className="max-h-16 max-w-[120px] object-contain"
+                style={{ printColorAdjust: 'exact' } as React.CSSProperties}
+              />
+            </div>
+          )}
+          <h2 className="font-serif font-black text-2xl tracking-wide text-black mb-1">{restaurantName}</h2>
           <div className="flex items-center justify-center gap-1.5 mb-3">
             <div className="h-[1px] w-6 bg-[#ffe2ab]/80"></div>
             <span className="font-sans font-bold text-[8.5px] text-[#A69984] tracking-[0.25em] uppercase">Aura Hospitality Group</span>
             <div className="h-[1px] w-6 bg-[#ffe2ab]/80"></div>
           </div>
           <div className="font-sans text-[10.5px] text-[#555] font-semibold leading-relaxed">
-            <div>1200 Gastronomy Way, Suite 400</div>
-            <div>New York, NY 10001</div>
-            <div>+1 (212) 555-0198</div>
+            {restaurantAddress.split('\n').map((line, i) => <div key={i}>{line}</div>)}
           </div>
         </div>
 

@@ -113,7 +113,7 @@ export default function Home() {
           </p>
           <div style={{ display: 'flex', gap: 'var(--space-4)', justifyContent: 'center' }}>
             <Button size="lg" style={{ backgroundColor: 'white', color: 'var(--color-primary-dark)' }}>
-              Start 14-Day Free Trial
+              Start 7-Day Free Trial
             </Button>
           </div>
         </div>

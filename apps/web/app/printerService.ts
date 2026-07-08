@@ -70,6 +70,26 @@ export class PrinterService {
     }
   }
 
+  async kickCashDrawer(config: PrinterConfig, onLog: (msg: string) => void): Promise<void> {
+    onLog(`Triggering Cash Drawer Solenoid Pulse (Printer Type: ${config.type})...`);
+
+    if (config.type === 'browser' || config.type === 'network') {
+      onLog('Pulse trigger bypassed for browser/network configurations.');
+      return;
+    }
+
+    const encoder = new EscposEncoder();
+    encoder.init().pulseDrawer(0, 48, 240);
+    const bytes = encoder.getBytes();
+
+    if (config.type === 'bluetooth') {
+      await this.printBluetooth(bytes, onLog);
+    } else if (config.type === 'usb') {
+      await this.printUsb(bytes, onLog);
+    }
+    onLog('✓ Drawer kick pulse transmitted.');
+  }
+
   private encodeReceipt(data: PrintReceiptData): Uint8Array {
     const encoder = new EscposEncoder();
     encoder.init()
