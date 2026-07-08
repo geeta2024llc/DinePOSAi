@@ -142,8 +142,12 @@ export const stripeWebhook = async (req: Request, res: Response) => {
     }
 
     if (endpointSecret && sig) {
-      event = activeStripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+      const payload = (req as any).rawBody || req.body;
+      event = activeStripe.webhooks.constructEvent(payload, sig, endpointSecret);
     } else {
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(400).send('Stripe webhook signature verification failed: Missing signature or endpoint secret in production.');
+      }
       event = req.body;
     }
 

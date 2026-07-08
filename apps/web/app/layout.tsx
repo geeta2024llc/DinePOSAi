@@ -1,8 +1,22 @@
 import './globals.css';
 import type { Metadata } from 'next';
+import { Playfair_Display, Inter } from 'next/font/google';
 import { AuthProvider } from './authContext';
 import { PrinterProvider } from './printerContext';
+import { PostHogProvider } from './providers';
 import DemoBanner from '@/components/DemoBanner';
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-playfair',
+});
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const metadata: Metadata = {
   title: 'DinePOS AI - Modern Hospitality Systems',
@@ -15,11 +29,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark scroll-smooth" suppressHydrationWarning>
+    <html lang="en" className={`dark scroll-smooth ${playfair.variable} ${inter.variable}`} suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@100..900&display=swap" rel="stylesheet" />
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
@@ -151,12 +162,14 @@ export default function RootLayout({
         ` }} />
       </head>
       <body className="bg-surface-container-lowest text-on-surface antialiased overflow-x-hidden min-h-screen flex flex-col" suppressHydrationWarning>
-        <AuthProvider>
-          <PrinterProvider>
-            {children}
-            <DemoBanner />
-          </PrinterProvider>
-        </AuthProvider>
+        <PostHogProvider>
+          <AuthProvider>
+            <PrinterProvider>
+              {children}
+              <DemoBanner />
+            </PrinterProvider>
+          </AuthProvider>
+        </PostHogProvider>
       </body>
     </html>
   );

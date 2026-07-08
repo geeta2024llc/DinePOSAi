@@ -111,6 +111,13 @@ function LoginForm() {
       }
 
       if (response.isOfflineFallback) {
+        const isDemoAllowed = process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ALLOW_DEMO_LOGIN === 'true';
+        if (!isDemoAllowed) {
+          setIsLoading(false);
+          setError('The API server is currently unreachable. Please check your internet connection or try again later.');
+          return;
+        }
+
         console.log('[Auth] API is offline. Performing offline fallback validation.');
 
         const cred = OFFLINE_CREDENTIALS[emailLower];

@@ -78,13 +78,19 @@ export const recordWasteSchema = z.object({
 export const getInventoryItems = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
   const tenantId = req.user?.tenantId;
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  const { limit, offset } = req.query;
 
   try {
-    const { data: items, error } = await supabase
+    let query = supabase
       .from('inventory_items')
       .select('*')
-      .eq('tenant_id', tenantId)
-      .order('name', { ascending: true });
+      .eq('tenant_id', tenantId);
+
+    if (limit !== undefined && offset !== undefined) {
+      query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+    }
+
+    const { data: items, error } = await query.order('name', { ascending: true });
 
     if (error) return res.status(500).json({ success: false, error: error.message });
 
@@ -337,13 +343,19 @@ export const saveMenuItemRecipe = async (req: AuthenticatedRequest, res: Respons
 export const getSuppliers = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
   const tenantId = req.user?.tenantId;
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  const { limit, offset } = req.query;
 
   try {
-    const { data: suppliers, error } = await supabase
+    let query = supabase
       .from('suppliers')
       .select('*')
-      .eq('tenant_id', tenantId)
-      .order('name', { ascending: true });
+      .eq('tenant_id', tenantId);
+
+    if (limit !== undefined && offset !== undefined) {
+      query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+    }
+
+    const { data: suppliers, error } = await query.order('name', { ascending: true });
 
     if (error) return res.status(500).json({ success: false, error: error.message });
     res.json({ success: true, data: suppliers });
@@ -437,13 +449,19 @@ export const deleteSupplier = async (req: AuthenticatedRequest, res: Response<Ap
 export const getPurchaseOrders = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
   const tenantId = req.user?.tenantId;
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  const { limit, offset } = req.query;
 
   try {
-    const { data: orders, error } = await supabase
+    let query = supabase
       .from('purchase_orders')
       .select('*, suppliers(name)')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false });
+      .eq('tenant_id', tenantId);
+
+    if (limit !== undefined && offset !== undefined) {
+      query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+    }
+
+    const { data: orders, error } = await query.order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ success: false, error: error.message });
 
@@ -475,41 +493,29 @@ export const createPurchaseOrder = async (req: AuthenticatedRequest, res: Respon
     // Calculate total cost
     const totalCost = items.reduce((acc: number, item: any) => acc + (item.quantity * item.unitCost), 0);
 
-    // Create Purchase Order Header
-    const { data: po, error: poErr } = await supabase
-      .from('purchase_orders')
-      .insert({
-        tenant_id: tenantId,
-        supplier_id: supplierId || null,
-        status: 'PENDING',
-        total_cost: totalCost,
-        created_by: req.user?.id || null
-      })
-      .select()
-      .single();
+    // Call DB RPC Transaction
+    const { data: poId, error: poErr } = await supabase
+      .rpc('create_purchase_order_transaction', {
+        p_tenant_id: tenantId,
+        p_supplier_id: supplierId || null,
+        p_total_cost: totalCost,
+        p_created_by: req.user?.id || null,
+        p_items: items
+      });
 
-    if (poErr || !po) {
-      return res.status(500).json({ success: false, error: `Failed to create purchase order: ${poErr?.message}` });
+    if (poErr || !poId) {
+      return res.status(500).json({ success: false, error: `Failed to create purchase order transaction: ${poErr?.message}` });
     }
 
-    // Create PO Items
-    const poItems = items.map((item: any) => ({
-      tenant_id: tenantId,
-      purchase_order_id: po.id,
-      ingredient_id: item.ingredientId,
-      quantity: item.quantity,
-      unit_cost: item.unitCost,
-      total_cost: item.quantity * item.unitCost
-    }));
+    // Fetch the inserted PO details to return to the client
+    const { data: po, error: fetchErr } = await supabase
+      .from('purchase_orders')
+      .select('*')
+      .eq('id', poId)
+      .single();
 
-    const { error: itemsErr } = await supabase
-      .from('purchase_order_items')
-      .insert(poItems);
-
-    if (itemsErr) {
-      // Rollback PO Header
-      await supabase.from('purchase_orders').delete().eq('id', po.id);
-      return res.status(500).json({ success: false, error: `Failed to create PO items: ${itemsErr.message}` });
+    if (fetchErr) {
+      return res.status(500).json({ success: false, error: `Failed to retrieve created purchase order: ${fetchErr.message}` });
     }
 
     res.status(201).json({ success: true, data: po });
@@ -632,13 +638,19 @@ export const cancelPurchaseOrder = async (req: AuthenticatedRequest, res: Respon
 export const getWasteLogs = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
   const tenantId = req.user?.tenantId;
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  const { limit, offset } = req.query;
 
   try {
-    const { data: logs, error } = await supabase
+    let query = supabase
       .from('waste_logs')
       .select('*, inventory_items(name, unit)')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false });
+      .eq('tenant_id', tenantId);
+
+    if (limit !== undefined && offset !== undefined) {
+      query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+    }
+
+    const { data: logs, error } = await query.order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ success: false, error: error.message });
 
@@ -728,13 +740,19 @@ export const recordWaste = async (req: AuthenticatedRequest, res: Response<ApiRe
 export const getInventoryTransactions = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
   const tenantId = req.user?.tenantId;
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+  const { limit, offset } = req.query;
 
   try {
-    const { data: txs, error } = await supabase
+    let query = supabase
       .from('inventory_transactions')
       .select('*, inventory_items(name, unit)')
-      .eq('tenant_id', tenantId)
-      .order('created_at', { ascending: false });
+      .eq('tenant_id', tenantId);
+
+    if (limit !== undefined && offset !== undefined) {
+      query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
+    }
+
+    const { data: txs, error } = await query.order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ success: false, error: error.message });
 

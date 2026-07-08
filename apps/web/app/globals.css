@@ -50,13 +50,13 @@
   --color-error-container: #93000a;
   --color-surface-container-low: #1c1b1b;
 
-  --font-headline-lg-mobile: 'Playfair Display', serif;
-  --font-display-lg: 'Playfair Display', serif;
-  --font-label-sm: 'Inter', sans-serif;
-  --font-title-md: 'Inter', sans-serif;
-  --font-headline-lg: 'Playfair Display', serif;
-  --font-kds-timer: 'Inter', sans-serif;
-  --font-body-md: 'Inter', sans-serif;
+  --font-headline-lg-mobile: var(--font-playfair), serif;
+  --font-display-lg: var(--font-playfair), serif;
+  --font-label-sm: var(--font-inter), sans-serif;
+  --font-title-md: var(--font-inter), sans-serif;
+  --font-headline-lg: var(--font-playfair), serif;
+  --font-kds-timer: var(--font-inter), sans-serif;
+  --font-body-md: var(--font-inter), sans-serif;
 
   /* Spacing Variables */
   --spacing: 0.25rem;

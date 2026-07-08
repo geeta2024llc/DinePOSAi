@@ -83,6 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {
           localStorage.removeItem('dinepos_user_account');
           localStorage.removeItem('dinepos_jwt_token');
+          document.cookie = 'dinepos_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         }
       }
       setIsLoading(false);
@@ -91,6 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const handleUnauthorized = () => {
         setUser(null);
         setTenant(null);
+        document.cookie = 'dinepos_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
         router.push('/login');
       };
 
@@ -104,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setTenant(tenant);
     if (typeof window !== 'undefined') {
       localStorage.setItem('dinepos_jwt_token', token);
+      document.cookie = `dinepos_auth_token=${token}; path=/; max-age=604800; SameSite=Strict; Secure`;
       localStorage.setItem('dinepos_user_account', JSON.stringify({
         user,
         tenant,
@@ -155,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('dinepos_jwt_token');
         localStorage.removeItem('dinepos_user_account');
+        document.cookie = 'dinepos_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       }
       setIsLoading(false);
       router.push('/login');
@@ -170,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTenant(t);
         if (typeof window !== 'undefined') {
           localStorage.setItem('dinepos_jwt_token', token);
+          document.cookie = `dinepos_auth_token=${token}; path=/; max-age=604800; SameSite=Strict; Secure`;
           localStorage.setItem('dinepos_user_account', JSON.stringify({ user: u, tenant: t }));
         }
       } else {

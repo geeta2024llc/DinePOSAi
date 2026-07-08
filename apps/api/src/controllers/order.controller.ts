@@ -135,53 +135,29 @@ export const createOrder = async (req: AuthenticatedRequest, res: Response<ApiRe
       }
     }
 
-    // A. Insert Order Record
-    const { data: order, error: orderErr } = await supabase
-      .from('orders')
-      .insert({
-        tenant_id: tenantId,
-        table_id: tableId || null,
-        customer_type: customerType,
-        status: 'PENDING',
-        subtotal,
-        tax,
-        discount,
-        total,
-        created_by: userId || null,
-      })
-      .select()
-      .single();
+    // Call DB RPC Transaction
+    const { data: orderId, error: orderErr } = await supabase
+      .rpc('place_order_transaction', {
+        p_tenant_id: tenantId,
+        p_table_id: tableId || null,
+        p_customer_type: customerType,
+        p_subtotal: subtotal,
+        p_tax: tax,
+        p_discount: discount,
+        p_total: total,
+        p_created_by: userId || null,
+        p_items: items
+      });
 
-    if (orderErr || !order) {
-      return res.status(500).json({ success: false, error: `Failed to create order record: ${orderErr?.message}` });
-    }
-
-    // B. Insert Order Items
-    const orderItemsPayload = items.map((item: any) => ({
-      order_id: order.id,
-      menu_item_id: item.menuItemId || null,
-      name: item.name,
-      quantity: item.quantity,
-      price: item.price,
-      status: 'PENDING',
-      notes: item.notes || null,
-    }));
-
-    const { error: itemsErr } = await supabase
-      .from('order_items')
-      .insert(orderItemsPayload);
-
-    if (itemsErr) {
-      // Clean up order record on failure (simulate transaction rollback)
-      await supabase.from('orders').delete().eq('id', order.id);
-      return res.status(500).json({ success: false, error: `Failed to create order items: ${itemsErr.message}` });
+    if (orderErr || !orderId) {
+      return res.status(500).json({ success: false, error: `Failed to place order transaction: ${orderErr?.message}` });
     }
 
     res.status(201).json({
       success: true,
       data: {
         message: 'Order created successfully.',
-        orderId: order.id,
+        orderId,
       }
     });
 

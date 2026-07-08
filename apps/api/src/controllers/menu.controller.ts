@@ -95,7 +95,7 @@ export const createCategory = async (req: AuthenticatedRequest, res: Response<Ap
 // 3. GET MENU ITEMS
 export const getMenuItems = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
   const tenantId = req.user?.tenantId;
-  const { categoryId } = req.query;
+  const { categoryId, limit, offset } = req.query;
 
   if (!tenantId) {
     return res.status(400).json({ success: false, error: 'Tenant context missing.' });
@@ -110,6 +110,10 @@ export const getMenuItems = async (req: AuthenticatedRequest, res: Response<ApiR
 
     if (categoryId) {
       query = query.eq('category_id', categoryId);
+    }
+
+    if (limit !== undefined && offset !== undefined) {
+      query = query.range(Number(offset), Number(offset) + Number(limit) - 1);
     }
 
     const { data: items, error } = await query.order('name', { ascending: true });

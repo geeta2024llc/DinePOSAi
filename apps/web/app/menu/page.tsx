@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { migrateCart, generateCartKey } from './cartUtils';
@@ -1648,10 +1649,12 @@ export default function DigitalMenuPage() {
                   >
                     {/* Floating Price Tag on Image */}
                     <div className="relative w-full h-[220px] overflow-hidden">
-                      <img 
+                      <Image 
                         src={item.image} 
                         alt={item.name} 
-                        className="w-full h-full object-cover group-hover:scale-[1.05] transition-transform duration-700 ease-out select-none"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-[1.05] transition-transform duration-700 ease-out select-none"
                       />
                       <div className="absolute top-4 right-4 bg-black/75 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 text-[#ffe2ab] font-serif text-sm font-bold tracking-wider">
                         {formatCurrency(item.price)}
@@ -1873,10 +1876,12 @@ export default function DigitalMenuPage() {
                           className="p-3 bg-gradient-to-r from-[#1a1917] to-[#121110] border border-[#ffe2ab]/15 rounded-xl flex gap-3 items-center justify-between shadow-md"
                         >
                           <div className="flex gap-3 items-center min-w-0">
-                            <img 
+                            <Image 
                               src={pairing.image} 
                               alt={pairing.name} 
-                              className="w-11 h-11 object-cover rounded-lg shrink-0 border border-white/10 select-none" 
+                              width={44}
+                              height={44}
+                              className="object-cover rounded-lg shrink-0 border border-white/10 select-none" 
                             />
                             <div className="min-w-0">
                               <div className="font-serif text-xs text-white font-semibold truncate leading-snug">{pairing.name}</div>
@@ -2056,10 +2061,12 @@ export default function DigitalMenuPage() {
                           className="p-3 bg-gradient-to-r from-[#1a1917] to-[#121110] border border-[#ffe2ab]/15 rounded-xl flex gap-3 items-center justify-between shadow-md"
                         >
                           <div className="flex gap-3 items-center min-w-0">
-                            <img 
+                            <Image 
                               src={pairing.image} 
                               alt={pairing.name} 
-                              className="w-11 h-11 object-cover rounded-lg shrink-0 border border-white/10 select-none" 
+                              width={44}
+                              height={44}
+                              className="object-cover rounded-lg shrink-0 border border-white/10 select-none" 
                             />
                             <div className="min-w-0">
                               <div className="font-serif text-xs text-white font-semibold truncate leading-snug">{pairing.name}</div>
@@ -2131,10 +2138,12 @@ export default function DigitalMenuPage() {
 
               {/* Left Column: Image */}
               <div className="md:w-2/5 h-[240px] md:h-auto relative overflow-hidden bg-[#0c0c0b]">
-                <img 
+                <Image 
                   src={selectedItem.image} 
                   alt={selectedItem.name} 
-                  className="w-full h-full object-cover select-none"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 40vw"
+                  className="object-cover select-none"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#161513] via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-[#161513]/30"></div>
               </div>
@@ -2470,10 +2479,12 @@ export default function DigitalMenuPage() {
 
             {/* Hero image strip */}
             <div className="relative w-full h-[160px] overflow-hidden shrink-0 bg-[#0c0c0b]">
-              <img
+              <Image
                 src={selectedCustomizingItem.image}
                 alt={selectedCustomizingItem.name}
-                className="w-full h-full object-cover select-none"
+                fill
+                sizes="(max-width: 768px) 100vw, 500px"
+                className="object-cover select-none"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#161513] via-[#161513]/60 to-transparent" />
               {/* Close button over image */}
