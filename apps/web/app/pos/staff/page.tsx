@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
+import { isDemoTenant } from '@/utils/api';
 
 interface StaffMember {
   id: string;
@@ -182,11 +183,16 @@ export default function PosStaffPage() {
       try {
         setStaff(JSON.parse(stored));
       } catch {
-        setStaff(staffData);
+        setStaff(isDemoTenant() ? staffData : []);
       }
     } else {
-      setStaff(staffData);
-      localStorage.setItem('dinepos_staff_roster', JSON.stringify(staffData));
+      // Real registered tenants start with an empty roster.
+      // Demo/guest users get the sample roster pre-populated.
+      const initial = isDemoTenant() ? staffData : [];
+      setStaff(initial);
+      if (initial.length > 0) {
+        localStorage.setItem('dinepos_staff_roster', JSON.stringify(initial));
+      }
     }
   }, []);
 

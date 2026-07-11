@@ -13,6 +13,7 @@ import {
   WasteReason,
   InventoryTransactionType
 } from '@dineposai/shared-types';
+import { isDemoTenant } from '@/utils/api';
 
 // ==========================================
 // DEFAULT SEED DATA
@@ -104,6 +105,11 @@ const getFromStorage = <T>(key: string, defaults: T[]): T[] => {
   if (typeof window === 'undefined') return defaults;
   const stored = localStorage.getItem(key);
   if (!stored) {
+    // For real registered tenants, always start with an empty slate.
+    // Only seed demo data for the guest/demo tenant.
+    if (!isDemoTenant()) {
+      return [];
+    }
     localStorage.setItem(key, JSON.stringify(defaults));
     return defaults;
   }

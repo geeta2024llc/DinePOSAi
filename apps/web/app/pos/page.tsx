@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { deductStockForOrder } from '../inventoryUtils';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, isDemoTenant } from '@/utils/api';
 import ReceiptPrintModal, { ReceiptData } from '@/components/ui/ReceiptPrintModal';
+
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
   'DINE10': { type: 'percent', value: 10, label: '10% Off' },
@@ -589,20 +590,25 @@ export default function PosPage() {
           setTickets(JSON.parse(sharedTicketsStr));
         } catch (e) {
           console.error(e);
-          setTickets(initialTickets);
+          setTickets(isDemoTenant() ? initialTickets : []);
         }
       } else {
-        const initialTicketsWithRates = initialTickets.map(t => {
-          if (t.tableNumber.toLowerCase().includes('takeaway')) {
-            return { ...t, taxRate: savedTaxRateTakeaway ? parseFloat(savedTaxRateTakeaway) / 100 : t.taxRate };
-          } else if (t.tableNumber.toLowerCase().includes('delivery')) {
-            return { ...t, taxRate: savedTaxRateDelivery ? parseFloat(savedTaxRateDelivery) / 100 : t.taxRate };
-          } else {
-            return { ...t, taxRate: savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : t.taxRate };
-          }
-        });
-        setTickets(initialTicketsWithRates);
-        localStorage.setItem('dinepos_shared_tickets', JSON.stringify(initialTicketsWithRates));
+        // Real tenants start with an empty floor — no demo orders.
+        if (!isDemoTenant()) {
+          setTickets([]);
+        } else {
+          const initialTicketsWithRates = initialTickets.map(t => {
+            if (t.tableNumber.toLowerCase().includes('takeaway')) {
+              return { ...t, taxRate: savedTaxRateTakeaway ? parseFloat(savedTaxRateTakeaway) / 100 : t.taxRate };
+            } else if (t.tableNumber.toLowerCase().includes('delivery')) {
+              return { ...t, taxRate: savedTaxRateDelivery ? parseFloat(savedTaxRateDelivery) / 100 : t.taxRate };
+            } else {
+              return { ...t, taxRate: savedTaxRateDineIn ? parseFloat(savedTaxRateDineIn) / 100 : t.taxRate };
+            }
+          });
+          setTickets(initialTicketsWithRates);
+          localStorage.setItem('dinepos_shared_tickets', JSON.stringify(initialTicketsWithRates));
+        }
       }
 
       // Load digital menu items
@@ -670,11 +676,15 @@ export default function PosPage() {
             setMenuItems(JSON.parse(savedMenu));
           } catch (e) {
             console.error('Failed to parse menu items:', e);
-            setMenuItems(defaultMenuItems);
+            setMenuItems(isDemoTenant() ? defaultMenuItems : []);
           }
         } else {
-          setMenuItems(defaultMenuItems);
-          localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
+          // Real tenants start with no pre-built menu — they build their own.
+          const menuToUse = isDemoTenant() ? defaultMenuItems : [];
+          setMenuItems(menuToUse);
+          if (menuToUse.length > 0) {
+            localStorage.setItem('dinepos_menu_items', JSON.stringify(menuToUse));
+          }
         }
 
         const savedCategories = localStorage.getItem('dinepos_menu_categories');
@@ -683,11 +693,15 @@ export default function PosPage() {
             setCategories(JSON.parse(savedCategories));
           } catch (e) {
             console.error('Failed to parse categories:', e);
-            setCategories(defaultCategories);
+            setCategories(isDemoTenant() ? defaultCategories : []);
           }
         } else {
-          setCategories(defaultCategories);
-          localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
+          // Real tenants start with no pre-built categories.
+          const categoriesToUse = isDemoTenant() ? defaultCategories : [];
+          setCategories(categoriesToUse);
+          if (categoriesToUse.length > 0) {
+            localStorage.setItem('dinepos_menu_categories', JSON.stringify(categoriesToUse));
+          }
         }
         setIsLoaded(true);
       };

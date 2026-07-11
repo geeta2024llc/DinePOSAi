@@ -4,8 +4,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, clearDemoLocalStorage } from '@/utils/api';
 import { useAuth } from '../authContext';
+
 
 // Helper to get or create device ID
 const getOrCreateDeviceId = (): string => {
@@ -79,6 +80,8 @@ function LoginForm() {
         currency: tenant?.currency || 'JPY',
         onboarded: tenant?.onboarded || false,
       }));
+      // Clear all demo/seed data so a real tenant starts with a clean slate.
+      clearDemoLocalStorage();
     }
   };
 

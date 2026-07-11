@@ -4,6 +4,63 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+// ==========================================
+// TENANT IDENTITY HELPERS
+// ==========================================
+
+/**
+ * Returns true if the current user is a demo/guest user (no real tenantId),
+ * or false if they are a genuine registered tenant.
+ * Real tenants should see a clean slate with no pre-seeded demo data.
+ */
+export function isDemoTenant(): boolean {
+  if (typeof window === 'undefined') return true; // SSR: assume demo
+  try {
+    const userStr = localStorage.getItem('dinepos_user_account');
+    if (!userStr) return true; // Not logged in — show demo
+    const user = JSON.parse(userStr);
+    const tenantId: string | undefined = user?.tenantId;
+    // If no tenantId or it is the hardcoded demo sentinel, it's a demo session
+    if (!tenantId || tenantId === 'tenant-demo' || tenantId === 'demo') {
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * The list of all localStorage keys that hold demo/seed data.
+ * These are cleared when a real tenant logs in for the first time.
+ */
+const DEMO_LOCALSTORAGE_KEYS = [
+  'dinepos_inventory_ingredients',
+  'dinepos_inventory_recipes',
+  'dinepos_inventory_suppliers',
+  'dinepos_inventory_purchase_orders',
+  'dinepos_inventory_purchase_order_items',
+  'dinepos_inventory_waste',
+  'dinepos_inventory_transactions',
+  'dinepos_staff_roster',
+  'dinepos_shared_tickets',
+  'dinepos_menu_items',
+  'dinepos_menu_categories',
+  'dinepos_pos_transactions',
+];
+
+/**
+ * Clears all demo/seed data from localStorage.
+ * Called after a successful login/signup for a real (non-demo) tenant
+ * so they start with a completely clean slate.
+ */
+export function clearDemoLocalStorage(): void {
+  if (typeof window === 'undefined') return;
+  for (const key of DEMO_LOCALSTORAGE_KEYS) {
+    localStorage.removeItem(key);
+  }
+}
+
 interface ApiRequestOptions extends RequestInit {
   useAuth?: boolean;
 }

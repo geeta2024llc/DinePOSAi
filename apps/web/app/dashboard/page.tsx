@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, isDemoTenant } from '@/utils/api';
 import { recordActivity, getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
 import {
   InventoryItem,
@@ -1462,72 +1462,79 @@ export default function DashboardPage() {
     voidTransactions: 'Manager+',
     accessAdminDashboard: 'Full Staff'
   });
-  const [staffMembers, setStaffMembers] = useState([
-    {
-      id: 'EMP-010',
-      name: 'Elena Rodriguez',
-      role: 'Head Sommelier',
-      status: 'ON_SHIFT',
-      performance: 4.8,
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120&auto=format&fit=crop'
-    },
-    {
-      id: 'EMP-014',
-      name: 'Marcus Chen',
-      role: 'Executive Sous Chef',
-      status: 'OFF_DUTY',
-      performance: 4.8,
-      avatar: ''
-    },
-    {
-      id: 'EMP-048',
-      name: 'Sarah Jenkins',
-      role: "Maitre D'",
-      status: 'OVERTIME',
-      performance: 5.0,
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
-    },
-    {
-      id: 'EMP-052',
-      name: 'David Vance',
-      role: 'Bartender',
-      status: 'ON_SHIFT',
-      performance: 4.5,
-      avatar: ''
-    },
-    {
-      id: 'EMP-061',
-      name: 'Lisa Kim',
-      role: 'Server',
-      status: 'ON_SHIFT',
-      performance: 4.7,
-      avatar: ''
-    },
-    {
-      id: 'EMP-073',
-      name: 'Robert Taylor',
-      role: 'Line Cook',
-      status: 'OFF_DUTY',
-      performance: 4.2,
-      avatar: ''
-    },
-    {
-      id: 'EMP-088',
-      name: 'Emily Davis',
-      role: 'Server',
-      status: 'OFF_DUTY',
-      performance: 4.6,
-      avatar: ''
-    },
-    {
-      id: 'EMP-092',
-      name: 'John Watson',
-      role: 'Manager',
-      status: 'ON_SHIFT',
-      performance: 4.9,
-      avatar: ''
+  const [staffMembers, setStaffMembers] = useState(() => {
+    // Real registered tenants start with an empty staff list.
+    // Demo/guest users see the hardcoded sample team.
+    if (typeof window !== 'undefined' && !isDemoTenant()) {
+      return [];
     }
-  ]);
+    return [
+      {
+        id: 'EMP-010',
+        name: 'Elena Rodriguez',
+        role: 'Head Sommelier',
+        status: 'ON_SHIFT',
+        performance: 4.8,
+        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120&auto=format&fit=crop'
+      },
+      {
+        id: 'EMP-014',
+        name: 'Marcus Chen',
+        role: 'Executive Sous Chef',
+        status: 'OFF_DUTY',
+        performance: 4.8,
+        avatar: ''
+      },
+      {
+        id: 'EMP-048',
+        name: 'Sarah Jenkins',
+        role: "Maitre D'",
+        status: 'OVERTIME',
+        performance: 5.0,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
+      },
+      {
+        id: 'EMP-052',
+        name: 'David Vance',
+        role: 'Bartender',
+        status: 'ON_SHIFT',
+        performance: 4.5,
+        avatar: ''
+      },
+      {
+        id: 'EMP-061',
+        name: 'Lisa Kim',
+        role: 'Server',
+        status: 'ON_SHIFT',
+        performance: 4.7,
+        avatar: ''
+      },
+      {
+        id: 'EMP-073',
+        name: 'Robert Taylor',
+        role: 'Line Cook',
+        status: 'OFF_DUTY',
+        performance: 4.2,
+        avatar: ''
+      },
+      {
+        id: 'EMP-088',
+        name: 'Emily Davis',
+        role: 'Server',
+        status: 'OFF_DUTY',
+        performance: 4.6,
+        avatar: ''
+      },
+      {
+        id: 'EMP-092',
+        name: 'John Watson',
+        role: 'Manager',
+        status: 'ON_SHIFT',
+        performance: 4.9,
+        avatar: ''
+      }
+    ];
+  });
 
   const [newEmployee, setNewEmployee] = useState({
     name: '',

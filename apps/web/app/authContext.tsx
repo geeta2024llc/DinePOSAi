@@ -2,7 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, clearDemoLocalStorage } from '@/utils/api';
+
 
 interface AuthUser {
   id: string;
@@ -126,6 +127,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         subscriptionExpiresAt: tenant.subscriptionExpiresAt,
         billingCycle: tenant.billingCycle,
       }));
+
+      // Clear any demo/seed data so a real tenant starts with a clean slate.
+      // isDemoTenant() reads the account we just stored, so it will now
+      // correctly identify this as a real tenant and clear demo keys.
+      clearDemoLocalStorage();
     }
 
     // Role-based post-login navigation
