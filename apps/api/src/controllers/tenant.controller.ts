@@ -266,26 +266,47 @@ export const createTenantUser = async (req: AuthenticatedRequest, res: Response<
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
 
   const { name, email, password, role } = req.body;
+  const emailLower = email.toLowerCase().trim();
+  let createdAuthUserId: string | null = null;
 
   try {
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('email', emailLower)
       .maybeSingle();
 
     if (existingUser) {
       return res.status(400).json({ success: false, error: 'Email address is already in use.' });
     }
 
+    // Generate a UUID to use as both the auth and db user id
+    const { randomUUID } = await import('crypto');
+    const userId = randomUUID();
+
+    // Register in Supabase Auth first
+    const { data: authData, error: authErr } = await supabase.auth.admin.createUser({
+      id: userId,
+      email: emailLower,
+      password: password,
+      email_confirm: true
+    });
+
+    if (authErr || !authData?.user) {
+      return res.status(500).json({ success: false, error: `Supabase Auth registration failed: ${authErr?.message || 'Unknown error'}` });
+    }
+
+    createdAuthUserId = authData.user.id;
+
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const { data: newUser, error } = await supabase
+    const { data: newUser, error: dbErr } = await supabase
       .from('users')
       .insert({
+        id: userId,
         tenant_id: tenantId,
         name,
-        email,
+        email: emailLower,
         password_hash: passwordHash,
         role,
         is_active: true
@@ -293,8 +314,10 @@ export const createTenantUser = async (req: AuthenticatedRequest, res: Response<
       .select('id, name, email, role, is_active, created_at')
       .single();
 
-    if (error || !newUser) {
-      return res.status(500).json({ success: false, error: `Failed to create user: ${error?.message}` });
+    if (dbErr || !newUser) {
+      // Rollback: remove auth user if DB insert fails
+      await supabase.auth.admin.deleteUser(createdAuthUserId).catch(() => {});
+      return res.status(500).json({ success: false, error: `Failed to create user record: ${dbErr?.message}` });
     }
 
     res.status(201).json({
@@ -302,6 +325,9 @@ export const createTenantUser = async (req: AuthenticatedRequest, res: Response<
       data: newUser
     });
   } catch (error: any) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId).catch(() => {});
+    }
     res.status(500).json({ success: false, error: error.message || 'Error creating user.' });
   }
 };
@@ -327,9 +353,22 @@ export const updateTenantUser = async (req: AuthenticatedRequest, res: Response<
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
 
+    // Sync email/password changes to Supabase Auth
+    if (email !== undefined || password !== undefined) {
+      const authUpdates: { email?: string; password?: string } = {};
+      if (email !== undefined) authUpdates.email = email.toLowerCase().trim();
+      if (password !== undefined) authUpdates.password = password;
+
+      const { error: authUpdateErr } = await supabase.auth.admin.updateUserById(id, authUpdates);
+      if (authUpdateErr) {
+        console.error(`[Staff Update] Failed to update Supabase Auth for user ${id}:`, authUpdateErr.message);
+        // Non-fatal — log but do not block DB update
+      }
+    }
+
     const updates: any = {};
     if (name !== undefined) updates.name = name;
-    if (email !== undefined) updates.email = email;
+    if (email !== undefined) updates.email = email.toLowerCase().trim();
     if (role !== undefined) updates.role = role;
     if (isActive !== undefined) updates.is_active = isActive;
     if (password !== undefined) {
@@ -370,13 +409,20 @@ export const deleteTenantUser = async (req: AuthenticatedRequest, res: Response<
   }
 
   try {
-    const { error } = await supabase
+    // Delete from local DB first
+    const { error: dbErr } = await supabase
       .from('users')
       .delete()
       .eq('id', id)
       .eq('tenant_id', tenantId);
 
-    if (error) return res.status(500).json({ success: false, error: error.message });
+    if (dbErr) return res.status(500).json({ success: false, error: dbErr.message });
+
+    // Delete from Supabase Auth (non-fatal if it fails — user already removed from DB)
+    const { error: authErr } = await supabase.auth.admin.deleteUser(id);
+    if (authErr) {
+      console.error(`[Staff Delete] Failed to remove auth user ${id}:`, authErr.message);
+    }
 
     res.json({
       success: true,

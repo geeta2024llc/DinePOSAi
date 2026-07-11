@@ -187,20 +187,34 @@ const server = app.listen(PORT, () => {
   logger.info(`DinePosAI API Server listening on port ${PORT}`);
 });
 
+// Track open sockets so we can destroy them on shutdown
+const openSockets = new Set<import('net').Socket>();
+server.on('connection', (socket) => {
+  openSockets.add(socket);
+  socket.once('close', () => openSockets.delete(socket));
+});
+
 // Graceful Shutdown Handler
 function gracefulShutdown(signal: string, code: number = 0) {
   logger.info(`${signal} received. Initiating graceful shutdown...`);
-  
+
+  // Destroy all open sockets immediately so the port is released for tsx watch hot-reload
+  for (const socket of openSockets) {
+    socket.destroy();
+  }
+  openSockets.clear();
+
   server.close(() => {
     logger.info('HTTP server closed. Exiting process.');
     process.exit(code);
   });
 
-  // Force shutdown after 10 seconds if active requests hang
+  // Force shutdown after 2 seconds in dev to unblock tsx watch restarts
+  const forceTimeout = process.env.NODE_ENV === 'production' ? 10000 : 2000;
   setTimeout(() => {
     logger.error('Graceful shutdown timed out, force exiting.');
     process.exit(1);
-  }, 10000).unref();
+  }, forceTimeout).unref();
 }
 
 // System termination signal handlers

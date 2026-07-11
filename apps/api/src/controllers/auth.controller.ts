@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
-import { supabase } from '../utils/supabase.js';
+import { supabase, supabaseAuthClient } from '../utils/supabase.js';
 import { ApiResponse, UserRole } from '@dineposai/shared-types';
 
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'test' ? 'test-jwt-secret-key-at-least-32-chars-long' : '');
@@ -66,13 +66,15 @@ const hashToken = (token: string) =>
 // 1. SIGNUP CONTROLLER (Tenant Creator)
 export const signup = async (req: Request, res: Response<ApiResponse>) => {
   const { businessName, name, email, password, country } = req.body;
+  const emailLower = email.toLowerCase().trim();
+  let createdAuthUserId: string | null = null;
 
   try {
-    // Check if email already exists (use maybeSingle to avoid 406 on no-row)
+    // Check if email already exists
     const { data: existingUser } = await supabase
       .from('users')
       .select('id')
-      .eq('email', email)
+      .eq('email', emailLower)
       .maybeSingle();
 
     if (existingUser) {
@@ -82,42 +84,104 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
       });
     }
 
-    // Hash Password
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // Resolve timezone and currency from provided country
+    // Resolve timezone and currency from country
     const resolvedCountry = country || 'Japan';
     const { timezone, currency } = COUNTRY_DEFAULTS[resolvedCountry] ?? { timezone: 'UTC', currency: 'USD' };
 
-    // Create Tenant and Admin User inside a single database transaction RPC
-    const { data: signupResult, error: signupErr } = await supabase
-      .rpc('signup_tenant_and_user', {
-        p_business_name: businessName,
-        p_name: name,
-        p_email: email,
-        p_password_hash: passwordHash,
-        p_country: resolvedCountry,
-        p_timezone: timezone,
-        p_currency: currency
-      });
+    // Generate local UUID for the user
+    const userId = crypto.randomUUID();
 
-    if (signupErr || !signupResult) {
+    // Register user in Supabase Auth first
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      id: userId,
+      email: emailLower,
+      password: password,
+      email_confirm: true
+    });
+
+    if (authError || !authData?.user) {
       return res.status(500).json({
         success: false,
-        error: signupErr?.message || 'Tenant provisioning failed. Please try again.'
+        error: `Supabase authentication registration failed: ${authError?.message || 'Unknown error'}`
       });
+    }
+
+    createdAuthUserId = authData.user.id;
+
+    // Hash Password for local DB backup
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Insert Tenant
+    const trialEndsAt = new Date();
+    trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+
+    const { data: tenant, error: tenantErr } = await supabase
+      .from('tenants')
+      .insert({
+        name: businessName,
+        country: resolvedCountry,
+        timezone,
+        currency,
+        tax_type: 'NONE',
+        tax_rate: 0.00,
+        plan: 'TRIAL',
+        status: 'ACTIVE',
+        trial_ends_at: trialEndsAt.toISOString()
+      })
+      .select()
+      .single();
+
+    if (tenantErr || !tenant) {
+      throw new Error(`Failed to create tenant: ${tenantErr?.message}`);
+    }
+
+    // Insert User
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .insert({
+        id: userId,
+        tenant_id: tenant.id,
+        name,
+        email: emailLower,
+        password_hash: passwordHash,
+        role: 'MANAGER',
+        is_active: true
+      })
+      .select()
+      .single();
+
+    if (userErr || !user) {
+      await supabase.from('tenants').delete().eq('id', tenant.id);
+      throw new Error(`Failed to create user record: ${userErr?.message}`);
     }
 
     res.status(201).json({
       success: true,
       data: {
         message: 'Account and restaurant workspace created successfully.',
-        tenant: signupResult.tenant,
-        user: signupResult.user
+        tenant: {
+          id: tenant.id,
+          name: tenant.name,
+          trialEndsAt: tenant.trial_ends_at,
+          plan: tenant.plan,
+          onboarded: tenant.onboarded
+        },
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role as UserRole
+        }
       }
     });
 
   } catch (error: any) {
+    if (createdAuthUserId) {
+      await supabase.auth.admin.deleteUser(createdAuthUserId).catch(err => {
+        console.error('[Signup Rollback] Failed to delete auth user:', err);
+      });
+    }
+
     res.status(500).json({
       success: false,
       error: error.message || 'Internal registration error.'
@@ -128,32 +192,75 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
 // 2. LOGIN CONTROLLER
 export const login = async (req: Request, res: Response<ApiResponse>) => {
   const { email, password, deviceId } = req.body;
+  const emailLower = email.toLowerCase().trim();
 
   try {
-    // Find user by email
-    const { data: user, error } = await supabase
+    let authVerified = false;
+    let authError = null;
+
+    // Attempt login via supabaseAuthClient (anon key) to avoid contaminating the
+    // service-role admin client's session context
+    const { data: signInData, error: signInErr } = await supabaseAuthClient.auth.signInWithPassword({
+      email: emailLower,
+      password: password
+    });
+
+    if (signInErr) {
+      authError = signInErr;
+    } else if (signInData?.user) {
+      authVerified = true;
+    }
+
+    // Look up user in DB by email (works regardless of ID alignment with Supabase Auth)
+    const { data: localUser, error: localUserErr } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', emailLower)
+      .maybeSingle();
+
+    // Fallback: if Supabase Auth failed (email not confirmed, rate limit, etc.)
+    // validate credentials directly against the local bcrypt password_hash
+    if (!authVerified && localUser && !localUserErr) {
+      const passwordMatch = await bcrypt.compare(password, localUser.password_hash);
+      if (passwordMatch) {
+        authVerified = true;
+        console.log(`[Auth] Bcrypt fallback auth successful for: ${emailLower}`);
+
+        // Try to register in Supabase Auth for future sign-ins (non-fatal)
+        const { error: migrationErr } = await supabase.auth.admin.createUser({
+          id: localUser.id,
+          email: emailLower,
+          password: password,
+          email_confirm: true
+        });
+        if (migrationErr && !migrationErr.message.includes('already been registered')) {
+          console.error(`[Auth Migration] Could not register in Supabase Auth: ${migrationErr.message}`);
+        }
+      }
+    }
+
+    if (!authVerified) {
+      return res.status(401).json({
+        success: false,
+        error: 'Incorrect email or password.'
+      });
+    }
+
+    // Look up user in local database by EMAIL (not auth ID) to handle any UUID mismatch
+    // between Supabase Auth and the users table
+    const { data: user, error: userErr } = await supabase
       .from('users')
       .select('*, tenants!inner(*)')
-      .eq('email', email)
+      .eq('email', emailLower)
       .single();
 
-    if (error || !user) {
+    if (userErr || !user) {
       return res.status(401).json({
         success: false,
         error: 'Incorrect email or password.'
       });
     }
 
-    // Verify password FIRST — before revealing any account-state information
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-    if (!passwordMatch) {
-      return res.status(401).json({
-        success: false,
-        error: 'Incorrect email or password.'
-      });
-    }
-
-    // Now safe to check account and tenant status
     if (!user.is_active) {
       return res.status(403).json({
         success: false,
@@ -169,14 +276,12 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
       });
     }
 
-    // Delete any existing sessions for this user (single-session enforcement)
+    // Terminate existing sessions
     await supabase.from('sessions').delete().eq('user_id', user.id);
 
     // Generate tokens
     const accessToken = generateAccessToken(user);
     const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: '7d' });
-
-    // Store a SHA-256 hash of the refresh token — raw token is never persisted
     const refreshTokenHash = hashToken(refreshToken);
 
     const expiresAt = new Date();
@@ -201,10 +306,10 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
       });
     }
 
-    // Update last login timestamp
+    // Update last login
     await supabase.from('users').update({ last_login: new Date().toISOString() }).eq('id', user.id);
 
-    // Set refresh token in httpOnly cookie (raw token, not the hash)
+    // Set refresh cookie
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
