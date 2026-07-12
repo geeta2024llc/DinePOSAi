@@ -155,8 +155,8 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
               print-color-adjust: exact !important;
             }
             .receipt-container {
-              max-width: 280px;
-              width: 280px;
+              max-width: 300px;
+              width: 300px;
               margin: 0;
               border: 1px solid #000000;
               padding: 15px 15px;
@@ -164,7 +164,7 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
             }
             @media print {
               body { padding: 0; background: #fff; color: #000; }
-              .receipt-container { border: none; padding: 10px 15px; max-width: 280px; width: 280px; }
+              .receipt-container { border: none; padding: 10px 15px; max-width: 300px; width: 300px; }
               @page { margin: 0; }
             }
             .header {
@@ -497,15 +497,15 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
             box-sizing: border-box !important;
           }
           
-          /* Pull the receipt container to the top-left of the print viewport with a rigid width of 280px */
+          /* Pull the receipt container to the top-left of the print viewport with a rigid width of 300px */
           .printable-receipt-area {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
             transform: none !important;
-            width: 280px !important;
-            max-width: 280px !important;
-            padding: 10px 15px 20px 15px !important; /* Left & right padding within the 280px width */
+            width: 300px !important;
+            max-width: 300px !important;
+            padding: 10px 15px 20px 15px !important; /* Left & right padding within the 300px width */
             margin: 0 !important;
             border: none !important;
             box-shadow: none !important;

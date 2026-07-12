@@ -190,7 +190,7 @@ export default function PrinterSettingsPage() {
           {/* Section title */}
           <div>
             <h2 className="text-lg font-serif text-white font-medium mb-1">Select connection interface</h2>
-            <p className="text-xs text-[#A69984]/65">Choose how this terminal communicates with your thermal printer fleet.</p>
+            <p className="text-xs text-[#A69984]/65">Choose how this terminal communicates with your thermal printer fleet. DinePOS is optimized for 80mm (3-inch) POS paper layouts.</p>
           </div>
 
           {/* Cards for connection types */}

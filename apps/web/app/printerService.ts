@@ -40,21 +40,14 @@ export class PrinterService {
 
     if (config.type === 'browser') {
       onLog('Dispatching print job to system browser print dialog...');
-      if (typeof window !== 'undefined') {
-        window.print();
-      }
-      onLog('✓ Sent to browser print.');
+      this.printBrowserReceipt(data, onLog);
       return;
     }
 
     if (config.type === 'network') {
       onLog(`Connecting to Network printer at ${config.ip || '127.0.0.1'}:${config.port || 9100}...`);
       onLog('Rendering ticket with thermal page layout formatting...');
-      // Network prints fall back to window.print with thermal styling for pure web environments
-      if (typeof window !== 'undefined') {
-        window.print();
-      }
-      onLog('✓ Sent to Network printer queue.');
+      this.printBrowserReceipt(data, onLog);
       return;
     }
 
@@ -66,7 +59,7 @@ export class PrinterService {
     if (config.type === 'bluetooth') {
       await this.printBluetooth(bytes, onLog);
     } else if (config.type === 'usb') {
-      await this.printUsb(bytes, onLog);
+      await this.printUsb(bytes, data, onLog);
     }
   }
 
@@ -85,7 +78,7 @@ export class PrinterService {
     if (config.type === 'bluetooth') {
       await this.printBluetooth(bytes, onLog);
     } else if (config.type === 'usb') {
-      await this.printUsb(bytes, onLog);
+      await this.printUsb(bytes, null, onLog);
     }
     onLog('✓ Drawer kick pulse transmitted.');
   }
@@ -103,18 +96,18 @@ export class PrinterService {
       .line('1200 Gastronomy Way, Suite 400')
       .line('New York, NY 10001')
       .line('+1 (212) 555-0198')
-      .line('================================')
+      .line('================================================')
       .align('left')
       .line(`Table: ${data.tableNumber}`)
       .line(`Order ID: ${data.orderId}`)
       .line(`Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
-      .line('--------------------------------');
+      .line('------------------------------------------------');
 
     data.items.forEach(item => {
       const itemPrice = item.price * item.quantity;
-      const leftCol = `${item.name.slice(0, 18)} x${item.quantity}`;
+      const leftCol = `${item.name.slice(0, 30)} x${item.quantity}`;
       const rightCol = `$${itemPrice.toFixed(2)}`;
-      const dots = '.'.repeat(Math.max(2, 32 - leftCol.length - rightCol.length));
+      const dots = '.'.repeat(Math.max(2, 48 - leftCol.length - rightCol.length));
       encoder.line(`${leftCol}${dots}${rightCol}`);
       
       if (item.modifiers && item.modifiers.length > 0) {
@@ -125,12 +118,12 @@ export class PrinterService {
       }
     });
 
-    encoder.line('--------------------------------')
+    encoder.line('------------------------------------------------')
       .align('right')
       .line(`Subtotal: $${data.subtotal.toFixed(2)}`)
       .line(`Tax (${(data.taxRate * 100).toFixed(1)}%): $${data.tax.toFixed(2)}`)
       .line(`Auto-Gratuity (20%): $${data.serviceCharge.toFixed(2)}`)
-      .line('================================')
+      .line('================================================')
       .bold(true)
       .line(`TOTAL: $${data.total.toFixed(2)}`)
       .bold(false)
@@ -151,6 +144,98 @@ export class PrinterService {
       .cut();
 
     return encoder.getBytes();
+  }
+
+  private printBrowserReceipt(data: PrintReceiptData, onLog: (msg: string) => void): void {
+    if (typeof window === 'undefined') {
+      onLog('⚠️ Browser print not available in this environment.');
+      return;
+    }
+
+    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const itemRows = data.items.map(item => {
+      const itemPrice = item.price * item.quantity;
+      const name = item.name.length > 30 ? item.name.slice(0, 30) : item.name;
+      const leftCol = `${esc(name)} x${item.quantity}`;
+      const rightCol = `$${itemPrice.toFixed(2)}`;
+      const dots = '.'.repeat(Math.max(2, 48 - leftCol.length - rightCol.length));
+      let modHtml = '';
+      if (item.modifiers && item.modifiers.length > 0) {
+        modHtml = `<div style="padding-left:12px;font-size:11px;color:#555;">(${item.modifiers.map(m => esc(m)).join(', ')})</div>`;
+      }
+      let noteHtml = '';
+      if (item.notes) {
+        noteHtml = `<div style="padding-left:12px;font-size:11px;color:#555;">Note: "${esc(item.notes)}"</div>`;
+      }
+      return `<div style="font-family:'Courier New',monospace;font-size:13px;white-space:pre;">${leftCol}${dots}${rightCol}</div>${modHtml}${noteHtml}`;
+    }).join('');
+
+    const taxPct = (data.taxRate * 100).toFixed(1);
+    const now = new Date();
+    const dateStr = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    const receiptHtml = `<!DOCTYPE html>
+<html>
+<head>
+<title>Receipt - ${esc(data.orderId)}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#fff; padding:10px; font-family:'Courier New',monospace; }
+  .receipt { max-width:300px; width:300px; margin:0 auto; }
+  .center { text-align:center; }
+  .sep { border:none; border-top:2px dashed #000; margin:10px 0; }
+  .sep2 { border:none; border-top:1px dashed #999; margin:8px 0; }
+  .totals td { padding:3px 0; font-size:13px; }
+  .total-row td { border-top:2px solid #000; padding-top:6px; font-size:15px; font-weight:bold; }
+  @media print { @page { margin:0; } body { padding:8px; } }
+</style>
+</head>
+<body>
+<div class="receipt">
+  <div class="center">
+    <div style="font-size:22px;font-weight:bold;">DinePosAi</div>
+    <div style="font-size:11px;">Aura Hospitality Group</div>
+    <div style="font-size:11px;">1200 Gastronomy Way, Suite 400</div>
+    <div style="font-size:11px;">New York, NY 10001</div>
+    <div style="font-size:11px;">+1 (212) 555-0198</div>
+  </div>
+  <hr class="sep">
+  <div style="font-size:12px;">
+    <div>Table: ${data.tableNumber}</div>
+    <div>Order ID: ${esc(data.orderId)}</div>
+    <div>Date: ${dateStr}</div>
+  </div>
+  <hr class="sep2">
+  ${itemRows}
+  <hr class="sep2">
+  <table class="totals" style="width:100%;">
+    <tr><td>Subtotal:</td><td style="text-align:right;">$${data.subtotal.toFixed(2)}</td></tr>
+    <tr><td>Tax (${taxPct}%):</td><td style="text-align:right;">$${data.tax.toFixed(2)}</td></tr>
+    <tr><td>Auto-Gratuity (20%):</td><td style="text-align:right;">$${data.serviceCharge.toFixed(2)}</td></tr>
+    <tr class="total-row"><td>TOTAL:</td><td style="text-align:right;">$${data.total.toFixed(2)}</td></tr>
+  </table>
+  <hr class="sep">
+  ${data.isPaid ? `<div class="center" style="font-weight:bold;margin:6px 0;">*** PAYMENT CONFIRMED ***</div>
+  <div class="center" style="font-size:12px;">Method: ${esc(data.paymentMethod || 'Credit Card')}</div>
+  <div class="center" style="font-size:12px;">Auth: ${esc(data.authCode || '**** 4242')}</div>` :
+  `<div class="center" style="font-weight:bold;margin:6px 0;">*** BALANCE DUE ***</div>`}
+  <br>
+  <div class="center" style="font-size:11px;">Thank you for dining with us!</div>
+  <br><br>
+</div>
+<script>window.onload=function(){setTimeout(function(){window.print();window.close();},300);};</script>
+</body>
+</html>`;
+
+    const printWin = window.open('', '_blank', 'width=400,height=700');
+    if (printWin) {
+      printWin.document.write(receiptHtml);
+      printWin.document.close();
+      onLog('✓ Receipt rendered in print preview window.');
+    } else {
+      onLog('❌ Could not open print window. Check popup blocker.');
+    }
   }
 
   private async printBluetooth(bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
@@ -246,7 +331,7 @@ export class PrinterService {
     }
   }
 
-  private async printUsb(bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
+  private async printUsb(bytes: Uint8Array, data: PrintReceiptData | null, onLog: (msg: string) => void): Promise<void> {
     const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
     if (!nav || !nav.usb) {
       onLog('❌ WebUSB is not supported on this browser.');
@@ -300,14 +385,15 @@ export class PrinterService {
 
     if (accessDenied) {
         onLog('⚠️ Access denied — Windows driver lock detected. Attempting Browser Print Fallback...');
-        try {
-          if (typeof window !== 'undefined') {
-            window.print();
-            onLog('✓ Sent to Browser Print fallback successfully.');
+        if (data) {
+          try {
+            this.printBrowserReceipt(data, onLog);
             return;
+          } catch(fallbackErr) {
+              onLog('❌ Browser Print fallback failed.');
           }
-        } catch(fallbackErr) {
-            onLog('❌ Browser Print fallback failed.');
+        } else {
+          onLog('⚠️ No receipt data available for browser fallback.');
         }
         
         const deviceName = this.activeUsbDevice?.productName || 'USB Printer';
