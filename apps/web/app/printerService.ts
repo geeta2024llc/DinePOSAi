@@ -216,8 +216,26 @@ export class PrinterService {
         });
       }
 
-      onLog(`Opening USB device connection: ${this.activeUsbDevice.productName || 'USB Printer'}...`);
-      await this.activeUsbDevice.open();
+      // Check if device is already open before attempting to open
+      if (this.activeUsbDevice.opened) {
+        onLog('USB device already open, reusing connection...');
+      } else {
+        onLog(`Opening USB device connection: ${this.activeUsbDevice.productName || 'USB Printer'}...`);
+        try {
+          await this.activeUsbDevice.open();
+        } catch (openErr: any) {
+          if (openErr.name === 'SecurityError' || openErr.message?.includes('Access denied')) {
+            onLog('⚠️ Device access denied. Attempting to close and reopen...');
+            try { await this.activeUsbDevice.close(); } catch (_) {}
+            this.activeUsbDevice = await nav.usb.requestDevice({
+              filters: [{ classCode: 7 }]
+            });
+            await this.activeUsbDevice.open();
+          } else {
+            throw openErr;
+          }
+        }
+      }
       
       onLog('Selecting USB configuration...');
       await this.activeUsbDevice.selectConfiguration(1);
@@ -270,11 +288,19 @@ export class PrinterService {
     } else {
       if (!nav || !nav.usb) throw new Error('WebUSB not supported.');
       onLog('Initiating WebUSB scanner...');
-      const dev = await nav.usb.requestDevice({
-        filters: [{ classCode: 7 }]
-      });
-      this.activeUsbDevice = dev;
-      return dev.productName || 'USB Printer';
+      try {
+        const dev = await nav.usb.requestDevice({
+          filters: [{ classCode: 7 }]
+        });
+        this.activeUsbDevice = dev;
+        return dev.productName || 'USB Printer';
+      } catch (err: any) {
+        if (err.name === 'NotFoundError') {
+          onLog('⚠️ No USB device selected.');
+          throw new Error('No device selected. Please connect a USB printer and try again.');
+        }
+        throw err;
+      }
     }
   }
 }
