@@ -21,22 +21,24 @@ import {
 } from '@dineposai/shared-types';
 import {
   getIngredients,
-  saveIngredients,
   getRecipes,
-  saveRecipes,
   getSuppliers,
-  saveSuppliers,
   getPurchaseOrders,
-  savePurchaseOrders,
-  getPurchaseOrderItems,
-  savePurchaseOrderItems,
   getWasteLogs,
-  saveWasteLogs,
   getTransactions,
-  saveTransactions,
+  createIngredient,
+  updateIngredient,
+  deleteIngredient,
+  createSupplier,
+  updateSupplierApi,
+  deleteSupplierApi,
+  createPurchaseOrderApi,
   receivePurchaseOrder,
+  cancelPurchaseOrderApi,
   recordWaste,
-  manuallyAdjustStock
+  recordWasteApi,
+  manuallyAdjustStock,
+  saveMenuItemRecipeApi
 } from '../inventoryUtils';
 
 const themes = {
@@ -246,6 +248,10 @@ const translations: Record<string, Record<string, string>> = {
     globalThemeTitle: "Global Aesthetic Theme",
     customThemeConfig: "Custom Theme Configuration",
     customThemeDesc: "Design your own bespoke dashboard aesthetic",
+    diningModes: "Dining Modes",
+    diningModesDesc: "Enable or disable dining options available to customers in the digital menu and cashier terminals.",
+    displayCurrency: "Display Currency",
+    taxRatesByDining: "Tax Rates by Dining Option",
     receiptOptionsTitle: "Invoice & Receipt Layout Options",
     showLogo: "Show Restaurant Logo",
     showLogoDesc: "Include brand logo mark",
@@ -422,6 +428,10 @@ const translations: Record<string, Record<string, string>> = {
     globalThemeTitle: "表示テーマ設定",
     customThemeConfig: "カスタムテーマ設定",
     customThemeDesc: "お好みのカラーでダッシュボードをカスタマイズします",
+    diningModes: "サービスモード",
+    diningModesDesc: "デジタルメニューとレジで利用可能なダイニングオプションを有効/無効にします。",
+    displayCurrency: "表示通貨",
+    taxRatesByDining: "ダイニングオプション別税率",
     receiptOptionsTitle: "レシート・請求書レイアウト設定",
     showLogo: "店舗ロゴを表示する",
     showLogoDesc: "レシート上部にロゴマークを印刷します",
@@ -598,6 +608,10 @@ const translations: Record<string, Record<string, string>> = {
     globalThemeTitle: "界面主题设置",
     customThemeConfig: "自定义主题配置",
     customThemeDesc: "用您喜欢的颜色定制仪表板",
+    diningModes: "用餐模式",
+    diningModesDesc: "启用或禁用数字菜单和收银终端中可供顾客选择的用餐选项。",
+    displayCurrency: "显示货币",
+    taxRatesByDining: "按用餐选项的税率",
     receiptOptionsTitle: "收据与账单布局设置",
     showLogo: "显示店铺标志",
     showLogoDesc: "在收据顶部打印徽标",
@@ -774,6 +788,10 @@ const translations: Record<string, Record<string, string>> = {
     globalThemeTitle: "테마 설정",
     customThemeConfig: "커스텀 테마 구성",
     customThemeDesc: "원하는 색상으로 대시보드를 커스터마이즈하세요",
+    diningModes: "다이닝 모드",
+    diningModesDesc: "디지털 메뉴와 계산대에서 고객이 이용할 수 있는 식사 옵션을 활성화/비활성화합니다.",
+    displayCurrency: "표시 통화",
+    taxRatesByDining: "식사 옵션별 세율",
     receiptOptionsTitle: "영수증 및 청구서 레이아웃 설정",
     showLogo: "매장 로고 표시",
     showLogoDesc: "영수증 상단에 로고를 인쇄합니다",
@@ -1107,13 +1125,21 @@ export default function DashboardPage() {
   const [wasteReason, setWasteReason] = useState<WasteReason>('SPOILAGE');
   const [wasteNotes, setWasteNotes] = useState('');
 
-  const reloadInventory = () => {
-    setIngredientsList(getIngredients());
-    setRecipesList(getRecipes());
-    setSuppliersList(getSuppliers());
-    setPurchaseOrdersList(getPurchaseOrders());
-    setWasteLogsList(getWasteLogs());
-    setTransactionsList(getTransactions());
+  const reloadInventory = async () => {
+    const [ings, recs, sups, pos, wastes, txs] = await Promise.all([
+      getIngredients(),
+      getRecipes(),
+      getSuppliers(),
+      getPurchaseOrders(),
+      getWasteLogs(),
+      getTransactions()
+    ]);
+    setIngredientsList(ings);
+    setRecipesList(recs);
+    setSuppliersList(sups);
+    setPurchaseOrdersList(pos);
+    setWasteLogsList(wastes);
+    setTransactionsList(txs);
   };
 
   useEffect(() => {
@@ -1135,70 +1161,46 @@ export default function DashboardPage() {
   // ==========================================
   // INVENTORY HANDLERS
   // ==========================================
-  const handleSaveIngredient = (e: React.FormEvent) => {
+  const handleSaveIngredient = async (e: React.FormEvent) => {
     e.preventDefault();
-    const ings = getIngredients();
     if (editingIng) {
-      const updated = ings.map(i => {
-        if (i.id === editingIng.id) {
-          const changedStock = ingForm.stockLevel !== i.stockLevel;
-          if (changedStock) {
-            manuallyAdjustStock(i.id, ingForm.stockLevel, 'Manual stock edit via form', 'Admin');
-          }
-          return {
-            ...i,
-            name: ingForm.name,
-            sku: ingForm.sku || null,
-            unit: ingForm.unit,
-            costPerUnit: ingForm.costPerUnit,
-            minStockLevel: ingForm.minStockLevel,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return i;
-      });
-      saveIngredients(updated);
-      triggerToast('Ingredient updated successfully.', 'success');
-    } else {
-      const newIng: InventoryItem = {
-        id: `ing-${Math.floor(100000 + Math.random() * 900000)}`,
-        tenantId: 'tenant-demo',
+      const updated = await updateIngredient(editingIng.id, {
         name: ingForm.name,
         sku: ingForm.sku || null,
         unit: ingForm.unit,
         costPerUnit: ingForm.costPerUnit,
         stockLevel: ingForm.stockLevel,
         minStockLevel: ingForm.minStockLevel,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      saveIngredients([...ings, newIng]);
-      if (ingForm.stockLevel > 0) {
-        const txs = getTransactions();
-        const newTx = {
-          id: `tx-init-${newIng.id}`,
-          tenantId: 'tenant-demo',
-          ingredientId: newIng.id,
-          type: 'MANUAL_ADJUSTMENT' as const,
-          quantity: newIng.stockLevel,
-          referenceId: null,
-          notes: 'Initial stock setup',
-          createdBy: 'Admin',
-          createdAt: new Date().toISOString()
-        };
-        saveTransactions([newTx, ...txs]);
+      });
+      if (updated) {
+        triggerToast('Ingredient updated successfully.', 'success');
+      } else {
+        triggerToast('Failed to update ingredient.', 'info');
       }
-      triggerToast('Ingredient added successfully.', 'success');
+    } else {
+      const created = await createIngredient({
+        name: ingForm.name,
+        sku: ingForm.sku || null,
+        unit: ingForm.unit,
+        costPerUnit: ingForm.costPerUnit,
+        stockLevel: ingForm.stockLevel,
+        minStockLevel: ingForm.minStockLevel,
+      });
+      if (created) {
+        triggerToast('Ingredient added successfully.', 'success');
+      } else {
+        triggerToast('Failed to add ingredient.', 'info');
+      }
     }
     reloadInventory();
     setShowIngModal(false);
     setEditingIng(null);
   };
 
-  const handleAdjustStock = (e: React.FormEvent) => {
+  const handleAdjustStock = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!adjustingIng) return;
-    const success = manuallyAdjustStock(adjustingIng.id, adjustQty, adjustNotes, 'Admin');
+    const success = await manuallyAdjustStock(adjustingIng.id, adjustQty, adjustNotes, 'Admin');
     if (success) {
       triggerToast('Stock level adjusted successfully.', 'success');
       reloadInventory();
@@ -1211,113 +1213,85 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSaveRecipe = (e: React.FormEvent) => {
+  const handleSaveRecipe = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!recipeMenuItem) return;
-    const recipes = getRecipes();
-    const remaining = recipes.filter(r => r.menuItemId !== recipeMenuItem.id);
-    const newElements = recipeIngs.map((ri, idx) => ({
-      id: `rec-edit-${recipeMenuItem.id}-${idx}`,
-      tenantId: 'tenant-demo',
-      menuItemId: recipeMenuItem.id,
-      itemVariantId: null,
-      ingredientId: ri.ingredientId,
-      quantity: ri.quantity,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }));
-    saveRecipes([...remaining, ...newElements]);
-    triggerToast(`Recipe for "${recipeMenuItem.name}" saved successfully.`, 'success');
+    const success = await saveMenuItemRecipeApi(
+      recipeMenuItem.id,
+      null,
+      recipeIngs.map(ri => ({ ingredientId: ri.ingredientId, quantity: ri.quantity }))
+    );
+    if (success) {
+      triggerToast(`Recipe for "${recipeMenuItem.name}" saved successfully.`, 'success');
+    } else {
+      triggerToast(`Failed to save recipe for "${recipeMenuItem.name}".`, 'info');
+    }
     reloadInventory();
     setShowRecipeModal(false);
     setRecipeMenuItem(null);
   };
 
-  const handleSaveSupplier = (e: React.FormEvent) => {
+  const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault();
-    const sups = getSuppliers();
     if (editingSupplier) {
-      const updated = sups.map(s => {
-        if (s.id === editingSupplier.id) {
-          return {
-            ...s,
-            name: supplierForm.name,
-            contactName: supplierForm.contactName || null,
-            email: supplierForm.email || null,
-            phone: supplierForm.phone || null,
-            address: supplierForm.address || null,
-            updatedAt: new Date().toISOString()
-          };
-        }
-        return s;
-      });
-      saveSuppliers(updated);
-      triggerToast('Supplier updated successfully.', 'success');
-    } else {
-      const newSup: Supplier = {
-        id: `sup-${Math.floor(100000 + Math.random() * 900000)}`,
-        tenantId: 'tenant-demo',
+      const updated = await updateSupplierApi(editingSupplier.id, {
         name: supplierForm.name,
         contactName: supplierForm.contactName || null,
         email: supplierForm.email || null,
         phone: supplierForm.phone || null,
         address: supplierForm.address || null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      saveSuppliers([...sups, newSup]);
-      triggerToast('Supplier added successfully.', 'success');
+      });
+      if (updated) {
+        triggerToast('Supplier updated successfully.', 'success');
+      } else {
+        triggerToast('Failed to update supplier.', 'info');
+      }
+    } else {
+      const created = await createSupplier({
+        name: supplierForm.name,
+        contactName: supplierForm.contactName || null,
+        email: supplierForm.email || null,
+        phone: supplierForm.phone || null,
+        address: supplierForm.address || null,
+      });
+      if (created) {
+        triggerToast('Supplier added successfully.', 'success');
+      } else {
+        triggerToast('Failed to add supplier.', 'info');
+      }
     }
     reloadInventory();
     setShowSupplierModal(false);
     setEditingSupplier(null);
   };
 
-  const handleCreatePurchaseOrder = (e: React.FormEvent) => {
+  const handleCreatePurchaseOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (poItems.length === 0) {
       triggerToast('Please add at least one ingredient to order.', 'info');
       return;
     }
-    const pos = getPurchaseOrders();
-    const poItemsAll = getPurchaseOrderItems();
-    const poId = `po-${Math.floor(100000 + Math.random() * 900000)}`;
-
-    const total = poItems.reduce((acc, item) => acc + (item.quantity * item.unitCost), 0);
-    const newPO: PurchaseOrder = {
-      id: poId,
-      tenantId: 'tenant-demo',
-      supplierId: poSupplierId || null,
-      status: 'PENDING',
-      totalCost: total,
-      orderedAt: new Date().toISOString(),
-      receivedAt: null,
-      createdBy: 'Admin',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    const newPOItems = poItems.map((item, idx) => ({
-      id: `poi-new-${poId}-${idx}`,
-      tenantId: 'tenant-demo',
-      purchaseOrderId: poId,
-      ingredientId: item.ingredientId,
-      quantity: item.quantity,
-      unitCost: item.unitCost,
-      totalCost: item.quantity * item.unitCost
-    }));
-
-    savePurchaseOrders([...pos, newPO]);
-    savePurchaseOrderItems([...poItemsAll, ...newPOItems]);
-    triggerToast('Purchase Order generated successfully.', 'success');
+    const created = await createPurchaseOrderApi(
+      poSupplierId || null,
+      poItems.map(item => ({
+        ingredientId: item.ingredientId,
+        quantity: item.quantity,
+        unitCost: item.unitCost
+      }))
+    );
+    if (created) {
+      triggerToast('Purchase Order generated successfully.', 'success');
+    } else {
+      triggerToast('Failed to create purchase order.', 'info');
+    }
     reloadInventory();
     setShowPoModal(false);
     setPoSupplierId('');
     setPoItems([]);
   };
 
-  const handleReceivePO = (poId: string) => {
-    const success = receivePurchaseOrder(poId, 'Admin');
+  const handleReceivePO = async (poId: string) => {
+    const success = await receivePurchaseOrder(poId, 'Admin');
     if (success) {
       triggerToast('Purchase order RECEIVED. Stock updated.', 'success');
       reloadInventory();
@@ -1326,25 +1300,23 @@ export default function DashboardPage() {
     }
   };
 
-  const handleCancelPO = (poId: string) => {
-    const pos = getPurchaseOrders();
-    const po = pos.find(p => p.id === poId);
-    if (po && po.status === 'PENDING') {
-      po.status = 'CANCELLED';
-      po.updatedAt = new Date().toISOString();
-      savePurchaseOrders(pos);
+  const handleCancelPO = async (poId: string) => {
+    const success = await cancelPurchaseOrderApi(poId);
+    if (success) {
       triggerToast('Purchase order cancelled.', 'info');
       reloadInventory();
+    } else {
+      triggerToast('Failed to cancel purchase order.', 'info');
     }
   };
 
-  const handleRecordWaste = (e: React.FormEvent) => {
+  const handleRecordWaste = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!wasteIngId) {
       triggerToast('Please select an ingredient.', 'info');
       return;
     }
-    const success = recordWaste(wasteIngId, wasteQty, wasteReason, wasteNotes, 'Admin');
+    const success = await recordWaste(wasteIngId, wasteQty, wasteReason, wasteNotes, 'Admin');
     if (success) {
       triggerToast('Food waste event logged successfully.', 'success');
       reloadInventory();
@@ -1358,22 +1330,26 @@ export default function DashboardPage() {
     }
   };
 
-  const handleDeleteIngredient = (id: string) => {
+  const handleDeleteIngredient = async (id: string) => {
     if (confirm('Are you sure you want to delete this ingredient? This will also remove it from any recipe links.')) {
-      const ings = getIngredients();
-      const recipes = getRecipes();
-      saveIngredients(ings.filter(i => i.id !== id));
-      saveRecipes(recipes.filter(r => r.ingredientId !== id));
-      triggerToast('Ingredient deleted successfully.', 'success');
+      const success = await deleteIngredient(id);
+      if (success) {
+        triggerToast('Ingredient deleted successfully.', 'success');
+      } else {
+        triggerToast('Failed to delete ingredient.', 'info');
+      }
       reloadInventory();
     }
   };
 
-  const handleDeleteSupplier = (id: string) => {
+  const handleDeleteSupplier = async (id: string) => {
     if (confirm('Are you sure you want to delete this supplier?')) {
-      const sups = getSuppliers();
-      saveSuppliers(sups.filter(s => s.id !== id));
-      triggerToast('Supplier deleted.', 'success');
+      const success = await deleteSupplierApi(id);
+      if (success) {
+        triggerToast('Supplier deleted.', 'success');
+      } else {
+        triggerToast('Failed to delete supplier.', 'info');
+      }
       reloadInventory();
     }
   };
@@ -1572,48 +1548,54 @@ export default function DashboardPage() {
   const [cashEnabled, setCashEnabled] = useState(true);
 
   // Stripe Account Linking States
-  const [activeAdminEmail, setActiveAdminEmail] = useState('admin@dinepos.ai');
+  const { user: authUser } = useAuth();
+  const [activeAdminEmail, setActiveAdminEmail] = useState('');
   const [stripeAccountIdInput, setStripeAccountIdInput] = useState('');
   const [linkedStripeAccount, setLinkedStripeAccount] = useState<string | null>(null);
+  const [tenantBilling, setTenantBilling] = useState<{
+    plan: string;
+    trialEndsAt: string | null;
+    billing: { id: string; plan: string; status: string; amount: number; nextBillingDate: string; createdAt: string } | null;
+    activeTerminals: number;
+  } | null>(null);
+  const [subscriptionInvoices, setSubscriptionInvoices] = useState<{
+    id: string;
+    invoiceNumber: string;
+    description: string;
+    amount: number;
+    status: string;
+    createdAt: string;
+  }[]>([]);
 
-  const linkStripeAccount = () => {
+  const linkStripeAccount = async () => {
     if (!stripeAccountIdInput.trim()) {
-      triggerToast('Please enter a valid Stripe Account ID.', 'info');
+      triggerToast('Please enter a valid Stripe Secret Key.', 'info');
       return;
     }
-    const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
-    let connections: Record<string, { stripeAccountId: string; linkedAt: string }> = {};
-    if (connectionsStr) {
-      try {
-        connections = JSON.parse(connectionsStr);
-      } catch (e) {
-        console.error(e);
-      }
+    const res = await apiRequest('/api/billing/config', {
+      method: 'POST',
+      body: JSON.stringify({
+        stripeSecretKey: stripeAccountIdInput.trim(),
+        stripeWebhookSecret: ''
+      }),
+    });
+    if (res.success) {
+      setLinkedStripeAccount(stripeAccountIdInput.trim());
+      triggerToast('Stripe account linked successfully!', 'success');
+    } else {
+      triggerToast(res.error || 'Failed to link Stripe account.', 'info');
     }
-    connections[activeAdminEmail] = {
-      stripeAccountId: stripeAccountIdInput.trim(),
-      linkedAt: new Date().toISOString()
-    };
-    localStorage.setItem('dinepos_stripe_connections', JSON.stringify(connections));
-    setLinkedStripeAccount(stripeAccountIdInput.trim());
-    triggerToast(`Successfully linked Stripe account ${stripeAccountIdInput.trim()}`, 'success');
   };
 
-  const disconnectStripeAccount = () => {
-    const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
-    let connections: Record<string, { stripeAccountId: string; linkedAt: string }> = {};
-    if (connectionsStr) {
-      try {
-        connections = JSON.parse(connectionsStr);
-      } catch (e) {
-        console.error(e);
-      }
+  const disconnectStripeAccount = async () => {
+    const res = await apiRequest('/api/billing/config/unlink', { method: 'POST' });
+    if (res.success) {
+      setLinkedStripeAccount(null);
+      setStripeAccountIdInput('');
+      triggerToast('Stripe account disconnected.', 'info');
+    } else {
+      triggerToast(res.error || 'Failed to disconnect Stripe.', 'info');
     }
-    delete connections[activeAdminEmail];
-    localStorage.setItem('dinepos_stripe_connections', JSON.stringify(connections));
-    setLinkedStripeAccount(null);
-    setStripeAccountIdInput('');
-    triggerToast('Stripe account disconnected.', 'info');
   };
 
   // KDS Configuration States (preserved for KDS tab)
@@ -1738,36 +1720,58 @@ export default function DashboardPage() {
       const savedShowLogo = localStorage.getItem('dinepos_receipt_show_logo');
       if (savedShowLogo === 'false') setShowLogo(false);
 
-      // Load active admin info and Stripe connection
-      const activeEmail = localStorage.getItem('dinepos_logged_in_email') || 'admin@dinepos.ai';
-      setActiveAdminEmail(activeEmail);
-      
-      const connectionsStr = localStorage.getItem('dinepos_stripe_connections');
-      let connections: Record<string, { stripeAccountId: string; linkedAt: string }> = {};
-      if (connectionsStr) {
-        try {
-          connections = JSON.parse(connectionsStr);
-        } catch (e) {
-          console.error(e);
-        }
-      }
+      // Load restaurant info
+      const savedEstName = localStorage.getItem('dinepos_establishment_name');
+      if (savedEstName) setEstablishmentName(savedEstName);
+      const savedAddress = localStorage.getItem('dinepos_business_address');
+      if (savedAddress) setBusinessAddress(savedAddress);
+      const savedEmail = localStorage.getItem('dinepos_contact_email');
+      if (savedEmail) setContactEmail(savedEmail);
+      const savedTaxIdVal = localStorage.getItem('dinepos_tax_id');
+      if (savedTaxIdVal) setTaxId(savedTaxIdVal);
 
-      // Pre-link default admin account for out-of-the-box functionality (demo only)
-      if (isDemoTenant() && !connections['admin@dinepos.ai']) {
-        connections['admin@dinepos.ai'] = {
-          stripeAccountId: 'acct_1x9u82HfdK72',
-          linkedAt: new Date().toISOString()
-        };
-        localStorage.setItem('dinepos_stripe_connections', JSON.stringify(connections));
-      }
-
-      if (connections[activeEmail]) {
-        setLinkedStripeAccount(connections[activeEmail].stripeAccountId);
-        setStripeAccountIdInput(connections[activeEmail].stripeAccountId);
+      // Load active admin info from auth context
+      if (authUser?.email) {
+        setActiveAdminEmail(authUser.email);
       } else {
-        setLinkedStripeAccount(null);
-        setStripeAccountIdInput('');
+        const activeEmail = localStorage.getItem('dinepos_logged_in_email') || '';
+        setActiveAdminEmail(activeEmail);
       }
+
+      // Fetch Stripe config and billing data from API (fire-and-forget)
+      (async () => {
+        const stripeRes = await apiRequest<{ isLinked: boolean }>('/api/billing/config');
+        if (stripeRes.success && stripeRes.data?.isLinked) {
+          setLinkedStripeAccount('Connected');
+          setStripeAccountIdInput('');
+        } else {
+          setLinkedStripeAccount(null);
+          setStripeAccountIdInput('');
+        }
+
+        const billingRes = await apiRequest<{
+          plan: string;
+          trialEndsAt: string | null;
+          billing: { id: string; plan: string; status: string; amount: number; nextBillingDate: string; createdAt: string } | null;
+          activeTerminals: number;
+        }>('/api/billing/tenant');
+        if (billingRes.success && billingRes.data) {
+          setTenantBilling(billingRes.data);
+        }
+
+        // Fetch subscription invoices
+        const invoicesRes = await apiRequest<{
+          id: string;
+          invoiceNumber: string;
+          description: string;
+          amount: number;
+          status: string;
+          createdAt: string;
+        }[]>('/api/billing/invoices');
+        if (invoicesRes.success && Array.isArray(invoicesRes.data)) {
+          setSubscriptionInvoices(invoicesRes.data);
+        }
+      })();
     }
   }, []);
 
@@ -2056,7 +2060,7 @@ export default function DashboardPage() {
         }
       }
       if (e.key === 'dinepos_language' && e.newValue) {
-        if (e.newValue === 'ja' || e.newValue === 'en') {
+        if (e.newValue === 'ja' || e.newValue === 'en' || e.newValue === 'zh' || e.newValue === 'ko') {
           setLanguage(e.newValue as 'en' | 'ja' | 'zh' | 'ko');
         }
       }
@@ -2174,6 +2178,10 @@ export default function DashboardPage() {
   };
 
   const handleSaveChanges = () => {
+    localStorage.setItem('dinepos_establishment_name', establishmentName);
+    localStorage.setItem('dinepos_business_address', businessAddress);
+    localStorage.setItem('dinepos_contact_email', contactEmail);
+    localStorage.setItem('dinepos_tax_id', taxId);
     triggerToast('Configuration changes saved successfully!', 'success');
   };
 
@@ -3986,15 +3994,17 @@ export default function DashboardPage() {
                           <h3 className={`font-serif text-3xl font-bold ${t.text} mt-2.5`}>
                             {userAccount ? `${userAccount.tier === 'Starter' ? cmsConfig.pricing.starterName : userAccount.tier === 'Growth' ? cmsConfig.pricing.growthName : userAccount.tier === 'Business' ? cmsConfig.pricing.premiumName : userAccount.tier} ${userAccount.plan === 'TRIAL' ? '(7-Day Trial)' : ''}` : tr.planName}
                           </h3>
-                          <p className={`text-[11px] ${t.textMutedLight} font-semibold mt-1`}>
-                            {userAccount && userAccount.plan === 'TRIAL' 
-                              ? `Trial expires on ${userAccount.expiryDate} (${Math.max(0, getTrialDaysLeft())} days remaining)` 
-                              : `Active subscription (Billed ${userAccount?.billingCycle === 'annual' ? 'annually' : 'monthly'})`}
+                           <p className={`text-[11px] ${t.textMutedLight} font-semibold mt-1`}>
+                            {tenantBilling?.billing?.nextBillingDate
+                              ? `Next billing: ${new Date(tenantBilling.billing.nextBillingDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}`
+                              : userAccount && userAccount.plan === 'TRIAL' 
+                                ? `Trial expires on ${userAccount.expiryDate} (${Math.max(0, getTrialDaysLeft())} days remaining)` 
+                                : `Active subscription (Billed ${userAccount?.billingCycle === 'annual' ? 'annually' : 'monthly'})`}
                           </p>
                         </div>
                         <div className="text-right">
                           <span className={`font-serif text-3xl font-bold ${t.text}`}>
-                            {getDisplayPlanPrice()}
+                            {tenantBilling?.billing?.amount ? `$${tenantBilling.billing.amount.toFixed(0)}` : getDisplayPlanPrice()}
                           </span>
                           <span className={`text-xs ${t.textMuted} font-semibold`}>
                             {userAccount && userAccount.plan === 'TRIAL' ? ' / 7 days' : ' / month'}
@@ -4006,11 +4016,13 @@ export default function DashboardPage() {
                       <div className="grid grid-cols-2 gap-8 pt-2">
                         <div className="space-y-1">
                           <span className={`text-[9.5px] ${t.textMuted} font-bold uppercase tracking-wider block`}>{tr.activeTerminals}</span>
-                          <div className={`text-sm font-bold ${t.text}`}>12 / 15</div>
+                          <div className={`text-sm font-bold ${t.text}`}>
+                            {tenantBilling ? `${tenantBilling.activeTerminals} active` : '—'}
+                          </div>
                         </div>
                         <div className="space-y-1">
                           <span className={`text-[9.5px] ${t.textMuted} font-bold uppercase tracking-wider block`}>{tr.cloudStorage}</span>
-                          <div className={`text-sm font-bold ${t.text}`}>2.4 TB / 5 TB</div>
+                          <div className={`text-sm font-bold ${t.text}`}>—</div>
                         </div>
                       </div>
                     </div>
@@ -4126,27 +4138,12 @@ export default function DashboardPage() {
                       {linkedStripeAccount ? (
                         <div className={`${t.inputBg}/45 border border-emerald-500/10 rounded-xl p-4 space-y-2.5`}>
                           <div className="flex justify-between items-center text-xs">
-                            <span className={`${t.textMuted}`}>Stripe Account ID:</span>
-                            <span className="font-mono font-bold text-white text-[12.5px] select-text">{linkedStripeAccount}</span>
+                            <span className={`${t.textMuted}`}>Stripe Status:</span>
+                            <span className="font-mono font-bold text-white text-[12.5px] select-text">Connected</span>
                           </div>
                           <div className="flex justify-between items-center text-[10.5px]">
-                            <span className={`${t.textMuted}`}>Linked On:</span>
-                            <span className="text-white/70 font-semibold">
-                              {(() => {
-                                const connStr = localStorage.getItem('dinepos_stripe_connections');
-                                if (connStr) {
-                                  try {
-                                    const connections = JSON.parse(connStr);
-                                    if (connections[activeAdminEmail]?.linkedAt) {
-                                      return new Date(connections[activeAdminEmail].linkedAt).toLocaleDateString(undefined, {
-                                        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                                      });
-                                    }
-                                  } catch (e) {}
-                                }
-                                return 'Just now';
-                              })()}
-                            </span>
+                            <span className={`${t.textMuted}`}>Owner Account:</span>
+                            <span className="text-white/70 font-semibold">{activeAdminEmail}</span>
                           </div>
                         </div>
                       ) : (
@@ -4174,14 +4171,14 @@ export default function DashboardPage() {
                       ) : (
                         <div className="flex flex-col sm:flex-row gap-4 items-end">
                           <div className="flex-1 w-full space-y-2">
-                            <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider`}>Enter Stripe Account ID</label>
+                            <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider`}>Enter Stripe Secret Key</label>
                             <div className="relative">
                               <span className="material-symbols-outlined absolute left-4 top-3 text-[#A69984]/40 text-lg leading-none">key</span>
                               <input
-                                type="text"
+                                type="password"
                                 value={stripeAccountIdInput}
                                 onChange={(e) => setStripeAccountIdInput(e.target.value)}
-                                placeholder="acct_1x9u82HfdK72"
+                                placeholder="sk_live_..."
                                 className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-11 pr-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono`}
                               />
                             </div>
@@ -4191,7 +4188,7 @@ export default function DashboardPage() {
                             onClick={linkStripeAccount}
                             className="w-full sm:w-auto px-6 py-3.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 hover:scale-[1.01] cursor-pointer text-center whitespace-nowrap shrink-0"
                           >
-                            Link Stripe Account
+                            Link Stripe
                           </button>
                         </div>
                       )}
@@ -4223,65 +4220,42 @@ export default function DashboardPage() {
                     </thead>
                     <tbody className={`divide-y ${t.divider} font-sans text-xs`}>
                       
-                      {/* Row 1 */}
-                      <tr className={`hover:${t.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${t.textMuted}`}>Nov 15, 2024</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Enterprise Growth - Annual Renewal</td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold ${t.text}`}>$2,499.00</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/5 border border-white/10 text-[#A69984]/50 font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Upcoming
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading invoice preview...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Row 2 */}
-                      <tr className={`hover:${t.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${t.textMuted}`}>Oct 01, 2024</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Hardware Add-on: Kitchen Display x2</td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold ${t.text}`}>$450.00</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Paid
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading receipt...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Row 3 */}
-                      <tr className={`hover:${t.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${t.textMuted}`}>Nov 15, 2023</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Enterprise Growth - Annual</td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold ${t.text}`}>$2,499.00</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Paid
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading receipt...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
+                      {subscriptionInvoices.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className={`px-6 py-8 text-center ${t.textMuted} text-[11px] font-semibold`}>
+                            No invoices yet. Invoices will appear here after your first billing cycle.
+                          </td>
+                        </tr>
+                      ) : (
+                        subscriptionInvoices.map((inv) => (
+                          <tr key={inv.id} className={`hover:${t.cardHover} transition-colors font-semibold`}>
+                            <td className={`px-6 py-4.5 ${t.textMuted}`}>
+                              {new Date(inv.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </td>
+                            <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>{inv.description}</td>
+                            <td className={`px-6 py-4.5 text-right font-mono font-bold ${t.text}`}>${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                            <td className="px-6 py-4.5">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 font-bold text-[8.5px] uppercase tracking-wider rounded-md ${
+                                inv.status === 'PAID'
+                                  ? 'bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d]'
+                                  : inv.status === 'UPCOMING'
+                                    ? 'bg-white/5 border border-white/10 text-[#A69984]/50'
+                                    : 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                              }`}>
+                                {inv.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4.5 text-center">
+                              <button type="button" 
+                                onClick={() => triggerToast('Downloading invoice...', 'success')}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
+                              >
+                                <span className="material-symbols-outlined text-sm">download</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
 
                     </tbody>
                   </table>
@@ -4746,6 +4720,20 @@ export default function DashboardPage() {
                           className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium resize-none leading-relaxed`}
                         />
                       </div>
+                      <div className="flex justify-end pt-2">
+                        <button type="button"
+                          onClick={() => {
+                            localStorage.setItem('dinepos_establishment_name', establishmentName);
+                            localStorage.setItem('dinepos_business_address', businessAddress);
+                            localStorage.setItem('dinepos_contact_email', contactEmail);
+                            localStorage.setItem('dinepos_tax_id', taxId);
+                            triggerToast(tr.saveProfile + '!', 'success');
+                          }}
+                          className={`px-5 py-2.5 ${t.accentBg} ${t.accentText} rounded-xl text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-90`}
+                        >
+                          {tr.saveProfile}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
@@ -4827,8 +4815,8 @@ export default function DashboardPage() {
                       <div className="mt-6 pt-6 border-t border-white/5 space-y-5">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div>
-                            <h4 className="text-xs font-bold text-white uppercase tracking-wider">Custom Theme Configuration</h4>
-                            <p className="text-[10px] text-[#A69984]/50 mt-1">Design your own bespoke dashboard aesthetic</p>
+                            <h4 className={`text-xs font-bold ${t.text} uppercase tracking-wider`}>{tr.customThemeConfig}</h4>
+                            <p className={`text-[10px] ${t.textMutedDark} mt-1`}>{tr.customThemeDesc}</p>
                           </div>
                           
                           {/* Curated Presets */}
@@ -4978,9 +4966,9 @@ export default function DashboardPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                       {/* Show Restaurant Logo */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showLogo}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showLogo}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showLogoDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowLogo(!showLogo)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showLogo ? t.accentBg : 'bg-white/20'}`}>
@@ -4989,9 +4977,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Show Tax ID */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showTaxId}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showTaxId}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showTaxIdDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowTaxId(!showTaxId)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showTaxId ? t.accentBg : 'bg-white/20'}`}>
@@ -5000,9 +4988,9 @@ export default function DashboardPage() {
                       </div>
                       
                       {/* Show Server Name */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showServer}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showServer}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showServerDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowServerName(!showServerName)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServerName ? t.accentBg : 'bg-white/20'}`}>
@@ -5011,9 +4999,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Show Table Number */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showTable}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showTable}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showTableDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowTableNumber(!showTableNumber)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showTableNumber ? t.accentBg : 'bg-white/20'}`}>
@@ -5022,9 +5010,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Show Order Timestamp */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showTimestamp}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showTimestamp}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showTimestampDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowOrderTimestamp(!showOrderTimestamp)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showOrderTimestamp ? t.accentBg : 'bg-white/20'}`}>
@@ -5033,9 +5021,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Show QR Code */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showFeedbackQr}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showFeedbackQr}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showFeedbackQrDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowQrCode(!showQrCode)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showQrCode ? t.accentBg : 'bg-white/20'}`}>
@@ -5044,9 +5032,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Show Social Media */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.showSocial}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showSocial}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showSocialDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowSocialMedia(!showSocialMedia)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showSocialMedia ? t.accentBg : 'bg-white/20'}`}>
@@ -5055,9 +5043,9 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Show Service Charge */}
-                      <div className="flex justify-between items-center bg-[#0e0e0d]/30 p-3.5 border border-white/5 rounded-xl">
+                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
                         <div>
-                          <h4 className="text-xs font-bold text-white leading-none mb-1">{tr.includeServiceCharge}</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.includeServiceCharge}</h4>
                           <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.includeServiceChargeDesc}</span>
                         </div>
                         <button type="button" onClick={() => setShowServiceCharge(!showServiceCharge)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServiceCharge ? t.accentBg : 'bg-white/20'}`}>
@@ -5069,7 +5057,7 @@ export default function DashboardPage() {
                     <div className="border-t border-white/5 pt-5 mt-3 space-y-4">
                       <div className="flex justify-between items-center select-none">
                         <div>
-                          <h4 className="text-xs font-bold text-white">{tr.showCustomFooter}</h4>
+                          <h4 className={`text-xs font-bold ${t.text}`}>{tr.showCustomFooter}</h4>
                           <p className={`text-[9.5px] ${t.textMutedDark}`}>{tr.showCustomFooterDesc}</p>
                         </div>
                         <button type="button" onClick={() => setShowCustomFooter(!showCustomFooter)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showCustomFooter ? t.accentBg : 'bg-white/20'}`}>
@@ -5091,18 +5079,18 @@ export default function DashboardPage() {
                   <div className={`${t.cardBgOpaque} rounded-2xl p-7 shadow-xl space-y-5`}>
                     <div className="flex items-center gap-2 mb-5">
                       <span className={`material-symbols-outlined ${t.accent} text-lg`}>restaurant_menu</span>
-                      <h3 className={`${t.text} font-bold text-sm tracking-wide select-none`}>Dining Modes</h3>
+                      <h3 className={`${t.text} font-bold text-sm tracking-wide select-none`}>{tr.diningModes}</h3>
                     </div>
                     <p className={`text-[11px] ${t.textMuted} -mt-2 leading-relaxed`}>
-                      Enable or disable dining options available to customers in the digital menu and cashier terminals.
+                      {tr.diningModesDesc}
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                       {/* Dine-in Toggle */}
-                      <div className="flex flex-col justify-between bg-[#0e0e0d]/30 p-4 border border-white/5 rounded-xl space-y-3">
+                      <div className={`flex flex-col justify-between ${t.inputBg}/30 p-4 border ${t.border} rounded-xl space-y-3`}>
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-[#ffe2ab] text-sm">restaurant</span>
-                          <h4 className="text-xs font-bold text-white leading-none">Dine-In</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none`}>Dine-In</h4>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
@@ -5129,10 +5117,10 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Takeaway Toggle */}
-                      <div className="flex flex-col justify-between bg-[#0e0e0d]/30 p-4 border border-white/5 rounded-xl space-y-3">
+                      <div className={`flex flex-col justify-between ${t.inputBg}/30 p-4 border ${t.border} rounded-xl space-y-3`}>
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-[#38bdf8] text-sm">takeout_dining</span>
-                          <h4 className="text-xs font-bold text-white leading-none">Take Away</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none`}>Take Away</h4>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
@@ -5159,10 +5147,10 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Delivery Toggle */}
-                      <div className="flex flex-col justify-between bg-[#0e0e0d]/30 p-4 border border-white/5 rounded-xl space-y-3">
+                      <div className={`flex flex-col justify-between ${t.inputBg}/30 p-4 border ${t.border} rounded-xl space-y-3`}>
                         <div className="flex items-center gap-2">
                           <span className="material-symbols-outlined text-[#fb923c] text-sm">moped</span>
-                          <h4 className="text-xs font-bold text-white leading-none">Delivery</h4>
+                          <h4 className={`text-xs font-bold ${t.text} leading-none`}>Delivery</h4>
                         </div>
                         <div className="flex items-center justify-between">
                           <span className={`text-[9px] ${t.textMutedDark} font-medium`}>Active</span>
@@ -5226,7 +5214,7 @@ export default function DashboardPage() {
 
                       {/* Currency Selection */}
                       <div>
-                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>Display Currency</label>
+                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>{tr.displayCurrency}</label>
                         <div className="grid grid-cols-3 gap-2.5">
                           {([
                             { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -5294,7 +5282,7 @@ export default function DashboardPage() {
                       {/* Dynamic Tax Rates by Dining Option */}
                       <div className={`pt-4 border-t ${t.border}`}>
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-3 select-none`}>
-                          Tax Rates by Dining Option
+                          {tr.taxRatesByDining}
                         </label>
                         <div className="space-y-4">
                           {/* Dine-in */}
@@ -5417,6 +5405,30 @@ export default function DashboardPage() {
                         </p>
                       </div>
 
+                      {/* Maximum Display Price */}
+                      <div>
+                        <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>
+                          {tr.maxDisplayPrice}
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={200}
+                            step={5}
+                            value={digitalMenuConfig.maxPrice}
+                            onChange={(e) => updateDigitalMenuConfig({ maxPrice: parseInt(e.target.value) })}
+                            className="flex-1 h-1.5 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#ffe2ab]"
+                          />
+                          <span className={`text-xs font-bold ${t.text} min-w-[3rem] text-right`}>
+                            {currency === 'JPY' ? '¥' : '$'}{digitalMenuConfig.maxPrice}
+                          </span>
+                        </div>
+                        <p className={`text-[9.5px] ${t.textMutedDark} mt-1.5 leading-relaxed`}>
+                          {tr.maxDisplayPriceDesc}
+                        </p>
+                      </div>
+
                       {/* Feature Controls */}
                       <div className="border-t border-white/5 pt-4 space-y-4">
                         <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider select-none`}>
@@ -5426,7 +5438,7 @@ export default function DashboardPage() {
                         {/* Enable AI Concierge */}
                         <div className="flex items-center justify-between">
                           <div className="max-w-[80%] flex flex-col justify-center">
-                            <h4 className="text-xs font-bold text-white">{tr.enableAIConcierge}</h4>
+                            <h4 className={`text-xs font-bold ${t.text}`}>{tr.enableAIConcierge}</h4>
                             <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>{tr.enableAIConciergeDesc}</p>
                           </div>
                           <button type="button" 
@@ -5440,7 +5452,7 @@ export default function DashboardPage() {
                         {/* Enable Customer Self-Checkout */}
                         <div className="flex items-center justify-between">
                           <div className="max-w-[80%] flex flex-col justify-center">
-                            <h4 className="text-xs font-bold text-white">{tr.enableSelfCheckout}</h4>
+                            <h4 className={`text-xs font-bold ${t.text}`}>{tr.enableSelfCheckout}</h4>
                             <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>{tr.enableSelfCheckoutDesc}</p>
                           </div>
                           <button type="button" 
@@ -5457,7 +5469,7 @@ export default function DashboardPage() {
                         <div className="border-t border-white/5 pt-4 space-y-4">
                           <div className="flex items-center justify-between">
                             <div className="max-w-[80%] flex flex-col justify-center">
-                              <h4 className="text-xs font-bold text-white">{tr.timeBasedMenu}</h4>
+                              <h4 className={`text-xs font-bold ${t.text}`}>{tr.timeBasedMenu}</h4>
                               <p className={`text-[9.5px] ${t.textMutedDark} mt-0.5 leading-relaxed`}>{tr.timeBasedMenuDesc}</p>
                             </div>
                             <button type="button" 
@@ -5468,11 +5480,17 @@ export default function DashboardPage() {
                             </button>
                           </div>
 
+                          {!digitalMenuConfig.enableTimeBasedMenu && (
+                            <p className={`text-[9.5px] ${t.textMutedDark} mt-1 leading-relaxed italic`}>
+                              {tr.timeBasedMenuDisabledNote}
+                            </p>
+                          )}
+
                           {digitalMenuConfig.enableTimeBasedMenu && (
                             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 space-y-3 mt-2">
                               {/* Lunch Hours */}
                               <div className="flex items-center justify-between gap-4">
-                                <span className="text-xs font-semibold text-white/85 shrink-0 flex items-center gap-1.5">
+                                <span className={`text-xs font-semibold ${t.text} shrink-0 flex items-center gap-1.5`}>
                                   <span>🌤️</span> {tr.lunchMenuTime}
                                 </span>
                                 <div className="flex items-center gap-2">
@@ -5496,7 +5514,7 @@ export default function DashboardPage() {
 
                               {/* Dinner Hours */}
                               <div className="flex items-center justify-between gap-4">
-                                <span className="text-xs font-semibold text-white/85 shrink-0 flex items-center gap-1.5">
+                                <span className={`text-xs font-semibold ${t.text} shrink-0 flex items-center gap-1.5`}>
                                   <span>🌙</span> {tr.dinnerMenuTime}
                                 </span>
                                 <div className="flex items-center gap-2">

@@ -5,8 +5,19 @@ import Link from 'next/link';
 import { usePrinter } from '../../printerContext';
 import { PrinterType, PrinterConfig } from '../../printerService';
 
+function isValidIp(ip: string): boolean {
+  if (!ip) return false;
+  const parts = ip.split('.');
+  if (parts.length !== 4) return false;
+  return parts.every(p => {
+    if (!/^\d{1,3}$/.test(p)) return false;
+    const n = parseInt(p, 10);
+    return n >= 0 && n <= 255;
+  });
+}
+
 export default function PrinterSettingsPage() {
-  const { config, status, logs, setConfig, scanAndPair, testPrint, clearLogs } = usePrinter();
+  const { config, status, logs, setConfig, scanAndPair, testPrint, clearLogs, disconnect } = usePrinter();
   
   const [ip, setIp] = useState(config.ip || '192.168.1.100');
   const [port, setPort] = useState(config.port || 9100);
@@ -14,8 +25,18 @@ export default function PrinterSettingsPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({});
   const [isTestPrinting, setIsTestPrinting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [ipError, setIpError] = useState<string | null>(null);
+  const [portError, setPortError] = useState<string | null>(null);
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const consoleContainerRef = useRef<HTMLDivElement>(null);
+
+  // Sync local state when config changes externally (e.g. from another tab)
+  useEffect(() => {
+    setIp(config.ip || '192.168.1.100');
+    setPort(config.port || 9100);
+    setNetworkName(config.name || 'Network Thermal Printer');
+  }, [config]);
 
   // Auto-scroll console to bottom when new logs arrive
   useEffect(() => {
@@ -24,15 +45,42 @@ export default function PrinterSettingsPage() {
     }
   }, [logs]);
 
-  const handleNetworkSave = (e: React.FormEvent) => {
+  const validateIp = (value: string): boolean => {
+    if (!isValidIp(value)) {
+      setIpError('Invalid IP address format (e.g. 192.168.1.100)');
+      return false;
+    }
+    setIpError(null);
+    return true;
+  };
+
+  const validatePort = (value: number): boolean => {
+    if (!Number.isInteger(value) || value < 1 || value > 65535) {
+      setPortError('Port must be between 1 and 65535');
+      return false;
+    }
+    setPortError(null);
+    return true;
+  };
+
+  const handleNetworkSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newCfg: PrinterConfig = {
-      type: 'network',
-      name: networkName,
-      ip,
-      port: Number(port)
-    };
-    setConfig(newCfg);
+    const ipValid = validateIp(ip);
+    const portValid = validatePort(port);
+    if (!ipValid || !portValid) return;
+
+    setIsSaving(true);
+    try {
+      const newCfg: PrinterConfig = {
+        type: 'network',
+        name: networkName,
+        ip,
+        port: Number(port)
+      };
+      setConfig(newCfg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleSelectBrowser = () => {
@@ -49,6 +97,10 @@ export default function PrinterSettingsPage() {
     } else if (type === 'usb') {
       setConfig({ type: 'usb', name: config.type === 'usb' ? config.name : 'USB Printer' });
     }
+  };
+
+  const handleDisconnect = () => {
+    disconnect();
   };
 
   const handleScanDevice = async (type: 'bluetooth' | 'usb') => {
@@ -94,22 +146,33 @@ export default function PrinterSettingsPage() {
         </div>
 
         {/* Live Status indicator */}
-        <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 px-4 py-2 rounded-full">
-          <span className={`relative flex h-2 w-2`}>
-            {status === 'connected' && (
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            )}
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${
-              status === 'connected' ? 'bg-emerald-500' :
-              status === 'connecting' ? 'bg-amber-500' :
-              status === 'error' ? 'bg-rose-500' : 'bg-zinc-600'
-            }`}></span>
-          </span>
-          <span className="text-[10px] uppercase font-bold tracking-wider text-[#A69984]">
-            {status === 'connected' ? 'Online' :
-             status === 'connecting' ? 'Connecting...' :
-             status === 'error' ? 'Connection Error' : 'Offline / Idle'}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 px-4 py-2 rounded-full">
+            <span className={`relative flex h-2 w-2`}>
+              {status === 'connected' && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              )}
+              <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                status === 'connected' ? 'bg-emerald-500' :
+                status === 'connecting' ? 'bg-amber-500' :
+                status === 'error' ? 'bg-rose-500' : 'bg-zinc-600'
+              }`}></span>
+            </span>
+            <span className="text-[10px] uppercase font-bold tracking-wider text-[#A69984]">
+              {status === 'connected' ? 'Online' :
+               status === 'connecting' ? 'Connecting...' :
+               status === 'error' ? 'Connection Error' : 'Offline / Idle'}
+            </span>
+          </div>
+
+          {status === 'connected' && (
+            <button
+              onClick={handleDisconnect}
+              className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-rose-500/30 hover:bg-rose-500/5 text-[10px] uppercase font-bold tracking-wider text-[#A69984] hover:text-rose-400 transition-all cursor-pointer"
+            >
+              Disconnect
+            </button>
+          )}
         </div>
       </header>
 
@@ -187,7 +250,11 @@ export default function PrinterSettingsPage() {
 
             {/* Card 4: Network */}
             <button 
-              onClick={() => setConfig({ type: 'network', name: networkName, ip, port })}
+              onClick={() => {
+                if (isValidIp(ip) && port >= 1 && port <= 65535) {
+                  setConfig({ type: 'network', name: networkName, ip, port });
+                }
+              }}
               className={`p-5 rounded-2xl border text-left transition-all duration-300 relative cursor-pointer ${
                 isActive('network') 
                   ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/40 shadow-lg' 
@@ -216,6 +283,12 @@ export default function PrinterSettingsPage() {
                   No pairing required. Receipts render on screen and open the system print dialog. 
                   Compatible with any standard printer configured in your operating system (Windows, macOS, iOS).
                 </p>
+                {status === 'connected' && (
+                  <div className="flex items-center gap-2 mt-3 text-[10px] text-emerald-400/80 font-medium">
+                    <span className="material-symbols-outlined text-sm">check_circle</span>
+                    Ready to print via system dialog
+                  </div>
+                )}
               </div>
             )}
 
@@ -289,11 +362,20 @@ export default function PrinterSettingsPage() {
                     <input 
                       type="text" 
                       value={ip}
-                      onChange={(e) => setIp(e.target.value)}
-                      className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/50 font-mono"
+                      onChange={(e) => {
+                        setIp(e.target.value);
+                        if (ipError) setIpError(null);
+                      }}
+                      onBlur={() => validateIp(ip)}
+                      className={`w-full bg-[#0e0e0d] border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none font-mono ${
+                        ipError ? 'border-rose-500/50 focus:border-rose-500/70' : 'border-white/10 focus:border-[#ffe2ab]/50'
+                      }`}
                       placeholder="192.168.1.100"
                       required
                     />
+                    {ipError && (
+                      <p className="text-[10px] text-rose-400 font-medium mt-1">{ipError}</p>
+                    )}
                   </div>
                 </div>
 
@@ -303,18 +385,38 @@ export default function PrinterSettingsPage() {
                     <input 
                       type="number" 
                       value={port}
-                      onChange={(e) => setPort(Number(e.target.value))}
-                      className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#ffe2ab]/50 font-mono"
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setPort(val);
+                        if (portError) setPortError(null);
+                      }}
+                      onBlur={() => validatePort(port)}
+                      min={1}
+                      max={65535}
+                      className={`w-full bg-[#0e0e0d] border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none font-mono ${
+                        portError ? 'border-rose-500/50 focus:border-rose-500/70' : 'border-white/10 focus:border-[#ffe2ab]/50'
+                      }`}
                       placeholder="9100"
                       required
                     />
+                    {portError && (
+                      <p className="text-[10px] text-rose-400 font-medium mt-1">{portError}</p>
+                    )}
                   </div>
                   
                   <button 
                     type="submit"
-                    className="w-full py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer"
+                    disabled={isSaving}
+                    className="w-full py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    Save Network Settings
+                    {isSaving ? (
+                      <>
+                        <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Network Settings'
+                    )}
                   </button>
                 </div>
               </form>
@@ -333,6 +435,13 @@ export default function PrinterSettingsPage() {
             <p className="text-[11px] text-[#A69984]/65 leading-relaxed">
               Verify your setup by firing a loopback diagnostic test ticket to the selected printer interface.
             </p>
+
+            {config.type === 'browser' && status === 'connected' && (
+              <div className="flex items-center gap-2 text-[10px] text-amber-400/80 font-medium bg-amber-500/5 border border-amber-500/10 p-3 rounded-lg">
+                <span className="material-symbols-outlined text-sm">info</span>
+                Test print will open your browser's print dialog.
+              </div>
+            )}
             
             <button 
               onClick={handleTestPrint}

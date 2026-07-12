@@ -15,6 +15,7 @@ interface PrinterContextType {
   kickCashDrawer: () => Promise<void>;
   testPrint: () => Promise<void>;
   clearLogs: () => void;
+  disconnect: () => void;
 }
 
 const defaultContext: PrinterContextType = {
@@ -26,7 +27,8 @@ const defaultContext: PrinterContextType = {
   printReceipt: async () => {},
   kickCashDrawer: async () => {},
   testPrint: async () => {},
-  clearLogs: () => {}
+  clearLogs: () => {},
+  disconnect: () => {}
 };
 
 const PrinterContext = createContext<PrinterContextType>(defaultContext);
@@ -57,6 +59,11 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   };
 
   const clearLogs = () => setLogs([]);
+
+  const disconnect = () => {
+    setStatus('idle');
+    addLog('Printer disconnected by user.');
+  };
 
   const setConfig = (newCfg: PrinterConfig) => {
     setConfigState(newCfg);
@@ -139,7 +146,8 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
         printReceipt,
         kickCashDrawer,
         testPrint,
-        clearLogs
+        clearLogs,
+        disconnect
       }}
     >
       {children}

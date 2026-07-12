@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
-import { isDemoTenant } from '@/utils/api';
 
 interface StaffMember {
   id: string;
@@ -19,104 +18,7 @@ interface StaffMember {
   phone: string;
 }
 
-const staffData: StaffMember[] = [
-  {
-    id: 's1',
-    name: 'J. Smith',
-    role: 'General Manager',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop',
-    status: 'active',
-    shiftStart: '09:00',
-    shiftEnd: '21:00',
-    hoursWorked: 7.5,
-    tableAssignments: [],
-    phone: '+81 90-1111-2221'
-  },
-  {
-    id: 's2',
-    name: 'Michael T.',
-    role: 'Head Waiter',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop',
-    status: 'active',
-    shiftStart: '11:00',
-    shiftEnd: '23:00',
-    hoursWorked: 5.2,
-    tableAssignments: ['Table 12', 'Table 14', 'Table 16'],
-    phone: '+81 90-1111-2222'
-  },
-  {
-    id: 's3',
-    name: 'Sarah J.',
-    role: 'Waitress',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop',
-    status: 'active',
-    shiftStart: '12:00',
-    shiftEnd: '22:00',
-    hoursWorked: 4.8,
-    tableAssignments: ['Table 04', 'Table 06'],
-    phone: '+81 90-1111-2223'
-  },
-  {
-    id: 's4',
-    name: 'Alex D.',
-    role: 'Bartender',
-    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop',
-    status: 'active',
-    shiftStart: '15:00',
-    shiftEnd: '01:00',
-    hoursWorked: 2.0,
-    tableAssignments: ['Bar 01', 'Bar 02'],
-    phone: '+81 90-1111-2224'
-  },
-  {
-    id: 's5',
-    name: 'Elena R.',
-    role: 'Chef de Partie',
-    avatar: 'https://images.unsplash.com/photo-1573496799652-408c2ac9fe98?q=80&w=120&auto=format&fit=crop',
-    status: 'break',
-    shiftStart: '10:00',
-    shiftEnd: '22:00',
-    hoursWorked: 6.0,
-    tableAssignments: [],
-    phone: '+81 90-1111-2225'
-  },
-  {
-    id: 's6',
-    name: 'Marcus L.',
-    role: 'Sous Chef',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=120&auto=format&fit=crop',
-    status: 'active',
-    shiftStart: '10:00',
-    shiftEnd: '22:00',
-    hoursWorked: 6.1,
-    tableAssignments: [],
-    phone: '+81 90-1111-2226'
-  },
-  {
-    id: 's7',
-    name: 'Priya K.',
-    role: 'Host / Hostess',
-    avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?q=80&w=120&auto=format&fit=crop',
-    status: 'active',
-    shiftStart: '11:00',
-    shiftEnd: '21:00',
-    hoursWorked: 5.5,
-    tableAssignments: ['Reception'],
-    phone: '+81 90-1111-2227'
-  },
-  {
-    id: 's8',
-    name: 'Tom B.',
-    role: 'Busboy',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop',
-    status: 'off',
-    shiftStart: '—',
-    shiftEnd: '—',
-    hoursWorked: 0,
-    tableAssignments: [],
-    phone: '+81 90-1111-2228'
-  }
-];
+const staffData: StaffMember[] = [];
 
 const statusConfig = {
   active: { label: 'On Shift', dot: 'bg-emerald-400', text: 'text-emerald-400', badge: 'bg-emerald-400/10 border-emerald-400/20' },
@@ -183,15 +85,7 @@ export default function PosStaffPage() {
       try {
         setStaff(JSON.parse(stored));
       } catch {
-        setStaff(isDemoTenant() ? staffData : []);
-      }
-    } else {
-      // Real registered tenants start with an empty roster.
-      // Demo/guest users get the sample roster pre-populated.
-      const initial = isDemoTenant() ? staffData : [];
-      setStaff(initial);
-      if (initial.length > 0) {
-        localStorage.setItem('dinepos_staff_roster', JSON.stringify(initial));
+        setStaff([]);
       }
     }
   }, []);
