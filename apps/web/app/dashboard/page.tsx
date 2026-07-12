@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
@@ -1708,6 +1708,8 @@ export default function DashboardPage() {
   const [criticalVoidAlerts, setCriticalVoidAlerts] = useState(true);
   const [itemBroadcast86, setItemBroadcast86] = useState(false);
   const [showLogo, setShowLogo] = useState(true);
+  const [restaurantLogo, setRestaurantLogo] = useState<string | null>(null);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
   const [showTableNumber, setShowTableNumber] = useState(true);
   const [showServerName, setShowServerName] = useState(true);
   const [showOrderTimestamp, setShowOrderTimestamp] = useState(true);
@@ -1790,6 +1792,12 @@ export default function DashboardPage() {
         }
       }
 
+      // Load restaurant logo
+      const savedLogo = localStorage.getItem('dinepos_restaurant_logo');
+      if (savedLogo) setRestaurantLogo(savedLogo);
+      const savedShowLogo = localStorage.getItem('dinepos_receipt_show_logo');
+      if (savedShowLogo === 'false') setShowLogo(false);
+
       // Load active admin info and Stripe connection
       const activeEmail = localStorage.getItem('dinepos_logged_in_email') || 'admin@dinepos.ai';
       setActiveAdminEmail(activeEmail);
@@ -1860,6 +1868,18 @@ export default function DashboardPage() {
     setCustomTextMuted(val);
     localStorage.setItem('dinepos_custom_text_muted', val);
   };
+
+  // Persist showLogo toggle to localStorage and notify receipt page
+  useEffect(() => {
+    localStorage.setItem('dinepos_receipt_show_logo', String(showLogo));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'dinepos_receipt_show_logo',
+        newValue: String(showLogo)
+      }));
+    }
+  }, [showLogo]);
+
   const [showTaxId, setShowTaxId] = useState(true);
 
   // Search input state
@@ -1969,13 +1989,26 @@ export default function DashboardPage() {
       const itemRes = await apiRequest<any[]>('/api/menu/items');
 
       if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
-        const mappedCategories = catRes.data.map((c: any) => ({
+        // If DB has no categories, auto-create defaults so UUIDs exist for menu items
+        let resolvedCategories = catRes.data;
+        if (resolvedCategories.length === 0) {
+          const defaultCats = ['Our Special', 'Combo Set', 'Starters', 'Main Course', 'Desserts', 'Drinks'];
+          for (const catName of defaultCats) {
+            await apiRequest('/api/menu/categories', { method: 'POST', body: JSON.stringify({ name: catName }), useAuth: true });
+          }
+          const refreshedCatRes = await apiRequest<any[]>('/api/menu/categories');
+          if (refreshedCatRes.success && refreshedCatRes.data) {
+            resolvedCategories = refreshedCatRes.data;
+          }
+        }
+
+        const mappedCategories = resolvedCategories.map((c: any) => ({
           id: c.id,
           name: c.name,
           icon: c.icon || 'restaurant'
         }));
         
-        const mappedItems = itemRes.data.map((item: any) => ({
+        const mappedItems = (itemRes.data || []).map((item: any) => ({
           id: item.id,
           name: item.name,
           category: item.categoryId,
@@ -2186,6 +2219,34 @@ export default function DashboardPage() {
 
   const handleSaveChanges = () => {
     triggerToast('Configuration changes saved successfully!', 'success');
+  };
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      triggerToast('Please upload a valid image file.', 'info');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      triggerToast('Logo must be under 2MB.', 'info');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target?.result as string;
+      setRestaurantLogo(dataUrl);
+      localStorage.setItem('dinepos_restaurant_logo', dataUrl);
+      triggerToast('Restaurant logo uploaded successfully!', 'success');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoRemove = () => {
+    setRestaurantLogo(null);
+    localStorage.removeItem('dinepos_restaurant_logo');
+    if (logoFileInputRef.current) logoFileInputRef.current.value = '';
+    triggerToast('Restaurant logo removed.', 'info');
   };
 
   const togglePermission = (role: string, perm: string) => {
@@ -2925,9 +2986,17 @@ export default function DashboardPage() {
                     <div className="text-center space-y-2 mb-4">
                       {showLogo && (
                         <div className="flex justify-center select-none">
-                          <div className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-[#ffe2ab]">
-                            <span className="material-symbols-outlined text-sm font-black">flatware</span>
-                          </div>
+                          {restaurantLogo ? (
+                            <img
+                              src={restaurantLogo}
+                              alt="Restaurant logo"
+                              className="w-10 h-10 rounded-lg object-contain border border-white/10 bg-black/30 p-0.5"
+                            />
+                          ) : (
+                            <div className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-[#ffe2ab]">
+                              <span className="material-symbols-outlined text-sm font-black">flatware</span>
+                            </div>
+                          )}
                         </div>
                       )}
                       
@@ -3351,7 +3420,7 @@ export default function DashboardPage() {
 
                             return paginated.map((member) => (
                               <tr key={member.id} className={`hover:${t.cardHover} transition-colors`}>
-                                <td className="px-6 py-4 flex items-center gap-3">
+                              <td className="px-4 sm:px-6 py-4 flex items-center gap-3">
                                   {member.avatar ? (
                                     <div className={`w-[36px] h-[36px] rounded-lg overflow-hidden border ${t.borderStrong} flex-shrink-0`}>
                                       <img 
@@ -5518,9 +5587,17 @@ export default function DashboardPage() {
                       <div className="text-center space-y-1.5 mb-3">
                         {showLogo && (
                           <div className="flex justify-center select-none mb-1">
-                            <div className="w-7 h-7 rounded-lg bg-black border border-white/10 flex items-center justify-center text-[#ffe2ab]">
-                              <span className="material-symbols-outlined text-[13px] font-black">flatware</span>
-                            </div>
+                            {restaurantLogo ? (
+                              <img
+                                src={restaurantLogo}
+                                alt="Restaurant logo"
+                                className="w-9 h-9 rounded-lg object-contain border border-white/10 bg-black/30 p-0.5"
+                              />
+                            ) : (
+                              <div className="w-7 h-7 rounded-lg bg-black border border-white/10 flex items-center justify-center text-[#ffe2ab]">
+                                <span className="material-symbols-outlined text-[13px] font-black">flatware</span>
+                              </div>
+                            )}
                           </div>
                         )}
                         
@@ -5626,10 +5703,46 @@ export default function DashboardPage() {
 
                   {/* Upload Brand Logo card */}
                   <div className={`${t.cardBgOpaque} rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center text-center`}>
-                    <div className={`w-16 h-16 rounded-xl ${t.inputBg} border border-dashed ${t.borderStrong} flex flex-col items-center justify-center text-[#A69984] mb-3.5 cursor-pointer hover:border-[#ffc53d]/50 hover:text-[#ffc53d] transition-colors`}>
-                      <span className="material-symbols-outlined text-xl">upload_file</span>
-                    </div>
-                    <p className={`text-[10px] ${t.textMuted} font-semibold leading-relaxed max-w-[200px]`}>
+                    <input
+                      ref={logoFileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                    {restaurantLogo ? (
+                      <div className="flex flex-col items-center gap-3">
+                        <img
+                          src={restaurantLogo}
+                          alt="Restaurant logo"
+                          className="w-20 h-20 rounded-xl object-contain border border-white/10 bg-black/30 p-1"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => logoFileInputRef.current?.click()}
+                            className={`text-[9px] font-bold ${t.accentText} ${t.inputBg} border ${t.inputBorder} rounded-lg px-3 py-1.5 hover:border-[#ffc53d]/50 transition-colors`}
+                          >
+                            Replace
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleLogoRemove}
+                            className="text-[9px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-1.5 hover:border-red-500/40 transition-colors"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className={`w-16 h-16 rounded-xl ${t.inputBg} border border-dashed ${t.borderStrong} flex flex-col items-center justify-center text-[#A69984] mb-3.5 cursor-pointer hover:border-[#ffc53d]/50 hover:text-[#ffc53d] transition-colors`}
+                        onClick={() => logoFileInputRef.current?.click()}
+                      >
+                        <span className="material-symbols-outlined text-xl">upload_file</span>
+                      </div>
+                    )}
+                    <p className={`text-[10px] ${t.textMuted} font-semibold leading-relaxed max-w-[200px] mt-2`}>
                       Recommended size: 512×512px SVG or high-res PNG.
                     </p>
                   </div>
@@ -6012,15 +6125,15 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full text-left border-collapse min-w-[700px]">
                     <thead>
                       <tr className={`border-b ${t.border} ${t.inputBg}/50 text-[9.5px] font-bold ${t.textMuted} uppercase tracking-widest`}>
-                        <th className="px-6 py-4">{tr.itemCol}</th>
-                        <th className="px-6 py-4">{tr.categoryCol}</th>
-                        <th className="px-6 py-4 text-right">{tr.costCol}</th>
-                        <th className="px-6 py-4 text-right">{tr.priceCol}</th>
-                        <th className="px-6 py-4 text-right">{tr.marginCol}</th>
-                        <th className="px-6 py-4 text-center">{tr.actionsCol}</th>
+                        <th className="px-4 sm:px-6 py-4">{tr.itemCol}</th>
+                        <th className="px-4 sm:px-6 py-4 hidden md:table-cell">{tr.categoryCol}</th>
+                        <th className="px-4 sm:px-6 py-4 text-right hidden lg:table-cell">{tr.costCol}</th>
+                        <th className="px-4 sm:px-6 py-4 text-right">{tr.priceCol}</th>
+                        <th className="px-4 sm:px-6 py-4 text-right hidden md:table-cell">{tr.marginCol}</th>
+                        <th className="px-4 sm:px-6 py-4 text-center">{tr.actionsCol}</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${t.divider} font-sans text-xs`}>
@@ -6086,20 +6199,20 @@ export default function DashboardPage() {
                                   </div>
                                 </div>
                               </td>
-                              <td className={`px-6 py-4 align-middle capitalize text-xs ${t.textMuted}`}>
+                              <td className="px-4 sm:px-6 py-4 align-middle capitalize text-xs ${t.textMuted} hidden md:table-cell">
                                 {categories.find(c => c.id === item.category)?.name || item.category}
                               </td>
-                              <td className="px-6 py-4 text-right align-middle font-mono font-bold text-white/70">
+                              <td className="px-4 sm:px-6 py-4 text-right align-middle font-mono font-bold text-white/70 hidden lg:table-cell">
                                 {formatCurrency(item.cost || 0)}
                               </td>
-                              <td className="px-6 py-4 text-right align-middle font-mono font-bold text-[#ffe2ab]">
+                              <td className="px-4 sm:px-6 py-4 text-right align-middle font-mono font-bold text-[#ffe2ab]">
                                 {formatCurrency(item.price || 0)}
                               </td>
-                              <td className={`px-6 py-4 text-right align-middle font-mono font-bold ${marginColor}`}>
+                              <td className={`px-4 sm:px-6 py-4 text-right align-middle font-mono font-bold ${marginColor} hidden md:table-cell`}>
                                 {margin.toFixed(1)}%
                               </td>
-                              <td className="px-6 py-4 align-middle">
-                                <div className="flex items-center justify-center gap-2">
+                              <td className="px-4 sm:px-6 py-4 align-middle">
+                                <div className="flex items-center justify-center gap-1 sm:gap-2">
                                   <button type="button"
                                     onClick={() => handleToggleSpecial(item)}
                                     className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors border ${item.category === 'special' ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' : `${t.borderStrong} hover:border-amber-500/20 text-[#A69984] hover:text-amber-400`} cursor-pointer`}
@@ -6166,6 +6279,31 @@ export default function DashboardPage() {
                TAB: ANALYTICS
           ═══════════════════════════════════════════════════════════ */}
           {activeTab === 'analytics' && (() => {
+            // Real tenants get an empty analytics view; demo tenants see mock data
+            if (!isDemoTenant()) {
+              return (
+                <div className="space-y-8 font-sans animate-fade-in duration-300">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h1 className={`font-serif text-[38px] font-bold ${t.text} tracking-wide leading-none`}>
+                        {tr.analyticsTitle}
+                      </h1>
+                      <p className={`${t.textMuted} text-[12.5px] font-semibold mt-2 leading-relaxed`}>
+                        {tr.analyticsDesc}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-16 text-center`}>
+                    <span className={`material-symbols-outlined text-5xl ${t.textMuted} opacity-30 mb-4`}>analytics</span>
+                    <h3 className={`${t.text} font-bold text-lg mb-2`}>No Analytics Data Yet</h3>
+                    <p className={`${t.textMuted} text-sm max-w-md mx-auto`}>
+                      Analytics will appear here as your restaurant processes orders and generates revenue data.
+                    </p>
+                  </div>
+                </div>
+              );
+            }
+
             // ── Mock dataset keyed by range ──────────────────────────
             const datasets = {
               today: {
@@ -8903,8 +9041,8 @@ export default function DashboardPage() {
       )}
 
       {showMenuAddEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
-          <div className={`${t.cardBgOpaque} border w-[460px] rounded-2xl p-7 shadow-2xl space-y-5 animate-scale-up`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans p-4">
+          <div className={`${t.cardBgOpaque} border w-full max-w-[460px] max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-7 shadow-2xl space-y-5 animate-scale-up custom-scrollbar`}>
             <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
               <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>
                 {editingMenuItem ? 'Edit Menu Item' : 'Add New Menu Item'}
@@ -9147,7 +9285,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Drink Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
                     {/* None Option */}
                     <button
                       type="button"
@@ -9204,7 +9342,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Footer controls */}
-              <div className="flex gap-4 pt-4">
+              <div className="flex flex-col sm:flex-row gap-4 pt-4">
                 <button type="button"
                   onClick={() => {
                     setShowMenuAddEditModal(false);
@@ -9226,8 +9364,8 @@ export default function DashboardPage() {
       )}
 
       {showCategoryManagerModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
-          <div className={`${t.cardBgOpaque} border w-[480px] rounded-2xl p-7 shadow-2xl space-y-6 animate-scale-up`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans p-4">
+          <div className={`${t.cardBgOpaque} border w-full max-w-[480px] max-h-[90vh] overflow-y-auto rounded-2xl p-5 sm:p-7 shadow-2xl space-y-6 animate-scale-up custom-scrollbar`}>
             
             <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
               <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>
