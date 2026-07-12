@@ -72,6 +72,48 @@ export interface ApiResponseEnvelope<T = any> {
   isOfflineFallback?: boolean;
 }
 
+// ==========================================
+// REFRESH TOKEN RACE CONDITION HANDLER
+// ==========================================
+// When the JWT expires, multiple parallel API calls all get 401.
+// Each would trigger a refresh, but the server rotates the refresh token
+// on the first success, causing all subsequent refreshes to fail.
+// This mutex ensures only ONE refresh request is in flight at a time.
+
+let refreshPromise: Promise<string | null> | null = null;
+
+async function attemptTokenRefresh(): Promise<string | null> {
+  try {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+
+    if (refreshRes.ok) {
+      const refreshData = await refreshRes.json();
+      if (refreshData.success && refreshData.data?.token) {
+        const newToken = refreshData.data.token;
+        localStorage.setItem('dinepos_jwt_token', newToken);
+        return newToken;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function getRefreshPromise(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = attemptTokenRefresh().finally(() => {
+      // Clear the shared promise so the next batch of 401s triggers a new refresh
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 /**
  * Checks if the backend API server is reachable.
  */
@@ -128,53 +170,43 @@ export async function apiRequest<T = any>(
     
     // Handle unauthorized/session expired -> try to refresh
     if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
-      try {
-        const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include'
-        });
+      // Use the shared refresh mutex — only one refresh request in flight at a time
+      const newToken = await getRefreshPromise();
 
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json();
-          if (refreshData.success && refreshData.data?.token) {
-            const newToken = refreshData.data.token;
-            localStorage.setItem('dinepos_jwt_token', newToken);
-            
-            // Retry the original request
-            const retryHeaders = new Headers(finalOptions.headers || {});
-            retryHeaders.set('Authorization', `Bearer ${newToken}`);
-            const retryOptions = { ...finalOptions, headers: retryHeaders };
-            const retryRes = await fetch(url, retryOptions);
-            
-            const retryContentType = retryRes.headers.get('content-type');
-            let retryDataObj;
-            if (retryContentType && retryContentType.includes('application/json')) {
-              retryDataObj = await retryRes.json();
-            } else {
-              retryDataObj = { message: await retryRes.text() };
-            }
+      if (newToken) {
+        // Retry the original request with the new token
+        const retryHeaders = new Headers(finalOptions.headers || {});
+        retryHeaders.set('Authorization', `Bearer ${newToken}`);
+        const retryOptions = { ...finalOptions, headers: retryHeaders };
+        const retryRes = await fetch(url, retryOptions);
 
-            if (!retryRes.ok) {
-              return {
-                success: false,
-                error: retryDataObj.error || `HTTP error! Status: ${retryRes.status}`,
-              };
-            }
-            return {
-              success: true,
-              data: retryDataObj.data !== undefined ? retryDataObj.data : retryDataObj,
-            };
-          }
+        const retryContentType = retryRes.headers.get('content-type');
+        let retryDataObj;
+        if (retryContentType && retryContentType.includes('application/json')) {
+          retryDataObj = await retryRes.json();
+        } else {
+          retryDataObj = { message: await retryRes.text() };
         }
-      } catch (refreshErr) {
-        console.error('[API Client] Silent token refresh failed:', refreshErr);
+
+        if (!retryRes.ok) {
+          return {
+            success: false,
+            error: retryDataObj.error || `HTTP error! Status: ${retryRes.status}`,
+          };
+        }
+        return {
+          success: true,
+          data: retryDataObj.data !== undefined ? retryDataObj.data : retryDataObj,
+        };
       }
 
-      // If refresh failed or was bypassed, clean up token
-      localStorage.removeItem('dinepos_jwt_token');
-      localStorage.removeItem('dinepos_user_account');
-      window.dispatchEvent(new Event('dinepos_unauthorized'));
+      // Refresh failed — only log out if this is the definitive failure
+      // (not if another concurrent request is handling it)
+      if (!refreshPromise) {
+        localStorage.removeItem('dinepos_jwt_token');
+        localStorage.removeItem('dinepos_user_account');
+        window.dispatchEvent(new Event('dinepos_unauthorized'));
+      }
     }
 
     const contentType = response.headers.get('content-type');
