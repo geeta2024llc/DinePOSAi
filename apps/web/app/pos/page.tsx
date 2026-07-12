@@ -6,6 +6,7 @@ import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { deductStockForOrder } from '../inventoryUtils';
 import { apiRequest, isDemoTenant } from '@/utils/api';
+import { usePrinter } from '../printerContext';
 import ReceiptPrintModal, { ReceiptData } from '@/components/ui/ReceiptPrintModal';
 
 
@@ -323,6 +324,7 @@ const mapDbOrderToPosTicket = (o: any, taxDineIn = 0.085, taxTakeaway = 0.085, t
 
 export default function PosPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
+  const { kickCashDrawer } = usePrinter();
   const [tickets, setTickets] = useState<PosTicket[]>(initialTickets);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('ticket-1');
   const [quickFilter, setQuickFilter] = useState<'open' | 'payment' | 'vip'>('open');
@@ -351,6 +353,7 @@ export default function PosPage() {
   const [cashierAutoGratuityPct, setCashierAutoGratuityPct] = useState(20);
   const [cashierAutoGratuityMinCovers, setCashierAutoGratuityMinCovers] = useState(6);
   const [cashierLanguage, setCashierLanguage] = useState('en');
+  const [drawerAutoOpen, setDrawerAutoOpen] = useState(true);
 
   const t = (enText: string, jaText: string) => {
     return cashierLanguage === 'ja' ? jaText : enText;
@@ -582,6 +585,9 @@ export default function PosPage() {
 
       const savedLang = localStorage.getItem('dinepos_cashier_language');
       if (savedLang) setCashierLanguage(savedLang);
+
+      const savedDrawerAutoOpen = localStorage.getItem('dinepos_cashier_drawer_autoopen');
+      if (savedDrawerAutoOpen !== null) setDrawerAutoOpen(savedDrawerAutoOpen !== 'false');
 
       // Load tickets from dinepos_shared_tickets
       const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
@@ -1275,6 +1281,13 @@ export default function PosPage() {
       });
       setPendingCloseMsg(successMsg);
       setReceiptModalOpen(true);
+
+      // Auto-kick cash drawer on cash payments if enabled
+      if (checkoutPaymentMethod.toUpperCase() === 'CASH' && drawerAutoOpen) {
+        kickCashDrawer().catch(err => {
+          console.error('[POS] Cash drawer kick failed:', err);
+        });
+      }
     }, 300);
   };
 

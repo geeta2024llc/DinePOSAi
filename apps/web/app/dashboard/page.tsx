@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { apiRequest, isDemoTenant } from '@/utils/api';
 import { useAuth } from '../authContext';
+import { usePrinter } from '../printerContext';
 import { recordActivity, getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
 import {
   InventoryItem,
@@ -931,6 +932,7 @@ const translations: Record<string, Record<string, string>> = {
 export default function DashboardPage() {
   const router = useRouter();
   const { logout: ctxLogout } = useAuth();
+  const { testPrint, kickCashDrawer } = usePrinter();
   const searchParams = useSearchParams();
   // CMS Configuration State
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
@@ -2299,10 +2301,11 @@ export default function DashboardPage() {
     }, 400);
   };
 
-  const handleRunPrinterTest = (devId: string, devName: string) => {
+  const handleRunPrinterTest = async (devId: string, devName: string) => {
     setPrintingDevices(prev => ({ ...prev, [devId]: true }));
     triggerToast(`Sending 80mm test print job to ${devName}...`, 'info');
-    setTimeout(() => {
+    try {
+      await testPrint();
       setPrintingDevices(prev => ({ ...prev, [devId]: false }));
       triggerToast(`Test print completed successfully on ${devName}!`, 'success');
       setAuditLogs(prev => [
@@ -2315,7 +2318,10 @@ export default function DashboardPage() {
         },
         ...prev
       ]);
-    }, 2000);
+    } catch (err) {
+      setPrintingDevices(prev => ({ ...prev, [devId]: false }));
+      triggerToast(`Test print failed on ${devName}. Check printer connection.`, 'info');
+    }
   };
 
   const handleApplyChanges = () => {
@@ -4663,7 +4669,11 @@ export default function DashboardPage() {
                     </div>
 
                     <button type="button" 
-                      onClick={() => triggerToast('Sending manual kick signal to Cash Drawer 01... Drawer kicked open!', 'success')}
+                      onClick={async () => {
+                        triggerToast('Sending manual kick signal to Cash Drawer 01...', 'info');
+                        await kickCashDrawer();
+                        triggerToast('Drawer kicked open!', 'success');
+                      }}
                       className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                     >
                       Test Drawer Kick

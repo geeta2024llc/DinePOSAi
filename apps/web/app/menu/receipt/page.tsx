@@ -74,7 +74,7 @@ export default function ReceiptPreviewPage() {
   const [restaurantAddress, setRestaurantAddress] = useState('1200 Gastronomy Way, Suite 400\nNew York, NY 10001');
   const [showLogoOnReceipt, setShowLogoOnReceipt] = useState(true);
 
-  const { config: printerConfig, status: printerStatus, logs: printerLogs, printReceipt: dispatchPrintReceipt, setConfig: setPrinterConfig } = usePrinter();
+  const { config: printerConfig, status: printerStatus, logs: printerLogs, printReceipt: dispatchPrintReceipt, setConfig: setPrinterConfig, scanAndPair } = usePrinter();
 
   // Bluetooth print console logs states
   const [isBluetoothModalOpen, setIsBluetoothModalOpen] = useState(false);
@@ -293,12 +293,20 @@ export default function ReceiptPreviewPage() {
 
   const handleBluetoothPrint = async () => {
     setIsBluetoothModalOpen(true);
+    const originalConfig = { ...printerConfig };
     try {
-      // Temporarily change context config to bluetooth if needed, or print with current active printer
+      // Switch to bluetooth if not already configured
+      if (printerConfig.type !== 'bluetooth') {
+        triggerToast('Scanning for Bluetooth printer...');
+        await scanAndPair('bluetooth');
+      }
       await dispatchPrintReceipt(formatPrintData());
-      triggerToast('Print job dispatched.');
+      triggerToast('Print job dispatched via Bluetooth.');
     } catch (e: any) {
-      triggerToast(`Connection error: ${e.message || e}`);
+      triggerToast(`Bluetooth print error: ${e.message || e}`);
+    } finally {
+      // Restore original printer config
+      setPrinterConfig(originalConfig);
     }
   };
 

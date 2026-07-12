@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
+import { usePrinter } from '../../printerContext';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 
 interface Operator {
@@ -36,6 +37,7 @@ const AVAILABLE_OPERATORS: Operator[] = [
 
 export default function CashierSettingsPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
+  const { config: printerConfig, scanAndPair, testPrint, status: printerStatus } = usePrinter();
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -398,12 +400,47 @@ export default function CashierSettingsPage() {
 
                 <button
                   type="button"
-                  onClick={() => triggerToast('Sending test ticket print job via service...')}
+                  onClick={async () => {
+                    triggerToast('Sending test ticket print job...');
+                    await testPrint();
+                    triggerToast('Test receipt printed successfully!');
+                  }}
                   className="w-full py-3 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <span className="material-symbols-outlined text-sm">print_connect</span>
                   Print Test Receipt
                 </button>
+
+                {/* Bluetooth Connect Button */}
+                <div className="border-t border-white/5 pt-4 mt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <h4 className="text-white font-bold">Bluetooth Printer</h4>
+                      <p className="text-[10px] text-[#A69984]/50 mt-0.5">
+                        {printerConfig.type === 'bluetooth' 
+                          ? `Connected: ${printerConfig.name}` 
+                          : 'No Bluetooth printer connected'}
+                      </p>
+                    </div>
+                    <div className={`w-2 h-2 rounded-full ${printerConfig.type === 'bluetooth' ? 'bg-emerald-500' : 'bg-white/20'}`} />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        triggerToast('Scanning for Bluetooth printers...');
+                        await scanAndPair('bluetooth');
+                        triggerToast('Bluetooth printer connected successfully!');
+                      } catch (err: any) {
+                        triggerToast(`Bluetooth connection failed: ${err.message || 'cancelled'}`);
+                      }
+                    }}
+                    className="w-full py-3 bg-blue-500/10 border border-blue-500/20 hover:bg-blue-500/20 text-blue-400 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-sm">bluetooth</span>
+                    {printerConfig.type === 'bluetooth' ? 'Reconnect Printer' : 'Connect Bluetooth Printer'}
+                  </button>
+                </div>
               </div>
             </div>
 

@@ -46,8 +46,16 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
   const receiptRef = useRef<HTMLDivElement>(null);
   const [btStep, setBtStep] = useState<BluetoothStep>('idle');
   const [isPrinting, setIsPrinting] = useState(false);
+  const [restaurantLogo, setRestaurantLogo] = useState<string | null>(null);
 
   const { config: printerConfig, printReceipt: dispatchPrintReceipt, scanAndPair } = usePrinter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLogo = localStorage.getItem('dinepos_restaurant_logo');
+      if (savedLogo) setRestaurantLogo(savedLogo);
+    }
+  }, []);
 
   const mapToPrintReceiptData = (data: ReceiptData): PrintReceiptData => {
     const tableNum = parseInt(data.tableLabel.replace(/[^0-9]/g, ''), 10) || 0;
@@ -167,6 +175,12 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
               color: #000 !important;
               margin-bottom: 6px;
               display: inline-block;
+            }
+            .logo-img {
+              max-height: 48px;
+              max-width: 100px;
+              object-fit: contain;
+              margin-bottom: 6px;
             }
             .restaurant-name {
               font-family: 'Playfair Display', serif;
@@ -340,7 +354,7 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
         <body>
           <div class="receipt-container">
             <div class="header">
-              <span class="logo-icon">restaurant</span>
+              ${restaurantLogo ? `<img src="${restaurantLogo}" alt="Restaurant logo" class="logo-img" />` : `<span class="logo-icon">restaurant</span>`}
               <h4 class="restaurant-name">${escapeHtml(receiptData.restaurantName)}</h4>
               <p class="subtitle">Official Transaction Receipt</p>
             </div>

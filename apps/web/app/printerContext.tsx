@@ -12,6 +12,7 @@ interface PrinterContextType {
   setConfig: (cfg: PrinterConfig) => void;
   scanAndPair: (type: 'bluetooth' | 'usb') => Promise<void>;
   printReceipt: (data: PrintReceiptData) => Promise<void>;
+  kickCashDrawer: () => Promise<void>;
   testPrint: () => Promise<void>;
   clearLogs: () => void;
 }
@@ -23,6 +24,7 @@ const defaultContext: PrinterContextType = {
   setConfig: () => {},
   scanAndPair: async () => {},
   printReceipt: async () => {},
+  kickCashDrawer: async () => {},
   testPrint: async () => {},
   clearLogs: () => {}
 };
@@ -93,6 +95,17 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const kickCashDrawer = async () => {
+    try {
+      setStatus('connecting');
+      await service.kickCashDrawer(config, addLog);
+      setStatus('connected');
+    } catch (err: any) {
+      setStatus('error');
+      addLog(`❌ Cash drawer kick failed: ${err.message || err}`);
+    }
+  };
+
   const testPrint = async () => {
     const testData: PrintReceiptData = {
       tableNumber: 99,
@@ -124,6 +137,7 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
         setConfig,
         scanAndPair,
         printReceipt,
+        kickCashDrawer,
         testPrint,
         clearLogs
       }}
