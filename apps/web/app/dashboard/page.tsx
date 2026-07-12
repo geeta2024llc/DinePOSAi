@@ -1466,79 +1466,7 @@ export default function DashboardPage() {
     voidTransactions: 'Manager+',
     accessAdminDashboard: 'Full Staff'
   });
-  const [staffMembers, setStaffMembers] = useState(() => {
-    // Real registered tenants start with an empty staff list.
-    // Demo/guest users see the hardcoded sample team.
-    if (typeof window !== 'undefined' && !isDemoTenant()) {
-      return [];
-    }
-    return [
-      {
-        id: 'EMP-010',
-        name: 'Elena Rodriguez',
-        role: 'Head Sommelier',
-        status: 'ON_SHIFT',
-        performance: 4.8,
-        avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=120&auto=format&fit=crop'
-      },
-      {
-        id: 'EMP-014',
-        name: 'Marcus Chen',
-        role: 'Executive Sous Chef',
-        status: 'OFF_DUTY',
-        performance: 4.8,
-        avatar: ''
-      },
-      {
-        id: 'EMP-048',
-        name: 'Sarah Jenkins',
-        role: "Maitre D'",
-        status: 'OVERTIME',
-        performance: 5.0,
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop'
-      },
-      {
-        id: 'EMP-052',
-        name: 'David Vance',
-        role: 'Bartender',
-        status: 'ON_SHIFT',
-        performance: 4.5,
-        avatar: ''
-      },
-      {
-        id: 'EMP-061',
-        name: 'Lisa Kim',
-        role: 'Server',
-        status: 'ON_SHIFT',
-        performance: 4.7,
-        avatar: ''
-      },
-      {
-        id: 'EMP-073',
-        name: 'Robert Taylor',
-        role: 'Line Cook',
-        status: 'OFF_DUTY',
-        performance: 4.2,
-        avatar: ''
-      },
-      {
-        id: 'EMP-088',
-        name: 'Emily Davis',
-        role: 'Server',
-        status: 'OFF_DUTY',
-        performance: 4.6,
-        avatar: ''
-      },
-      {
-        id: 'EMP-092',
-        name: 'John Watson',
-        role: 'Manager',
-        status: 'ON_SHIFT',
-        performance: 4.9,
-        avatar: ''
-      }
-    ];
-  });
+  const [staffMembers, setStaffMembers] = useState<Array<{id: string; name: string; role: string; status: string; performance: number; avatar: string}>>([]);
 
   const [newEmployee, setNewEmployee] = useState({
     name: '',
@@ -1556,72 +1484,82 @@ export default function DashboardPage() {
     status: 'ONLINE',
     details: ''
   });
-  const [devicesList, setDevicesList] = useState([
-    {
-      id: 'DEV-001',
-      type: 'POS',
-      name: 'Terminal 01',
-      subtitle: "Maitre D' Stand",
-      ipAddress: '192.168.1.101',
-      battery: '95%',
-      uptime: '14d 2h',
-      status: 'ONLINE',
-      details: ''
-    },
-    {
-      id: 'DEV-002',
-      type: 'POS',
-      name: 'Terminal 02',
-      subtitle: 'Bar Left',
-      ipAddress: '192.168.1.102',
-      battery: '100% (Wired)',
-      uptime: '6d 12h',
-      status: 'ONLINE',
-      details: ''
-    },
-    {
-      id: 'DEV-003',
-      type: 'PRINTER',
-      name: 'Kitchen Hot',
-      subtitle: 'Ethernet Impact',
-      status: 'ONLINE',
-      details: 'Routing: Grill, Sauté, Expo'
-    },
-    {
-      id: 'DEV-004',
-      type: 'PRINTER',
-      name: 'Bar Receipt',
-      subtitle: 'BT-80mm Thermal',
-      status: 'WARNING_LOW_PAPER',
-      details: 'Warning: Low Paper'
-    },
-    {
-      id: 'DEV-005',
-      type: 'KDS',
-      name: 'Expo Screen 1',
-      ipAddress: '192.168.1.201',
-      status: 'ONLINE',
-      details: 'Syncing: Real-time'
+  const [devicesList, setDevicesList] = useState(() => {
+    if (typeof window !== 'undefined' && !isDemoTenant()) {
+      return [];
     }
-  ]);
+    return [
+      {
+        id: 'DEV-001',
+        type: 'POS',
+        name: 'Terminal 01',
+        subtitle: "Maitre D' Stand",
+        ipAddress: '192.168.1.101',
+        battery: '95%',
+        uptime: '14d 2h',
+        status: 'ONLINE',
+        details: ''
+      },
+      {
+        id: 'DEV-002',
+        type: 'POS',
+        name: 'Terminal 02',
+        subtitle: 'Bar Left',
+        ipAddress: '192.168.1.102',
+        battery: '100% (Wired)',
+        uptime: '6d 12h',
+        status: 'ONLINE',
+        details: ''
+      },
+      {
+        id: 'DEV-003',
+        type: 'PRINTER',
+        name: 'Kitchen Hot',
+        subtitle: 'Ethernet Impact',
+        status: 'ONLINE',
+        details: 'Routing: Grill, Sauté, Expo'
+      },
+      {
+        id: 'DEV-004',
+        type: 'PRINTER',
+        name: 'Bar Receipt',
+        subtitle: 'BT-80mm Thermal',
+        status: 'WARNING_LOW_PAPER',
+        details: 'Warning: Low Paper'
+      },
+      {
+        id: 'DEV-005',
+        type: 'KDS',
+        name: 'Expo Screen 1',
+        ipAddress: '192.168.1.201',
+        status: 'ONLINE',
+        details: 'Syncing: Real-time'
+      }
+    ];
+  });
 
-  const [activeAlerts, setActiveAlerts] = useState([
-    {
-      id: 'ALERT-001',
-      title: 'Bar Printer (BT-80mm)',
-      text: 'Low paper warning. Estimated 10 receipts remaining.',
-      time: '2m ago',
-      type: 'warning'
-    },
-    {
-      id: 'ALERT-002',
-      title: 'Main Dining Router',
-      text: 'Firmware update available (v2.4.1).',
-      time: '1h ago',
-      type: 'info',
-      updateBtn: true
+  const [activeAlerts, setActiveAlerts] = useState(() => {
+    if (typeof window !== 'undefined' && !isDemoTenant()) {
+      return [];
     }
-  ]);
+    return [
+      {
+        id: 'ALERT-001',
+        title: 'Bar Printer (BT-80mm)',
+        text: 'Low paper warning. Estimated 10 receipts remaining.',
+        time: '2m ago',
+        type: 'warning'
+      },
+      {
+        id: 'ALERT-002',
+        title: 'Main Dining Router',
+        text: 'Firmware update available (v2.4.1).',
+        time: '1h ago',
+        type: 'info',
+        updateBtn: true
+      }
+    ];
+  });
 
   // Hardware Global Settings States
   const [autoReconnect, setAutoReconnect] = useState(true);
@@ -1814,8 +1752,8 @@ export default function DashboardPage() {
         }
       }
 
-      // Pre-link default admin account for out-of-the-box functionality
-      if (!connections['admin@dinepos.ai']) {
+      // Pre-link default admin account for out-of-the-box functionality (demo only)
+      if (isDemoTenant() && !connections['admin@dinepos.ai']) {
         connections['admin@dinepos.ai'] = {
           stripeAccountId: 'acct_1x9u82HfdK72',
           linkedAt: new Date().toISOString()
@@ -1907,18 +1845,28 @@ export default function DashboardPage() {
   // Security Panel States
   const [sessionTimeout, setSessionTimeout] = useState('15');
   const [passcodeLength, setPasscodeLength] = useState('4');
-  const [securityPermissions, setSecurityPermissions] = useState<Record<string, Record<string, boolean>>>({
-    'Manager': { 'refundOrders': true, 'compDishes': true, 'reopenDays': true, 'editMenu': true, 'voidItems': true },
-    'Server': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
-    'Bartender': { 'refundOrders': false, 'compDishes': true, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
-    'Cook': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
+  const [securityPermissions, setSecurityPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
+    if (typeof window !== 'undefined' && !isDemoTenant()) {
+      return {} as Record<string, Record<string, boolean>>;
+    }
+    return {
+      'Manager': { 'refundOrders': true, 'compDishes': true, 'reopenDays': true, 'editMenu': true, 'voidItems': true },
+      'Server': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
+      'Bartender': { 'refundOrders': false, 'compDishes': true, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
+      'Cook': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
+    };
   });
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 1, time: '10m ago', actor: 'Sarah Jenkins (Maitre D\')', action: 'Authorized $42.00 check void', type: 'warning' },
-    { id: 2, time: '42m ago', actor: 'Elena Rodriguez (Sommelier)', action: 'Re-routed drink queue to Service Bar Printer', type: 'info' },
-    { id: 3, time: '1h 15m ago', actor: 'System Auto-Daemon', action: 'Created night audit backup (db_dump_0603.sql)', type: 'success' },
-    { id: 4, time: '3h ago', actor: 'Admin', action: 'Modified Stripe API keys', type: 'security' },
-  ]);
+  const [auditLogs, setAuditLogs] = useState(() => {
+    if (typeof window !== 'undefined' && !isDemoTenant()) {
+      return [];
+    }
+    return [
+      { id: 1, time: '10m ago', actor: 'Sarah Jenkins (Maitre D\')', action: 'Authorized $42.00 check void', type: 'warning' },
+      { id: 2, time: '42m ago', actor: 'Elena Rodriguez (Sommelier)', action: 'Re-routed drink queue to Service Bar Printer', type: 'info' },
+      { id: 3, time: '1h 15m ago', actor: 'System Auto-Daemon', action: 'Created night audit backup (db_dump_0603.sql)', type: 'success' },
+      { id: 4, time: '3h ago', actor: 'Admin', action: 'Modified Stripe API keys', type: 'security' },
+    ];
+  });
 
   // Toast alert feedback states
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'info' }>({
@@ -2037,7 +1985,7 @@ export default function DashboardPage() {
       if (savedMenu) {
         try {
           let loadedItems = JSON.parse(savedMenu);
-          if (!loadedItems.some((item: any) => item.category === 'combos')) {
+          if (isDemoTenant() && !loadedItems.some((item: any) => item.category === 'combos')) {
             const defaultCombos = [
               { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, cost: 40, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
               { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, cost: 20, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] }
@@ -2048,11 +1996,14 @@ export default function DashboardPage() {
           setMenuItemsList(loadedItems);
         } catch (e) {
           console.error('Failed to parse menu items:', e);
-          setMenuItemsList(defaultMenuItems);
+          setMenuItemsList(isDemoTenant() ? defaultMenuItems : []);
         }
       } else {
-        setMenuItemsList(defaultMenuItems);
-        localStorage.setItem('dinepos_menu_items', JSON.stringify(defaultMenuItems));
+        const fallbackItems = isDemoTenant() ? defaultMenuItems : [];
+        setMenuItemsList(fallbackItems);
+        if (fallbackItems.length > 0) {
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(fallbackItems));
+        }
       }
 
       const savedCategories = localStorage.getItem('dinepos_menu_categories');
@@ -2062,7 +2013,7 @@ export default function DashboardPage() {
           loadedCategories = loadedCategories.map((c: any) => 
             c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
           );
-          if (!loadedCategories.some((c: any) => c.id === 'combos')) {
+          if (isDemoTenant() && !loadedCategories.some((c: any) => c.id === 'combos')) {
             const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
             if (specIdx !== -1) {
               loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
@@ -2074,11 +2025,14 @@ export default function DashboardPage() {
           setCategories(loadedCategories);
         } catch (e) {
           console.error('Failed to parse saved categories:', e);
-          setCategories(defaultCategories);
+          setCategories(isDemoTenant() ? defaultCategories : []);
         }
       } else {
-        setCategories(defaultCategories);
-        localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
+        const fallbackCategories = isDemoTenant() ? defaultCategories : [];
+        setCategories(fallbackCategories);
+        if (fallbackCategories.length > 0) {
+          localStorage.setItem('dinepos_menu_categories', JSON.stringify(fallbackCategories));
+        }
       }
     };
 
@@ -6288,10 +6242,7 @@ export default function DashboardPage() {
           {/* ═══════════════════════════════════════════════════════════
                TAB: ANALYTICS
           ═══════════════════════════════════════════════════════════ */}
-          {activeTab === 'analytics' && (() => {
-            // Real tenants get an empty analytics view; demo tenants see mock data
-            if (!isDemoTenant()) {
-              return (
+          {activeTab === 'analytics' && (
                 <div className="space-y-8 font-sans animate-fade-in duration-300">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
@@ -6311,627 +6262,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                 </div>
-              );
-            }
-
-            // ── Mock dataset keyed by range ──────────────────────────
-            const datasets = {
-              today: {
-                revenue: 8420, orders: 64, covers: 148, avgCheck: 131.56,
-                revTrend: [320, 490, 870, 1240, 1580, 1320, 880, 640, 510, 300, 120, 150],
-                trendLabels: ['11a','12p','1p','2p','3p','4p','5p','6p','7p','8p','9p','10p'],
-                dineIn: 68, takeaway: 22, delivery: 10,
-                peakHours: [12, 28, 64, 100, 88, 52, 76, 96, 80, 44, 20, 10],
-              },
-              week: {
-                revenue: 52840, orders: 398, covers: 912, avgCheck: 132.77,
-                revTrend: [6200, 7800, 5900, 8100, 9400, 7600, 7840],
-                trendLabels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
-                dineIn: 65, takeaway: 24, delivery: 11,
-                peakHours: [8, 22, 58, 100, 84, 46, 72, 94, 76, 40, 18, 8],
-              },
-              month: {
-                revenue: 214600, orders: 1612, covers: 3740, avgCheck: 133.12,
-                revTrend: [7200, 8100, 6800, 9200, 7600, 8900, 7400, 8600, 9800, 7100, 8200, 9600,
-                           7800, 8400, 6900, 9100, 8300, 7500, 9400, 8700, 7200, 8000, 9300, 7600,
-                           8500, 7100, 9700, 8200, 7900, 8600],
-                trendLabels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                dineIn: 64, takeaway: 25, delivery: 11,
-                peakHours: [7, 20, 55, 100, 82, 44, 68, 92, 74, 38, 16, 7],
-              },
-              '30days': {
-                revenue: 198400, orders: 1490, covers: 3420, avgCheck: 133.15,
-                revTrend: [7100, 7900, 6700, 9000, 7500, 8700, 7300, 8500, 9700, 7000, 8100, 9500,
-                           7700, 8300, 6800, 9000, 8200, 7400, 9300, 8600, 7100, 7900, 9200, 7500,
-                           8400, 7000, 9600, 8100, 7800, 8500],
-                trendLabels: Array.from({ length: 30 }, (_, i) => `${i + 1}`),
-                dineIn: 63, takeaway: 26, delivery: 11,
-                peakHours: [6, 19, 53, 98, 80, 43, 66, 90, 72, 36, 15, 6],
-              },
-            };
-            const d = datasets[analyticsRange];
-            const trendMax = Math.max(...d.revTrend, 1);
-            const peakMax = Math.max(...d.peakHours, 1);
-
-            const topItems = [
-              { name: 'Wagyu Ribeye 12oz', category: 'Mains', sold: 142, revenue: 20590 },
-              { name: 'Truffle Risotto', category: 'Mains', sold: 198, revenue: 15048 },
-              { name: 'Dom Pérignon 2012', category: 'Beverages', sold: 48, revenue: 14880 },
-              { name: 'Seared Scallops', category: 'Starters', sold: 214, revenue: 9202 },
-              { name: 'Burrata Salad', category: 'Starters', sold: 176, revenue: 5808 },
-              { name: 'Crème Brûlée', category: 'Desserts', sold: 230, revenue: 5290 },
-              { name: 'Old Fashioned', category: 'Cocktails', sold: 310, revenue: 4960 },
-              { name: 'Sourdough & Butter', category: 'Sides', sold: 412, revenue: 3708 },
-            ];
-            const itemRevMax = Math.max(...topItems.map(i => i.revenue), 1);
-
-            const staffData = [
-              { name: 'Elena Rodriguez', role: 'Head Sommelier', orders: 84, revenue: 18420, rating: 4.9, covers: 196 },
-              { name: 'Sarah Jenkins', role: "Maître D'", orders: 72, revenue: 15680, rating: 5.0, covers: 168 },
-              { name: 'Marcus Chen', role: 'Sous Chef', orders: 96, revenue: 14200, rating: 4.8, covers: 0 },
-              { name: 'James Park', role: 'Server', orders: 68, revenue: 11940, rating: 4.7, covers: 152 },
-              { name: 'Amara Osei', role: 'Bartender', orders: 112, revenue: 9800, rating: 4.8, covers: 0 },
-            ];
-
-            const payMethods = [
-              { label: 'Card', pct: 68, color: 'bg-sky-400', textColor: 'text-sky-400', amount: Math.round(d.revenue * 0.68) },
-              { label: 'Cash', pct: 19, color: 'bg-amber-400', textColor: 'text-amber-400', amount: Math.round(d.revenue * 0.19) },
-              { label: 'Digital Wallet', pct: 13, color: 'bg-violet-400', textColor: 'text-violet-400', amount: Math.round(d.revenue * 0.13) },
-            ];
-
-            const rangeOpts: { key: typeof analyticsRange; label: string }[] = [
-              { key: 'today', label: tr.analyticsToday },
-              { key: 'week', label: tr.analyticsWeek },
-              { key: 'month', label: tr.analyticsMonth },
-              { key: '30days', label: tr.analytics30 },
-            ];
-
-            const dashAuditTransactions = [
-              { id: '#ORD-9021', time: 'Oct 24, 2023 21:45 PM', method: 'CARD', amount: 342.50, status: 'Success' },
-              { id: '#ORD-9020', time: 'Oct 24, 2023 21:12 PM', method: 'CASH', amount: 85.00, status: 'Success' },
-              { id: '#ORD-9019', time: 'Oct 24, 2023 20:45 PM', method: 'DIGITAL WALLET', amount: 510.25, status: 'Success' },
-              { id: '#ORD-9018', time: 'Oct 24, 2023 20:15 PM', method: 'SPLIT', amount: 124.00, status: 'Success' },
-              { id: '#ORD-9017', time: 'Oct 24, 2023 19:30 PM', method: 'CARD', amount: 215.40, status: 'Success' },
-              { id: '#ORD-9016', time: 'Oct 24, 2023 18:50 PM', method: 'CASH', amount: 45.00, status: 'Success' },
-              { id: '#ORD-9015', time: 'Oct 24, 2023 18:10 PM', method: 'CARD', amount: 189.50, status: 'Success' },
-              { id: '#ORD-9014', time: 'Oct 24, 2023 17:40 PM', method: 'SPLIT', amount: 295.00, status: 'Success' },
-              { id: '#ORD-9013', time: 'Oct 24, 2023 16:15 PM', method: 'DIGITAL WALLET', amount: 68.20, status: 'Success' },
-              { id: '#ORD-9012', time: 'Oct 24, 2023 15:30 PM', method: 'CARD', amount: 155.00, status: 'Success' },
-              { id: '#ORD-9011', time: 'Oct 24, 2023 14:45 PM', method: 'CASH', amount: 112.50, status: 'Success' },
-              { id: '#ORD-9010', time: 'Oct 24, 2023 13:20 PM', method: 'CARD', amount: 94.00, status: 'Success' },
-            ];
-
-            const dashFilteredAudit = dashAuditTransactions.filter(tx => 
-              tx.id.toLowerCase().includes(dashAuditSearch.toLowerCase()) ||
-              tx.method.toLowerCase().includes(dashAuditSearch.toLowerCase())
-            );
-
-            const dashItemsPerPage = 5;
-            const dashTotalAuditPages = Math.ceil(dashFilteredAudit.length / dashItemsPerPage);
-            const dashCurrentAuditPage = Math.min(dashAuditPage, dashTotalAuditPages || 1);
-            const dashPaginatedAudit = dashFilteredAudit.slice((dashCurrentAuditPage - 1) * dashItemsPerPage, dashCurrentAuditPage * dashItemsPerPage);
-
-            const dashCashCount = dashFilteredAudit.filter(t => t.method === 'CASH').length;
-            const dashCardCount = dashFilteredAudit.filter(t => t.method === 'CARD').length;
-            const dashWalletCount = dashFilteredAudit.filter(t => t.method === 'DIGITAL WALLET').length;
-            const dashSplitCount = dashFilteredAudit.filter(t => t.method === 'SPLIT').length;
-            const dashTotalOrdersCount = dashFilteredAudit.length;
-
-            const handleDashboardExportCSV = () => {
-              const header = ['Transaction ID', 'Time', 'Payment Method', 'Amount ($)', 'Status'];
-              const rows = dashFilteredAudit.map(tx => [
-                tx.id,
-                tx.time,
-                tx.method === 'DIGITAL WALLET' ? 'Digital Wallet' : tx.method,
-                tx.amount.toFixed(2),
-                tx.status
-              ]);
-              const csvContent = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-              const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = `dineposai_dashboard_analytics_${analyticsRange}_${new Date().toISOString().split('T')[0]}.csv`;
-              a.click();
-              URL.revokeObjectURL(url);
-              triggerToast('Analytics transactions exported successfully as CSV.', 'success');
-            };
-
-            return (
-              <div className="space-y-8 font-sans animate-fade-in duration-300">
-
-                {/* ── Header ── */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h1 className={`font-serif text-[38px] font-bold ${t.text} tracking-wide leading-none`}>
-                      {tr.analyticsTitle}
-                    </h1>
-                    <p className={`${t.textMuted} text-[12.5px] font-semibold mt-2 leading-relaxed`}>
-                      {tr.analyticsDesc}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 flex-shrink-0">
-                    {/* Range selector */}
-                    <div className={`flex gap-1 ${t.cardBgOpaque} border ${t.border} rounded-xl p-1`}>
-                      {rangeOpts.map(r => (
-                        <button type="button"
-                          key={r.key}
-                          onClick={() => setAnalyticsRange(r.key)}
-                          className={`px-3.5 py-2 rounded-lg text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                            analyticsRange === r.key
-                              ? `${t.accentBg} ${t.accentText}`
-                              : `${t.textMuted} hover:text-white`
-                          }`}
-                        >
-                          {r.label}
-                        </button>
-                      ))}
-                    </div>
-                    <button type="button"
-                      onClick={handleDashboardExportCSV}
-                      className={`flex items-center gap-2 px-4 py-2.5 border ${t.border} ${t.textMuted} hover:${t.text} rounded-xl text-[10.5px] font-bold uppercase tracking-wider transition-colors cursor-pointer`}
-                    >
-                      <span className="material-symbols-outlined text-sm">download</span>
-                      {tr.analyticsExport}
-                    </button>
-                  </div>
-                </div>
-
-                {/* ── KPI Cards ── */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-                  {[
-                    { label: tr.analyticsRevenue, value: `${formatCurrency(d.revenue)}`, sub: analyticsRange === 'today' ? 'vs $7,840 yesterday' : '+8.3% vs prior period', icon: 'payments', color: t.accent, trend: true },
-                    { label: tr.analyticsOrders, value: d.orders.toLocaleString(), sub: `${(d.orders / (analyticsRange === 'today' ? 1 : analyticsRange === 'week' ? 7 : 30)).toFixed(1)} orders/day avg`, icon: 'receipt_long', color: 'text-sky-400', trend: true },
-                    { label: tr.analyticsAvgCheck, value: `${formatCurrency(d.avgCheck)}`, sub: 'per cover incl. gratuity', icon: 'person', color: 'text-emerald-400', trend: false },
-                    { label: tr.analyticsCovers, value: d.covers.toLocaleString(), sub: `${(d.covers / (analyticsRange === 'today' ? 1 : analyticsRange === 'week' ? 7 : 30)).toFixed(0)} covers/day avg`, icon: 'groups', color: 'text-violet-400', trend: false },
-                  ].map(kpi => (
-                    <div key={kpi.label} className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-6 flex flex-col justify-between min-h-[130px] shadow-lg`}>
-                      <div className="flex justify-between items-start">
-                        <span className={`font-bold text-[9.5px] ${t.textMuted} uppercase tracking-widest leading-none`}>{kpi.label}</span>
-                        <span className={`material-symbols-outlined text-lg ${kpi.color}`}>{kpi.icon}</span>
-                      </div>
-                      <div className="mt-3">
-                        <div className={`font-serif text-[28px] font-bold ${kpi.color} leading-none tracking-tight`}>{kpi.value}</div>
-                        <div className={`text-[10px] font-semibold mt-1.5 flex items-center gap-1 ${kpi.trend ? 'text-emerald-400' : t.textMuted}`}>
-                          {kpi.trend && <span className="material-symbols-outlined text-xs">arrow_upward</span>}
-                          {kpi.sub}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* ── Revenue Trend ── */}
-                <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
-                  <div className="flex justify-between items-center mb-6">
-                    <div>
-                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsRevTrend}</h3>
-                      <p className={`${t.textMuted} text-[10px] font-semibold mt-0.5`}>
-                        {formatCurrency(d.revenue)} total · {d.trendLabels.length} data points
-                      </p>
-                    </div>
-                    <span className={`material-symbols-outlined text-xl ${t.accent}`}>show_chart</span>
-                  </div>
-                  <div className="flex items-end gap-1.5 h-[100px]">
-                    {d.revTrend.map((val, i) => {
-                      const pct = (val / trendMax) * 100;
-                      const isLast = i === d.revTrend.length - 1;
-                      const isHigh = val === trendMax;
-                      return (
-                        <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
-                          <div className="w-full relative flex items-end justify-center" style={{ height: '82px' }}>
-                            <div
-                              className={`w-full rounded-t-lg transition-all duration-700 ${isLast ? t.accentBg : isHigh ? `${t.accentBg} opacity-60` : 'bg-white/10 group-hover:bg-white/15'}`}
-                              style={{ height: `${Math.max(pct, 4)}%` }}
-                            />
-                          </div>
-                          {d.trendLabels.length <= 12 && (
-                            <span className={`text-[7.5px] ${t.textMutedLight} font-bold uppercase leading-none`}>{d.trendLabels[i]}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* ── Orders by Type + Peak Hours ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                  {/* Orders by Type */}
-                  <div className={`lg:col-span-5 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsOrderTypes}</h3>
-                      <span className={`material-symbols-outlined text-xl text-violet-400`}>donut_large</span>
-                    </div>
-                    <div className="space-y-4">
-                      {[
-                        { label: tr.analyticsDineIn, pct: d.dineIn, color: 'bg-amber-400', textColor: t.accent },
-                        { label: tr.analyticsTakeaway, pct: d.takeaway, color: 'bg-sky-400', textColor: 'text-sky-400' },
-                        { label: tr.analyticsDelivery, pct: d.delivery, color: 'bg-violet-400', textColor: 'text-violet-400' },
-                      ].map(row => (
-                        <div key={row.label}>
-                          <div className="flex justify-between items-center mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${row.color}`} />
-                              <span className={`text-[11px] ${t.text} font-semibold`}>{row.label}</span>
-                            </div>
-                            <span className={`text-[11px] font-bold ${row.textColor}`}>{row.pct}%</span>
-                          </div>
-                          <div className={`w-full ${t.inputBg} rounded-full h-2`}>
-                            <div className={`${row.color} h-2 rounded-full transition-all duration-700`} style={{ width: `${row.pct}%` }} />
-                          </div>
-                          <div className={`text-[9px] ${t.textMuted} font-semibold mt-1`}>
-                            {Math.round(d.orders * row.pct / 100)} orders
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {/* Donut visual */}
-                    <div className="mt-6 pt-5 border-t border-white/5 flex items-center gap-6">
-                      <div className="relative w-[64px] h-[64px] flex-shrink-0">
-                        <svg viewBox="0 0 64 64" className="w-full h-full -rotate-90">
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10"/>
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="#ffc53d" strokeWidth="10"
-                            strokeDasharray={`${(d.dineIn / 100) * 150.8} 150.8`} strokeLinecap="butt"/>
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="#38bdf8" strokeWidth="10"
-                            strokeDasharray={`${(d.takeaway / 100) * 150.8} 150.8`}
-                            strokeDashoffset={`-${(d.dineIn / 100) * 150.8}`} strokeLinecap="butt"/>
-                          <circle cx="32" cy="32" r="24" fill="none" stroke="#a78bfa" strokeWidth="10"
-                            strokeDasharray={`${(d.delivery / 100) * 150.8} 150.8`}
-                            strokeDashoffset={`-${((d.dineIn + d.takeaway) / 100) * 150.8}`} strokeLinecap="butt"/>
-                        </svg>
-                      </div>
-                      <div className="text-[10px] font-semibold space-y-1.5">
-                        <div className={`${t.textMuted}`}>Total orders this period</div>
-                        <div className={`font-serif text-2xl font-bold ${t.text}`}>{d.orders.toLocaleString()}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Peak Hours */}
-                  <div className={`lg:col-span-7 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
-                    <div className="flex justify-between items-center mb-6">
-                      <div>
-                        <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsPeakHours}</h3>
-                        <p className={`${t.textMuted} text-[10px] font-semibold mt-0.5`}>Normalised order volume by hour of day</p>
-                      </div>
-                      <span className="material-symbols-outlined text-xl text-emerald-400">schedule</span>
-                    </div>
-                    <div className="flex items-end gap-1 h-[90px]">
-                      {d.peakHours.map((val, i) => {
-                        const pct = (val / peakMax) * 100;
-                        const hour = 11 + i;
-                        const label = hour <= 12 ? `${hour}a` : `${hour - 12}p`;
-                        const isLunch = i >= 1 && i <= 3;
-                        const isDinner = i >= 6 && i <= 8;
-                        return (
-                          <div key={i} className="flex-1 flex flex-col items-center gap-1 group">
-                            <div className="w-full" style={{ height: '72px', display: 'flex', alignItems: 'flex-end' }}>
-                              <div
-                                className={`w-full rounded-t-md transition-all duration-700 ${
-                                  isLunch ? 'bg-amber-400/70' : isDinner ? `${t.accentBg} opacity-80` : 'bg-white/10 group-hover:bg-white/15'
-                                }`}
-                                style={{ height: `${Math.max(pct, 3)}%` }}
-                              />
-                            </div>
-                            <span className={`text-[7px] ${t.textMutedLight} font-bold uppercase`}>{label}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-white/5 flex items-center gap-6 text-[10px] font-semibold">
-                      <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400/70 inline-block"/><span className={t.textMuted}>Lunch rush</span></div>
-                      <div className="flex items-center gap-1.5"><span className={`w-2.5 h-2.5 rounded-sm ${t.accentBg} opacity-80 inline-block`}/><span className={t.textMuted}>Dinner service</span></div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ── Top Menu Items ── */}
-                <div className={`${t.cardBgOpaque} border ${t.border} rounded-2xl overflow-hidden shadow-lg`}>
-                  <div className={`px-7 py-5 border-b ${t.border} flex justify-between items-center`}>
-                    <div>
-                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsTopItems}</h3>
-                      <p className={`${t.textMuted} text-[10px] font-semibold mt-0.5`}>Ranked by gross revenue · all categories</p>
-                    </div>
-                    <span className={`material-symbols-outlined text-xl ${t.accent}`}>restaurant_menu</span>
-                  </div>
-                  <div className="divide-y divide-white/[0.04]">
-                    {topItems.map((item, idx) => (
-                      <div key={item.name} className={`px-7 py-4 flex items-center gap-5 hover:bg-white/[0.015] transition-colors`}>
-                        <span className={`font-serif text-lg font-bold w-6 text-right flex-shrink-0 ${idx === 0 ? t.accent : t.textMuted}`}>
-                          {idx + 1}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <div className={`${t.text} font-bold text-[12.5px] truncate`}>{item.name}</div>
-                          <div className={`${t.textMuted} text-[9.5px] font-semibold mt-0.5`}>{item.category} · {item.sold} sold</div>
-                          <div className={`w-full mt-2 ${t.inputBg} rounded-full h-1.5`}>
-                            <div
-                              className={`h-1.5 rounded-full transition-all duration-700 ${idx === 0 ? t.accentBg : 'bg-white/20'}`}
-                              style={{ width: `${(item.revenue / itemRevMax) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                        <span className={`font-serif font-bold text-sm flex-shrink-0 ${idx === 0 ? t.accent : t.text}`}>
-                          {formatCurrency(item.revenue)}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── Staff + Payment Methods ── */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                  {/* Staff Performance */}
-                  <div className={`lg:col-span-8 ${t.cardBgOpaque} border ${t.border} rounded-2xl overflow-hidden shadow-lg`}>
-                    <div className={`px-7 py-5 border-b ${t.border} flex justify-between items-center`}>
-                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsStaffPerf}</h3>
-                      <span className="material-symbols-outlined text-xl text-emerald-400">badge</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left">
-                        <thead>
-                          <tr className={`border-b ${t.border}`}>
-                            {['Staff Member', 'Orders', 'Revenue', 'Avg Rating', 'Covers'].map(h => (
-                              <th key={h} className={`px-5 py-3 text-[9px] ${t.textMuted} font-bold uppercase tracking-widest`}>{h}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/[0.04]">
-                          {staffData.map((s, i) => (
-                            <tr key={s.name} className="hover:bg-white/[0.015] transition-colors">
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-black ${i === 0 ? `${t.accentBg} ${t.accentText}` : 'bg-white/5 text-white/50'}`}>
-                                    {s.name.split(' ').map(n => n[0]).join('')}
-                                  </div>
-                                  <div>
-                                    <div className={`${t.text} font-bold text-[11.5px]`}>{s.name}</div>
-                                    <div className={`${t.textMuted} text-[9.5px] font-semibold`}>{s.role}</div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className={`px-5 py-4 ${t.text} font-bold text-sm`}>{s.orders}</td>
-                              <td className={`px-5 py-4 font-bold text-sm ${t.accent}`}>{formatCurrency(s.revenue)}</td>
-                              <td className="px-5 py-4">
-                                <div className="flex items-center gap-1.5">
-                                  <span className="material-symbols-outlined text-amber-400 text-sm">star</span>
-                                  <span className={`${t.text} font-bold text-sm`}>{s.rating.toFixed(1)}</span>
-                                </div>
-                              </td>
-                              <td className={`px-5 py-4 ${t.textMuted} font-semibold text-sm`}>
-                                {s.covers > 0 ? s.covers : '—'}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Payment Methods */}
-                  <div className={`lg:col-span-4 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg`}>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className={`${t.text} font-bold text-sm tracking-wide`}>{tr.analyticsPayMethods}</h3>
-                      <span className="material-symbols-outlined text-xl text-sky-400">credit_card</span>
-                    </div>
-                    <div className="space-y-5">
-                      {payMethods.map(pm => (
-                        <div key={pm.label}>
-                          <div className="flex justify-between items-center mb-1.5">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${pm.color}`} />
-                              <span className={`text-[11px] ${t.text} font-semibold`}>{pm.label}</span>
-                            </div>
-                            <span className={`text-[11px] font-bold ${pm.textColor}`}>{pm.pct}%</span>
-                          </div>
-                          <div className={`w-full ${t.inputBg} rounded-full h-2`}>
-                            <div className={`${pm.color} h-2 rounded-full transition-all duration-700`} style={{ width: `${pm.pct}%` }} />
-                          </div>
-                          <div className={`text-[9px] ${t.textMuted} font-semibold mt-1`}>{formatCurrency(pm.amount)}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className={`mt-6 pt-5 border-t ${t.border} space-y-3`}>
-                      {[
-                        { label: 'Avg transaction', val: formatCurrency(d.revenue / d.orders) },
-                        { label: 'Largest transaction', val: formatCurrency(482) },
-                        { label: 'Refunds issued', val: formatCurrency(124) },
-                      ].map(stat => (
-                        <div key={stat.label} className="flex justify-between items-center">
-                          <span className={`text-[10px] ${t.textMuted} font-semibold`}>{stat.label}</span>
-                          <span className={`text-[11px] ${t.text} font-bold`}>{stat.val}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Audit Trail & Payments Section */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-6 items-stretch select-none">
-                  
-                  {/* Payments Widget (Span 4) */}
-                  <div className={`lg:col-span-4 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
-                    <div>
-                      <div className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest mb-6`}>
-                        Payments
-                      </div>
-                      
-                      <div className="flex flex-col items-center justify-center py-8">
-                        <span className={`text-[56px] font-bold ${t.text} leading-none font-sans`}>{dashTotalOrdersCount}</span>
-                        <span className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest mt-1`}>Orders</span>
-                      </div>
-                    </div>
-                    
-                    <div className={`space-y-4 pt-4 border-t ${t.border}`}>
-                      <div className="flex justify-between items-center text-xs font-semibold">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Cash</span>
-                        </div>
-                        <span className={`font-mono text-sm ${t.text}`}>{dashCashCount}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center text-xs font-semibold">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Card</span>
-                        </div>
-                        <span className={`font-mono text-sm ${t.text}`}>{dashCardCount}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center text-xs font-semibold">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
-                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Digital Wallet</span>
-                        </div>
-                        <span className={`font-mono text-sm ${t.text}`}>{dashWalletCount}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center text-xs font-semibold">
-                        <div className="flex items-center gap-2">
-                          <span className="w-2.5 h-2.5 rounded-full bg-cyan-500" />
-                          <span className={`uppercase tracking-wider text-[11px] ${t.textMuted}`}>Split</span>
-                        </div>
-                        <span className={`font-mono text-sm ${t.text}`}>{dashSplitCount}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Audit Trail Widget (Span 8) */}
-                  <div className={`lg:col-span-8 ${t.cardBgOpaque} border ${t.border} rounded-2xl p-7 shadow-lg flex flex-col justify-between`}>
-                    <div>
-                      {/* Header */}
-                      <div className={`flex flex-col sm:flex-row justify-between sm:items-center border-b ${t.border} pb-4 gap-4`}>
-                        <div>
-                          <h3 className={`${t.text} font-serif text-sm font-bold tracking-wide uppercase`}>Audit Trail</h3>
-                          <div className={`text-[9px] ${t.textMuted} font-bold uppercase tracking-widest mt-1.5`}>
-                            {dashFilteredAudit.length} Total Transactions Found
-                          </div>
-                        </div>
-                        
-                        {/* Search */}
-                        <div className="relative w-full sm:w-[240px]">
-                          <span className={`material-symbols-outlined absolute left-3.5 top-2.5 ${t.textMuted} text-sm`}>search</span>
-                          <input
-                            type="text"
-                            placeholder="Search ID or method..."
-                            value={dashAuditSearch}
-                            onChange={(e) => {
-                              setDashAuditSearch(e.target.value);
-                              setDashAuditPage(1);
-                            }}
-                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-9 pr-4 py-2 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 transition-all font-medium`}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Records / Table */}
-                      <div className="mt-4 overflow-x-auto min-h-[220px]">
-                        {dashPaginatedAudit.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center py-16 text-center select-none">
-                            <span className={`material-symbols-outlined text-4xl ${t.textMuted} opacity-30 mb-3`}>inventory_2</span>
-                            <p className={`text-[10px] ${t.textMuted} font-bold uppercase tracking-widest`}>No records in range</p>
-                          </div>
-                        ) : (
-                          <table className="w-full text-left border-collapse">
-                            <thead>
-                              <tr className={`text-[9.5px] font-bold ${t.textMuted} uppercase tracking-widest border-b ${t.border}`}>
-                                <th className="pb-3 pr-4">Transaction ID</th>
-                                <th className="pb-3 px-4">Date & Time</th>
-                                <th className="pb-3 px-4">Method</th>
-                                <th className="pb-3 px-4 text-right">Amount</th>
-                                <th className="pb-3 pl-4">Status</th>
-                              </tr>
-                            </thead>
-                            <tbody className={`divide-y ${t.divider} text-xs font-sans`}>
-                              {dashPaginatedAudit.map((tx) => (
-                                <tr key={tx.id} className={`hover:${t.cardHover} transition-colors`}>
-                                  <td className={`py-3 pr-4 font-bold ${t.text} tracking-wider`}>{tx.id}</td>
-                                  <td className={`py-3 px-4 ${t.textMuted} font-semibold`}>{tx.time}</td>
-                                  <td className="py-3 px-4">
-                                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[9.5px] font-bold border uppercase tracking-wider ${
-                                      tx.method === 'CASH' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
-                                      tx.method === 'CARD' ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' :
-                                      tx.method === 'DIGITAL WALLET' ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' :
-                                      'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
-                                    }`}>
-                                      {tx.method === 'DIGITAL WALLET' ? 'DIGITAL WALLET' : tx.method}
-                                    </span>
-                                  </td>
-                                  <td className={`py-3 px-4 text-right font-mono font-bold ${t.accent}`}>{typeof tx.amount === 'number' ? `$${tx.amount.toFixed(2)}` : tx.amount}</td>
-                                  <td className="py-3 pl-4">
-                                    <span className="inline-flex items-center gap-1 text-emerald-400 text-[10px] font-bold">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                      {tx.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Pagination Controls */}
-                    {dashFilteredAudit.length > 0 && (
-                      <div className={`flex justify-between items-center text-[10px] ${t.textMuted} font-bold uppercase tracking-wider pt-4 border-t ${t.border} select-none`}>
-                        <span>
-                          Showing {((dashCurrentAuditPage - 1) * dashItemsPerPage) + 1}-{Math.min(dashCurrentAuditPage * dashItemsPerPage, dashFilteredAudit.length)} of {dashFilteredAudit.length} entries
-                        </span>
-                        
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            disabled={dashCurrentAuditPage === 1}
-                            onClick={() => setDashAuditPage(prev => Math.max(prev - 1, 1))}
-                            className={`w-7 h-7 rounded-lg border ${t.border} flex items-center justify-center ${t.text} transition-colors cursor-pointer ${
-                              dashCurrentAuditPage === 1 ? 'opacity-30 cursor-not-allowed' : `bg-white/5 hover:${t.cardHover}`
-                            }`}
-                          >
-                            <span className="material-symbols-outlined text-sm">chevron_left</span>
-                          </button>
-                          
-                          {Array.from({ length: dashTotalAuditPages }, (_, idx) => {
-                            const pageNum = idx + 1;
-                            return (
-                              <button
-                                type="button"
-                                key={pageNum}
-                                onClick={() => setDashAuditPage(pageNum)}
-                                className={`w-7 h-7 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center cursor-pointer ${
-                                  dashCurrentAuditPage === pageNum
-                                    ? `${t.accentBg} ${t.accentText}`
-                                    : `bg-white/5 hover:${t.cardHover} ${t.textMuted} hover:text-white border ${t.border}`
-                                }`}
-                              >
-                                {pageNum}
-                              </button>
-                            );
-                          })}
-                          
-                          <button
-                            type="button"
-                            disabled={dashCurrentAuditPage === dashTotalAuditPages}
-                            onClick={() => setDashAuditPage(prev => Math.min(prev + 1, dashTotalAuditPages))}
-                            className={`w-7 h-7 rounded-lg border ${t.border} flex items-center justify-center ${t.text} transition-colors cursor-pointer ${
-                              dashCurrentAuditPage === dashTotalAuditPages ? 'opacity-30 cursor-not-allowed' : `bg-white/5 hover:${t.cardHover}`
-                            }`}
-                          >
-                            <span className="material-symbols-outlined text-sm">chevron_right</span>
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                </div>
-
-              </div>
-            );
-          })()}
+              )}
 
           {/* TAB 8: INVENTORY MANAGEMENT PANEL */}
           {activeTab === 'inventory' && (
