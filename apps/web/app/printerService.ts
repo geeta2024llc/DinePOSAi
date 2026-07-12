@@ -212,7 +212,6 @@ export class PrinterService {
 
     // Step 1: Ensure we have a device reference
     if (!this.activeUsbDevice) {
-      // Check for already-paired devices first (no user prompt)
       const existingDevices = await nav.usb.getDevices();
       const printerDevices = existingDevices.filter((d: any) => d.configurations?.some(
         (cfg: any) => cfg.interfaces?.some(
@@ -231,7 +230,7 @@ export class PrinterService {
       }
     }
 
-    // Step 2: If already opened, try to write directly — DON'T close and reopen
+    // Step 2: If already opened, try to write directly
     if (this.activeUsbDevice.opened) {
       onLog('USB device already open. Writing directly...');
       try {
@@ -240,14 +239,12 @@ export class PrinterService {
         return;
       } catch (writeErr: any) {
         onLog(`⚠️ Direct write failed (${writeErr.message}). Will attempt reconnect...`);
-        // Don't null the device yet — try to reopen below
       }
     }
 
-    // Step 3: Device is not opened or write failed — try to open
-    // CRITICAL: Do NOT close the device before opening. Just try to open.
-    // If the OS driver holds it, we can't fix that from the browser.
-    const MAX_RETRIES = 2;
+    // Step 3: Try to open with retries
+    let lastError: any = null;
+    const MAX_RETRIES = 3;
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
         if (!this.activeUsbDevice.opened) {
@@ -265,15 +262,41 @@ export class PrinterService {
         onLog('✓ USB Print job dispatched successfully.');
         return;
       } catch (err: any) {
-        if (attempt < MAX_RETRIES) {
-          onLog(`⚠️ Attempt ${attempt} failed (${err.message}). Retrying in 2s...`);
-          await sleep(2000);
-        } else {
-          onLog(`❌ USB Print failed: ${err.message}`);
-          throw err;
+        lastError = err;
+        if (err.message?.includes('Access denied') && attempt < MAX_RETRIES) {
+          // Access denied = Windows driver has exclusive lock
+          // Retrying won't help, but give user time to see the error
+          onLog(`⚠️ Access denied — Windows printer driver may be locking the device.`);
+          await sleep(1500);
+        } else if (attempt < MAX_RETRIES) {
+          onLog(`⚠️ Attempt ${attempt} failed (${err.message}). Retrying in 1.5s...`);
+          await sleep(1500);
         }
       }
     }
+
+    // All retries failed — provide actionable guidance
+    const deviceName = this.activeUsbDevice?.productName || 'USB Printer';
+    onLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    onLog('❌ USB ACCESS DENIED — Windows driver lock detected');
+    onLog('');
+    onLog('TO FIX THIS, do ONE of the following:');
+    onLog('');
+    onLog('OPTION A (Recommended): Remove the Windows printer');
+    onLog('  1. Open Windows Settings → Bluetooth & devices → Printers & scanners');
+    onLog(`  2. Find "${deviceName}" and click Remove`);
+    onLog('  3. Unplug and replug the USB cable');
+    onLog('  4. Try printing again');
+    onLog('');
+    onLog('OPTION B: Stop the Print Spooler service');
+    onLog('  1. Press Win+R, type "services.msc", press Enter');
+    onLog('  2. Find "Print Spooler", right-click → Stop');
+    onLog('  3. Try printing again');
+    onLog('');
+    onLog('OPTION C: Use Bluetooth instead of USB');
+    onLog('  1. Switch to Bluetooth GATT in the connection type');
+    onLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    throw lastError;
   }
 
   private async usbWriteBytes(device: any, bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
