@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePrinter } from '../../printerContext';
 import { PrinterType, PrinterConfig } from '../../printerService';
@@ -12,7 +12,17 @@ export default function PrinterSettingsPage() {
   const [port, setPort] = useState(config.port || 9100);
   const [networkName, setNetworkName] = useState(config.name || 'Network Thermal Printer');
   const [isScanning, setIsScanning] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({});
+  const [isTestPrinting, setIsTestPrinting] = useState(false);
+  const consoleEndRef = useRef<HTMLDivElement>(null);
+  const consoleContainerRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll console to bottom when new logs arrive
+  useEffect(() => {
+    if (consoleEndRef.current) {
+      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
 
   const handleNetworkSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,17 +42,38 @@ export default function PrinterSettingsPage() {
     });
   };
 
+  const handleSelectType = (type: PrinterType) => {
+    setScanErrors(prev => ({ ...prev, [type]: null }));
+    if (type === 'bluetooth') {
+      setConfig({ type: 'bluetooth', name: config.type === 'bluetooth' ? config.name : 'Bluetooth Printer' });
+    } else if (type === 'usb') {
+      setConfig({ type: 'usb', name: config.type === 'usb' ? config.name : 'USB Printer' });
+    }
+  };
+
   const handleScanDevice = async (type: 'bluetooth' | 'usb') => {
     setIsScanning(true);
-    setScanError(null);
+    setScanErrors(prev => ({ ...prev, [type]: null }));
     try {
       await scanAndPair(type);
     } catch (err: any) {
-      setScanError(err.message || 'Connection request cancelled or failed.');
+      setScanErrors(prev => ({ ...prev, [type]: err.message || 'Connection request cancelled or failed.' }));
     } finally {
       setIsScanning(false);
     }
   };
+
+  const handleTestPrint = async () => {
+    setIsTestPrinting(true);
+    try {
+      await testPrint();
+    } catch (_) {
+    } finally {
+      setIsTestPrinting(false);
+    }
+  };
+
+  const isActive = (type: string) => config.type === type;
 
   return (
     <div className="min-h-screen bg-[#0e0e0d] text-[#e5e2e1] font-sans antialiased selection:bg-[#ffe2ab]/30 select-none pb-16">
@@ -101,14 +132,14 @@ export default function PrinterSettingsPage() {
             <button 
               onClick={handleSelectBrowser}
               className={`p-5 rounded-2xl border text-left transition-all duration-300 relative cursor-pointer ${
-                config.type === 'browser' 
+                isActive('browser') 
                   ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/40 shadow-lg' 
                   : 'bg-[#161513]/50 border-white/5 hover:border-white/10'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
-                <span className={`material-symbols-outlined text-2xl ${config.type === 'browser' ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>print</span>
-                {config.type === 'browser' && (
+                <span className={`material-symbols-outlined text-2xl ${isActive('browser') ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>print</span>
+                {isActive('browser') && (
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
@@ -116,18 +147,18 @@ export default function PrinterSettingsPage() {
               <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">OS printer spooler dialog. Direct plug-and-play.</p>
             </button>
 
-            {/* Card 2: Bluetooth */}
+            {/* Card 2: Bluetooth - selects type only, doesn't scan */}
             <button 
-              onClick={() => handleScanDevice('bluetooth')}
+              onClick={() => handleSelectType('bluetooth')}
               className={`p-5 rounded-2xl border text-left transition-all duration-300 relative cursor-pointer ${
-                config.type === 'bluetooth' 
+                isActive('bluetooth') 
                   ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/40 shadow-lg' 
                   : 'bg-[#161513]/50 border-white/5 hover:border-white/10'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
-                <span className={`material-symbols-outlined text-2xl ${config.type === 'bluetooth' ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>bluetooth</span>
-                {config.type === 'bluetooth' && (
+                <span className={`material-symbols-outlined text-2xl ${isActive('bluetooth') ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>bluetooth</span>
+                {isActive('bluetooth') && (
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
@@ -135,18 +166,18 @@ export default function PrinterSettingsPage() {
               <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">Wireless pairing. Ideal for tablet or mobile POS.</p>
             </button>
 
-            {/* Card 3: USB */}
+            {/* Card 3: USB - selects type only, doesn't scan */}
             <button 
-              onClick={() => handleScanDevice('usb')}
+              onClick={() => handleSelectType('usb')}
               className={`p-5 rounded-2xl border text-left transition-all duration-300 relative cursor-pointer ${
-                config.type === 'usb' 
+                isActive('usb') 
                   ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/40 shadow-lg' 
                   : 'bg-[#161513]/50 border-white/5 hover:border-white/10'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
-                <span className={`material-symbols-outlined text-2xl ${config.type === 'usb' ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>usb</span>
-                {config.type === 'usb' && (
+                <span className={`material-symbols-outlined text-2xl ${isActive('usb') ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>usb</span>
+                {isActive('usb') && (
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
@@ -158,14 +189,14 @@ export default function PrinterSettingsPage() {
             <button 
               onClick={() => setConfig({ type: 'network', name: networkName, ip, port })}
               className={`p-5 rounded-2xl border text-left transition-all duration-300 relative cursor-pointer ${
-                config.type === 'network' 
+                isActive('network') 
                   ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/40 shadow-lg' 
                   : 'bg-[#161513]/50 border-white/5 hover:border-white/10'
               }`}
             >
               <div className="flex justify-between items-start mb-4">
-                <span className={`material-symbols-outlined text-2xl ${config.type === 'network' ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>lan</span>
-                {config.type === 'network' && (
+                <span className={`material-symbols-outlined text-2xl ${isActive('network') ? 'text-[#ffc53d]' : 'text-[#A69984]'}`}>lan</span>
+                {isActive('network') && (
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
@@ -178,7 +209,7 @@ export default function PrinterSettingsPage() {
           {/* Dynamic Configuration Form */}
           <div className="bg-[#161513]/90 border border-white/5 p-6 rounded-2xl space-y-6">
             
-            {config.type === 'browser' && (
+            {isActive('browser') && (
               <div className="space-y-2.5">
                 <h4 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">Browser Spooler Mode</h4>
                 <p className="text-xs text-[#A69984]/70 leading-relaxed">
@@ -188,7 +219,7 @@ export default function PrinterSettingsPage() {
               </div>
             )}
 
-            {config.type === 'bluetooth' && (
+            {isActive('bluetooth') && (
               <div className="space-y-4">
                 <h4 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">Bluetooth GATT Config</h4>
                 <div className="flex items-center justify-between border-t border-white/5 pt-4">
@@ -204,15 +235,15 @@ export default function PrinterSettingsPage() {
                     {isScanning ? 'Scanning...' : 'Pair Printer'}
                   </button>
                 </div>
-                {scanError && (
+                {scanErrors['bluetooth'] && (
                   <div className="text-[10px] text-rose-400 font-medium font-mono bg-rose-500/5 border border-rose-500/10 p-3 rounded-lg">
-                    {scanError}
+                    {scanErrors['bluetooth']}
                   </div>
                 )}
               </div>
             )}
 
-            {config.type === 'usb' && (
+            {isActive('usb') && (
               <div className="space-y-4">
                 <h4 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">WebUSB Direct Config</h4>
                 <div className="flex items-center justify-between border-t border-white/5 pt-4">
@@ -225,18 +256,18 @@ export default function PrinterSettingsPage() {
                     disabled={isScanning}
                     className="px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 text-xs font-bold text-white transition-all disabled:opacity-40 cursor-pointer"
                   >
-                    {isScanning ? 'Scan USB Ports' : 'Select USB Device'}
+                    {isScanning ? 'Scanning...' : 'Select USB Device'}
                   </button>
                 </div>
-                {scanError && (
+                {scanErrors['usb'] && (
                   <div className="text-[10px] text-rose-400 font-medium font-mono bg-rose-500/5 border border-rose-500/10 p-3 rounded-lg">
-                    {scanError}
+                    {scanErrors['usb']}
                   </div>
                 )}
               </div>
             )}
 
-            {config.type === 'network' && (
+            {isActive('network') && (
               <form onSubmit={handleNetworkSave} className="space-y-4">
                 <h4 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">Network / LAN Configuration</h4>
                 
@@ -304,12 +335,21 @@ export default function PrinterSettingsPage() {
             </p>
             
             <button 
-              onClick={testPrint}
-              disabled={status === 'connecting'}
-              className="w-full py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] hover:bg-[#ffe2ab]/5 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2"
+              onClick={handleTestPrint}
+              disabled={isTestPrinting || status === 'connecting'}
+              className="w-full py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] hover:bg-[#ffe2ab]/5 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              <span className="material-symbols-outlined text-base">print_connect</span>
-              Send Test Print Job
+              {isTestPrinting ? (
+                <>
+                  <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-base">print_connect</span>
+                  Send Test Print Job
+                </>
+              )}
             </button>
           </div>
 
@@ -331,7 +371,7 @@ export default function PrinterSettingsPage() {
             </div>
 
             {/* Scrollable console messages */}
-            <div className="p-5 flex-1 overflow-y-auto font-mono text-[10.5px] text-[#ffe2ab]/90 space-y-2 bg-[#080808] select-text">
+            <div ref={consoleContainerRef} className="p-5 flex-1 overflow-y-auto font-mono text-[10.5px] text-[#ffe2ab]/90 space-y-2 bg-[#080808] select-text">
               {logs.length === 0 ? (
                 <div className="text-white/20 italic text-center pt-20">
                   Terminal idle. Waiting for device print event log...
@@ -344,6 +384,7 @@ export default function PrinterSettingsPage() {
                   </div>
                 ))
               )}
+              <div ref={consoleEndRef} />
             </div>
 
           </div>
