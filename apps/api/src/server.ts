@@ -67,32 +67,27 @@ if (process.env.NODE_ENV === 'production') {
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// HTTPS enforcement — must run before any route handler in production
-if (process.env.NODE_ENV === 'production') {
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.headers['x-forwarded-proto'] !== 'https') {
-      return res.redirect(301, `https://${req.headers.host}${req.url}`);
-    }
-    next();
-  });
-}
-
 // Dynamic CORS configurations supporting multiple frontends
 const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+  ? process.env.FRONTEND_URL.split(',').map(url => url.trim().replace(/\/+$/, ''))
   : ['http://localhost:3000'];
+
+console.log('CORS allowed origins:', allowedOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+    const normalizedOrigin = origin.replace(/\/+$/, '');
+    if (allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes('*')) {
       return callback(null, true);
     }
+    console.error(`CORS blocked origin: ${origin}`);
     return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204,
 }));
 
 // Body parsing middleware with rawBody capture for Stripe signature verification
