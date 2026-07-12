@@ -45,6 +45,7 @@ const escapeHtml = (unsafe: string | null | undefined): string => {
 export default function ReceiptPrintModal({ isOpen, onClose, receiptData, formatCurrency }: ReceiptPrintModalProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [btStep, setBtStep] = useState<BluetoothStep>('idle');
+  const [btError, setBtError] = useState<string | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
   const [restaurantLogo, setRestaurantLogo] = useState<string | null>(null);
 
@@ -94,18 +95,19 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
   const handleBluetoothPrint = async () => {
     if (btStep !== 'idle' && btStep !== 'done' && btStep !== 'error') return;
     try {
+      setBtError(null);
       setBtStep('scanning');
       if (printerConfig.type !== 'bluetooth') {
         await scanAndPair('bluetooth');
       }
       setBtStep('connecting');
-      await new Promise(resolve => setTimeout(resolve, 600));
       setBtStep('sending');
       const printData = mapToPrintReceiptData(receiptData);
       await dispatchPrintReceipt(printData);
       setBtStep('done');
     } catch (err: any) {
       console.error('[Receipt] Bluetooth print failed:', err);
+      setBtError(err.message || 'Connection failed');
       setBtStep('error');
     }
   };
@@ -699,17 +701,24 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
           
           {/* Bluetooth Status Banner */}
           {btStep !== 'idle' && (
-            <div className={`flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border animate-fade-in ${
+            <div className={`flex flex-col gap-2 px-3.5 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-wider border animate-fade-in ${
               btStep === 'done' 
                 ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
                 : btStep === 'error'
                   ? 'bg-rose-500/10 border-rose-500/20 text-rose-400'
                   : 'bg-blue-500/10 border-blue-500/20 text-blue-400'
             }`}>
-              <span className={`material-symbols-outlined text-sm ${btStep !== 'done' && btStep !== 'error' ? 'animate-pulse' : ''}`}>
-                {btStatusIcon[btStep]}
-              </span>
-              <span>{btStatusText[btStep]}</span>
+              <div className="flex items-center gap-2.5">
+                <span className={`material-symbols-outlined text-sm ${btStep !== 'done' && btStep !== 'error' ? 'animate-pulse' : ''}`}>
+                  {btStatusIcon[btStep]}
+                </span>
+                <span>{btStep === 'error' && btError ? `Error: ${btError}` : btStatusText[btStep]}</span>
+              </div>
+              {btStep === 'error' && (
+                <button onClick={() => { setBtStep('idle'); handleBluetoothPrint(); }} className="self-start mt-1 px-3 py-1 bg-rose-500/20 hover:bg-rose-500/30 rounded-lg text-[9px] cursor-pointer text-rose-300">
+                  Retry Connection
+                </button>
+              )}
             </div>
           )}
 

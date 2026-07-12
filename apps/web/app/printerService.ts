@@ -160,22 +160,58 @@ export class PrinterService {
       throw new Error('Web Bluetooth not supported.');
     }
 
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    const UUID_PRIMARY = '000018f0-0000-1000-8000-00805f9b34fb';
+    const UUID_SERIAL = '00001101-0000-1000-8000-00805f9b34fb';
+
     try {
       if (!this.activeBluetoothDevice) {
         onLog('Requesting Bluetooth device scan...');
         this.activeBluetoothDevice = await nav.bluetooth.requestDevice({
           acceptAllDevices: true,
-          optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+          optionalServices: [UUID_PRIMARY, UUID_SERIAL]
+        });
+        this.activeBluetoothDevice.addEventListener('gattserverdisconnected', () => {
+           onLog('⚠️ Bluetooth GATT disconnected unexpectedly.');
+           this.activeBluetoothDevice = null;
         });
       }
 
-      onLog(`Connecting to Bluetooth device: ${this.activeBluetoothDevice.name || 'Thermal Printer'}...`);
-      const server = await this.activeBluetoothDevice.gatt.connect();
+      const MAX_RETRIES = 3;
+      let server = null;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+           onLog(`Connecting to Bluetooth device: ${this.activeBluetoothDevice.name || 'Thermal Printer'} (attempt ${attempt}/${MAX_RETRIES})...`);
+           server = await this.activeBluetoothDevice.gatt.connect();
+           break;
+        } catch (err: any) {
+           if (attempt === MAX_RETRIES) throw err;
+           onLog(`⚠️ Connection failed (${err.message}). Retrying in ${attempt * 500}ms...`);
+           await sleep(attempt * 500);
+        }
+      }
+      
       onLog('Connected to GATT Server. Resolving service...');
+      
+      let service = null;
+      try {
+        service = await server.getPrimaryService(UUID_PRIMARY);
+      } catch (e) {
+        onLog('Primary service not found, trying Serial Port Profile...');
+        try {
+          service = await server.getPrimaryService(UUID_SERIAL);
+        } catch (e2) {
+           onLog('Trying all available services...');
+           const services = await server.getPrimaryServices();
+           if (services.length > 0) {
+              service = services[0];
+           } else {
+             throw new Error('No services found on device.');
+           }
+        }
+      }
 
-      const service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
       onLog('Service resolved. Resolving write characteristic...');
-
       const characteristics = await service.getCharacteristics();
       const writeChar = characteristics.find((c: any) => c.properties.write || c.properties.writeWithoutResponse);
 
@@ -184,18 +220,27 @@ export class PrinterService {
         throw new Error('No write characteristic.');
       }
 
-      onLog('Transmitting byte chunks to printer...');
-      // Write in chunks of 120 bytes to prevent buffer overflow on low-end thermal printers
+      const useWithoutResponse = writeChar.properties.writeWithoutResponse;
+      onLog(`Transmitting byte chunks to printer (using ${useWithoutResponse ? 'writeWithoutResponse' : 'writeValue'})...`);
+      
       const chunkSize = 120;
       for (let i = 0; i < bytes.length; i += chunkSize) {
         const chunk = bytes.slice(i, i + chunkSize);
-        await writeChar.writeValue(chunk);
+        if (useWithoutResponse) {
+          await writeChar.writeValueWithoutResponse(chunk);
+        } else {
+          await writeChar.writeValue(chunk);
+        }
         onLog(`Sent chunk: ${Math.min(i + chunkSize, bytes.length)}/${bytes.length} bytes.`);
+        await sleep(20); // 20ms inter-chunk delay
       }
 
       onLog('✓ Transmission completed successfully.');
     } catch (err: any) {
       onLog(`❌ Bluetooth Print failed: ${err.message || err}`);
+      if (this.activeBluetoothDevice && this.activeBluetoothDevice.gatt?.connected) {
+         this.activeBluetoothDevice.gatt.disconnect();
+      }
       this.activeBluetoothDevice = null;
       throw err;
     }
@@ -208,14 +253,11 @@ export class PrinterService {
       throw new Error('WebUSB not supported.');
     }
 
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-    // Step 1: Ensure we have a device reference
     if (!this.activeUsbDevice) {
       const existingDevices = await nav.usb.getDevices();
       const printerDevices = existingDevices.filter((d: any) => d.configurations?.some(
         (cfg: any) => cfg.interfaces?.some(
-          (iface: any) => iface.alternates?.some((alt: any) => alt.interfaceClass === 7)
+          (iface: any) => iface.alternates?.some((alt: any) => alt.interfaceClass === 7 || alt.interfaceClass === 0xff)
         )
       ));
 
@@ -225,12 +267,11 @@ export class PrinterService {
       } else {
         onLog('No paired printers found. Requesting device selection...');
         this.activeUsbDevice = await nav.usb.requestDevice({
-          filters: [{ classCode: 7 }]
+          filters: [{ classCode: 7 }, { classCode: 0xff }]
         });
       }
     }
 
-    // Step 2: If already opened, try to write directly
     if (this.activeUsbDevice.opened) {
       onLog('USB device already open. Writing directly...');
       try {
@@ -239,71 +280,94 @@ export class PrinterService {
         return;
       } catch (writeErr: any) {
         onLog(`⚠️ Direct write failed (${writeErr.message}). Will attempt reconnect...`);
+        try { await this.activeUsbDevice.close(); } catch(e){}
       }
     }
 
-    // Step 3: Try to open with retries
-    let lastError: any = null;
-    const MAX_RETRIES = 3;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (!this.activeUsbDevice.opened) {
-          onLog(`Opening USB device (attempt ${attempt}/${MAX_RETRIES})...`);
-          await this.activeUsbDevice.open();
-        }
-
-        onLog('Selecting USB configuration...');
-        await this.activeUsbDevice.selectConfiguration(1);
-
-        onLog('Claiming printer interface...');
-        await this.activeUsbDevice.claimInterface(0);
-
-        await this.usbWriteBytes(this.activeUsbDevice, bytes, onLog);
-        onLog('✓ USB Print job dispatched successfully.');
-        return;
-      } catch (err: any) {
-        lastError = err;
-        if (err.message?.includes('Access denied') && attempt < MAX_RETRIES) {
-          // Access denied = Windows driver has exclusive lock
-          // Retrying won't help, but give user time to see the error
-          onLog(`⚠️ Access denied — Windows printer driver may be locking the device.`);
-          await sleep(1500);
-        } else if (attempt < MAX_RETRIES) {
-          onLog(`⚠️ Attempt ${attempt} failed (${err.message}). Retrying in 1.5s...`);
-          await sleep(1500);
-        }
+    let accessDenied = false;
+    try {
+      if (!this.activeUsbDevice.opened) {
+        onLog(`Opening USB device...`);
+        await this.activeUsbDevice.open();
+      }
+    } catch (err: any) {
+      if (err.message?.includes('Access denied')) {
+        accessDenied = true;
+      } else {
+        throw err;
       }
     }
 
-    // All retries failed — provide actionable guidance
-    const deviceName = this.activeUsbDevice?.productName || 'USB Printer';
-    onLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    onLog('❌ USB ACCESS DENIED — Windows driver lock detected');
-    onLog('');
-    onLog('TO FIX THIS, do ONE of the following:');
-    onLog('');
-    onLog('OPTION A (Recommended): Remove the Windows printer');
-    onLog('  1. Open Windows Settings → Bluetooth & devices → Printers & scanners');
-    onLog(`  2. Find "${deviceName}" and click Remove`);
-    onLog('  3. Unplug and replug the USB cable');
-    onLog('  4. Try printing again');
-    onLog('');
-    onLog('OPTION B: Stop the Print Spooler service');
-    onLog('  1. Press Win+R, type "services.msc", press Enter');
-    onLog('  2. Find "Print Spooler", right-click → Stop');
-    onLog('  3. Try printing again');
-    onLog('');
-    onLog('OPTION C: Use Bluetooth instead of USB');
-    onLog('  1. Switch to Bluetooth GATT in the connection type');
-    onLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    throw lastError;
+    if (accessDenied) {
+        onLog('⚠️ Access denied — Windows driver lock detected. Attempting Browser Print Fallback...');
+        try {
+          if (typeof window !== 'undefined') {
+            window.print();
+            onLog('✓ Sent to Browser Print fallback successfully.');
+            return;
+          }
+        } catch(fallbackErr) {
+            onLog('❌ Browser Print fallback failed.');
+        }
+        
+        const deviceName = this.activeUsbDevice?.productName || 'USB Printer';
+        onLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        onLog('❌ USB ACCESS DENIED — Windows driver lock detected');
+        onLog('');
+        onLog('TO FIX THIS (If Browser Print isn\'t sufficient):');
+        onLog('');
+        onLog('OPTION A (Recommended): Remove the Windows printer');
+        onLog('  1. Open Windows Settings → Bluetooth & devices → Printers & scanners');
+        onLog(`  2. Find "${deviceName}" and click Remove`);
+        onLog('  3. Unplug and replug the USB cable');
+        onLog('  4. Try printing again');
+        onLog('');
+        onLog('OPTION B: Use Bluetooth instead of USB');
+        onLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        throw new Error('Access denied - Windows Driver Lock');
+    }
+
+    try {
+      onLog('Selecting USB configuration...');
+      await this.activeUsbDevice.selectConfiguration(1);
+
+      onLog('Scanning for usable interface...');
+      let claimed = false;
+      
+      // Try to claim any printer (7) or vendor (0xff) interface
+      for (const iface of this.activeUsbDevice.configuration.interfaces) {
+          const isPrinterOrVendor = iface.alternates.some((alt: any) => alt.interfaceClass === 7 || alt.interfaceClass === 0xff);
+          if (isPrinterOrVendor) {
+              try {
+                  onLog(`Attempting to claim interface ${iface.interfaceNumber}...`);
+                  await this.activeUsbDevice.claimInterface(iface.interfaceNumber);
+                  claimed = true;
+                  break;
+              } catch(e) {
+                  onLog(`Could not claim interface ${iface.interfaceNumber}.`);
+              }
+          }
+      }
+
+      if (!claimed) {
+          throw new Error("Could not claim any usable USB interface.");
+      }
+
+      await this.usbWriteBytes(this.activeUsbDevice, bytes, onLog);
+      onLog('✓ USB Print job dispatched successfully.');
+    } catch (err: any) {
+      onLog(`❌ USB Print failed: ${err.message || err}`);
+      try { await this.activeUsbDevice.close(); } catch(e) {}
+      throw err;
+    }
   }
 
   private async usbWriteBytes(device: any, bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
     let endpoint = null;
     for (const inst of device.configuration?.interfaces || []) {
+      if (!inst.claimed) continue; // Only check claimed interfaces
       for (const alt of inst.alternates) {
-        if (alt.interfaceClass === 7) {
+        if (alt.interfaceClass === 7 || alt.interfaceClass === 0xff) {
           for (const ep of alt.endpoints) {
             if (ep.direction === 'out' && ep.type === 'bulk') {
               endpoint = ep;
@@ -312,6 +376,7 @@ export class PrinterService {
           }
         }
       }
+      if (endpoint) break;
     }
 
     if (!endpoint) {
@@ -328,11 +393,18 @@ export class PrinterService {
     if (type === 'bluetooth') {
       if (!nav || !nav.bluetooth) throw new Error('Web Bluetooth not supported.');
       onLog('Initiating Web Bluetooth scanner...');
+      const UUID_PRIMARY = '000018f0-0000-1000-8000-00805f9b34fb';
+      const UUID_SERIAL = '00001101-0000-1000-8000-00805f9b34fb';
+      
       const dev = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb']
+        optionalServices: [UUID_PRIMARY, UUID_SERIAL]
       });
       this.activeBluetoothDevice = dev;
+      this.activeBluetoothDevice.addEventListener('gattserverdisconnected', () => {
+           onLog('⚠️ Bluetooth GATT disconnected unexpectedly.');
+           this.activeBluetoothDevice = null;
+      });
       return dev.name || 'Bluetooth Printer';
     } else {
       if (!nav || !nav.usb) throw new Error('WebUSB not supported.');
@@ -342,7 +414,7 @@ export class PrinterService {
       const existingDevices = await nav.usb.getDevices();
       const printerDevices = existingDevices.filter((d: any) => d.configurations?.some(
         (cfg: any) => cfg.interfaces?.some(
-          (iface: any) => iface.alternates?.some((alt: any) => alt.interfaceClass === 7)
+          (iface: any) => iface.alternates?.some((alt: any) => alt.interfaceClass === 7 || alt.interfaceClass === 0xff)
         )
       ));
 
@@ -354,12 +426,42 @@ export class PrinterService {
 
       // No paired devices — prompt user to select one
       const dev = await nav.usb.requestDevice({
-        filters: [{ classCode: 7 }]
+        filters: [{ classCode: 7 }, { classCode: 0xff }]
       });
       this.activeUsbDevice = dev;
-      // NOTE: Do NOT open/claim here. Let printUsb handle it.
-      // Opening during scan causes the driver lock issue.
       return dev.productName || 'USB Printer';
     }
+  }
+
+  async disconnect(onLog: (msg: string) => void): Promise<void> {
+    if (this.activeBluetoothDevice && this.activeBluetoothDevice.gatt?.connected) {
+      onLog('Disconnecting Bluetooth GATT...');
+      this.activeBluetoothDevice.gatt.disconnect();
+      this.activeBluetoothDevice = null;
+    }
+    
+    if (this.activeUsbDevice && this.activeUsbDevice.opened) {
+      onLog('Closing USB device...');
+      try {
+        await this.activeUsbDevice.close();
+      } catch (e) {
+        onLog('Warning: Could not close USB device cleanly.');
+      }
+      this.activeUsbDevice = null;
+    }
+  }
+
+  async verifyConnection(config: PrinterConfig): Promise<boolean> {
+    if (config.type === 'browser' || config.type === 'network') return true;
+    
+    if (config.type === 'bluetooth') {
+      return !!(this.activeBluetoothDevice && this.activeBluetoothDevice.gatt?.connected);
+    }
+    
+    if (config.type === 'usb') {
+       return !!(this.activeUsbDevice && this.activeUsbDevice.opened);
+    }
+    
+    return false;
   }
 }

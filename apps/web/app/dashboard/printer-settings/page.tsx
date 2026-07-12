@@ -17,7 +17,7 @@ function isValidIp(ip: string): boolean {
 }
 
 export default function PrinterSettingsPage() {
-  const { config, status, logs, setConfig, scanAndPair, testPrint, clearLogs, disconnect } = usePrinter();
+  const { config, status, logs, setConfig, scanAndPair, testPrint, kickCashDrawer, forgetConfig } = usePrinter();
   
   const [ip, setIp] = useState(config.ip || '192.168.1.100');
   const [port, setPort] = useState(config.port || 9100);
@@ -25,11 +25,10 @@ export default function PrinterSettingsPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({});
   const [isTestPrinting, setIsTestPrinting] = useState(false);
+  const [isKicking, setIsKicking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [ipError, setIpError] = useState<string | null>(null);
   const [portError, setPortError] = useState<string | null>(null);
-  const consoleEndRef = useRef<HTMLDivElement>(null);
-  const consoleContainerRef = useRef<HTMLDivElement>(null);
 
   // Sync local state when config changes externally (e.g. from another tab)
   useEffect(() => {
@@ -38,12 +37,6 @@ export default function PrinterSettingsPage() {
     setNetworkName(config.name || 'Network Thermal Printer');
   }, [config]);
 
-  // Auto-scroll console to bottom when new logs arrive
-  useEffect(() => {
-    if (consoleEndRef.current) {
-      consoleEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [logs]);
 
   const validateIp = (value: string): boolean => {
     if (!isValidIp(value)) {
@@ -99,8 +92,8 @@ export default function PrinterSettingsPage() {
     }
   };
 
-  const handleDisconnect = () => {
-    disconnect();
+  const handleForgetConfig = () => {
+    forgetConfig();
   };
 
   const handleScanDevice = async (type: 'bluetooth' | 'usb') => {
@@ -125,7 +118,19 @@ export default function PrinterSettingsPage() {
     }
   };
 
+  const handleCashDrawer = async () => {
+    setIsKicking(true);
+    try {
+      await kickCashDrawer();
+    } catch (_) {
+    } finally {
+      setIsKicking(false);
+    }
+  };
+
   const isActive = (type: string) => config.type === type;
+
+  const hasDriverLockError = logs.some(log => log.includes('Windows driver lock detected') || log.includes('Access denied - Windows Driver Lock'));
 
   return (
     <div className="min-h-screen bg-[#0e0e0d] text-[#e5e2e1] font-sans antialiased selection:bg-[#ffe2ab]/30 select-none pb-16">
@@ -167,10 +172,10 @@ export default function PrinterSettingsPage() {
 
           {status === 'connected' && (
             <button
-              onClick={handleDisconnect}
+              onClick={handleForgetConfig}
               className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 hover:border-rose-500/30 hover:bg-rose-500/5 text-[10px] uppercase font-bold tracking-wider text-[#A69984] hover:text-rose-400 transition-all cursor-pointer"
             >
-              Disconnect
+              Forget Printer
             </button>
           )}
         </div>
@@ -206,8 +211,8 @@ export default function PrinterSettingsPage() {
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
-              <h3 className="text-xs uppercase font-extrabold tracking-wider text-white">Browser Print</h3>
-              <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">OS printer spooler dialog. Direct plug-and-play.</p>
+              <h3 className="text-xs uppercase font-extrabold tracking-wider text-white">System Default</h3>
+              <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">System print dialog. Easiest setup.</p>
             </button>
 
             {/* Card 2: Bluetooth - selects type only, doesn't scan */}
@@ -225,7 +230,7 @@ export default function PrinterSettingsPage() {
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
-              <h3 className="text-xs uppercase font-extrabold tracking-wider text-white">Bluetooth GATT</h3>
+              <h3 className="text-xs uppercase font-extrabold tracking-wider text-white">Bluetooth Wireless</h3>
               <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">Wireless pairing. Ideal for tablet or mobile POS.</p>
             </button>
 
@@ -244,8 +249,8 @@ export default function PrinterSettingsPage() {
                   <span className="material-symbols-outlined text-sm text-[#ffc53d]">check_circle</span>
                 )}
               </div>
-              <h3 className="text-xs uppercase font-extrabold tracking-wider text-white">WebUSB Direct</h3>
-              <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">Direct cable connect. Chrome/Edge desktop compatible.</p>
+              <h3 className="text-xs uppercase font-extrabold tracking-wider text-white">USB Cable</h3>
+              <p className="text-[10.5px] text-[#A69984]/65 mt-1.5 leading-relaxed">Direct cable connect for fast printing.</p>
             </button>
 
             {/* Card 4: Network */}
@@ -335,6 +340,27 @@ export default function PrinterSettingsPage() {
                 {scanErrors['usb'] && (
                   <div className="text-[10px] text-rose-400 font-medium font-mono bg-rose-500/5 border border-rose-500/10 p-3 rounded-lg">
                     {scanErrors['usb']}
+                  </div>
+                )}
+                {hasDriverLockError && (
+                  <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <span className="material-symbols-outlined text-rose-400 text-lg">warning</span>
+                      <div>
+                        <h5 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-1">Driver Conflict Detected</h5>
+                        <p className="text-[11px] text-rose-400/80 leading-relaxed">
+                          Windows Print Spooler is locking this USB device. We attempted Browser Print fallback automatically. To fix this permanently, remove the printer from Windows Settings.
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                      <button onClick={handleSelectBrowser} className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer">
+                        Use Browser Print
+                      </button>
+                      <button onClick={() => {}} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-[#A69984] rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer">
+                        Dismiss
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -433,7 +459,7 @@ export default function PrinterSettingsPage() {
           <div className="bg-[#161513]/90 border border-white/5 p-6 rounded-2xl space-y-4">
             <h3 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">Integration Diagnostics</h3>
             <p className="text-[11px] text-[#A69984]/65 leading-relaxed">
-              Verify your setup by firing a loopback diagnostic test ticket to the selected printer interface.
+              Verify your setup by firing a loopback diagnostic test ticket, or checking the RJ11 cash drawer port.
             </p>
 
             {config.type === 'browser' && status === 'connected' && (
@@ -443,61 +469,101 @@ export default function PrinterSettingsPage() {
               </div>
             )}
             
-            <button 
-              onClick={handleTestPrint}
-              disabled={isTestPrinting || status === 'connecting'}
-              className="w-full py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] hover:bg-[#ffe2ab]/5 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {isTestPrinting ? (
-                <>
-                  <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                  Sending...
-                </>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-base">print_connect</span>
-                  Send Test Print Job
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Diagnostic Console Log Terminal */}
-          <div className="bg-[#161513]/90 border border-white/5 rounded-2xl overflow-hidden flex flex-col h-[320px] shadow-xl">
-            
-            {/* Console header */}
-            <div className="bg-black/40 px-5 py-3 border-b border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#ffc53d] animate-pulse"></span>
-                <span className="font-mono text-[10px] text-white/50 font-bold uppercase tracking-wider">Diagnostic Terminal</span>
-              </div>
+            <div className="flex flex-col gap-3">
               <button 
-                onClick={clearLogs}
-                className="text-[9.5px] uppercase font-bold text-[#A69984]/50 hover:text-[#ffe2ab] transition-colors cursor-pointer"
+                onClick={handleTestPrint}
+                disabled={isTestPrinting || status === 'connecting'}
+                className="w-full py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] hover:bg-[#ffe2ab]/5 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                Clear Console
+                {isTestPrinting ? (
+                  <>
+                    <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">print_connect</span>
+                    Send Test Print Job
+                  </>
+                )}
+              </button>
+
+              <button 
+                onClick={handleCashDrawer}
+                disabled={isKicking || status === 'connecting'}
+                className="w-full py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] hover:bg-[#ffe2ab]/5 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isKicking ? (
+                  <>
+                    <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
+                    Opening...
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-base">point_of_sale</span>
+                    Test Cash Drawer
+                  </>
+                )}
               </button>
             </div>
-
-            {/* Scrollable console messages */}
-            <div ref={consoleContainerRef} className="p-5 flex-1 overflow-y-auto font-mono text-[10.5px] text-[#ffe2ab]/90 space-y-2 bg-[#080808] select-text">
-              {logs.length === 0 ? (
-                <div className="text-white/20 italic text-center pt-20">
-                  Terminal idle. Waiting for device print event log...
-                </div>
-              ) : (
-                logs.map((log, index) => (
-                  <div key={index} className="leading-relaxed border-b border-white/[0.02] pb-1.5 last:border-0">
-                    <span className="text-[#A69984]/40 mr-1.5">$</span>
-                    {log}
-                  </div>
-                ))
-              )}
-              <div ref={consoleEndRef} />
-            </div>
-
           </div>
 
+          {/* Connection Health Summary */}
+          <div className="bg-[#161513]/90 border border-white/5 p-6 rounded-2xl space-y-4">
+            <h3 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">Connection Health</h3>
+            
+            {status === 'connected' ? (
+              <div className="flex items-start gap-3 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                <span className="material-symbols-outlined text-emerald-400">check_circle</span>
+                <div>
+                  <h5 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Printer Ready</h5>
+                  <p className="text-[11px] text-emerald-400/80 leading-relaxed">
+                    Hardware interface is stable and ready to accept print commands.
+                  </p>
+                </div>
+              </div>
+            ) : status === 'connecting' ? (
+              <div className="flex items-start gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                <span className="material-symbols-outlined text-amber-400 animate-spin">progress_activity</span>
+                <div>
+                  <h5 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-1">Connecting...</h5>
+                  <p className="text-[11px] text-amber-400/80 leading-relaxed">
+                    Attempting to establish handshake with the printer...
+                  </p>
+                </div>
+              </div>
+            ) : hasDriverLockError ? (
+              <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                <span className="material-symbols-outlined text-rose-400">warning</span>
+                <div>
+                  <h5 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-1">Driver Conflict</h5>
+                  <p className="text-[11px] text-rose-400/80 leading-relaxed">
+                    OS level lock detected. Using Browser Print fallback.
+                  </p>
+                </div>
+              </div>
+            ) : status === 'error' ? (
+              <div className="flex items-start gap-3 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                <span className="material-symbols-outlined text-rose-400">error</span>
+                <div>
+                  <h5 className="text-xs font-bold text-rose-400 uppercase tracking-wider mb-1">Connection Error</h5>
+                  <p className="text-[11px] text-rose-400/80 leading-relaxed">
+                    Printer is offline or inaccessible. Check cables or pairing.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-xl">
+                <span className="material-symbols-outlined text-[#A69984]">sleep</span>
+                <div>
+                  <h5 className="text-xs font-bold text-[#A69984] uppercase tracking-wider mb-1">Idle</h5>
+                  <p className="text-[11px] text-[#A69984]/80 leading-relaxed">
+                    No active hardware session. Will connect on next print.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
       </main>

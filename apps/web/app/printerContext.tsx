@@ -16,6 +16,7 @@ interface PrinterContextType {
   testPrint: () => Promise<void>;
   clearLogs: () => void;
   disconnect: () => void;
+  forgetConfig: () => void;
 }
 
 const defaultContext: PrinterContextType = {
@@ -28,7 +29,8 @@ const defaultContext: PrinterContextType = {
   kickCashDrawer: async () => {},
   testPrint: async () => {},
   clearLogs: () => {},
-  disconnect: () => {}
+  disconnect: () => {},
+  forgetConfig: () => {}
 };
 
 const PrinterContext = createContext<PrinterContextType>(defaultContext);
@@ -45,8 +47,14 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       const saved = localStorage.getItem('dinepos_printer_config');
       if (saved) {
         try {
-          setConfigState(JSON.parse(saved));
-          setStatus('connected'); // Config exists, assume ready
+          const loadedConfig = JSON.parse(saved);
+          setConfigState(loadedConfig);
+          // Only set to connected if it's a browser or network printer which doesn't need a hardware handshake
+          if (loadedConfig.type === 'browser' || loadedConfig.type === 'network') {
+            setStatus('connected');
+          } else {
+            setStatus('idle');
+          }
         } catch (e) {
           console.error('Failed to parse printer config:', e);
         }
@@ -61,8 +69,19 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   const clearLogs = () => setLogs([]);
 
   const disconnect = () => {
+    service.disconnect(addLog);
     setStatus('idle');
     addLog('Printer disconnected by user.');
+  };
+
+  const forgetConfig = () => {
+    service.disconnect(addLog);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('dinepos_printer_config');
+    }
+    setConfigState({ type: 'browser', name: 'Browser Print' });
+    setStatus('idle');
+    addLog('Printer configuration forgotten and reset.');
   };
 
   const setConfig = (newCfg: PrinterConfig) => {
@@ -71,7 +90,11 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('dinepos_printer_config', JSON.stringify(newCfg));
     }
     addLog(`Printer config updated: ${newCfg.type.toUpperCase()} - ${newCfg.name}`);
-    setStatus('connected');
+    if (newCfg.type === 'browser' || newCfg.type === 'network') {
+      setStatus('connected');
+    } else {
+      setStatus('idle');
+    }
   };
 
   const scanAndPair = async (type: 'bluetooth' | 'usb') => {
@@ -147,7 +170,8 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
         kickCashDrawer,
         testPrint,
         clearLogs,
-        disconnect
+        disconnect,
+        forgetConfig
       }}
     >
       {children}

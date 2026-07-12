@@ -258,3 +258,87 @@ export const unlinkStripeConfig = async (req: AuthenticatedRequest, res: Respons
   }
 };
 
+// 6. GET TENANT BILLING INFO
+export const getTenantBilling = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+
+  try {
+    const { data: tenant, error: tenantErr } = await supabase
+      .from('tenants')
+      .select('plan, trial_ends_at')
+      .eq('id', tenantId)
+      .single();
+
+    if (tenantErr || !tenant) {
+      return res.status(500).json({ success: false, error: 'Failed to fetch tenant info.' });
+    }
+
+    const { data: billing } = await supabase
+      .from('tenant_billing')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const { count: activeTerminals } = await supabase
+      .from('devices')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('is_active', true);
+
+    res.json({
+      success: true,
+      data: {
+        plan: tenant.plan || 'TRIAL',
+        trialEndsAt: tenant.trial_ends_at,
+        billing: billing ? {
+          id: billing.id,
+          plan: billing.plan,
+          status: billing.status,
+          amount: parseFloat(billing.amount),
+          nextBillingDate: billing.next_billing_date,
+          createdAt: billing.created_at
+        } : null,
+        activeTerminals: activeTerminals || 0
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error fetching tenant billing.' });
+  }
+};
+
+// 7. GET SUBSCRIPTION INVOICES
+export const getSubscriptionInvoices = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  const tenantId = req.user?.tenantId;
+  if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
+
+  try {
+    const { data: invoices, error } = await supabase
+      .from('subscription_invoices')
+      .select('*')
+      .eq('tenant_id', tenantId)
+      .order('created_at', { ascending: false });
+
+    if (error) return res.status(500).json({ success: false, error: error.message });
+
+    res.json({
+      success: true,
+      data: (invoices || []).map(inv => ({
+        id: inv.id,
+        invoiceNumber: inv.invoice_number,
+        description: inv.description,
+        amount: parseFloat(inv.amount),
+        status: inv.status,
+        periodStart: inv.period_start,
+        periodEnd: inv.period_end,
+        paidAt: inv.paid_at,
+        createdAt: inv.created_at
+      }))
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Error fetching invoices.' });
+  }
+};
+
