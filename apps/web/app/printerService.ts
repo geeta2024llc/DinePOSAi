@@ -208,40 +208,38 @@ export class PrinterService {
       throw new Error('WebUSB not supported.');
     }
 
+    const openAndClaim = async (device: any) => {
+      if (!device.opened) {
+        onLog(`Opening USB device connection: ${device.productName || 'USB Printer'}...`);
+        await device.open();
+      }
+      onLog('Selecting USB configuration...');
+      await device.selectConfiguration(1);
+      onLog('Claiming printer interface...');
+      await device.claimInterface(0);
+    };
+
     try {
-      if (!this.activeUsbDevice) {
-        onLog('Requesting USB device selection...');
-        this.activeUsbDevice = await nav.usb.requestDevice({
-          filters: [{ classCode: 7 }] // USB Printer class
-        });
+      // Always start fresh — release any previous device first
+      if (this.activeUsbDevice) {
+        try {
+          if (this.activeUsbDevice.opened) {
+            onLog('Releasing previous USB connection...');
+            await this.activeUsbDevice.releaseInterface(0);
+            await this.activeUsbDevice.close();
+          }
+        } catch (_) {
+          // Previous device may already be gone
+        }
+        this.activeUsbDevice = null;
       }
 
-      // Check if device is already open before attempting to open
-      if (this.activeUsbDevice.opened) {
-        onLog('USB device already open, reusing connection...');
-      } else {
-        onLog(`Opening USB device connection: ${this.activeUsbDevice.productName || 'USB Printer'}...`);
-        try {
-          await this.activeUsbDevice.open();
-        } catch (openErr: any) {
-          if (openErr.name === 'SecurityError' || openErr.message?.includes('Access denied')) {
-            onLog('⚠️ Device access denied. Attempting to close and reopen...');
-            try { await this.activeUsbDevice.close(); } catch (_) {}
-            this.activeUsbDevice = await nav.usb.requestDevice({
-              filters: [{ classCode: 7 }]
-            });
-            await this.activeUsbDevice.open();
-          } else {
-            throw openErr;
-          }
-        }
-      }
-      
-      onLog('Selecting USB configuration...');
-      await this.activeUsbDevice.selectConfiguration(1);
-      
-      onLog('Claiming printer interface...');
-      await this.activeUsbDevice.claimInterface(0);
+      onLog('Requesting USB device selection...');
+      this.activeUsbDevice = await nav.usb.requestDevice({
+        filters: [{ classCode: 7 }] // USB Printer class
+      });
+
+      await openAndClaim(this.activeUsbDevice);
 
       // Find Bulk Out endpoint
       let endpoint = null;
@@ -268,6 +266,15 @@ export class PrinterService {
       onLog('✓ USB Print job dispatched successfully.');
     } catch (err: any) {
       onLog(`❌ USB Print failed: ${err.message || err}`);
+      // Properly release and close the device before clearing
+      if (this.activeUsbDevice) {
+        try {
+          if (this.activeUsbDevice.opened) {
+            await this.activeUsbDevice.releaseInterface(0).catch(() => {});
+            await this.activeUsbDevice.close().catch(() => {});
+          }
+        } catch (_) {}
+      }
       this.activeUsbDevice = null;
       throw err;
     }
