@@ -208,44 +208,73 @@ export class PrinterService {
       throw new Error('WebUSB not supported.');
     }
 
-    const openAndClaim = async (device: any) => {
-      if (!device.opened) {
-        onLog(`Opening USB device connection: ${device.productName || 'USB Printer'}...`);
-        await device.open();
-      }
-      onLog('Selecting USB configuration...');
-      await device.selectConfiguration(1);
-      onLog('Claiming printer interface...');
-      await device.claimInterface(0);
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const safelyClose = async (device: any) => {
+      try { await device.releaseInterface(0).catch(() => {}); } catch (_) {}
+      try { await device.close().catch(() => {}); } catch (_) {}
     };
 
     try {
-      // Always start fresh — release any previous device first
+      // Release any previously held device first
       if (this.activeUsbDevice) {
-        try {
-          if (this.activeUsbDevice.opened) {
-            onLog('Releasing previous USB connection...');
-            await this.activeUsbDevice.releaseInterface(0);
-            await this.activeUsbDevice.close();
-          }
-        } catch (_) {
-          // Previous device may already be gone
-        }
+        onLog('Releasing previous USB connection...');
+        await safelyClose(this.activeUsbDevice);
         this.activeUsbDevice = null;
+        await sleep(300);
       }
 
-      onLog('Requesting USB device selection...');
-      this.activeUsbDevice = await nav.usb.requestDevice({
-        filters: [{ classCode: 7 }] // USB Printer class
-      });
+      // First check for already-paired devices without prompting user
+      const existingDevices = await nav.usb.getDevices();
+      const printerDevices = existingDevices.filter((d: any) => d.configurations?.some(
+        (cfg: any) => cfg.interfaces?.some(
+          (iface: any) => iface.alternates?.some((alt: any) => alt.interfaceClass === 7)
+        )
+      ));
 
-      await openAndClaim(this.activeUsbDevice);
+      if (printerDevices.length > 0) {
+        onLog(`Found ${printerDevices.length} paired printer(s). Using: ${printerDevices[0].productName || 'USB Printer'}`);
+        this.activeUsbDevice = printerDevices[0];
+      } else {
+        onLog('No paired printers found. Requesting device selection...');
+        this.activeUsbDevice = await nav.usb.requestDevice({
+          filters: [{ classCode: 7 }]
+        });
+      }
+
+      // Try to open with retries — the driver may need time to release
+      const MAX_RETRIES = 3;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          if (!this.activeUsbDevice.opened) {
+            onLog(`Opening USB device (attempt ${attempt}/${MAX_RETRIES})...`);
+            await this.activeUsbDevice.open();
+          }
+          break; // Success
+        } catch (openErr: any) {
+          if (attempt < MAX_RETRIES) {
+            onLog(`⚠️ Open failed (attempt ${attempt}). Resetting device and retrying in 1s...`);
+            // Try device.reset() to force the OS to release the interface
+            try { await this.activeUsbDevice.reset(); } catch (_) {}
+            await safelyClose(this.activeUsbDevice);
+            await sleep(1000);
+          } else {
+            throw openErr;
+          }
+        }
+      }
+
+      onLog('Selecting USB configuration...');
+      await this.activeUsbDevice.selectConfiguration(1);
+
+      onLog('Claiming printer interface...');
+      await this.activeUsbDevice.claimInterface(0);
 
       // Find Bulk Out endpoint
       let endpoint = null;
       for (const inst of this.activeUsbDevice.configuration?.interfaces || []) {
         for (const alt of inst.alternates) {
-          if (alt.interfaceClass === 7) { // Printer
+          if (alt.interfaceClass === 7) {
             for (const ep of alt.endpoints) {
               if (ep.direction === 'out' && ep.type === 'bulk') {
                 endpoint = ep;
@@ -264,16 +293,11 @@ export class PrinterService {
       onLog(`Transmitting to bulk endpoint ${endpoint.endpointNumber}...`);
       await this.activeUsbDevice.transferOut(endpoint.endpointNumber, bytes);
       onLog('✓ USB Print job dispatched successfully.');
+
     } catch (err: any) {
       onLog(`❌ USB Print failed: ${err.message || err}`);
-      // Properly release and close the device before clearing
       if (this.activeUsbDevice) {
-        try {
-          if (this.activeUsbDevice.opened) {
-            await this.activeUsbDevice.releaseInterface(0).catch(() => {});
-            await this.activeUsbDevice.close().catch(() => {});
-          }
-        } catch (_) {}
+        await safelyClose(this.activeUsbDevice);
       }
       this.activeUsbDevice = null;
       throw err;
@@ -295,6 +319,21 @@ export class PrinterService {
     } else {
       if (!nav || !nav.usb) throw new Error('WebUSB not supported.');
       onLog('Initiating WebUSB scanner...');
+
+      // Check for already-paired devices first
+      const existingDevices = await nav.usb.getDevices();
+      const printerDevices = existingDevices.filter((d: any) => d.configurations?.some(
+        (cfg: any) => cfg.interfaces?.some(
+          (iface: any) => iface.alternates?.some((alt: any) => alt.interfaceClass === 7)
+        )
+      ));
+
+      if (printerDevices.length > 0) {
+        onLog(`Found ${printerDevices.length} paired printer(s).`);
+        this.activeUsbDevice = printerDevices[0];
+        return printerDevices[0].productName || 'USB Printer';
+      }
+
       try {
         const dev = await nav.usb.requestDevice({
           filters: [{ classCode: 7 }]
