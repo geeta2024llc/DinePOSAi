@@ -313,7 +313,8 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      domain: process.env.COOKIE_DOMAIN || undefined,
       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
     });
 
@@ -414,7 +415,8 @@ export const refresh = async (req: Request, res: Response<ApiResponse>) => {
     res.cookie('refreshToken', newRefreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      domain: process.env.COOKIE_DOMAIN || undefined,
       maxAge: REFRESH_TOKEN_EXPIRY * 1000,
     });
 
@@ -464,7 +466,8 @@ export const logout = async (req: Request, res: Response<ApiResponse>) => {
   res.clearCookie('refreshToken', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+    domain: process.env.COOKIE_DOMAIN || undefined,
   });
 
   res.json({
