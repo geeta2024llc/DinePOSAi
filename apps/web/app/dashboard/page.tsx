@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { apiRequest, isDemoTenant } from '@/utils/api';
+import { useAuth } from '../authContext';
 import { recordActivity, getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
 import {
   InventoryItem,
@@ -929,6 +930,7 @@ const translations: Record<string, Record<string, string>> = {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { logout: ctxLogout } = useAuth();
   const searchParams = useSearchParams();
   // CMS Configuration State
   const [cmsConfig, setCmsConfig] = useState(defaultCmsConfig);
@@ -2771,13 +2773,14 @@ export default function DashboardPage() {
             {tr.saveChanges}
           </button>
 
-          <Link 
-            href="/login"
-            className={`w-full py-2.5 border ${t.buttonOutline} rounded-xl font-bold uppercase tracking-wider text-[10px] transition-colors flex items-center justify-center gap-1.5`}
+          <button 
+            type="button"
+            onClick={() => ctxLogout()}
+            className={`w-full py-2.5 border ${t.buttonOutline} rounded-xl font-bold uppercase tracking-wider text-[10px] transition-colors flex items-center justify-center gap-1.5 cursor-pointer`}
           >
             <span className="material-symbols-outlined text-sm">logout</span>
             {tr.signOut}
-          </Link>
+          </button>
         </div>
       </aside>
 
