@@ -50,7 +50,7 @@ export const createCheckoutSession = async (req: AuthenticatedRequest, res: Resp
   }
 
   try {
-    const origin = req.headers.origin || 'http://localhost:3000';
+    const origin = req.headers.origin || process.env.FRONTEND_URL?.split(',')[0] || 'http://localhost:3000';
     const { stripe: activeStripe } = await getStripeClient();
 
     // Pricing mapping (in USD cents)

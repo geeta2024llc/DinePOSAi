@@ -517,7 +517,7 @@ export const forgotPassword = async (req: Request, res: Response<ApiResponse>) =
       })
       .eq('id', user.id);
 
-    const origin = req.headers.origin || 'http://localhost:3000';
+    const origin = req.headers.origin || process.env.FRONTEND_URL?.split(',')[0] || 'http://localhost:3000';
     const resetUrl = `${origin}/reset-password?token=${token}`;
 
     console.log('\n========================================');
