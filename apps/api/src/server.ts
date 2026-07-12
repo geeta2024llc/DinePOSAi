@@ -36,12 +36,14 @@ const REQUIRED_ENV = [
 
 if (process.env.NODE_ENV === 'production') {
   REQUIRED_ENV.push(
-    'STRIPE_SECRET_KEY',
-    'STRIPE_WEBHOOK_SECRET',
-    'RESEND_API_KEY',
-    'GEMINI_API_KEY',
     'FRONTEND_URL'
   );
+  // Warn about optional but recommended env vars
+  const OPTIONAL_PROD_ENV = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'RESEND_API_KEY', 'GEMINI_API_KEY'];
+  const missing = OPTIONAL_PROD_ENV.filter(key => !process.env[key]);
+  if (missing.length > 0) {
+    console.warn('\x1b[33m%s\x1b[0m', `⚠️  Optional env vars not set: ${missing.join(', ')}. Some features may be unavailable.`);
+  }
 }
 
 const MISSING_ENV = REQUIRED_ENV.filter(key => !process.env[key]);
