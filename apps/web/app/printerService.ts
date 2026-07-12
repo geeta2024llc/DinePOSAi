@@ -210,21 +210,9 @@ export class PrinterService {
 
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    const safelyClose = async (device: any) => {
-      try { await device.releaseInterface(0).catch(() => {}); } catch (_) {}
-      try { await device.close().catch(() => {}); } catch (_) {}
-    };
-
-    try {
-      // Release any previously held device first
-      if (this.activeUsbDevice) {
-        onLog('Releasing previous USB connection...');
-        await safelyClose(this.activeUsbDevice);
-        this.activeUsbDevice = null;
-        await sleep(300);
-      }
-
-      // First check for already-paired devices without prompting user
+    // Step 1: Ensure we have a device reference
+    if (!this.activeUsbDevice) {
+      // Check for already-paired devices first (no user prompt)
       const existingDevices = await nav.usb.getDevices();
       const printerDevices = existingDevices.filter((d: any) => d.configurations?.some(
         (cfg: any) => cfg.interfaces?.some(
@@ -241,67 +229,74 @@ export class PrinterService {
           filters: [{ classCode: 7 }]
         });
       }
+    }
 
-      // Try to open with retries — the driver may need time to release
-      const MAX_RETRIES = 3;
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          if (!this.activeUsbDevice.opened) {
-            onLog(`Opening USB device (attempt ${attempt}/${MAX_RETRIES})...`);
-            await this.activeUsbDevice.open();
-          }
-          break; // Success
-        } catch (openErr: any) {
-          if (attempt < MAX_RETRIES) {
-            onLog(`⚠️ Open failed (attempt ${attempt}). Resetting device and retrying in 1s...`);
-            // Try device.reset() to force the OS to release the interface
-            try { await this.activeUsbDevice.reset(); } catch (_) {}
-            await safelyClose(this.activeUsbDevice);
-            await sleep(1000);
-          } else {
-            throw openErr;
-          }
+    // Step 2: If already opened, try to write directly — DON'T close and reopen
+    if (this.activeUsbDevice.opened) {
+      onLog('USB device already open. Writing directly...');
+      try {
+        await this.usbWriteBytes(this.activeUsbDevice, bytes, onLog);
+        onLog('✓ USB Print job dispatched successfully.');
+        return;
+      } catch (writeErr: any) {
+        onLog(`⚠️ Direct write failed (${writeErr.message}). Will attempt reconnect...`);
+        // Don't null the device yet — try to reopen below
+      }
+    }
+
+    // Step 3: Device is not opened or write failed — try to open
+    // CRITICAL: Do NOT close the device before opening. Just try to open.
+    // If the OS driver holds it, we can't fix that from the browser.
+    const MAX_RETRIES = 2;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (!this.activeUsbDevice.opened) {
+          onLog(`Opening USB device (attempt ${attempt}/${MAX_RETRIES})...`);
+          await this.activeUsbDevice.open();
+        }
+
+        onLog('Selecting USB configuration...');
+        await this.activeUsbDevice.selectConfiguration(1);
+
+        onLog('Claiming printer interface...');
+        await this.activeUsbDevice.claimInterface(0);
+
+        await this.usbWriteBytes(this.activeUsbDevice, bytes, onLog);
+        onLog('✓ USB Print job dispatched successfully.');
+        return;
+      } catch (err: any) {
+        if (attempt < MAX_RETRIES) {
+          onLog(`⚠️ Attempt ${attempt} failed (${err.message}). Retrying in 2s...`);
+          await sleep(2000);
+        } else {
+          onLog(`❌ USB Print failed: ${err.message}`);
+          throw err;
         }
       }
+    }
+  }
 
-      onLog('Selecting USB configuration...');
-      await this.activeUsbDevice.selectConfiguration(1);
-
-      onLog('Claiming printer interface...');
-      await this.activeUsbDevice.claimInterface(0);
-
-      // Find Bulk Out endpoint
-      let endpoint = null;
-      for (const inst of this.activeUsbDevice.configuration?.interfaces || []) {
-        for (const alt of inst.alternates) {
-          if (alt.interfaceClass === 7) {
-            for (const ep of alt.endpoints) {
-              if (ep.direction === 'out' && ep.type === 'bulk') {
-                endpoint = ep;
-                break;
-              }
+  private async usbWriteBytes(device: any, bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
+    let endpoint = null;
+    for (const inst of device.configuration?.interfaces || []) {
+      for (const alt of inst.alternates) {
+        if (alt.interfaceClass === 7) {
+          for (const ep of alt.endpoints) {
+            if (ep.direction === 'out' && ep.type === 'bulk') {
+              endpoint = ep;
+              break;
             }
           }
         }
       }
-
-      if (!endpoint) {
-        onLog('❌ No Bulk Out endpoint found on USB printer.');
-        throw new Error('No write endpoint found.');
-      }
-
-      onLog(`Transmitting to bulk endpoint ${endpoint.endpointNumber}...`);
-      await this.activeUsbDevice.transferOut(endpoint.endpointNumber, bytes);
-      onLog('✓ USB Print job dispatched successfully.');
-
-    } catch (err: any) {
-      onLog(`❌ USB Print failed: ${err.message || err}`);
-      if (this.activeUsbDevice) {
-        await safelyClose(this.activeUsbDevice);
-      }
-      this.activeUsbDevice = null;
-      throw err;
     }
+
+    if (!endpoint) {
+      throw new Error('No Bulk Out endpoint found on USB printer.');
+    }
+
+    onLog(`Transmitting to bulk endpoint ${endpoint.endpointNumber}...`);
+    await device.transferOut(endpoint.endpointNumber, bytes);
   }
 
   // Helper to trigger device scan for dashboard settings page
@@ -334,19 +329,14 @@ export class PrinterService {
         return printerDevices[0].productName || 'USB Printer';
       }
 
-      try {
-        const dev = await nav.usb.requestDevice({
-          filters: [{ classCode: 7 }]
-        });
-        this.activeUsbDevice = dev;
-        return dev.productName || 'USB Printer';
-      } catch (err: any) {
-        if (err.name === 'NotFoundError') {
-          onLog('⚠️ No USB device selected.');
-          throw new Error('No device selected. Please connect a USB printer and try again.');
-        }
-        throw err;
-      }
+      // No paired devices — prompt user to select one
+      const dev = await nav.usb.requestDevice({
+        filters: [{ classCode: 7 }]
+      });
+      this.activeUsbDevice = dev;
+      // NOTE: Do NOT open/claim here. Let printUsb handle it.
+      // Opening during scan causes the driver lock issue.
+      return dev.productName || 'USB Printer';
     }
   }
 }
