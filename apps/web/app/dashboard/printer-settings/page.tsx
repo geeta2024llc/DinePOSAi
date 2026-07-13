@@ -29,6 +29,7 @@ export default function PrinterSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [ipError, setIpError] = useState<string | null>(null);
   const [portError, setPortError] = useState<string | null>(null);
+  const [dismissedDriverLock, setDismissedDriverLock] = useState(false);
 
   // Sync local state when config changes externally (e.g. from another tab)
   useEffect(() => {
@@ -190,7 +191,7 @@ export default function PrinterSettingsPage() {
           {/* Section title */}
           <div>
             <h2 className="text-lg font-serif text-white font-medium mb-1">Select connection interface</h2>
-            <p className="text-xs text-[#A69984]/65">Choose how this terminal communicates with your thermal printer fleet. DinePOS is optimized for 80mm (3-inch) POS paper layouts.</p>
+            <p className="text-xs text-[#A69984]/65">Choose how this terminal communicates with your thermal printer fleet. DinePOS defaults to 80mm (3-inch) receipt paper layouts for optimal print quality.</p>
           </div>
 
           {/* Cards for connection types */}
@@ -342,7 +343,7 @@ export default function PrinterSettingsPage() {
                     {scanErrors['usb']}
                   </div>
                 )}
-                {hasDriverLockError && (
+                {hasDriverLockError && !dismissedDriverLock && (
                   <div className="mt-4 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 space-y-3">
                     <div className="flex items-start gap-3">
                       <span className="material-symbols-outlined text-rose-400 text-lg">warning</span>
@@ -357,7 +358,7 @@ export default function PrinterSettingsPage() {
                       <button onClick={handleSelectBrowser} className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer">
                         Use Browser Print
                       </button>
-                      <button onClick={() => {}} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-[#A69984] rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer">
+                      <button onClick={() => setDismissedDriverLock(true)} className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-[#A69984] rounded-lg text-[10px] font-bold uppercase transition-colors cursor-pointer">
                         Dismiss
                       </button>
                     </div>
@@ -563,6 +564,36 @@ export default function PrinterSettingsPage() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Paper & Layout Configuration Summary */}
+          <div className="bg-[#161513]/90 border border-white/5 p-6 rounded-2xl space-y-4">
+            <h3 className="text-xs uppercase font-extrabold tracking-widest text-[#ffe2ab]">Paper & Layout Config</h3>
+            <p className="text-[11px] text-[#A69984]/65 leading-relaxed">
+              DinePOS defaults to 80mm (3-inch) thermal paper with 48-column font A layouts for clear, readable receipts.
+            </p>
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="bg-[#0e0e0d] border border-white/5 rounded-xl p-3 space-y-1">
+                <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider">Paper Size</div>
+                <div className="text-xs text-white font-semibold font-mono">80mm (3-inch)</div>
+              </div>
+              <div className="bg-[#0e0e0d] border border-white/5 rounded-xl p-3 space-y-1">
+                <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider">Column Width</div>
+                <div className="text-xs text-white font-semibold font-mono">48 characters</div>
+              </div>
+              <div className="bg-[#0e0e0d] border border-white/5 rounded-xl p-3 space-y-1">
+                <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider">Browser Print</div>
+                <div className="text-xs text-white font-semibold font-mono">300px viewport</div>
+              </div>
+              <div className="bg-[#0e0e0d] border border-white/5 rounded-xl p-3 space-y-1">
+                <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider">BT Chunk Size</div>
+                <div className="text-xs text-white font-semibold font-mono">182 bytes @ 30ms</div>
+              </div>
+            </div>
+            <div className="bg-[#0e0e0d] border border-white/5 rounded-xl p-3 space-y-1">
+              <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider">Active Connection</div>
+              <div className="text-xs text-white font-semibold">{config.type.toUpperCase()} — {config.name}</div>
+            </div>
           </div>
         </div>
 

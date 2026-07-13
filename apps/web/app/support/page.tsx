@@ -240,14 +240,14 @@ export default function SupportPage() {
         </div>
 
         {/* Knowledge Base Section */}
-        <div className="pt-8 border-t border-white/5">
+        <div id="knowledge-base" className="pt-8 border-t border-white/5">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
             <div>
               <h2 className="font-serif text-[26px] md:text-[32px] text-white mb-2 font-bold tracking-wide">{cmsConfig.support.kbTitle}</h2>
               <p className="font-sans text-[13px] text-[#A69984] font-medium">{cmsConfig.support.kbSubtitle}</p>
             </div>
             <button 
-              onClick={() => triggerToast('Opening full knowledge directory...')}
+              onClick={() => document.getElementById('knowledge-base')?.scrollIntoView({ behavior: 'smooth' })}
               className="font-sans text-[#ffe2ab] text-[10px] uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors font-bold cursor-pointer bg-[#ffe2ab]/10 px-4 py-2 rounded-lg"
             >
               {cmsConfig.support.kbButtonText} <span className="material-symbols-outlined text-sm">menu_book</span>

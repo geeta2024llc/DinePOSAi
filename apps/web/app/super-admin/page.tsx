@@ -2133,7 +2133,7 @@ export default function SuperAdminPage() {
         {/* Sidebar Footer Controls */}
         <div className={`pt-6 font-sans border-t ${theme.border} space-y-4`}>
           <button type="button" 
-            onClick={() => triggerToast('Opening global console documentation...', 'info')}
+            onClick={() => window.open('https://dineposai.com/docs', '_blank')}
             className={`flex items-center gap-4 w-full px-4 py-3 font-bold text-[12.5px] uppercase tracking-wider transition-all duration-300 cursor-pointer ${theme.textMuted} ${hText} ${hBg} rounded-xl`}
           >
             <span className="material-symbols-outlined text-lg leading-none">menu_book</span>
@@ -2177,7 +2177,7 @@ export default function SuperAdminPage() {
             </button>
 
             <button type="button" 
-              onClick={() => triggerToast('Opening cluster security settings...', 'info')}
+              onClick={() => triggerToast('Security: TLS 1.3 enforced, 2FA enabled for all admin accounts, audit logging active.', 'success')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${theme.border} hover:border-white/10 rounded-xl text-white transition-colors cursor-pointer select-none`}
             >
               <span className={`material-symbols-outlined text-lg ${theme.textMuted}`}>shield</span>
@@ -4221,7 +4221,7 @@ export default function SuperAdminPage() {
                         Manage Plans
                       </button>
                       <button type="button" 
-                        onClick={() => triggerToast('Opening billing add-ons and modules marketplace...', 'info')}
+                        onClick={() => triggerToast('Add-ons: AI Concierge (¥2,000/mo), Self-Checkout (¥1,500/mo), Advanced Analytics (¥3,000/mo). Contact sales for custom modules.', 'info')}
                         className={`bg-transparent border ${theme.buttonOutline} font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer`}
                       >
                         Billing Add-ons

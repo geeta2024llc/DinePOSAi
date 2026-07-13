@@ -1126,20 +1126,24 @@ export default function DashboardPage() {
   const [wasteNotes, setWasteNotes] = useState('');
 
   const reloadInventory = async () => {
-    const [ings, recs, sups, pos, wastes, txs] = await Promise.all([
-      getIngredients(),
-      getRecipes(),
-      getSuppliers(),
-      getPurchaseOrders(),
-      getWasteLogs(),
-      getTransactions()
-    ]);
-    setIngredientsList(ings);
-    setRecipesList(recs);
-    setSuppliersList(sups);
-    setPurchaseOrdersList(pos);
-    setWasteLogsList(wastes);
-    setTransactionsList(txs);
+    try {
+      const [ings, recs, sups, pos, wastes, txs] = await Promise.all([
+        getIngredients(),
+        getRecipes(),
+        getSuppliers(),
+        getPurchaseOrders(),
+        getWasteLogs(),
+        getTransactions()
+      ]);
+      setIngredientsList(ings);
+      setRecipesList(recs);
+      setSuppliersList(sups);
+      setPurchaseOrdersList(pos);
+      setWasteLogsList(wastes);
+      setTransactionsList(txs);
+    } catch {
+      // Backend offline — keep existing state
+    }
   };
 
   useEffect(() => {
@@ -1740,37 +1744,42 @@ export default function DashboardPage() {
 
       // Fetch Stripe config and billing data from API (fire-and-forget)
       (async () => {
-        const stripeRes = await apiRequest<{ isLinked: boolean }>('/api/billing/config');
-        if (stripeRes.success && stripeRes.data?.isLinked) {
-          setLinkedStripeAccount('Connected');
-          setStripeAccountIdInput('');
-        } else {
-          setLinkedStripeAccount(null);
-          setStripeAccountIdInput('');
-        }
+        try {
+          const stripeRes = await apiRequest<{ isLinked: boolean }>('/api/billing/config');
+          if (stripeRes.success && stripeRes.data?.isLinked) {
+            setLinkedStripeAccount('Connected');
+            setStripeAccountIdInput('');
+          } else {
+            setLinkedStripeAccount(null);
+            setStripeAccountIdInput('');
+          }
+        } catch { /* backend offline — leave defaults */ }
 
-        const billingRes = await apiRequest<{
-          plan: string;
-          trialEndsAt: string | null;
-          billing: { id: string; plan: string; status: string; amount: number; nextBillingDate: string; createdAt: string } | null;
-          activeTerminals: number;
-        }>('/api/billing/tenant');
-        if (billingRes.success && billingRes.data) {
-          setTenantBilling(billingRes.data);
-        }
+        try {
+          const billingRes = await apiRequest<{
+            plan: string;
+            trialEndsAt: string | null;
+            billing: { id: string; plan: string; status: string; amount: number; nextBillingDate: string; createdAt: string } | null;
+            activeTerminals: number;
+          }>('/api/billing/tenant');
+          if (billingRes.success && billingRes.data) {
+            setTenantBilling(billingRes.data);
+          }
+        } catch { /* backend offline */ }
 
-        // Fetch subscription invoices
-        const invoicesRes = await apiRequest<{
-          id: string;
-          invoiceNumber: string;
-          description: string;
-          amount: number;
-          status: string;
-          createdAt: string;
-        }[]>('/api/billing/invoices');
-        if (invoicesRes.success && Array.isArray(invoicesRes.data)) {
-          setSubscriptionInvoices(invoicesRes.data);
-        }
+        try {
+          const invoicesRes = await apiRequest<{
+            id: string;
+            invoiceNumber: string;
+            description: string;
+            amount: number;
+            status: string;
+            createdAt: string;
+          }[]>('/api/billing/invoices');
+          if (invoicesRes.success && Array.isArray(invoicesRes.data)) {
+            setSubscriptionInvoices(invoicesRes.data);
+          }
+        } catch { /* backend offline */ }
       })();
     }
   }, []);
@@ -1939,10 +1948,11 @@ export default function DashboardPage() {
     ];
 
     const loadMenuAndCategories = async () => {
-      const catRes = await apiRequest<any[]>('/api/menu/categories');
-      const itemRes = await apiRequest<any[]>('/api/menu/items');
+      try {
+        const catRes = await apiRequest<any[]>('/api/menu/categories');
+        const itemRes = await apiRequest<any[]>('/api/menu/items');
 
-      if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+        if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
         // If DB has no categories, auto-create defaults so UUIDs exist for menu items
         let resolvedCategories = catRes.data;
         if (resolvedCategories.length === 0) {
@@ -2037,6 +2047,9 @@ export default function DashboardPage() {
         if (fallbackCategories.length > 0) {
           localStorage.setItem('dinepos_menu_categories', JSON.stringify(fallbackCategories));
         }
+      }
+      } catch {
+        // Backend offline — keep existing localStorage state
       }
     };
 
@@ -3694,7 +3707,7 @@ export default function DashboardPage() {
                     </div>
 
                     <button type="button" 
-                      onClick={() => triggerToast('Opening scheduler dashboard...', 'info')}
+                      onClick={() => triggerToast('Navigate to Staff tab to manage schedules.', 'info')}
                       className={`w-full py-3 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                     >
                       Manage Schedule
@@ -4035,7 +4048,7 @@ export default function DashboardPage() {
                         {tr.changePlan}
                       </button>
                       <button type="button" 
-                        onClick={() => triggerToast('Opening add-ons marketplace...', 'info')}
+                        onClick={() => router.push('/subscribe')}
                         className={`bg-transparent border ${t.buttonOutline} font-sans font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-xl transition-all duration-300 cursor-pointer`}
                       >
                         {tr.manageAddons}
@@ -4051,7 +4064,7 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center select-none">
                         <h3 className={`font-serif text-sm ${t.text} font-bold tracking-wide`}>{tr.paymentMethod}</h3>
                         <button type="button" 
-                          onClick={() => triggerToast('Opening payment edit forms...', 'info')}
+                          onClick={() => triggerToast('Navigate to Settings > Billing to update payment details.', 'info')}
                           className="text-[9.5px] text-[#ffe2ab] font-bold tracking-widest hover:text-white uppercase transition-colors cursor-pointer"
                         >
                           {tr.editBtn}
@@ -4079,7 +4092,7 @@ export default function DashboardPage() {
                     </div>
 
                     <button type="button" 
-                      onClick={() => triggerToast('Opening payment method adder...', 'info')}
+                      onClick={() => triggerToast('Navigate to Settings > Billing to add a backup payment method.', 'info')}
                       className={`w-full py-3 bg-transparent border border-dashed ${t.borderStrong} hover:border-white/20 text-[#A69984] font-sans font-bold text-[9.5px] uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-4`}
                     >
                       <span className="material-symbols-outlined text-sm font-bold">add</span>
