@@ -493,7 +493,7 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
             visibility: visible !important;
             color: #000 !important;
             border-color: #000000 !important;
-            font-weight: 700 !important; /* Force bold font weights to prevent blurring */
+            font-weight: 900 !important; /* Force black font weight for maximum print clarity */
             box-sizing: border-box !important;
           }
           
@@ -533,6 +533,9 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
             font-size: 12px !important;
           }
           .printable-receipt-area .text-\[8px\] {
+            font-size: 11px !important;
+          }
+          .printable-receipt-area .text-\[8\.5px\] {
             font-size: 11px !important;
           }
           .printable-receipt-area .text-sm {
@@ -598,19 +601,19 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
             {/* Order Metadata */}
             <div className="py-4 border-b border-dashed border-white/10 space-y-2 separator">
               <div className="flex justify-between text-[10px]">
-                <span className="text-[#A69984]/60 font-semibold uppercase tracking-wider muted-text">Order</span>
+                <span className="text-[#A69984]/60 font-bold uppercase tracking-wider muted-text">Order</span>
                 <span className="text-white font-bold">{receiptData.orderId}</span>
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-[#A69984]/60 font-semibold uppercase tracking-wider muted-text">Table</span>
+                <span className="text-[#A69984]/60 font-bold uppercase tracking-wider muted-text">Table</span>
                 <span className="text-white font-bold">{receiptData.tableLabel}</span>
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-[#A69984]/60 font-semibold uppercase tracking-wider muted-text">Server</span>
+                <span className="text-[#A69984]/60 font-bold uppercase tracking-wider muted-text">Server</span>
                 <span className="text-white font-bold">{receiptData.serverName}</span>
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-[#A69984]/60 font-semibold uppercase tracking-wider muted-text">Date/Time</span>
+                <span className="text-[#A69984]/60 font-bold uppercase tracking-wider muted-text">Date/Time</span>
                 <span className="text-white font-bold">{receiptData.dateTime}</span>
               </div>
             </div>
@@ -621,12 +624,12 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
               {receiptData.items.map((item, idx) => (
                 <div key={idx} className="flex justify-between items-start gap-3">
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10.5px] text-white font-semibold leading-tight">
+                    <div className="text-[10.5px] text-white font-bold leading-tight">
                       {item.qty > 1 && <span className="text-[#ffe2ab]/80 mr-1.5 gold-text">{item.qty}×</span>}
                       {item.name}
                     </div>
                     {item.modifiers && item.modifiers.length > 0 && (
-                      <div className="text-[8.5px] text-[#A69984]/50 mt-1 muted-text italic">
+                      <div className="text-[8.5px] text-[#A69984]/50 mt-1 muted-text italic font-bold">
                         ({item.modifiers.join(', ')})
                       </div>
                     )}
@@ -639,22 +642,22 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
             {/* Totals Breakdown */}
             <div className="py-4 space-y-2">
               <div className="flex justify-between text-[10px]">
-                <span className="text-[#A69984]/60 font-semibold muted-text">Subtotal</span>
+                <span className="text-[#A69984]/60 font-bold muted-text">Subtotal</span>
                 <span className="text-white font-bold font-mono">{formatCurrency(receiptData.subtotal)}</span>
               </div>
               <div className="flex justify-between text-[10px]">
-                <span className="text-[#A69984]/60 font-semibold muted-text">{receiptData.taxLabel}</span>
+                <span className="text-[#A69984]/60 font-bold muted-text">{receiptData.taxLabel}</span>
                 <span className="text-white font-bold font-mono">{formatCurrency(receiptData.tax)}</span>
               </div>
               {receiptData.discount > 0 && (
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-emerald-400/80 font-semibold">{receiptData.discountLabel || 'Discount'}</span>
+                  <span className="text-emerald-400/80 font-bold">{receiptData.discountLabel || 'Discount'}</span>
                   <span className="text-emerald-400 font-bold font-mono">-{formatCurrency(receiptData.discount)}</span>
                 </div>
               )}
               {receiptData.gratuity > 0 && (
                 <div className="flex justify-between text-[10px]">
-                  <span className="text-[#A69984]/60 font-semibold muted-text">Gratuity</span>
+                  <span className="text-[#A69984]/60 font-bold muted-text">Gratuity</span>
                   <span className="text-white font-bold font-mono">{formatCurrency(receiptData.gratuity)}</span>
                 </div>
               )}
@@ -672,7 +675,7 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
                   <span className="text-[9.5px] text-white font-bold">{receiptData.paymentMethod}</span>
                 </div>
                 {receiptData.paymentDetails && (
-                  <span className="text-[9.5px] text-[#A69984]/50 font-mono muted-text">{receiptData.paymentDetails}</span>
+                  <span className="text-[9.5px] text-[#A69984]/50 font-mono font-bold muted-text">{receiptData.paymentDetails}</span>
                 )}
               </div>
               <div className="flex items-center gap-1.5 mt-2">
@@ -683,7 +686,7 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
 
             {/* Thank You Footer */}
             <div className="text-center pt-4 border-t border-dashed border-white/10 separator">
-              <p className="text-[9px] text-[#A69984]/40 font-medium leading-relaxed muted-text">
+              <p className="text-[9px] text-[#A69984]/40 font-bold leading-relaxed muted-text">
                 Thank you for dining with us.<br />
                 We look forward to serving you again.
               </p>

@@ -1,4 +1,5 @@
 import { EscposEncoder } from './escposEncoder';
+import { BluetoothPrinter } from '../src/utils/bluetoothPrinter';
 
 export type PrinterType = 'bluetooth' | 'usb' | 'network' | 'browser';
 
@@ -34,6 +35,7 @@ export interface PrintReceiptData {
 export class PrinterService {
   private activeBluetoothDevice: any = null;
   private activeUsbDevice: any = null;
+  private btPrinter = new BluetoothPrinter();
 
   async print(config: PrinterConfig, data: PrintReceiptData, onLog: (msg: string) => void): Promise<void> {
     onLog(`Starting print job for Order ${data.orderId} (Type: ${config.type})...`);
@@ -162,13 +164,13 @@ export class PrinterService {
       const dots = '.'.repeat(Math.max(2, 48 - leftCol.length - rightCol.length));
       let modHtml = '';
       if (item.modifiers && item.modifiers.length > 0) {
-        modHtml = `<div style="padding-left:12px;font-size:11px;color:#555;">(${item.modifiers.map(m => esc(m)).join(', ')})</div>`;
+        modHtml = `<div style="padding-left:12px;font-size:11px;color:#555;font-weight:900;">(${item.modifiers.map(m => esc(m)).join(', ')})</div>`;
       }
       let noteHtml = '';
       if (item.notes) {
-        noteHtml = `<div style="padding-left:12px;font-size:11px;color:#555;">Note: "${esc(item.notes)}"</div>`;
+        noteHtml = `<div style="padding-left:12px;font-size:11px;color:#555;font-weight:900;">Note: "${esc(item.notes)}"</div>`;
       }
-      return `<div style="font-family:'Courier New',monospace;font-size:13px;white-space:pre;">${leftCol}${dots}${rightCol}</div>${modHtml}${noteHtml}`;
+      return `<div style="font-family:'Courier New',monospace;font-size:13px;white-space:pre;font-weight:900;">${leftCol}${dots}${rightCol}</div>${modHtml}${noteHtml}`;
     }).join('');
 
     const taxPct = (data.taxRate * 100).toFixed(1);
@@ -180,21 +182,21 @@ export class PrinterService {
 <head>
 <title>Receipt - ${esc(data.orderId)}</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; }
+  * { margin:0; padding:0; box-sizing:border-box; font-weight:900; }
   body { background:#fff; padding:10px; font-family:'Courier New',monospace; }
   .receipt { max-width:300px; width:300px; margin:0 auto; }
   .center { text-align:center; }
   .sep { border:none; border-top:2px dashed #000; margin:10px 0; }
   .sep2 { border:none; border-top:1px dashed #999; margin:8px 0; }
-  .totals td { padding:3px 0; font-size:13px; }
-  .total-row td { border-top:2px solid #000; padding-top:6px; font-size:15px; font-weight:bold; }
-  @media print { @page { margin:0; } body { padding:8px; } }
+  .totals td { padding:3px 0; font-size:13px; font-weight:900; }
+  .total-row td { border-top:2px solid #000; padding-top:6px; font-size:15px; font-weight:900; }
+  @media print { @page { margin:0; } body { padding:8px; } * { font-weight:900 !important; } }
 </style>
 </head>
 <body>
 <div class="receipt">
   <div class="center">
-    <div style="font-size:22px;font-weight:bold;">DinePosAi</div>
+    <div style="font-size:22px;font-weight:900;">DinePosAi</div>
     <div style="font-size:11px;">Aura Hospitality Group</div>
     <div style="font-size:11px;">1200 Gastronomy Way, Suite 400</div>
     <div style="font-size:11px;">New York, NY 10001</div>
@@ -216,10 +218,10 @@ export class PrinterService {
     <tr class="total-row"><td>TOTAL:</td><td style="text-align:right;">$${data.total.toFixed(2)}</td></tr>
   </table>
   <hr class="sep">
-  ${data.isPaid ? `<div class="center" style="font-weight:bold;margin:6px 0;">*** PAYMENT CONFIRMED ***</div>
+  ${data.isPaid ? `<div class="center" style="font-weight:900;margin:6px 0;">*** PAYMENT CONFIRMED ***</div>
   <div class="center" style="font-size:12px;">Method: ${esc(data.paymentMethod || 'Credit Card')}</div>
   <div class="center" style="font-size:12px;">Auth: ${esc(data.authCode || '**** 4242')}</div>` :
-  `<div class="center" style="font-weight:bold;margin:6px 0;">*** BALANCE DUE ***</div>`}
+  `<div class="center" style="font-weight:900;margin:6px 0;">*** BALANCE DUE ***</div>`}
   <br>
   <div class="center" style="font-size:11px;">Thank you for dining with us!</div>
   <br><br>
@@ -239,96 +241,11 @@ export class PrinterService {
   }
 
   private async printBluetooth(bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
-    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
-    if (!nav || !nav.bluetooth) {
-      onLog('❌ Web Bluetooth is not supported on this browser.');
-      throw new Error('Web Bluetooth not supported.');
+    if (!this.activeBluetoothDevice) {
+      throw new Error('No Bluetooth device connected.');
     }
-
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    const UUID_PRIMARY = '000018f0-0000-1000-8000-00805f9b34fb';
-    const UUID_SERIAL = '00001101-0000-1000-8000-00805f9b34fb';
-
-    try {
-      if (!this.activeBluetoothDevice) {
-        onLog('Requesting Bluetooth device scan...');
-        this.activeBluetoothDevice = await nav.bluetooth.requestDevice({
-          acceptAllDevices: true,
-          optionalServices: [UUID_PRIMARY, UUID_SERIAL]
-        });
-        this.activeBluetoothDevice.addEventListener('gattserverdisconnected', () => {
-           onLog('⚠️ Bluetooth GATT disconnected unexpectedly.');
-           this.activeBluetoothDevice = null;
-        });
-      }
-
-      const MAX_RETRIES = 3;
-      let server = null;
-      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-        try {
-           onLog(`Connecting to Bluetooth device: ${this.activeBluetoothDevice.name || 'Thermal Printer'} (attempt ${attempt}/${MAX_RETRIES})...`);
-           server = await this.activeBluetoothDevice.gatt.connect();
-           break;
-        } catch (err: any) {
-           if (attempt === MAX_RETRIES) throw err;
-           onLog(`⚠️ Connection failed (${err.message}). Retrying in ${attempt * 500}ms...`);
-           await sleep(attempt * 500);
-        }
-      }
-      
-      onLog('Connected to GATT Server. Resolving service...');
-      
-      let service = null;
-      try {
-        service = await server.getPrimaryService(UUID_PRIMARY);
-      } catch (e) {
-        onLog('Primary service not found, trying Serial Port Profile...');
-        try {
-          service = await server.getPrimaryService(UUID_SERIAL);
-        } catch (e2) {
-           onLog('Trying all available services...');
-           const services = await server.getPrimaryServices();
-           if (services.length > 0) {
-              service = services[0];
-           } else {
-             throw new Error('No services found on device.');
-           }
-        }
-      }
-
-      onLog('Service resolved. Resolving write characteristic...');
-      const characteristics = await service.getCharacteristics();
-      const writeChar = characteristics.find((c: any) => c.properties.write || c.properties.writeWithoutResponse);
-
-      if (!writeChar) {
-        onLog('❌ No writeable characteristic found on this device.');
-        throw new Error('No write characteristic.');
-      }
-
-      const useWithoutResponse = writeChar.properties.writeWithoutResponse;
-      onLog(`Transmitting byte chunks to printer (using ${useWithoutResponse ? 'writeWithoutResponse' : 'writeValue'})...`);
-      
-      const chunkSize = 120;
-      for (let i = 0; i < bytes.length; i += chunkSize) {
-        const chunk = bytes.slice(i, i + chunkSize);
-        if (useWithoutResponse) {
-          await writeChar.writeValueWithoutResponse(chunk);
-        } else {
-          await writeChar.writeValue(chunk);
-        }
-        onLog(`Sent chunk: ${Math.min(i + chunkSize, bytes.length)}/${bytes.length} bytes.`);
-        await sleep(20); // 20ms inter-chunk delay
-      }
-
-      onLog('✓ Transmission completed successfully.');
-    } catch (err: any) {
-      onLog(`❌ Bluetooth Print failed: ${err.message || err}`);
-      if (this.activeBluetoothDevice && this.activeBluetoothDevice.gatt?.connected) {
-         this.activeBluetoothDevice.gatt.disconnect();
-      }
-      this.activeBluetoothDevice = null;
-      throw err;
-    }
+    this.btPrinter.setDevice(this.activeBluetoothDevice, onLog);
+    await this.btPrinter.print(bytes, onLog);
   }
 
   private async printUsb(bytes: Uint8Array, data: PrintReceiptData | null, onLog: (msg: string) => void): Promise<void> {
@@ -479,18 +396,9 @@ export class PrinterService {
     if (type === 'bluetooth') {
       if (!nav || !nav.bluetooth) throw new Error('Web Bluetooth not supported.');
       onLog('Initiating Web Bluetooth scanner...');
-      const UUID_PRIMARY = '000018f0-0000-1000-8000-00805f9b34fb';
-      const UUID_SERIAL = '00001101-0000-1000-8000-00805f9b34fb';
       
-      const dev = await nav.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [UUID_PRIMARY, UUID_SERIAL]
-      });
+      const dev = await this.btPrinter.requestDevice(onLog);
       this.activeBluetoothDevice = dev;
-      this.activeBluetoothDevice.addEventListener('gattserverdisconnected', () => {
-           onLog('⚠️ Bluetooth GATT disconnected unexpectedly.');
-           this.activeBluetoothDevice = null;
-      });
       return dev.name || 'Bluetooth Printer';
     } else {
       if (!nav || !nav.usb) throw new Error('WebUSB not supported.');
@@ -522,7 +430,7 @@ export class PrinterService {
   async disconnect(onLog: (msg: string) => void): Promise<void> {
     if (this.activeBluetoothDevice && this.activeBluetoothDevice.gatt?.connected) {
       onLog('Disconnecting Bluetooth GATT...');
-      this.activeBluetoothDevice.gatt.disconnect();
+      this.btPrinter.disconnect();
       this.activeBluetoothDevice = null;
     }
     
