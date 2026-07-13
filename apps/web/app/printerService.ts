@@ -226,7 +226,6 @@ export class PrinterService {
   <div class="center" style="font-size:11px;">Thank you for dining with us!</div>
   <br><br>
 </div>
-<script>window.onload=function(){setTimeout(function(){window.print();window.close();},300);};</script>
 </body>
 </html>`;
 
@@ -234,7 +233,9 @@ export class PrinterService {
     if (printWin) {
       printWin.document.write(receiptHtml);
       printWin.document.close();
-      onLog('✓ Receipt rendered in print preview window.');
+      printWin.focus();
+      printWin.print();
+      onLog('✓ Print dialog dispatched.');
     } else {
       onLog('❌ Could not open print window. Check popup blocker.');
     }
