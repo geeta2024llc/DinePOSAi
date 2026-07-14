@@ -1465,80 +1465,11 @@ export default function DashboardPage() {
     details: ''
   });
   const [devicesList, setDevicesList] = useState(() => {
-    if (typeof window !== 'undefined' && !isDemoTenant()) {
-      return [];
-    }
-    return [
-      {
-        id: 'DEV-001',
-        type: 'POS',
-        name: 'Terminal 01',
-        subtitle: "Maitre D' Stand",
-        ipAddress: '192.168.1.101',
-        battery: '95%',
-        uptime: '14d 2h',
-        status: 'ONLINE',
-        details: ''
-      },
-      {
-        id: 'DEV-002',
-        type: 'POS',
-        name: 'Terminal 02',
-        subtitle: 'Bar Left',
-        ipAddress: '192.168.1.102',
-        battery: '100% (Wired)',
-        uptime: '6d 12h',
-        status: 'ONLINE',
-        details: ''
-      },
-      {
-        id: 'DEV-003',
-        type: 'PRINTER',
-        name: 'Kitchen Hot',
-        subtitle: 'Ethernet Impact',
-        status: 'ONLINE',
-        details: 'Routing: Grill, Sauté, Expo'
-      },
-      {
-        id: 'DEV-004',
-        type: 'PRINTER',
-        name: 'Bar Receipt',
-        subtitle: 'BT-80mm Thermal',
-        status: 'WARNING_LOW_PAPER',
-        details: 'Warning: Low Paper'
-      },
-      {
-        id: 'DEV-005',
-        type: 'KDS',
-        name: 'Expo Screen 1',
-        ipAddress: '192.168.1.201',
-        status: 'ONLINE',
-        details: 'Syncing: Real-time'
-      }
-    ];
+    return [];
   });
 
   const [activeAlerts, setActiveAlerts] = useState(() => {
-    if (typeof window !== 'undefined' && !isDemoTenant()) {
-      return [];
-    }
-    return [
-      {
-        id: 'ALERT-001',
-        title: 'Bar Printer (BT-80mm)',
-        text: 'Low paper warning. Estimated 10 receipts remaining.',
-        time: '2m ago',
-        type: 'warning'
-      },
-      {
-        id: 'ALERT-002',
-        title: 'Main Dining Router',
-        text: 'Firmware update available (v2.4.1).',
-        time: '1h ago',
-        type: 'info',
-        updateBtn: true
-      }
-    ];
+    return [];
   });
 
   // Hardware Global Settings States
@@ -4581,45 +4512,55 @@ export default function DashboardPage() {
               <div className="space-y-5">
                 <h3 className={`font-serif text-[18px] font-bold ${t.text} tracking-wide select-none`}>Cash Drawers</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Card 1: Drawer Status */}
-                  <div className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[170px]`}>
-                    <div>
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3 select-none">
-                          <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
-                            <span className="material-symbols-outlined text-[16px]">inbox</span>
-                          </div>
+                  {/* Drawer Status Cards */}
+                  {devicesList.filter(dev => dev.type === 'CASH_DRAWER').length > 0 ? (
+                    devicesList
+                      .filter(dev => dev.type === 'CASH_DRAWER')
+                      .map((dev) => (
+                        <div key={dev.id} className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[170px]`}>
                           <div>
-                            <h4 className={`text-white font-bold text-xs tracking-wider uppercase ${t.text}`}>Cash Drawer 01</h4>
-                            <p className={`text-[10px] ${t.textMuted} font-semibold mt-0.5`}>Linked to Bar Receipt Printer</p>
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="flex items-center gap-3 select-none">
+                                <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
+                                  <span className="material-symbols-outlined text-[16px]">inbox</span>
+                                </div>
+                                <div>
+                                  <h4 className={`text-white font-bold text-xs tracking-wider uppercase ${t.text}`}>{dev.name}</h4>
+                                  <p className={`text-[10px] ${t.textMuted} font-semibold mt-0.5`}>{dev.subtitle}</p>
+                                </div>
+                              </div>
+                              <span className={`w-1.5 h-1.5 rounded-full ${dev.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-zinc-500'}`}></span>
+                            </div>
+                            <div className="text-[10.5px] font-sans font-semibold space-y-2">
+                              <div className="flex justify-between">
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Connection</span>
+                                <span className={t.text}>{dev.details || 'RJ12 Printer Kick'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Status</span>
+                                <span className={dev.status === 'ONLINE' ? 'text-emerald-400' : 'text-zinc-400'}>{dev.status === 'ONLINE' ? 'Closed (Ready)' : dev.status}</span>
+                              </div>
+                            </div>
                           </div>
+                          <button type="button" 
+                            onClick={async () => {
+                              triggerToast(`Sending manual kick signal to ${dev.name}...`, 'info');
+                              await kickCashDrawer();
+                              triggerToast('Drawer kicked open!', 'success');
+                            }}
+                            className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
+                          >
+                            Test Drawer Kick
+                          </button>
                         </div>
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      </div>
-
-                      <div className="text-[10.5px] font-sans font-semibold space-y-2">
-                        <div className="flex justify-between">
-                          <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Connection</span>
-                          <span className={t.text}>Printer Kick (RJ12)</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Status</span>
-                          <span className="text-emerald-400">Closed (Ready)</span>
-                        </div>
-                      </div>
+                      ))
+                  ) : (
+                    <div className={`${t.cardBg} border rounded-2xl p-8 text-center col-span-full`}>
+                      <span className="material-symbols-outlined text-3xl text-white/10 mb-3 block">inbox</span>
+                      <p className={`text-xs ${t.textMuted} font-semibold`}>No cash drawers paired yet.</p>
+                      <p className={`text-[10px] ${t.textMutedLight} mt-1`}>Connect a cash drawer via the Printer Connection Console.</p>
                     </div>
-
-                    <button type="button" 
-                      onClick={async () => {
-                        triggerToast('Sending manual kick signal to Cash Drawer 01...', 'info');
-                        await kickCashDrawer();
-                        triggerToast('Drawer kicked open!', 'success');
-                      }}
-                      className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
-                    >
-                      Test Drawer Kick
-                    </button>
-                  </div>
+                  )}
 
                   {/* Card 2: Drawer Settings */}
                   <div className={`${t.cardBg} border rounded-2xl p-6 shadow-xl space-y-4`}>
