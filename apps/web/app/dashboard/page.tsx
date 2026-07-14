@@ -1464,11 +1464,11 @@ export default function DashboardPage() {
     status: 'ONLINE',
     details: ''
   });
-  const [devicesList, setDevicesList] = useState(() => {
+  const [devicesList, setDevicesList] = useState<{ id: string; type: string; name: string; subtitle: string; ipAddress: string; battery: string; uptime: string; details: string; status: string }[]>(() => {
     return [];
   });
 
-  const [activeAlerts, setActiveAlerts] = useState(() => {
+  const [activeAlerts, setActiveAlerts] = useState<{ id: string; title: string; time: string; text: string; updateBtn?: boolean }[]>(() => {
     return [];
   });
 
