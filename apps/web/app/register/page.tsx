@@ -138,6 +138,7 @@ function RegisterForm() {
           name: fullName,
           email: emailLower,
           role: 'MANAGER' as any,
+          permissions: [] as string[],
         };
         const mockTenant = {
           id: 'offline-tenant-id',

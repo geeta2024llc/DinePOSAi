@@ -1,3 +1,7 @@
+// ============================================================
+// DinePosAI - Billing Routes Configuration
+// ============================================================
+
 import { Router } from 'express';
 import { 
   createCheckoutSession, 
@@ -9,27 +13,70 @@ import {
   getTenantBilling,
   getSubscriptionInvoices
 } from '../controllers/billing.controller.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permission.middleware.js';
+import { requireOrganizationMatch, validateOrganizationActive } from '../middleware/organization.middleware.js';
 import { validateSchema } from '../middleware/validation.js';
+import { auditLogger } from '../middleware/audit.middleware.js';
 
 const router = Router();
 
-// Checkout Session (requires Manager access)
-router.post('/checkout', requireAuth, requireRole(['SUPER_ADMIN', 'MANAGER']), validateSchema(createCheckoutSchema), createCheckoutSession);
-
-// Webhook (public)
+// Webhook (MUST remain public, bypasses auth)
 router.post('/webhook', stripeWebhook);
 
-// Stripe config management (SUPER_ADMIN only)
-router.get('/config', requireAuth, requireRole(['SUPER_ADMIN']), getStripeConfig);
-router.post('/config', requireAuth, requireRole(['SUPER_ADMIN']), updateStripeConfig);
-router.post('/config/unlink', requireAuth, requireRole(['SUPER_ADMIN']), unlinkStripeConfig);
+// Authenticated billing endpoints helper middleware
+const billingAuthStack = [
+  requireAuth,
+  validateOrganizationActive,
+  requireOrganizationMatch
+];
 
-// Tenant billing info (Manager+ access)
-router.get('/tenant', requireAuth, requireRole(['SUPER_ADMIN', 'MANAGER']), getTenantBilling);
+// Checkout Session (requires OWNER or SUPER_ADMIN access)
+router.post(
+  '/checkout', 
+  ...billingAuthStack, 
+  requirePermission('billing.manage'), 
+  validateSchema(createCheckoutSchema), 
+  auditLogger('Start Stripe Checkout', 'billing'),
+  createCheckoutSession
+);
 
-// Subscription invoices (Manager+ access)
-router.get('/invoices', requireAuth, requireRole(['SUPER_ADMIN', 'MANAGER']), getSubscriptionInvoices);
+// Stripe config management (SUPER_ADMIN / SYSTEM_MANAGE only)
+router.get(
+  '/config', 
+  requireAuth, 
+  requirePermission('system.manage'), 
+  getStripeConfig
+);
+router.post(
+  '/config', 
+  requireAuth, 
+  requirePermission('system.manage'), 
+  auditLogger('Update Stripe Config', 'system'),
+  updateStripeConfig
+);
+router.post(
+  '/config/unlink', 
+  requireAuth, 
+  requirePermission('system.manage'), 
+  auditLogger('Unlink Stripe Config', 'system'),
+  unlinkStripeConfig
+);
+
+// Tenant billing info (OWNER or SUPER_ADMIN access)
+router.get(
+  '/tenant', 
+  ...billingAuthStack, 
+  requirePermission('billing.view'), 
+  getTenantBilling
+);
+
+// Subscription invoices
+router.get(
+  '/invoices', 
+  ...billingAuthStack, 
+  requirePermission('billing.view'), 
+  getSubscriptionInvoices
+);
 
 export default router;
-

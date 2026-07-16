@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { signupSchema, loginSchema } from '../controllers/auth.controller.js';
+import { signupSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema } from '../controllers/auth.controller.js';
 
 describe('Auth Validation Schemas', () => {
   describe('Signup Schema Validation', () => {
@@ -68,6 +68,45 @@ describe('Auth Validation Schemas', () => {
 
       const parsed = loginSchema.safeParse(correctLogin);
       expect(parsed.success).toBe(true);
+    });
+  });
+
+  describe('Forgot Password Schema Validation', () => {
+    it('should pass with a valid email address', () => {
+      const parsed = forgotPasswordSchema.safeParse({ email: 'manager@restaurant.com' });
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should reject structurally invalid email addresses', () => {
+      const parsed = forgotPasswordSchema.safeParse({ email: 'invalid-email' });
+      expect(parsed.success).toBe(false);
+    });
+  });
+
+  describe('Reset Password Schema Validation', () => {
+    it('should pass with a valid token and strong password', () => {
+      const parsed = resetPasswordSchema.safeParse({
+        token: 'valid-reset-token-hash-1234',
+        newPassword: 'StrongPassword123!'
+      });
+      expect(parsed.success).toBe(true);
+    });
+
+    it('should reject empty reset tokens', () => {
+      const parsed = resetPasswordSchema.safeParse({
+        token: '',
+        newPassword: 'StrongPassword123!'
+      });
+      expect(parsed.success).toBe(false);
+    });
+
+    it('should reject passwords that fail complexity requirements', () => {
+      const weakPasswordInput = {
+        token: 'valid-token',
+        newPassword: 'weak'
+      };
+      const parsed = resetPasswordSchema.safeParse(weakPasswordInput);
+      expect(parsed.success).toBe(false);
     });
   });
 });

@@ -8,7 +8,9 @@ import { apiRequest } from '@/utils/api';
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  
+  const [token, setToken] = useState<string | null>(null);
+  const [authType, setAuthType] = useState<'custom' | 'supabase'>('custom');
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,10 +30,27 @@ function ResetPasswordForm() {
   const isFormValid = isLengthValid && hasUppercase && hasLowercase && hasNumber && hasSymbol && isMatching;
 
   useEffect(() => {
-    if (!token) {
+    const qToken = searchParams.get('token');
+    if (qToken) {
+      setToken(qToken);
+      setAuthType('custom');
+      setError('');
+    } else {
+      // Check for Supabase hash token
+      const hash = typeof window !== 'undefined' ? window.location.hash : '';
+      if (hash && hash.includes('access_token=')) {
+        const params = new URLSearchParams(hash.replace('#', '?'));
+        const accessToken = params.get('access_token');
+        if (accessToken) {
+          setToken(accessToken);
+          setAuthType('supabase');
+          setError('');
+          return;
+        }
+      }
       setError('Invalid reset link. Token parameter is missing from the URL.');
     }
-  }, [token]);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +60,8 @@ function ResetPasswordForm() {
     setError('');
 
     try {
-      const res = await apiRequest('/api/auth/reset-password', {
+      const endpoint = authType === 'supabase' ? '/api/auth/reset-password-supabase' : '/api/auth/reset-password';
+      const res = await apiRequest(endpoint, {
         method: 'POST',
         useAuth: false,
         body: JSON.stringify({

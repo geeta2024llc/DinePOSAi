@@ -4,7 +4,7 @@
 
 export type TenantPlan = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'SUSPENDED';
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
-export type UserRole = 'SUPER_ADMIN' | 'MANAGER' | 'CASHIER' | 'KITCHEN';
+export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN';
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';
 export type OrderCustomerType = 'DINE_IN' | 'TAKE_OUT' | 'DELIVERY';
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED';
@@ -30,10 +30,23 @@ export interface Tenant {
   updatedAt: string;
 }
 
+// 🏢 Branch Model
+export interface Branch {
+  id: string;
+  tenantId: string;
+  name: string;
+  address: string | null;
+  timezone: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // 👤 User Model
 export interface User {
   id: string;
   tenantId: string;
+  branchId: string | null;
   name: string;
   email: string;
   role: UserRole;
@@ -48,12 +61,44 @@ export interface Session {
   id: string;
   userId: string;
   tenantId: string;
+  branchId: string | null;
   deviceId: string;
   refreshToken: string;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
   ipAddress: string | null;
-  userAgent: string | null;
+  country: string | null;
+  city: string | null;
+  loginTime: string;
+  lastActivity: string;
+  logoutTime: string | null;
+  isCurrent: boolean;
   expiresAt: string;
   createdAt: string;
+}
+
+// 📋 Login History Entry
+export interface LoginHistoryEntry {
+  id: string;
+  userId: string | null;
+  tenantId: string | null;
+  ipAddress: string | null;
+  browser: string | null;
+  device: string | null;
+  os: string | null;
+  country: string | null;
+  city: string | null;
+  status: 'SUCCESS' | 'FAILED' | 'BLOCKED';
+  failureReason: string | null;
+  createdAt: string;
+}
+
+// 📋 User Permission Model
+export interface UserPermission {
+  id: string;
+  role: UserRole;
+  permission: string;
 }
 
 // 📋 Audit Log Model
@@ -65,8 +110,68 @@ export interface AuditLog {
   entityType: string;
   entityId: string;
   metadata: Record<string, any>;
+  ipAddress?: string | null;
+  device?: string | null;
+  branchId?: string | null;
   createdAt: string;
 }
+
+// 🔒 Permission Constants
+export const PERMISSIONS = {
+  ORDERS_CREATE: 'orders.create',
+  ORDERS_EDIT: 'orders.edit',
+  ORDERS_REFUND: 'orders.refund',
+  ORDERS_CANCEL: 'orders.cancel',
+  INVOICE_PRINT: 'invoice.print',
+  TABLES_VIEW: 'tables.view',
+  TABLES_MANAGE: 'tables.manage',
+  MENU_VIEW: 'menu.view',
+  MENU_MANAGE: 'menu.manage',
+  KDS_VIEW: 'kds.view',
+  KDS_UPDATE: 'kds.update',
+  INVENTORY_VIEW: 'inventory.view',
+  INVENTORY_MANAGE: 'inventory.manage',
+  STAFF_VIEW: 'staff.view',
+  STAFF_INVITE: 'staff.invite',
+  STAFF_MANAGE: 'staff.manage',
+  BILLING_VIEW: 'billing.view',
+  BILLING_MANAGE: 'billing.manage',
+  REPORTS_VIEW: 'reports.view',
+  SETTINGS_MANAGE: 'settings.manage',
+  AUDIT_VIEW: 'audit.view',
+  SYSTEM_MANAGE: 'system.manage',
+  CASH_DRAWER_OPEN: 'cash_drawer.open',
+  CASH_DRAWER_CASH_IN: 'cash_drawer.cash_in',
+  CASH_DRAWER_CASH_OUT: 'cash_drawer.cash_out',
+  CASH_DRAWER_NO_SALE: 'cash_drawer.no_sale',
+} as const;
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+
+// Role to default permissions mapping
+export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
+  SUPER_ADMIN: Object.values(PERMISSIONS),
+  OWNER: Object.values(PERMISSIONS).filter(p => p !== 'system.manage'),
+  MANAGER: [
+    'orders.create', 'orders.edit', 'orders.refund', 'orders.cancel',
+    'invoice.print', 'tables.view', 'tables.manage', 'menu.view',
+    'menu.manage', 'kds.view', 'kds.update', 'inventory.view',
+    'inventory.manage', 'staff.view', 'billing.view', 'reports.view',
+    'audit.view', 'cash_drawer.open', 'cash_drawer.cash_in',
+    'cash_drawer.cash_out', 'cash_drawer.no_sale'
+  ],
+  CASHIER: [
+    'orders.create', 'orders.edit', 'orders.refund', 'orders.cancel',
+    'invoice.print', 'tables.view', 'menu.view', 'cash_drawer.open',
+    'cash_drawer.cash_in', 'cash_drawer.cash_out', 'cash_drawer.no_sale'
+  ],
+  WAITER: [
+    'orders.create', 'orders.edit', 'tables.view', 'menu.view'
+  ],
+  KITCHEN: [
+    'menu.view', 'kds.view', 'kds.update'
+  ]
+};
 
 // 🍽 Category Model
 export interface Category {

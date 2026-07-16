@@ -1,14 +1,35 @@
+// ============================================================
+// DinePosAI - Table Routes Configuration
+// ============================================================
+
 import { Router } from 'express';
 import { getTables, createTable, updateTableStatus, createTableSchema, updateTableStatusSchema } from '../controllers/table.controller.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
+import { requireAuth } from '../middleware/auth.js';
+import { requirePermission } from '../middleware/permission.middleware.js';
+import { requireOrganizationMatch, validateOrganizationActive } from '../middleware/organization.middleware.js';
 import { validateSchema } from '../middleware/validation.js';
+import { auditLogger } from '../middleware/audit.middleware.js';
 
 const router = Router();
 
 router.use(requireAuth);
+router.use(validateOrganizationActive);
+router.use(requireOrganizationMatch);
 
-router.get('/', requireRole(['SUPER_ADMIN', 'MANAGER', 'CASHIER']), getTables);
-router.post('/', requireRole(['SUPER_ADMIN', 'MANAGER']), validateSchema(createTableSchema), createTable);
-router.patch('/:tableId/status', requireRole(['SUPER_ADMIN', 'MANAGER', 'CASHIER']), validateSchema(updateTableStatusSchema), updateTableStatus);
+router.get('/', requirePermission('tables.view'), getTables);
+router.post(
+  '/', 
+  requirePermission('tables.manage'), 
+  validateSchema(createTableSchema), 
+  auditLogger('Create Table', 'table'),
+  createTable
+);
+router.patch(
+  '/:tableId/status', 
+  requirePermission('orders.edit'), 
+  validateSchema(updateTableStatusSchema), 
+  auditLogger('Update Table Status', 'table'),
+  updateTableStatus
+);
 
 export default router;

@@ -8,6 +8,8 @@ import { deductStockForOrder } from '../inventoryUtils';
 import { apiRequest, isDemoTenant } from '@/utils/api';
 import { usePrinter } from '../printerContext';
 import ReceiptPrintModal, { ReceiptData } from '@/components/ui/ReceiptPrintModal';
+import { useCashDrawer } from '@/hooks/useCashDrawer';
+import CashDrawerPanel from '@/components/pos/CashDrawerPanel';
 
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
@@ -325,6 +327,8 @@ const mapDbOrderToPosTicket = (o: any, taxDineIn = 0.085, taxTakeaway = 0.085, t
 export default function PosPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const { kickCashDrawer } = usePrinter();
+  const { expectedBalance, recordCashSale } = useCashDrawer();
+  const [drawerPanelOpen, setDrawerPanelOpen] = useState(false);
   const [tickets, setTickets] = useState<PosTicket[]>(initialTickets);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('ticket-1');
   const [quickFilter, setQuickFilter] = useState<'open' | 'payment' | 'vip'>('open');
@@ -1282,11 +1286,14 @@ export default function PosPage() {
       setPendingCloseMsg(successMsg);
       setReceiptModalOpen(true);
 
-      // Auto-kick cash drawer on cash payments if enabled
-      if (checkoutPaymentMethod.toUpperCase() === 'CASH' && drawerAutoOpen) {
-        kickCashDrawer().catch(err => {
-          console.error('[POS] Cash drawer kick failed:', err);
-        });
+      // Auto-kick cash drawer on cash payments if enabled and log movement
+      if (checkoutPaymentMethod.toUpperCase() === 'CASH') {
+        recordCashSale(grandTotal + tipAmount, selectedTicket.id);
+        if (drawerAutoOpen) {
+          kickCashDrawer().catch(err => {
+            console.error('[POS] Cash drawer kick failed:', err);
+          });
+        }
       }
     }, 300);
   };
@@ -1622,6 +1629,14 @@ export default function PosPage() {
 
           {/* Header search & profile indicators */}
           <div className="flex items-center gap-3 lg:gap-6">
+            <button
+              type="button"
+              onClick={() => setDrawerPanelOpen(true)}
+              className="flex items-center gap-2 bg-[#161513] border border-white/5 rounded-xl px-4 py-2.5 text-xs text-[#ffe2ab] hover:text-white hover:bg-white/5 hover:border-white/10 transition-all font-sans cursor-pointer font-bold uppercase tracking-wider"
+            >
+              <span className="material-symbols-outlined text-sm leading-none">point_of_sale</span>
+              <span>Drawer ({new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(expectedBalance)})</span>
+            </button>
             <div className="relative select-none hidden sm:block">
               <span className="material-symbols-outlined absolute left-4 top-3 text-[#A69984]/40 text-base">search</span>
               <input
@@ -3019,6 +3034,12 @@ export default function PosPage() {
           </div>
         </div>
       )}
+
+      {/* CASH DRAWER PANEL */}
+      <CashDrawerPanel
+        isOpen={drawerPanelOpen}
+        onClose={() => setDrawerPanelOpen(false)}
+      />
 
       {/* PRINT RECEIPT MODAL */}
       {receiptData && (

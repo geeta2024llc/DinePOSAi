@@ -67,6 +67,16 @@ function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEmail = localStorage.getItem('dinepos_remembered_email');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+    }
+  }, []);
+
   const handleAuthSuccess = (token: string, user: any, tenant: any) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('dinepos_jwt_token', token);
@@ -107,6 +117,13 @@ function LoginForm() {
 
       if (response.success && response.data?.token) {
         setIsLoading(false);
+        if (typeof window !== 'undefined') {
+          if (rememberMe) {
+            localStorage.setItem('dinepos_remembered_email', emailLower);
+          } else {
+            localStorage.removeItem('dinepos_remembered_email');
+          }
+        }
         const { token, user, tenant } = response.data;
         handleAuthSuccess(token, user, tenant);
         ctxLogin(token, user, tenant);
@@ -135,13 +152,19 @@ function LoginForm() {
 
           if (typeof window !== 'undefined') {
             localStorage.setItem('dinepos_logged_in_email', emailLower);
+            if (rememberMe) {
+              localStorage.setItem('dinepos_remembered_email', emailLower);
+            } else {
+              localStorage.removeItem('dinepos_remembered_email');
+            }
           }
 
           const mockUser = {
             id: 'offline-user-id',
             name: emailLower.split('@')[0],
             email: emailLower,
-            role: cred.role,
+            role: cred.role as any,
+            permissions: [] as string[],
           };
           const mockTenant = {
             id: 'offline-tenant-id',
@@ -287,7 +310,7 @@ function LoginForm() {
                 className="sr-only peer"
               />
               <div className="w-[18px] h-[18px] bg-[#12110f]/90 border border-white/10 rounded flex items-center justify-center transition-all duration-200 peer-checked:bg-[#ffe2ab] peer-checked:border-[#ffe2ab] peer-hover:border-white/20">
-                <span className="material-symbols-outlined text-[10px] text-[#402d00] font-black scale-0 peer-checked:scale-100 transition-transform duration-200 select-none">check</span>
+                <span className={`material-symbols-outlined text-[10px] text-[#402d00] font-black transition-transform duration-200 select-none ${rememberMe ? 'scale-100' : 'scale-0'}`}>check</span>
               </div>
               <span className="ml-2.5 text-[#A69984]/85 font-sans text-[11px] font-medium tracking-wide">
                 {cmsConfig.auth.loginRememberMe}

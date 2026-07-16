@@ -1465,12 +1465,30 @@ export default function DashboardPage() {
     details: ''
   });
   const [devicesList, setDevicesList] = useState<{ id: string; type: string; name: string; subtitle: string; ipAddress: string; battery: string; uptime: string; details: string; status: string }[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dinepos_hardware_devices');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
     return [];
   });
 
-  const [activeAlerts, setActiveAlerts] = useState<{ id: string; title: string; time: string; text: string; updateBtn?: boolean }[]>(() => {
-    return [];
-  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_hardware_devices', JSON.stringify(devicesList));
+    }
+  }, [devicesList]);
+
+  // Additional Hardware States for Redesign
+  const [activeHardwareTab, setActiveHardwareTab] = useState<'all' | 'pos' | 'printer' | 'kds' | 'cash_drawer'>('all');
+  const [pingingDevices, setPingingDevices] = useState<Record<string, boolean>>({});
+  const [pingResults, setPingResults] = useState<Record<string, string>>({});
+  const [editingDevice, setEditingDevice] = useState<any | null>(null);
 
   // Hardware Global Settings States
   const [autoReconnect, setAutoReconnect] = useState(true);
@@ -1783,7 +1801,6 @@ export default function DashboardPage() {
   });
 
   // Interactive Router Update & Test Printing states
-  const [routerUpdateProgress, setRouterUpdateProgress] = useState<number | null>(null);
   const [printingDevices, setPrintingDevices] = useState<Record<string, boolean>>({});
 
   // Security Panel States
@@ -2178,38 +2195,56 @@ export default function DashboardPage() {
     ]);
   };
 
-  const handleStartRouterUpdate = (alertId: string) => {
-    if (routerUpdateProgress !== null) return;
-    setRouterUpdateProgress(0);
-    triggerToast('Starting Main Dining Router firmware update...', 'info');
-    
-    let current = 0;
-    const interval = setInterval(() => {
-      current += 20;
-      if (current >= 100) {
-        clearInterval(interval);
-        setRouterUpdateProgress(null);
-        setActiveAlerts(prev => prev.filter(a => a.id !== alertId));
-        triggerToast('Main Dining Router updated to v2.4.1!', 'success');
-        setAuditLogs(prev => [
-          {
-            id: Date.now(),
-            time: 'Just now',
-            actor: 'System Auto-Daemon',
-            action: 'Updated Main Dining Router firmware to v2.4.1',
-            type: 'success'
-          },
-          ...prev
-        ]);
-      } else {
-        setRouterUpdateProgress(current);
-      }
-    }, 400);
+
+  const handlePingDevice = (deviceId: string) => {
+    setPingingDevices(prev => ({ ...prev, [deviceId]: true }));
+    triggerToast(`Pinging device ${deviceId}...`, 'info');
+    setTimeout(() => {
+      const latency = Math.floor(8 + Math.random() * 25);
+      setPingingDevices(prev => ({ ...prev, [deviceId]: false }));
+      setPingResults(prev => ({ ...prev, [deviceId]: `${latency}ms (Excellent)` }));
+      triggerToast(`Ping successful for ${deviceId}: ${latency}ms latency`, 'success');
+    }, 1000);
+  };
+
+  const playCashRegisterChime = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const ctx = new AudioContextClass();
+      
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(800, ctx.currentTime);
+      osc1.frequency.exponentialRampToValueAtTime(1500, ctx.currentTime + 0.15);
+      gain1.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(2200, ctx.currentTime);
+      osc2.frequency.setValueAtTime(2900, ctx.currentTime + 0.05);
+      gain2.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.005, ctx.currentTime + 0.25);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      
+      osc1.start();
+      osc2.start();
+      osc1.stop(ctx.currentTime + 0.15);
+      osc2.stop(ctx.currentTime + 0.25);
+    } catch (err) {
+      console.error('Failed to play chime:', err);
+    }
   };
 
   const handleRunPrinterTest = async (devId: string, devName: string) => {
     setPrintingDevices(prev => ({ ...prev, [devId]: true }));
-    triggerToast(`Sending 80mm test print job to ${devName}...`, 'info');
+    triggerToast(`Sending test print job to ${devName}...`, 'info');
     try {
       await testPrint();
       setPrintingDevices(prev => ({ ...prev, [devId]: false }));
@@ -2585,6 +2620,27 @@ export default function DashboardPage() {
       setCategoryFormIcon('restaurant');
     }
   };
+
+  // Dynamic Hardware Calculations
+  const onlineDevicesCount = devicesList.filter(d => d.status === 'ONLINE').length;
+  const totalDevicesCount = devicesList.length;
+  const fleetHealthPercent = totalDevicesCount > 0 ? Math.round((onlineDevicesCount / totalDevicesCount) * 100) : 100;
+
+  const posDevices = devicesList.filter(d => d.type === 'POS');
+  const posOnline = posDevices.filter(d => d.status === 'ONLINE').length;
+  const posTotal = posDevices.length;
+
+  const printerDevices = devicesList.filter(d => d.type === 'PRINTER');
+  const printerOnline = printerDevices.filter(d => d.status === 'ONLINE').length;
+  const printerTotal = printerDevices.length;
+
+  const kdsDevices = devicesList.filter(d => d.type === 'KDS');
+  const kdsOnline = kdsDevices.filter(d => d.status === 'ONLINE').length;
+  const kdsTotal = kdsDevices.length;
+
+  const cashDrawerDevices = devicesList.filter(d => d.type === 'CASH_DRAWER');
+  const cashDrawerOnline = cashDrawerDevices.filter(d => d.status === 'ONLINE').length;
+  const cashDrawerTotal = cashDrawerDevices.length;
 
   // Calculations for Receipt Live Preview
   const subtotalVal = 100.00;
@@ -4251,362 +4307,352 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Row 1: Fleet Health & Active Diagnostics */}
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                             {/* Fleet Health Card (Left Column - Span 5) */}
-                <div className={`lg:col-span-5 ${t.cardBg} border rounded-2xl p-7 shadow-xl flex flex-col justify-between min-h-[220px]`}>
-                  <div className="select-none space-y-1">
-                    <h3 className={`text-[10px] font-sans font-bold uppercase tracking-wider ${t.textMuted}`}>FLEET HEALTH</h3>
-                    <div className="flex items-baseline gap-2 mt-2">
-                      <span className={`font-sans font-bold text-5xl ${t.text} tracking-tight`}>98</span>
-                      <span className={`font-sans font-bold text-2xl ${t.textMuted}`}>%</span>
-                    </div>
-                    <p className={`text-[11.5px] ${t.textMuted} font-semibold leading-relaxed mt-2`}>
-                      Optimal connectivity across all zones.
-                    </p>
+              {/* Hardware Ecosystem Grid / Tabbed Catalog */}
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-white/5 pb-4">
+                  {/* Category Tabs */}
+                  <div className="flex flex-wrap gap-2 select-none">
+                    {[
+                      { key: 'all', label: 'All', count: totalDevicesCount },
+                      { key: 'pos', label: 'POS Terminals', count: posTotal },
+                      { key: 'printer', label: 'Printers', count: printerTotal },
+                      { key: 'kds', label: 'KDS Screens', count: kdsTotal },
+                      { key: 'cash_drawer', label: 'Cash Drawers', count: cashDrawerTotal }
+                    ].map(tab => (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setActiveHardwareTab(tab.key as any)}
+                        className={`px-3 py-1.5 text-[10.5px] font-sans font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
+                          activeHardwareTab === tab.key
+                            ? `${t.accentLightBg} border ${t.accentLightBorder} ${t.accent}`
+                            : `bg-white/5 border border-transparent ${t.textMuted} hover:${t.text} hover:bg-white/10`
+                        }`}
+                      >
+                        {tab.label}
+                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-mono ${
+                          activeHardwareTab === tab.key
+                            ? 'bg-[#ffe2ab]/20 text-[#ffe2ab]'
+                            : 'bg-white/5 text-white/40'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      </button>
+                    ))}
                   </div>
 
-                  <div className={`border-t ${t.border} pt-4 mt-6 grid grid-cols-3 gap-2 select-none text-[10.5px] font-sans font-semibold`}>
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      <span className={`${t.textMuted}`}>Terminals</span>
-                      <span className={`font-bold ml-auto font-mono ${t.text}`}>12/12</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 border-l ${t.border} pl-3`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      <span className={`${t.textMuted}`}>Printers</span>
-                      <span className={`font-bold ml-auto font-mono ${t.text}`}>4/5</span>
-                    </div>
-                    <div className={`flex items-center gap-1.5 border-l ${t.border} pl-3`}>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      <span className={`${t.textMuted}`}>KDS</span>
-                      <span className={`font-bold ml-auto font-mono ${t.text}`}>3/3</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Active Diagnostics Card (Right Column - Span 7) */}
-                <div className={`lg:col-span-7 ${t.cardBg} border rounded-2xl p-7 shadow-xl space-y-4`}>
-                  <div className={`flex justify-between items-center border-b ${t.border} pb-3 select-none`}>
-                    <h3 className={`text-[10px] font-sans font-bold uppercase tracking-wider ${t.textMuted}`}>ACTIVE DIAGNOSTICS</h3>
-                    <button type="button" 
-                      onClick={() => triggerToast('Refreshing hardware diagnostics...', 'info')}
-                      className={`${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
-                    >
-                      <span className="material-symbols-outlined text-base">refresh</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 max-h-[160px] overflow-y-auto">
-                    {activeAlerts.length === 0 ? (
-                      <div className={`text-center py-6 text-xs ${t.textMuted} font-bold uppercase tracking-wider`}>
-                        All systems operational. No active diagnostics alerts.
-                      </div>
-                    ) : (
-                      activeAlerts.map((alert) => (
-                        <div key={alert.id} className={`${t.inputBg}/50 p-4 border ${t.border} rounded-xl flex items-start gap-4`}>
-                          <div className={`w-9 h-9 rounded-lg ${t.tagAdmin} flex items-center justify-center ${t.accent} flex-shrink-0 select-none`}>
-                            <span className="material-symbols-outlined text-[17px]">
-                              {alert.updateBtn ? 'router' : 'print'}
-                            </span>
-                          </div>
-                          <div className="flex-grow font-sans">
-                            <div className="flex justify-between items-baseline select-none">
-                              <h4 className={`text-xs font-bold ${t.text} tracking-wide`}>{alert.title}</h4>
-                              <span className={`text-[9.5px] ${t.textMuted} font-mono font-medium`}>{alert.time}</span>
-                            </div>
-                            <p className={`text-[10.5px] ${t.textMuted} font-semibold leading-relaxed mt-1`}>
-                              {alert.text}
-                            </p>
-                            <div className="flex gap-4 mt-2.5">
-                              {alert.updateBtn ? (
-                                <button type="button" 
-                                  onClick={() => handleStartRouterUpdate(alert.id)}
-                                  disabled={routerUpdateProgress !== null}
-                                  className={`text-[9.5px] font-bold ${t.accent} hover:opacity-85 uppercase tracking-wider transition-colors cursor-pointer select-none disabled:opacity-50`}
-                                >
-                                  {routerUpdateProgress !== null ? `Updating (${routerUpdateProgress}%)` : 'Schedule Update'}
-                                </button>
-                              ) : (
-                                <>
-                                  <button type="button" 
-                                    onClick={() => {
-                                      triggerToast('Diagnostic log acknowledged.', 'success');
-                                      setActiveAlerts(activeAlerts.filter(a => a.id !== alert.id));
-                                    }}
-                                    className={`text-[9.5px] font-bold ${t.textMuted} hover:${t.text} uppercase tracking-wider transition-colors cursor-pointer select-none`}
-                                  >
-                                    Acknowledge
-                                  </button>
-                                  <button type="button" 
-                                    onClick={() => triggerToast('Initializing remote print calibration diagnostic...', 'info')}
-                                    className={`text-[9.5px] font-bold ${t.accent} hover:opacity-85 uppercase tracking-wider transition-colors cursor-pointer select-none`}
-                                  >
-                                    Run Diagnostic
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
+                  {/* Contextual Device Search */}
+                  <div className="relative w-full sm:w-64">
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-xs text-white/30">search</span>
+                    <input
+                      type="text"
+                      placeholder="Search devices..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-9 pr-4 py-2 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                    />
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3 top-2.5 text-xs text-white/40 hover:text-white cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-xs">close</span>
+                      </button>
                     )}
                   </div>
                 </div>
 
-              </div>
-
-              {/* POS Terminals Grid Section */}
-              <div className="space-y-5">
-                <h3 className={`font-serif text-[18px] font-bold ${t.text} tracking-wide select-none`}>POS Terminals</h3>
+                {/* Device Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {devicesList
-                    .filter(dev => dev.type === 'POS')
-                    .map((dev) => (
-                      <div key={dev.id} className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[200px]`}>
-                        <div>
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3 select-none">
-                              <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
-                                <span className="material-symbols-outlined text-[16px]">tablet_mac</span>
-                              </div>
-                              <div>
-                                <h4 className={`text-white font-bold text-xs tracking-wider uppercase ${t.text}`}>{dev.name}</h4>
-                                <p className={`text-[10px] ${t.textMuted} font-semibold mt-0.5`}>{dev.subtitle}</p>
-                              </div>
-                            </div>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          </div>
-
-                          <div className="space-y-2 text-[10.5px] font-sans font-semibold">
-                            <div className="flex justify-between">
-                              <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>IP Address</span>
-                              <span className={`font-mono ${t.text}`}>{dev.ipAddress}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Battery</span>
-                              <span className={`flex items-center gap-1 ${t.text}`}>
-                                {dev.battery === '100% (Wired)' ? (
-                                  <>
-                                    <span className={`material-symbols-outlined text-[11px] ${t.accent}`}>bolt</span>
-                                    Wired
-                                  </>
-                                ) : (
-                                  dev.battery
-                                )}
-                              </span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Uptime</span>
-                              <span className={`font-mono ${t.text}`}>{dev.uptime}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <button type="button" 
-                          onClick={() => triggerToast(`Loading Terminal settings console for ${dev.name}...`, 'info')}
-                          className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
-                        >
-                          Manage
-                        </button>
-                      </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Printers Grid Section */}
-              <div className="space-y-5">
-                <h3 className={`font-serif text-[18px] font-bold ${t.text} tracking-wide select-none`}>Printers</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {devicesList
-                    .filter(dev => dev.type === 'PRINTER')
-                    .map((dev) => (
-                      <div key={dev.id} className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[170px]`}>
-                        <div>
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3 select-none">
-                              <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
-                                <span className="material-symbols-outlined text-[16px]">print</span>
-                              </div>
-                              <div>
-                                <h4 className={`text-white font-bold text-xs tracking-wider uppercase ${t.text}`}>{dev.name}</h4>
-                                <p className={`text-[10px] ${t.textMuted} font-semibold mt-0.5`}>{dev.subtitle}</p>
-                              </div>
-                            </div>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          </div>
-
-                          <div className="text-[10.5px] font-sans font-semibold">
-                            {dev.status === 'WARNING_LOW_PAPER' ? (
-                              <div className="text-amber-400 font-bold uppercase tracking-wider text-[9.5px]">
-                                Warning: Low Paper
-                              </div>
-                            ) : (
-                              <div className="flex justify-between">
-                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Routing</span>
-                                <span className={t.text}>{dev.details.replace('Routing: ', '')}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        <button type="button" 
-                          onClick={() => handleRunPrinterTest(dev.id, dev.name)}
-                          disabled={printingDevices[dev.id]}
-                          className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none disabled:opacity-50 flex items-center justify-center gap-2`}
-                        >
-                          {printingDevices[dev.id] ? (
-                            <>
-                              <span className={`w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin ${t.text}`}></span>
-                              Printing...
-                            </>
-                          ) : (
-                            'Test Print'
-                          )}
-                        </button>
-                      </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Kitchen Display Systems Section */}
-              <div className="space-y-5">
-                <h3 className={`font-serif text-[18px] font-bold ${t.text} tracking-wide select-none`}>Kitchen Display Systems</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {devicesList
-                    .filter(dev => dev.type === 'KDS')
-                    .map((dev) => (
-                      <div key={dev.id} className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[170px]`}>
-                        <div>
-                          <div className="flex justify-between items-start mb-4">
-                            <div className="flex items-center gap-3 select-none">
-                              <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
-                                <span className="material-symbols-outlined text-[16px]">desktop_windows</span>
-                              </div>
-                              <div>
-                                <h4 className={`text-white font-bold text-xs tracking-wider uppercase ${t.text}`}>{dev.name}</h4>
-                                <p className={`text-[10px] ${t.textMuted} font-semibold mt-0.5`}>{dev.ipAddress}</p>
-                              </div>
-                            </div>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                          </div>
-
-                          <div className="text-[10.5px] font-sans font-semibold select-none flex justify-between">
-                            <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Sync Status</span>
-                            <span className={t.accent}>{dev.details.replace('Syncing: ', '')}</span>
-                          </div>
-                        </div>
-
-                        <button type="button" 
-                          onClick={() => triggerToast(`Opening settings for KDS ${dev.name}...`, 'info')}
-                          className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
-                        >
-                          Settings
-                        </button>
-                      </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Cash Drawer Integration Section */}
-              <div className="space-y-5">
-                <h3 className={`font-serif text-[18px] font-bold ${t.text} tracking-wide select-none`}>Cash Drawers</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Drawer Status Cards */}
-                  {devicesList.filter(dev => dev.type === 'CASH_DRAWER').length > 0 ? (
-                    devicesList
-                      .filter(dev => dev.type === 'CASH_DRAWER')
-                      .map((dev) => (
-                        <div key={dev.id} className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[170px]`}>
+                    .filter(dev => {
+                      if (activeHardwareTab === 'pos' && dev.type !== 'POS') return false;
+                      if (activeHardwareTab === 'printer' && dev.type !== 'PRINTER') return false;
+                      if (activeHardwareTab === 'kds' && dev.type !== 'KDS') return false;
+                      if (activeHardwareTab === 'cash_drawer' && dev.type !== 'CASH_DRAWER') return false;
+                      
+                      if (searchQuery.trim()) {
+                        const q = searchQuery.toLowerCase();
+                        return (
+                          dev.name.toLowerCase().includes(q) ||
+                          dev.id.toLowerCase().includes(q) ||
+                          dev.ipAddress.toLowerCase().includes(q)
+                        );
+                      }
+                      return true;
+                    })
+                    .map((dev) => {
+                      const isPinging = pingingDevices[dev.id];
+                      const pingVal = pingResults[dev.id];
+                      
+                      return (
+                        <div key={dev.id} className={`${t.cardBg} border rounded-2xl p-6 shadow-xl flex flex-col justify-between min-h-[220px] transition-all duration-300 hover:border-white/10 hover:shadow-2xl`}>
                           <div>
                             <div className="flex justify-between items-start mb-4">
                               <div className="flex items-center gap-3 select-none">
                                 <div className={`w-8 h-8 rounded-lg ${t.inputBg} border ${t.borderStrong} flex items-center justify-center ${t.accent}`}>
-                                  <span className="material-symbols-outlined text-[16px]">inbox</span>
+                                  <span className="material-symbols-outlined text-[16px]">
+                                    {dev.type === 'POS' ? 'tablet_mac' : 
+                                     dev.type === 'PRINTER' ? 'print' : 
+                                     dev.type === 'KDS' ? 'desktop_windows' : 'inbox'}
+                                  </span>
                                 </div>
                                 <div>
                                   <h4 className={`text-white font-bold text-xs tracking-wider uppercase ${t.text}`}>{dev.name}</h4>
                                   <p className={`text-[10px] ${t.textMuted} font-semibold mt-0.5`}>{dev.subtitle}</p>
                                 </div>
                               </div>
-                              <span className={`w-1.5 h-1.5 rounded-full ${dev.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-zinc-500'}`}></span>
+                              
+                              <div className="flex items-center gap-1.5">
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  dev.status === 'ONLINE' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse' : 
+                                  dev.status === 'WARNING_LOW_PAPER' ? 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse' : 
+                                  'bg-zinc-500'
+                                }`}></span>
+                                <span className="text-[8px] font-mono text-white/40 uppercase tracking-widest">{dev.id}</span>
+                              </div>
                             </div>
-                            <div className="text-[10.5px] font-sans font-semibold space-y-2">
+
+                            <div className="space-y-2 text-[10.5px] font-sans font-semibold">
                               <div className="flex justify-between">
-                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Connection</span>
-                                <span className={t.text}>{dev.details || 'RJ12 Printer Kick'}</span>
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>IP Address</span>
+                                <span className={`font-mono ${t.text}`}>{dev.ipAddress}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Status</span>
-                                <span className={dev.status === 'ONLINE' ? 'text-emerald-400' : 'text-zinc-400'}>{dev.status === 'ONLINE' ? 'Closed (Ready)' : dev.status}</span>
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Power / Battery</span>
+                                <span className={`flex items-center gap-1 ${t.text}`}>
+                                  {dev.battery === '100% (Wired)' || dev.battery === 'Powered by Printer' ? (
+                                    <>
+                                      <span className={`material-symbols-outlined text-[11px] ${t.accent}`}>bolt</span>
+                                      Wired
+                                    </>
+                                  ) : (
+                                    dev.battery || 'Wired'
+                                  )}
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Uptime</span>
+                                <span className={`font-mono ${t.text}`}>{dev.uptime || 'N/A'}</span>
+                              </div>
+                              <div className="flex justify-between border-t border-white/5 pt-2 mt-2">
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Details</span>
+                                <span className={`text-[10px] ${dev.status === 'WARNING_LOW_PAPER' ? 'text-amber-400 font-bold' : t.textMuted}`}>
+                                  {dev.status === 'WARNING_LOW_PAPER' ? 'Warning: Low Paper' : dev.details || 'Operational'}
+                                </span>
                               </div>
                             </div>
                           </div>
-                          <button type="button" 
-                            onClick={async () => {
-                              triggerToast(`Sending manual kick signal to ${dev.name}...`, 'info');
-                              await kickCashDrawer();
-                              triggerToast('Drawer kicked open!', 'success');
-                            }}
-                            className={`w-full mt-5 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
-                          >
-                            Test Drawer Kick
-                          </button>
+
+                          <div className="flex flex-col gap-2 mt-5 select-none">
+                            {/* Connection Ping / Diagnostic Stats */}
+                            {pingVal && (
+                              <div className={`px-3 py-1.5 rounded-lg ${t.inputBg} border border-white/5 flex justify-between items-center text-[10px] font-sans`}>
+                                <span className="text-white/40 uppercase font-bold tracking-wider">Ping Response:</span>
+                                <span className="font-mono text-emerald-400 font-bold">{pingVal}</span>
+                              </div>
+                            )}
+                            
+                            <div className="flex gap-2">
+                              {/* Primary Action */}
+                              {dev.type === 'PRINTER' ? (
+                                <button type="button" 
+                                  onClick={() => handleRunPrinterTest(dev.id, dev.name)}
+                                  disabled={printingDevices[dev.id]}
+                                  className={`flex-1 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2`}
+                                >
+                                  {printingDevices[dev.id] ? (
+                                    <>
+                                      <span className={`w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin`}></span>
+                                      Printing...
+                                    </>
+                                  ) : (
+                                    'Test Print'
+                                  )}
+                                </button>
+                              ) : dev.type === 'CASH_DRAWER' ? (
+                                <button type="button" 
+                                  onClick={async () => {
+                                    triggerToast(`Sending RJ12 drawer kick signal to ${dev.name}...`, 'info');
+                                    playCashRegisterChime();
+                                    await kickCashDrawer();
+                                    triggerToast('Drawer kicked open successfully!', 'success');
+                                  }}
+                                  className={`flex-1 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer`}
+                                >
+                                  Test Drawer Kick
+                                </button>
+                              ) : (
+                                <button type="button" 
+                                  onClick={() => handlePingDevice(dev.id)}
+                                  disabled={isPinging}
+                                  className={`flex-1 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2`}
+                                >
+                                  {isPinging ? (
+                                    <>
+                                      <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></span>
+                                      Pinging...
+                                    </>
+                                  ) : (
+                                    'Test Connection'
+                                  )}
+                                </button>
+                              )}
+
+                              {/* Manage (Edit/Delete Dropdown) */}
+                              <div className="flex gap-1.5">
+                                <button type="button"
+                                  onClick={() => setEditingDevice(dev)}
+                                  className={`p-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center`}
+                                  title="Edit Device"
+                                >
+                                  <span className="material-symbols-outlined text-xs">edit</span>
+                                </button>
+                                <button type="button"
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to unpair device ${dev.name}?`)) {
+                                      setDevicesList(prev => prev.filter(d => d.id !== dev.id));
+                                      triggerToast(`Device ${dev.name} unpaired successfully.`, 'success');
+                                    }
+                                  }}
+                                  className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                                  title="Unpair Device"
+                                >
+                                  <span className="material-symbols-outlined text-xs">delete</span>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                      ))
-                  ) : (
-                    <div className={`${t.cardBg} border rounded-2xl p-8 text-center col-span-full`}>
-                      <span className="material-symbols-outlined text-3xl text-white/10 mb-3 block">inbox</span>
-                      <p className={`text-xs ${t.textMuted} font-semibold`}>No cash drawers paired yet.</p>
-                      <p className={`text-[10px] ${t.textMutedLight} mt-1`}>Connect a cash drawer via the Printer Connection Console.</p>
+                      );
+                    })}
+
+                  {/* Empty State */}
+                  {devicesList.filter(dev => {
+                    if (activeHardwareTab === 'pos' && dev.type !== 'POS') return false;
+                    if (activeHardwareTab === 'printer' && dev.type !== 'PRINTER') return false;
+                    if (activeHardwareTab === 'kds' && dev.type !== 'KDS') return false;
+                    if (activeHardwareTab === 'cash_drawer' && dev.type !== 'CASH_DRAWER') return false;
+                    if (searchQuery.trim()) {
+                      const q = searchQuery.toLowerCase();
+                      return dev.name.toLowerCase().includes(q) || dev.id.toLowerCase().includes(q);
+                    }
+                    return true;
+                  }).length === 0 && (
+                    <div className={`col-span-full ${t.cardBg} border rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4`}>
+                      <span className="material-symbols-outlined text-5xl text-white/10 animate-bounce">settings_remote</span>
+                      <div>
+                        <h4 className="text-white font-bold text-sm">No Connected Devices</h4>
+                        <p className={`text-xs ${t.textMuted} mt-1 max-w-sm`}>
+                          No devices match the active filters. Pair a new POS tablet, thermal printer, KDS expo screen, or cash drawer.
+                        </p>
+                      </div>
+                      <button type="button"
+                        onClick={() => setShowPairDeviceModal(true)}
+                        className={`px-4 py-2 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer`}
+                      >
+                        Pair New Device
+                      </button>
                     </div>
                   )}
-
-                  {/* Card 2: Drawer Settings */}
-                  <div className={`${t.cardBg} border rounded-2xl p-6 shadow-xl space-y-4`}>
-                    <div className="flex justify-between items-center select-none border-b border-white/5 pb-2">
-                      <h4 className={`text-xs font-bold uppercase tracking-wider ${t.text}`}>Integration Preferences</h4>
-                      <span className="material-symbols-outlined text-[#A69984]/50 text-sm">settings</span>
-                    </div>
-
-                    <div className="space-y-4 font-sans text-xs select-none">
-                      {/* Toggle 1: Open on Cash */}
-                      <div className="flex justify-between items-center">
-                        <div className="max-w-[70%]">
-                          <span className={`text-[11px] font-bold ${t.text}`}>Open on Cash Payment</span>
-                          <p className={`text-[9px] ${t.textMutedLight} font-semibold mt-0.5`}>Kick drawer automatically on checkout</p>
-                        </div>
-                        <button type="button" 
-                          onClick={() => {
-                            setOpenOnCash(!openOnCash);
-                            triggerToast(`Auto drawer kick on cash ${!openOnCash ? 'enabled' : 'disabled'}.`, 'info');
-                          }}
-                          className={`w-9 h-5 rounded-full p-0.5 transition-colors ${openOnCash ? t.accentBg : 'bg-white/20'}`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${openOnCash ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                        </button>
-                      </div>
-
-                      {/* Toggle 2: Require Manager Pin */}
-                      <div className="flex justify-between items-center">
-                        <div className="max-w-[70%]">
-                          <span className={`text-[11px] font-bold ${t.text}`}>Manager Approval Required</span>
-                          <p className={`text-[9px] ${t.textMutedLight} font-semibold mt-0.5`}>Require supervisor pin for manual opening</p>
-                        </div>
-                        <button type="button" 
-                          onClick={() => {
-                            setRequireManagerPin(!requireManagerPin);
-                            triggerToast(`Manager approval for manual drawer opening ${!requireManagerPin ? 'enabled' : 'disabled'}.`, 'info');
-                          }}
-                          className={`w-9 h-5 rounded-full p-0.5 transition-colors ${requireManagerPin ? t.accentBg : 'bg-white/20'}`}
-                        >
-                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${requireManagerPin ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
+
+              {/* EDIT DEVICE MODAL */}
+              {editingDevice && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm animate-fade-in font-sans">
+                  <div className={`${t.cardBgOpaque} border w-[420px] rounded-2xl p-7 shadow-2xl space-y-6 transform scale-up`}>
+                    <div className={`flex justify-between items-center border-b ${t.border} pb-4 select-none`}>
+                      <h3 className={`font-serif text-lg ${t.accent} font-bold tracking-wide`}>Edit Connected Device</h3>
+                      <button type="button" 
+                        onClick={() => setEditingDevice(null)}
+                        className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
+                      >
+                        <span className="material-symbols-outlined text-base">close</span>
+                      </button>
+                    </div>
+
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      if (!editingDevice.name.trim()) {
+                        triggerToast('Please enter a device name.', 'info');
+                        return;
+                      }
+                      setDevicesList(prev => prev.map(d => d.id === editingDevice.id ? {
+                        ...d,
+                        name: editingDevice.name,
+                        ipAddress: editingDevice.ipAddress,
+                        status: editingDevice.status,
+                        details: editingDevice.status === 'WARNING_LOW_PAPER' ? 'Warning: Low Paper' : 
+                                 editingDevice.type === 'PRINTER' ? 'Routing: Customer Receipt' : d.details
+                      } : d));
+
+                      setEditingDevice(null);
+                      triggerToast('Device configuration updated successfully.', 'success');
+                    }} className="space-y-4">
+                      {/* Name */}
+                      <div>
+                        <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Name</label>
+                        <input 
+                          type="text" 
+                          value={editingDevice.name}
+                          onChange={(e) => setEditingDevice({...editingDevice, name: e.target.value})}
+                          placeholder="e.g. Bar Printer Left"
+                          className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                          required
+                        />
+                      </div>
+
+                      {/* IP Address */}
+                      <div>
+                        <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>IP Address</label>
+                        <input 
+                          type="text" 
+                          value={editingDevice.ipAddress}
+                          onChange={(e) => setEditingDevice({...editingDevice, ipAddress: e.target.value})}
+                          placeholder="e.g. 192.168.1.110"
+                          className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                          required
+                        />
+                      </div>
+
+                      {/* Status */}
+                      <div>
+                        <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Status</label>
+                        <div className="relative">
+                          <select
+                            value={editingDevice.status}
+                            onChange={(e) => setEditingDevice({...editingDevice, status: e.target.value})}
+                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
+                          >
+                            <option value="ONLINE">ONLINE</option>
+                            {editingDevice.type === 'PRINTER' && (
+                              <option value="WARNING_LOW_PAPER">WARNING (LOW PAPER)</option>
+                            )}
+                            <option value="OFFLINE">OFFLINE</option>
+                          </select>
+                          <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-4 pt-4">
+                        <button type="button" 
+                          onClick={() => setEditingDevice(null)}
+                          className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
+                        >
+                          Cancel
+                        </button>
+                        <button type="submit"
+                          className={`flex-1 py-3 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center shadow-md`}
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

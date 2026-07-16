@@ -47,6 +47,12 @@ vi.mock('../utils/supabase.js', () => {
 
   const client = {
     from: vi.fn((table) => createMockBuilder(table)),
+    rpc: vi.fn(async (fn, args) => {
+      if (fn === 'place_order_transaction') {
+        return { data: mockOrderResult.data?.id || 'order-uuid-1234', error: null };
+      }
+      return { data: null, error: null };
+    }),
   };
 
   return { supabase: client };

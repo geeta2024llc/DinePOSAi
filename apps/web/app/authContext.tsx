@@ -4,12 +4,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiRequest, clearDemoLocalStorage } from '@/utils/api';
 
-
 interface AuthUser {
   id: string;
   name: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'MANAGER' | 'CASHIER' | 'KITCHEN';
+  role: 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN';
+  permissions: string[];
+  createdAt?: string;
+  lastLogin?: string;
 }
 
 interface AuthTenant {
@@ -23,6 +25,8 @@ interface AuthTenant {
   trialEndsAt?: string;
   subscriptionExpiresAt?: string;
   billingCycle?: 'monthly' | 'annual';
+  country?: string;
+  timezone?: string;
 }
 
 interface AuthContextType {
@@ -52,7 +56,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           const parsed = JSON.parse(stored);
           if (parsed.user && parsed.tenant) {
-            setUser(parsed.user);
+            setUser({
+              ...parsed.user,
+              permissions: parsed.user.permissions || [],
+            });
             setTenant({
               ...parsed.tenant,
               plan: parsed.tenant.plan || parsed.plan,
@@ -67,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               name: parsed.fullName || parsed.name || 'User',
               email: parsed.email,
               role: parsed.role,
+              permissions: parsed.permissions || [],
             });
             setTenant({
               id: parsed.tenantId || 'offline-tenant-id',
@@ -103,20 +111,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   const login = (token: string, user: AuthUser, tenant: AuthTenant) => {
-    setUser(user);
+    const cleanUser = {
+      ...user,
+      permissions: user.permissions || [],
+    };
+    setUser(cleanUser);
     setTenant(tenant);
     if (typeof window !== 'undefined') {
       localStorage.setItem('dinepos_jwt_token', token);
-      document.cookie = `dinepos_auth_token=${token}; path=/; max-age=604800; SameSite=Strict; Secure`;
+      const isRemembered = localStorage.getItem('dinepos_remembered_email') !== null;
+      const maxAgeAttr = isRemembered ? 'max-age=2592000' : '';
+      document.cookie = `dinepos_auth_token=${token}; path=/; ${maxAgeAttr}; SameSite=Strict; Secure`;
       localStorage.setItem('dinepos_user_account', JSON.stringify({
-        user,
+        user: cleanUser,
         tenant,
-        id: user.id,
-        fullName: user.name,
-        name: user.name,
-        email: user.email,
+        id: cleanUser.id,
+        fullName: cleanUser.name,
+        name: cleanUser.name,
+        email: cleanUser.email,
         restaurantName: tenant.name,
-        role: user.role,
+        role: cleanUser.role,
         tenantId: tenant.id,
         currency: tenant.currency,
         taxType: tenant.taxType,
@@ -126,26 +140,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         trialEndsAt: tenant.trialEndsAt,
         subscriptionExpiresAt: tenant.subscriptionExpiresAt,
         billingCycle: tenant.billingCycle,
+        permissions: cleanUser.permissions,
       }));
 
       // Clear any demo/seed data so a real tenant starts with a clean slate.
-      // isDemoTenant() reads the account we just stored, so it will now
-      // correctly identify this as a real tenant and clear demo keys.
       clearDemoLocalStorage();
     }
 
     // Role-based post-login navigation
-    if (user.role === 'SUPER_ADMIN') {
+    if (cleanUser.role === 'SUPER_ADMIN') {
       router.push('/super-admin');
-    } else if (user.role === 'MANAGER') {
+    } else if (cleanUser.role === 'OWNER' || cleanUser.role === 'MANAGER') {
       if (tenant.onboarded) {
         router.push('/dashboard');
       } else {
         router.push('/onboarding');
       }
-    } else if (user.role === 'CASHIER') {
+    } else if (cleanUser.role === 'CASHIER') {
       router.push('/pos');
-    } else if (user.role === 'KITCHEN') {
+    } else if (cleanUser.role === 'KITCHEN') {
       router.push('/kds');
     } else {
       router.push('/menu');
@@ -176,12 +189,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiRequest('/api/auth/refresh', { method: 'POST' });
       if (response.success && response.data?.token) {
         const { token, user: u, tenant: t } = response.data;
-        setUser(u);
+        const cleanUser = {
+          ...u,
+          permissions: u.permissions || [],
+        };
+        setUser(cleanUser);
         setTenant(t);
         if (typeof window !== 'undefined') {
           localStorage.setItem('dinepos_jwt_token', token);
-          document.cookie = `dinepos_auth_token=${token}; path=/; max-age=604800; SameSite=Strict; Secure`;
-          localStorage.setItem('dinepos_user_account', JSON.stringify({ user: u, tenant: t }));
+          const isRemembered = localStorage.getItem('dinepos_remembered_email') !== null;
+          const maxAgeAttr = isRemembered ? 'max-age=2592000' : '';
+          document.cookie = `dinepos_auth_token=${token}; path=/; ${maxAgeAttr}; SameSite=Strict; Secure`;
+          localStorage.setItem('dinepos_user_account', JSON.stringify({ user: cleanUser, tenant: t }));
         }
       } else {
         await logout();

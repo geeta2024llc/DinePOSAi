@@ -8,6 +8,7 @@ export interface PrinterConfig {
   name: string;
   ip?: string;
   port?: number;
+  defaultSystemType?: 'usb' | 'bluetooth';
 }
 
 export interface PrintReceiptData {
@@ -41,6 +42,17 @@ export class PrinterService {
     onLog(`Starting print job for Order ${data.orderId} (Type: ${config.type})...`);
 
     if (config.type === 'browser') {
+      if (config.defaultSystemType === 'bluetooth') {
+        onLog('Routing default system print to Bluetooth...');
+        const bytes = this.encodeReceipt(data);
+        await this.printBluetooth(bytes, onLog);
+        return;
+      } else if (config.defaultSystemType === 'usb') {
+        onLog('Routing default system print to USB...');
+        const bytes = this.encodeReceipt(data);
+        await this.printUsb(bytes, data, onLog);
+        return;
+      }
       onLog('Dispatching print job to system browser print dialog...');
       this.printBrowserReceipt(data, onLog);
       return;
@@ -68,7 +80,12 @@ export class PrinterService {
   async kickCashDrawer(config: PrinterConfig, onLog: (msg: string) => void): Promise<void> {
     onLog(`Triggering Cash Drawer Solenoid Pulse (Printer Type: ${config.type})...`);
 
-    if (config.type === 'browser' || config.type === 'network') {
+    let targetType = config.type;
+    if (config.type === 'browser' && config.defaultSystemType) {
+      targetType = config.defaultSystemType;
+    }
+
+    if (targetType === 'browser' || targetType === 'network') {
       onLog('Pulse trigger bypassed for browser/network configurations.');
       return;
     }
@@ -77,9 +94,9 @@ export class PrinterService {
     encoder.init().pulseDrawer(0, 48, 240);
     const bytes = encoder.getBytes();
 
-    if (config.type === 'bluetooth') {
+    if (targetType === 'bluetooth') {
       await this.printBluetooth(bytes, onLog);
-    } else if (config.type === 'usb') {
+    } else if (targetType === 'usb') {
       await this.printUsb(bytes, null, onLog);
     }
     onLog('✓ Drawer kick pulse transmitted.');
@@ -229,15 +246,39 @@ export class PrinterService {
 </body>
 </html>`;
 
-    const printWin = window.open('', '_blank', 'width=400,height=700');
-    if (printWin) {
-      printWin.document.write(receiptHtml);
-      printWin.document.close();
-      printWin.focus();
-      printWin.print();
-      onLog('✓ Print dialog dispatched.');
+    let iframe = document.getElementById('dinepos_silent_printer_iframe') as HTMLIFrameElement;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = 'dinepos_silent_printer_iframe';
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      document.body.appendChild(iframe);
+    }
+
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (doc) {
+      doc.open();
+      doc.write(receiptHtml);
+      doc.close();
+      
+      // Delay slightly to ensure browser has rendered and loaded styles
+      setTimeout(() => {
+        if (iframe.contentWindow) {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+          onLog('✓ Print job spooled silently through hidden iframe.');
+        } else {
+          onLog('❌ contentWindow not available on printing iframe.');
+        }
+      }, 250);
     } else {
-      onLog('❌ Could not open print window. Check popup blocker.');
+      onLog('❌ Could not write to printing iframe.');
     }
   }
 
