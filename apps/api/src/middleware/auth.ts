@@ -25,6 +25,20 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
+// Memory cache for user authentication sessions & permissions to prevent database hammering during POS polling
+interface CachedAuth {
+  expiresAt: Date;
+  session: {
+    id: string;
+    expires_at: string;
+    branch_id: string | null;
+  };
+  permissions: string[];
+}
+
+const authCache = new Map<string, CachedAuth>();
+const CACHE_TTL_MS = 5000; // Cache TTL of 5 seconds
+
 /**
  * Authentication Middleware: Validates JWT access token, verifies session existence in DB,
  * and loads user permissions.
@@ -54,42 +68,61 @@ export const authenticateUser = async (
       sessionId: string;
     };
 
-    // 1. Fetch the user's specific session to verify it has not been revoked
-    const { data: session, error: sessionErr } = await supabase
-      .from('user_sessions')
-      .select('id, expires_at, branch_id')
-      .eq('id', decoded.sessionId)
-      .eq('user_id', decoded.id)
-      .maybeSingle();
+    // Cache check to avoid redundant database calls on high-frequency polling requests
+    const cacheKey = `${decoded.id}:${decoded.sessionId}:${decoded.role}`;
+    const cached = authCache.get(cacheKey);
+    let session;
+    let permissions;
 
-    if (sessionErr || !session) {
-      return res.status(401).json({
-        success: false,
-        error: 'Session terminated or invalidated. Please log in again.',
+    if (cached && cached.expiresAt > new Date()) {
+      session = cached.session;
+      permissions = cached.permissions;
+    } else {
+      // 1. Fetch the user's specific session to verify it has not been revoked
+      const { data: dbSession, error: sessionErr } = await supabase
+        .from('user_sessions')
+        .select('id, expires_at, branch_id')
+        .eq('id', decoded.sessionId)
+        .eq('user_id', decoded.id)
+        .maybeSingle();
+
+      if (sessionErr || !dbSession) {
+        return res.status(401).json({
+          success: false,
+          error: 'Session terminated or invalidated. Please log in again.',
+        });
+      }
+      session = dbSession;
+
+      // Check expiry
+      if (new Date(session.expires_at) < new Date()) {
+        // Clean up in background
+        supabase.from('user_sessions').delete().eq('id', session.id).then(({ error }) => { if (error) logger.error(error.message); });
+        return res.status(401).json({
+          success: false,
+          error: 'Session expired. Please log in again.',
+        });
+      }
+
+      // 2. Fetch the user permissions from the DB
+      const { data: permissionsData, error: permErr } = await supabase
+        .from('user_permissions')
+        .select('permission')
+        .eq('role', decoded.role);
+
+      if (permErr) {
+        logger.error(`Failed to load permissions for role ${decoded.role}: ${permErr.message}`);
+      }
+
+      permissions = permissionsData?.map((p) => p.permission) || [];
+
+      // Save to active memory cache
+      authCache.set(cacheKey, {
+        expiresAt: new Date(Date.now() + CACHE_TTL_MS),
+        session,
+        permissions
       });
     }
-
-    // Check expiry
-    if (new Date(session.expires_at) < new Date()) {
-      // Clean up in background
-      supabase.from('user_sessions').delete().eq('id', session.id).catch(() => {});
-      return res.status(401).json({
-        success: false,
-        error: 'Session expired. Please log in again.',
-      });
-    }
-
-    // 2. Fetch the user permissions from the DB
-    const { data: permissionsData, error: permErr } = await supabase
-      .from('user_permissions')
-      .select('permission')
-      .eq('role', decoded.role);
-
-    if (permErr) {
-      logger.error(`Failed to load permissions for role ${decoded.role}: ${permErr.message}`);
-    }
-
-    const permissions = permissionsData?.map((p) => p.permission) || [];
 
     // 3. Attach full auth context to request
     req.user = {
@@ -102,12 +135,11 @@ export const authenticateUser = async (
       permissions,
     };
 
-    // Update last activity timestamp in background (non-blocking)
     supabase
       .from('user_sessions')
       .update({ last_activity: new Date().toISOString() })
       .eq('id', session.id)
-      .catch(() => {});
+      .then(({ error }) => { if (error) logger.error(error.message); });
 
     next();
   } catch (error: any) {

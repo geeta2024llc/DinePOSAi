@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { deductStockForOrder } from '../inventoryUtils';
@@ -11,6 +12,11 @@ import ReceiptPrintModal, { ReceiptData } from '@/components/ui/ReceiptPrintModa
 import { useCashDrawer } from '@/hooks/useCashDrawer';
 import CashDrawerPanel from '@/components/pos/CashDrawerPanel';
 
+const ActiveOrdersList = dynamic(() => import('@/components/pos/ActiveOrdersList'), { ssr: false });
+const OrderDetailsPanel = dynamic(() => import('@/components/pos/OrderDetailsPanel'), { ssr: false });
+const CheckoutModal = dynamic(() => import('@/components/pos/CheckoutModal'), { ssr: false });
+const SplitPaymentModal = dynamic(() => import('@/components/pos/SplitPaymentModal'), { ssr: false });
+const MenuCatalogModal = dynamic(() => import('@/components/pos/MenuCatalogModal'), { ssr: false });
 
 const VALID_PROMO_CODES: Record<string, { type: 'percent' | 'fixed'; value: number; label: string }> = {
   'DINE10': { type: 'percent', value: 10, label: '10% Off' },
@@ -1438,9 +1444,21 @@ export default function PosPage() {
         quickFilter === 'payment' ? t.needsPayment : // Needs payment flag
         quickFilter === 'vip' ? t.isVip : false;
 
-      return matchesSearch && matchesFilter;
     });
   }, [tickets, searchQuery, quickFilter]);
+
+  const appliedPromo = appliedDiscount?.type === 'promo' && appliedDiscount.promoCode
+    ? VALID_PROMO_CODES[appliedDiscount.promoCode]
+    : null;
+
+  const filteredMenuItems = useMemo(() => {
+    return menuItems.filter(item => {
+      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+      const matchesSearch = item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
+                            (item.description && item.description.toLowerCase().includes(menuSearchQuery.toLowerCase()));
+      return matchesCategory && matchesSearch;
+    });
+  }, [menuItems, activeCategory, menuSearchQuery]);
 
   return (
     <div 
@@ -1654,273 +1672,46 @@ export default function PosPage() {
         <div className="flex-1 flex overflow-hidden">
           
           {/* LEFT COLUMN: Active Orders List */}
-          <div className={`w-full lg:w-[320px] xl:w-[420px] border-r border-white/5 flex-col h-full bg-[#11100e]/50 flex-shrink-0 select-none ${mobileView === 'detail' ? 'hidden lg:flex' : 'flex'}`}>
-            
-            {/* Quick Filters toolbar */}
-            <div className="p-6 pb-4 border-b border-white/5 flex gap-2 flex-shrink-0">
-              <button
-                onClick={() => setQuickFilter('open')}
-                className={`px-4 py-2 rounded-full font-sans text-[11px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${quickFilter === 'open' ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'text-[#A69984]/80 border border-white/5 hover:text-white'}`}
-              >
-                {t("All Open", "すべての未決済")}
-              </button>
-              <button
-                onClick={() => setQuickFilter('payment')}
-                className={`px-4 py-2 rounded-full font-sans text-[11px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${quickFilter === 'payment' ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'text-[#A69984]/80 border border-white/5 hover:text-white'}`}
-              >
-                {t("Needs Payment", "要支払い")}
-              </button>
-              <button
-                onClick={() => setQuickFilter('vip')}
-                className={`px-4 py-2 rounded-full font-sans text-[11px] uppercase tracking-wider font-bold transition-all duration-300 cursor-pointer ${quickFilter === 'vip' ? 'bg-[#ffe2ab] text-[#402d00] shadow' : 'text-[#A69984]/80 border border-white/5 hover:text-white'}`}
-              >
-                {t("VIP", "VIP")}
-              </button>
-            </div>
-
-            {/* List of active order cards */}
-            <div className="flex-grow overflow-y-auto p-6 space-y-4">
-              {filteredTickets.length > 0 ? (
-                filteredTickets.map(ticket => {
-                  const isActive = ticket.id === selectedTicketId;
-                  return (
-                    <div
-                      key={ticket.id}
-                      onClick={() => { setSelectedTicketId(ticket.id); setMobileView('detail'); }}
-                      className={`border rounded-2xl p-6 transition-all duration-300 cursor-pointer relative shadow-md ${isActive ? 'border-[#ffe2ab] bg-white/[0.01]' : 'border-white/5 hover:border-white/10 bg-[#161513]/40'}`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-sans font-bold text-white text-base">{ticket.tableNumber}</h4>
-                          {ticket.isVip && (
-                            <span className="bg-[#ffe2ab] text-[#402d00] font-sans font-black text-[9px] uppercase tracking-widest px-1.5 py-0.5 rounded select-none">
-                              {t("VIP", "VIP")}
-                            </span>
-                          )}
-                          {ticket.isSplit && (
-                            <span className="bg-white/5 text-[#A69984]/60 font-sans font-bold text-[9px] uppercase tracking-wider px-2 py-0.5 rounded border border-white/5 select-none">
-                              {t("Split Check", "個別会計")}
-                            </span>
-                          )}
-                        </div>
-                        <div className="font-sans font-bold text-base text-[#ffe2ab]">{formatMoney(getTicketCardAmount(ticket, taxType))}</div>
-                      </div>
-
-                      <div className="flex justify-between items-center text-xs text-[#A69984]/65 font-medium mt-4">
-                        <span>{t("Server", "接客係")}: {ticket.serverName}</span>
-                        <div className="flex items-center gap-1">
-                          <span className="material-symbols-outlined text-[14px]">schedule</span>
-                          <span>{ticket.duration}</span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-16 text-[#A69984]/40 font-sans text-xs select-none">
-                  {t("No open orders matching selection filters.", "選択条件に一致する未決済注文はありません。")}
-                </div>
-              )}
-            </div>
-
-          </div>
-
+          <ActiveOrdersList
+            t={t}
+            mobileView={mobileView}
+            setMobileView={setMobileView}
+            quickFilter={quickFilter}
+            setQuickFilter={setQuickFilter}
+            filteredTickets={filteredTickets}
+            selectedTicketId={selectedTicketId}
+            setSelectedTicketId={setSelectedTicketId}
+            taxType={taxType}
+            getTicketCardAmount={getTicketCardAmount}
+            formatMoney={formatMoney}
+          />
           {/* RIGHT COLUMN: Selected Order Ticket Details */}
           {selectedTicket ? (
-            <div className={`flex-1 flex-col h-full bg-[#11100e] overflow-hidden min-w-0 ${mobileView === 'list' ? 'hidden lg:flex' : 'flex'}`}>
-
-              {/* Mobile back-to-orders bar */}
-              <button
-                type="button"
-                onClick={() => setMobileView('list')}
-                className="lg:hidden flex items-center gap-2 px-5 py-3.5 border-b border-white/5 w-full text-left cursor-pointer hover:bg-white/[0.02] transition-colors"
-              >
-                <span className="material-symbols-outlined text-sm text-[#ffe2ab]">arrow_back_ios</span>
-                <span className="text-[10px] font-sans font-bold uppercase tracking-widest text-[#ffe2ab]">{t("All Orders", "すべての注文")}</span>
-              </button>
-
-              {/* Ticket details header */}
-              <div className="p-6 lg:p-8 border-b border-white/5 flex justify-between items-start flex-shrink-0 select-none">
-                <div className="flex items-start gap-4">
-                  <div>
-                    <span className="font-sans text-[9px] text-[#A69984]/50 font-bold uppercase tracking-[0.2em] mb-1.5 block">{t("Current Ticket", "現在の伝票")}</span>
-                    <h3 className="font-serif text-[32px] text-white font-bold leading-none select-text">{selectedTicket.tableNumber}</h3>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      setActiveCategory('all');
-                      setMenuSearchQuery('');
-                      setItemNotes({});
-                      setMenuModalOpen(true);
-                    }}
-                    className="px-4 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] font-sans font-bold text-[10.5px] uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center gap-1.5 cursor-pointer ml-4 mt-1.5 select-none"
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">restaurant_menu</span>
-                    {t("Add Menu Item", "メニュー追加")}
-                  </button>
-                </div>
-                
-                <div className="text-right text-xs text-[#A69984]/70 font-semibold font-sans space-y-1">
-                  <div>{t("Guests: ", "人数: ")}{selectedTicket.guests}</div>
-                  <div className="select-text">{t("Order ", "注文 ")}{selectedTicket.orderNumber}</div>
-                </div>
-              </div>
-
-              {/* Order items lists with headers */}
-              <div className="flex-1 overflow-y-auto px-8 py-6 flex flex-col">
-                {/* Column Headers */}
-                <div className="grid grid-cols-12 text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest pb-3 border-b border-white/5 select-none">
-                  <div className="col-span-2 text-left">{t("Qty", "数量")}</div>
-                  <div className="col-span-6 text-left">{t("Item", "品名")}</div>
-                  <div className="col-span-3 text-right">{t("Price", "単価")}</div>
-                  <div className="col-span-1 text-right"></div>
-                </div>
-
-                {/* Items rows */}
-                <div className="divide-y divide-white/5 flex-grow">
-                  {selectedTicket.items.map((item, index) => (
-                    <div key={index} className="grid grid-cols-12 py-5 items-center">
-                      {/* Quantity & Adjusters */}
-                      <div className="col-span-2 flex items-center gap-1.5 font-sans text-sm font-bold text-[#ffe2ab]/90 select-none">
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateItemQty(selectedTicket.id, item.name, -1, item.note)}
-                          className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer text-xs font-bold"
-                        >
-                          −
-                        </button>
-                        <span className="w-4 text-center select-all">{item.qty}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleUpdateItemQty(selectedTicket.id, item.name, 1, item.note)}
-                          className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer text-xs font-bold"
-                        >
-                          +
-                        </button>
-                      </div>
-                      
-                      {/* Name & Note */}
-                      <div className="col-span-6 text-left min-w-0 pr-2">
-                        <div className="font-sans font-bold text-sm text-white truncate">{item.name}</div>
-                        {item.note && (
-                          <div className="font-sans text-[11px] text-[#ffe2ab]/70 font-medium mt-0.5 break-words">
-                            Note: {item.note}
-                          </div>
-                        )}
-                        {item.options && item.options.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-1 font-sans">
-                            {item.options.map((opt: any, oIdx: number) => (
-                              <span
-                                key={oIdx}
-                                className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${
-                                  opt.type === 'allergy'
-                                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                    : opt.type === 'highlight'
-                                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                      : 'bg-white/5 text-[#A69984] border-white/5'
-                                }`}
-                              >
-                                {opt.text}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Price */}
-                      <div className="col-span-3 text-right font-sans text-sm pr-2">
-                        <div className="font-bold text-white/95">{formatMoney(getItemPrice(item))}</div>
-                        {item.qty > 1 && (
-                          <div className="text-[10px] text-[#A69984]/60 font-semibold mt-0.5">
-                            {t("Total: ", "小計: ")}{formatMoney(getItemPrice(item) * item.qty)}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Remove item */}
-                      <div className="col-span-1 text-right select-none">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(selectedTicket.id, item.name, item.note)}
-                          className="text-[#A69984]/40 hover:text-rose-400 transition-colors cursor-pointer"
-                          title="Remove item"
-                        >
-                          <span className="material-symbols-outlined text-base">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Bill Calculations Card Panel */}
-              <div className="p-8 border-t border-white/5 bg-[#161513]/40 flex-shrink-0 space-y-6">
-                
-                {/* Summary breakdowns */}
-                <div className="space-y-2.5 font-sans select-none text-xs font-semibold uppercase tracking-wider text-[#A69984]/75 border-b border-white/5 pb-4">
-                  <div className="flex justify-between">
-                    <span>{taxType === 'post-tax' ? t('Subtotal (Tax Incl.)', '小計 (税込)') : t('Subtotal', '小計')}</span>
-                    <span className="text-white">{formatMoney(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>{taxType === 'post-tax' ? t('Included Tax', '内消費税') : t('Tax', '消費税')} ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
-                    <span className="text-white">{formatMoney(tax)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-2">
-                      <span>{t('Gratuity', 'サービス料')} (Suggested {selectedTicket ? (getTicketGratuityRate(selectedTicket) * 100).toFixed(0) : cashierAutoGratuityPct}%)</span>
-                      {selectedTicket && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const currentRate = getTicketGratuityRate(selectedTicket);
-                            const nextRate = currentRate > 0 ? 0.00 : (cashierAutoGratuityPct / 100);
-                            handleUpdateGratuityRate(selectedTicket.id, nextRate);
-                          }}
-                          className="px-2 py-0.5 bg-white/5 hover:bg-white/10 text-[#ffe2ab] border border-white/10 rounded font-sans text-[9px] uppercase tracking-wider transition-colors cursor-pointer select-none"
-                        >
-                          {getTicketGratuityRate(selectedTicket) > 0 ? t('Waive', '免除') : t('Apply', '適用')}
-                        </button>
-                      )}
-                    </span>
-                    <span className="text-white">{formatMoney(gratuity)}</span>
-                  </div>
-                  {discountAmount > 0 && appliedDiscount && (
-                    <div className="flex justify-between text-emerald-400">
-                      <span className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[11px]">sell</span>
-                        {appliedDiscount.label}
-                      </span>
-                      <span>−{formatMoney(discountAmount)}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Grand total */}
-                <div className="flex justify-between items-baseline select-none">
-                  <span className="font-sans font-bold text-xs uppercase tracking-wider text-[#A69984]">{t('Grand Total', '総合計')}</span>
-                  <span className="font-serif text-[38px] lg:text-[42px] font-bold text-[#ffe2ab] tracking-wide leading-none select-none">
-                    {formatMoney(grandTotal)}
-                  </span>
-                </div>
-
-                {/* Footer Buttons */}
-                <div className="w-full">
-                  <button
-                    type="button"
-                    onClick={handleProcessPayment}
-                    disabled={isProcessing}
-                    className="w-full flex items-center justify-center gap-2 py-4 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 disabled:text-[#402d00]/45 text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 shadow-md cursor-pointer hover:scale-[1.01]"
-                  >
-                    <span className="material-symbols-outlined text-base">credit_card</span>
-                    {isProcessing ? t('Processing...', '処理中...') : t('Process Payment', '会計処理へ進む')}
-                  </button>
-                </div>
-
-              </div>
-
-            </div>
-          ) : (
+            <OrderDetailsPanel
+              t={t}
+              currency={currency}
+              selectedTicket={selectedTicket}
+              isProcessing={isProcessing}
+              handleUpdateItemQty={handleUpdateItemQty}
+              handleRemoveItem={handleRemoveItem}
+              handleProcessPayment={handleProcessPayment}
+              mobileView={mobileView}
+              setMobileView={setMobileView}
+              setActiveCategory={setActiveCategory}
+              setMenuSearchQuery={setMenuSearchQuery}
+              setItemNotes={setItemNotes}
+              setMenuModalOpen={setMenuModalOpen}
+              getItemPrice={getItemPrice}
+              taxType={taxType}
+              subtotal={subtotal}
+              tax={tax}
+              gratuity={gratuity}
+              discountAmount={discountAmount}
+              appliedDiscount={appliedDiscount}
+              grandTotal={grandTotal}
+              cashierAutoGratuityPct={cashierAutoGratuityPct}
+              handleUpdateGratuityRate={handleUpdateGratuityRate}
+            />          ) : (
             <div className="flex-grow flex items-center justify-center bg-[#11100e] text-[#A69984]/30 select-none">
               <div className="text-center">
                 <span className="material-symbols-outlined text-5xl mb-4 font-light">receipt</span>
@@ -1980,1061 +1771,95 @@ export default function PosPage() {
 
       {/* CASHIER CHECKOUT / PAYMENT MODAL */}
       {checkoutModalOpen && selectedTicket && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12110f] border border-[#ffe2ab]/20 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in flex flex-col max-h-[90vh]">
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between select-none bg-[#0a0a09]">
-              <div>
-                <h3 className="font-serif font-bold text-lg text-white">Process Checkout</h3>
-                <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
-                  Table {selectedTicket.tableNumber} • Order {selectedTicket.orderNumber}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCheckoutModalOpen(false)}
-                className="text-[#A69984] hover:text-white transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-2xl">close</span>
-              </button>
-            </div>
-
-            {/* Modal Content */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Payment Methods */}
-              <div className="space-y-2.5">
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none">{t("Payment Method", "支払い方法")}</label>
-                <div className="grid grid-cols-3 gap-3">
-                  {(['card', 'cash', 'digital'] as const).map(method => (
-                    <button
-                      key={method}
-                      type="button"
-                      onClick={() => setCheckoutPaymentMethod(method)}
-                      className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all cursor-pointer select-none ${
-                        checkoutPaymentMethod === method
-                          ? 'border-[#ffe2ab] bg-[#ffe2ab]/5 text-[#ffe2ab]'
-                          : 'border-white/5 bg-[#161513]/40 text-[#A69984]/60 hover:text-white hover:border-white/10'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-2xl mb-1.5">
-                        {method === 'card' ? 'credit_card' : method === 'cash' ? 'payments' : 'devices'}
-                      </span>
-                      <span className="font-sans font-bold text-[9px] uppercase tracking-wider">
-                        {method === 'card' ? t('Credit / Stripe', 'クレジットカード') : method === 'cash' ? t('Cash', '現金') : t('Digital Wallet', 'モバイル決済')}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Customer Details Accordion Card */}
-              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
-                <div 
-                  onClick={() => setCustomerDetailsVisible(prev => !prev)}
-                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
-                    customerDetailsVisible ? 'border-b border-white/5' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 font-sans">
-                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">person</span>
-                    <span className="font-sans font-bold text-xs text-white">{t("Customer Details", "顧客情報")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{customerName ? customerName : t('Not Set', '未設定')}</span>
-                    <span className="material-symbols-outlined text-base leading-none">
-                      {customerDetailsVisible ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </div>
-                </div>
-                {customerDetailsVisible && (
-                  <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5 font-sans">
-                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">{t("Customer Name", "お名前")}</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. John Doe"
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      </div>
-                      <div className="space-y-1.5 font-sans">
-                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider select-none">{t("Phone Number", "電話番号")}</label>
-                        <input
-                          type="tel"
-                          placeholder="e.g. (555) 000-0000"
-                          value={customerPhone}
-                          onChange={(e) => setCustomerPhone(e.target.value)}
-                          className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Discount Settings Accordion Card */}
-              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
-                <div 
-                  onClick={() => setDiscountSettingsVisible(prev => !prev)}
-                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
-                    discountSettingsVisible ? 'border-b border-white/5' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 font-sans">
-                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">sell</span>
-                    <span className="font-sans font-bold text-xs text-white">{t("Discount Settings", "割引設定")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{appliedDiscount ? appliedDiscount.label : t('No Discount', '割引なし')}</span>
-                    <span className="material-symbols-outlined text-base leading-none">
-                      {discountSettingsVisible ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </div>
-                </div>
-                {discountSettingsVisible && (
-                  <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
-                    <div className="flex justify-between items-center select-none font-sans">
-                      <span className="font-sans font-bold text-[9.5px] uppercase tracking-wider text-[#A69984]">{t("Discount Settings", "割引設定")}</span>
-                      {appliedDiscount && (
-                        <button
-                          type="button"
-                          onClick={handleRemoveDiscount}
-                          className="text-rose-400 hover:text-rose-300 text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-xs">close</span> {t("Remove Discount", "割引解除")}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Sub-tabs for Discount Types inside modal */}
-                    <div className="flex gap-1 bg-black/40 rounded-lg p-1 select-none">
-                      {(['percent', 'fixed', 'promo'] as const).map(mode => (
-                        <button
-                          key={mode}
-                          type="button"
-                          onClick={() => setDiscountMode(mode)}
-                          className={`flex-1 py-1.5 rounded-md text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                            discountMode === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
-                          }`}
-                        >
-                          {mode === 'percent' ? t('% Rate', '％率') : mode === 'fixed' ? t('Fixed $', '定額') : t('Promo Code', 'プロモコード')}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Discount input fields inside checkout modal */}
-                    <div className="flex gap-2">
-                      {discountMode === 'percent' && (
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={discountPercent || ''}
-                          onChange={(e) => setDiscountPercent(parseFloat(e.target.value) || 0)}
-                          placeholder={t("Enter Percentage (e.g. 15)", "割合を入力 (例: 15)")}
-                          className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      )}
-                      {discountMode === 'fixed' && (
-                        <input
-                          type="number"
-                          min="0"
-                          value={discountFixed || ''}
-                          onChange={(e) => setDiscountFixed(parseFloat(e.target.value) || 0)}
-                          placeholder={t("Enter Amount (e.g. 10.00)", "金額を入力 (例: 1000)")}
-                          className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      )}
-                      {discountMode === 'promo' && (
-                        <input
-                          type="text"
-                          value={promoCodeInput}
-                          onChange={(e) => setPromoCodeInput(e.target.value.toUpperCase())}
-                          placeholder={t("ENTER PROMO CODE", "プロモコードを入力")}
-                          className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors tracking-widest font-mono"
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={computeApplyDiscount}
-                        className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-[10px] uppercase tracking-wider cursor-pointer transition-all shrink-0"
-                      >
-                        {t("Apply", "適用")}
-                      </button>
-                    </div>
-
-                    {/* Helper Promo Quick Buttons inside modal */}
-                    {discountMode === 'promo' && (
-                      <div className="flex flex-wrap gap-1.5 select-none">
-                        {Object.keys(VALID_PROMO_CODES).slice(0, 4).map(code => (
-                          <button
-                            key={code}
-                            type="button"
-                            onClick={() => setPromoCodeInput(code)}
-                            className="px-2.5 py-1 bg-white/5 border border-white/5 hover:border-[#ffe2ab]/25 rounded-lg text-[9px] font-bold tracking-wider text-[#A69984] hover:text-[#ffe2ab] cursor-pointer transition-all font-mono"
-                          >
-                            {code}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Display currently applied discount in modal */}
-                    {appliedDiscount && (
-                      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2.5 animate-fade-in select-none">
-                        <div className="flex items-center gap-2">
-                          <span className="material-symbols-outlined text-sm text-emerald-400">sell</span>
-                          <span className="text-emerald-400 font-sans font-bold text-[10px] uppercase tracking-wider">
-                            {appliedDiscount.label}
-                          </span>
-                        </div>
-                        <span className="text-emerald-400 font-mono font-bold text-xs">
-                          −{formatMoney(appliedDiscount.amount)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Tip Selection Accordion Card */}
-              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
-                <div 
-                  onClick={() => setTipsVisible(prev => !prev)}
-                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
-                    tipsVisible ? 'border-b border-white/5' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 font-sans">
-                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">payments</span>
-                    <span className="font-sans font-bold text-xs text-white">{t("Add Tip / Gratuity", "チップ／サービス料追加")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{tipAmount > 0 ? formatMoney(tipAmount) : t('No Tip', 'チップなし')}</span>
-                    <span className="material-symbols-outlined text-base leading-none">
-                      {tipsVisible ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </div>
-                </div>
-                {tipsVisible && (
-                  <div className="p-5 space-y-4 animate-fade-in bg-[#12110f]/20">
-                    <div className="grid grid-cols-5 gap-2 select-none">
-                      {['none', ...cashierTipPresets, 'custom'].map(mode => {
-                        const label = mode === 'none' ? t('No Tip', 'チップなし') : mode === 'custom' ? t('Custom', 'カスタム') : `${mode}%`;
-                        return (
-                          <button
-                            key={mode}
-                            type="button"
-                            onClick={() => setTipMode(mode)}
-                            className={`py-2 rounded-xl border font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
-                              tipMode === mode
-                                ? 'border-[#ffe2ab] bg-[#ffe2ab]/5 text-[#ffe2ab]'
-                                : 'border-white/5 bg-[#0e0e0d] text-[#A69984]/60 hover:text-white'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
- 
-                    {tipMode === 'custom' && (
-                      <div className="space-y-1.5 animate-fade-in font-sans">
-                        <label className="text-[10px] text-[#A69984]/70 font-semibold uppercase tracking-wider block select-none">
-                          {t("Custom Tip Amount", "カスタムチップ額")} ({currency === 'JPY' ? '¥' : '$'})
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step={currency === 'JPY' ? '1' : '0.01'}
-                          placeholder={currency === 'JPY' ? 'e.g. 500' : 'e.g. 5.00'}
-                          value={customTipAmount || ''}
-                          onChange={(e) => setCustomTipAmount(parseFloat(e.target.value) || 0)}
-                          className="w-full sm:w-1/2 bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors"
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
- 
-              {/* Receipt / Checkout Notes Accordion Card */}
-              <div className="border border-white/5 bg-[#161513]/20 rounded-xl overflow-hidden">
-                <div 
-                  onClick={() => setNotesVisible(prev => !prev)}
-                  className={`flex items-center justify-between px-5 py-3.5 bg-[#161513]/40 cursor-pointer hover:bg-white/[0.02] transition-all select-none ${
-                    notesVisible ? 'border-b border-white/5' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 font-sans">
-                    <span className="material-symbols-outlined text-sm text-[#ffe2ab]">sticky_note_2</span>
-                    <span className="font-sans font-bold text-xs text-white">{t("Checkout Notes / Instructions", "会計メモ・指示")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 font-sans text-[10px] text-[#A69984]/60">
-                    <span>{checkoutNotes ? t('Note Added', 'メモあり') : t('No Notes', 'メモなし')}</span>
-                    <span className="material-symbols-outlined text-base leading-none">
-                      {notesVisible ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </div>
-                </div>
-                {notesVisible && (
-                  <div className="p-5 space-y-3 animate-fade-in bg-[#12110f]/20">
-                    <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider select-none font-sans">{t("Checkout Notes / Special Requests", "会計メモ・特別リクエスト")}</label>
-                    <textarea
-                      rows={2}
-                      placeholder={t("Add notes for the receipt, billing split details, or payment exceptions...", "領収書メモ、請求書分割の詳細、または支払いの例外を追加します...")}
-                      value={checkoutNotes}
-                      onChange={(e) => setCheckoutNotes(e.target.value)}
-                      className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 transition-colors resize-none"
-                    />
-                  </div>
-                )}
-              </div>
- 
-              {/* Order Calculations Summary */}
-              <div className="bg-[#0a0a09] border border-white/5 rounded-xl p-5 space-y-3 font-sans select-none">
-                <div className="flex justify-between text-xs text-[#A69984]/70">
-                  <span>{t("Subtotal", "小計")}</span>
-                  <span className="text-white font-mono">{formatMoney(subtotal)}</span>
-                </div>
-                <div className="flex justify-between text-xs text-[#A69984]/70">
-                  <span>{t("Tax", "消費税")} ({(getTicketTaxRate(selectedTicket) * 100).toFixed(1)}%)</span>
-                  <span className="text-white font-mono">{formatMoney(tax)}</span>
-                </div>
-                {gratuity > 0 && (
-                  <div className="flex justify-between text-xs text-[#A69984]/70">
-                    <span>{t("Gratuity", "サービス料")}</span>
-                    <span className="text-white font-mono">{formatMoney(gratuity)}</span>
-                  </div>
-                )}
-                {tipAmount > 0 && (
-                  <div className="flex justify-between text-xs text-[#ffe2ab]/90">
-                    <span>{t("Tip", "チップ")}</span>
-                    <span className="text-[#ffe2ab] font-mono">{formatMoney(tipAmount)}</span>
-                  </div>
-                )}
-                {discountAmount > 0 && (
-                  <div className="flex justify-between text-xs text-emerald-400">
-                    <span>{t("Discount", "割引")}</span>
-                    <span className="font-mono">−{formatMoney(discountAmount)}</span>
-                  </div>
-                )}
-                <div className="border-t border-white/5 pt-3 flex justify-between items-baseline">
-                  <span className="text-xs font-bold text-[#A69984] uppercase tracking-wider">{t("Grand Total Due", "お支払い総計")}</span>
-                  <span className="text-2xl font-bold text-[#ffe2ab] font-serif tracking-wider">
-                    {formatMoney(grandTotal + tipAmount)}
-                  </span>
-                </div>
-              </div>
-            </div>
- 
-            {/* Modal Actions Footer */}
-            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex flex-wrap sm:flex-nowrap gap-3 select-none">
-              <button
-                type="button"
-                onClick={() => setCheckoutModalOpen(false)}
-                className="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
-              >
-                {t("Cancel", "キャンセル")}
-              </button>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  handleSplitBill();
-                  setCheckoutModalOpen(false);
-                }}
-                className="flex-1 py-3 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
-              >
-                <span className="material-symbols-outlined text-sm font-bold">call_split</span>
-                <span>{t("Split Check", "個別会計")}</span>
-              </button>
- 
-              <button
-                type="button"
-                onClick={handleCompleteCheckout}
-                disabled={isProcessing}
-                className="flex-1 py-3 bg-[#ffe2ab] hover:bg-[#ffdca0] disabled:bg-[#ffe2ab]/30 text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer text-center flex items-center justify-center gap-2"
-              >
-                {isProcessing ? (
-                  <span>{t("Processing...", "処理中...")}</span>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                    <span>{t("Complete Payment", "支払い完了")}</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CheckoutModal
+          t={t}
+          currency={currency}
+          checkoutModalOpen={checkoutModalOpen}
+          setCheckoutModalOpen={setCheckoutModalOpen}
+          selectedTicket={selectedTicket}
+          checkoutPaymentMethod={checkoutPaymentMethod}
+          setCheckoutPaymentMethod={setCheckoutPaymentMethod}
+          customerDetailsVisible={customerDetailsVisible}
+          setCustomerDetailsVisible={setCustomerDetailsVisible}
+          customerName={customerName}
+          setCustomerName={setCustomerName}
+          customerPhone={customerPhone}
+          setCustomerPhone={setCustomerPhone}
+          discountSettingsVisible={discountSettingsVisible}
+          setDiscountSettingsVisible={setDiscountSettingsVisible}
+          promoCodeInput={promoCodeInput}
+          setPromoCodeInput={setPromoCodeInput}
+          appliedPromo={appliedPromo}
+          handleApplyPromoCode={computeApplyDiscount}
+          handleRemovePromoCode={handleRemoveDiscount}
+          discountPercent={discountPercent}
+          setDiscountPercent={setDiscountPercent}
+          discountFixed={discountFixed}
+          setDiscountFixed={setDiscountFixed}
+          tipsVisible={tipsVisible}
+          setTipsVisible={setTipsVisible}
+          tipMode={tipMode}
+          setTipMode={setTipMode}
+          cashierTipPresets={cashierTipPresets}
+          customTipAmount={customTipAmount}
+          setCustomTipAmount={setCustomTipAmount}
+          notesVisible={notesVisible}
+          setNotesVisible={setNotesVisible}
+          checkoutNotes={checkoutNotes}
+          setCheckoutNotes={setCheckoutNotes}
+          isProcessing={isProcessing}
+          handleProcessCheckoutSubmit={handleCompleteCheckout}
+          handleSplitBill={handleSplitBill}
+        />
       )}
-
       {/* CASHIER SPLIT CHECK CALCULATOR MODAL */}
       {splitModalOpen && selectedTicket && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12110f] border border-[#ffe2ab]/20 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl animate-fade-in flex flex-col max-h-[90vh]">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between select-none bg-[#0a0a09]">
-              <div>
-                <h3 className="font-serif font-bold text-lg text-white">{t('Split Check Calculator', '分割会計計算ツール')}</h3>
-                <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
-                  {t('Table', 'テーブル')} {selectedTicket.tableNumber} • {t('Invoice', '伝票')} #DINE-{selectedTicket.orderNumber?.replace('#', '') || ''}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSplitModalOpen(false)}
-                className="text-[#A69984] hover:text-white transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-2xl">close</span>
-              </button>
-            </div>
-
-            {/* Split Method switcher tabs */}
-            <div className="px-6 pt-5 shrink-0 select-none">
-              <div className="grid grid-cols-2 bg-black/40 rounded-lg p-1">
-                {(['evenly', 'by-item'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => {
-                      setSplitMethod(mode);
-                      updateTicketSplits({ splitMethod: mode });
-                    }}
-                    className={`py-2 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                      splitMethod === mode ? 'bg-white/10 text-white' : 'text-[#A69984]/50 hover:text-white'
-                    }`}
-                  >
-                    {mode === 'evenly' ? t('Split Evenly', '均等分割') : t('Split By Item', '品目別分割')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto space-y-6 flex-grow flex flex-col min-h-0">
-              
-              {splitMethod === 'evenly' ? (
-                <div className="space-y-6 flex-grow flex flex-col">
-                  {/* Guest count selector */}
-                  <div className="bg-[#161513]/40 border border-white/5 p-5 rounded-xl space-y-4 font-sans select-none shrink-0">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">{t('Number of Split Parties', '分割人数')}</span>
-                      <span className="text-[#ffe2ab] text-sm font-bold font-serif">{splitGuestCount} {t('Portions', '等分')}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          const val = Math.max(2, splitGuestCount - 1);
-                          setSplitGuestCount(val);
-                          setSplitPaidGuests(prev => prev.filter(g => g < val));
-                          updateTicketSplits({ 
-                            splitGuestCount: val,
-                            splitPaidGuests: splitPaidGuests.filter(g => g < val)
-                          });
-                        }}
-                        disabled={splitGuestCount <= 2}
-                        className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
-                      >
-                        −
-                      </button>
-                      <input
-                        type="range"
-                        min="2"
-                        max="10"
-                        value={splitGuestCount}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          setSplitGuestCount(val);
-                          setSplitPaidGuests(prev => prev.filter(g => g < val));
-                          updateTicketSplits({ 
-                            splitGuestCount: val,
-                            splitPaidGuests: splitPaidGuests.filter(g => g < val)
-                          });
-                        }}
-                        aria-label="Split Parties"
-                        className="flex-grow accent-[#ffe2ab]"
-                      />
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          const val = Math.min(10, splitGuestCount + 1);
-                          setSplitGuestCount(val);
-                          updateTicketSplits({ splitGuestCount: val });
-                        }}
-                        disabled={splitGuestCount >= 10}
-                        className="w-9 h-9 rounded-xl border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Even portions display list */}
-                  <div className="space-y-3 flex-grow overflow-y-auto">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">{t('Portions Breakdown', '分割内訳')}</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {Array.from({ length: splitGuestCount }).map((_, idx) => {
-                        const guestLetter = String.fromCharCode(65 + idx); // A, B, C...
-                        const isPaid = splitPaidGuests.includes(idx);
-                        const shareTotal = (grandTotal + tipAmount) / splitGuestCount;
-                        return (
-                          <div key={idx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-[#161513]/20 border-white/5 text-white'}`}>
-                            <div className="font-sans">
-                              <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">{t('Guest', 'ゲスト')} {guestLetter}</div>
-                              <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">{formatMoney(shareTotal)}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                let newPaid = [];
-                                if (isPaid) {
-                                  newPaid = splitPaidGuests.filter(g => g !== idx);
-                                  setSplitPaidGuests(newPaid);
-                                  triggerToast(t(`Guest ${guestLetter}'s payment refunded.`, `ゲスト ${guestLetter} の支払いが払い戻されました。`));
-                                } else {
-                                  newPaid = [...splitPaidGuests, idx];
-                                  setSplitPaidGuests(newPaid);
-                                  triggerToast(t(`Guest ${guestLetter}'s portion of ${formatMoney(shareTotal)} paid via ${checkoutPaymentMethod.toUpperCase()}!`, `ゲスト ${guestLetter} の ${formatMoney(shareTotal)} の支払いが ${checkoutPaymentMethod.toUpperCase()} で完了しました！`));
-                                }
-                                updateTicketSplits({ splitPaidGuests: newPaid });
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500 hover:bg-emerald-600' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50 hover:bg-white/5'}`}
-                            >
-                              {isPaid ? `✓ ${t('Paid', '支払済')}` : t('Pay Portion', '一部支払')}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-6 flex-grow flex flex-col min-h-0">
-                  {/* Guest count selector */}
-                  <div className="flex justify-between items-center bg-[#161513]/40 border border-white/5 p-4 rounded-xl font-sans select-none shrink-0">
-                    <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">{t('Split Parties', '分割数')}</span>
-                    <div className="flex items-center gap-3">
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          const val = Math.max(2, splitGuestCount - 1);
-                          setSplitGuestCount(val);
-                          setSplitPaidGuests(prev => prev.filter(g => g < val));
-                          // reset item assignments for removed guest
-                          const newAssignments = { ...splitItemAssignments };
-                          Object.keys(newAssignments).forEach(k => {
-                            if (newAssignments[Number(k)] >= val) {
-                              newAssignments[Number(k)] = -1;
-                            }
-                          });
-                          setSplitItemAssignments(newAssignments);
-                          updateTicketSplits({ 
-                            splitGuestCount: val,
-                            splitPaidGuests: splitPaidGuests.filter(g => g < val),
-                            splitItemAssignments: newAssignments
-                          });
-                        }}
-                        disabled={splitGuestCount <= 2}
-                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
-                      >
-                        −
-                      </button>
-                      <span className="text-white font-serif font-bold w-12 text-center text-sm">{splitGuestCount} {t('Guests', '名')}</span>
-                      <button 
-                        type="button"
-                        onClick={() => {
-                          const val = Math.min(8, splitGuestCount + 1);
-                          setSplitGuestCount(val);
-                          updateTicketSplits({ splitGuestCount: val });
-                        }}
-                        disabled={splitGuestCount >= 8}
-                        className="w-8 h-8 rounded-lg border border-white/10 flex items-center justify-center text-[#ffe2ab] hover:bg-white/5 disabled:opacity-35 cursor-pointer font-bold"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Itemized assignment list */}
-                  <div className="space-y-3.5 flex-grow flex flex-col min-h-0">
-                    <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">{t('Assign Items to Guests', '品目をゲストに割り当て')}</span>
-                    <div className="space-y-3 overflow-y-auto max-h-[220px] pr-1 flex-grow divide-y divide-white/5">
-                      {selectedTicket.items.map((item, idx) => {
-                        const assignedGuest = splitItemAssignments[idx] ?? -1;
-                        return (
-                          <div key={idx} className="py-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                            <div className="max-w-[45%] font-sans">
-                              <div className="text-xs text-white font-bold">{item.qty}x {item.name}</div>
-                              <div className="text-[10px] text-[#A69984]/50 font-medium font-mono mt-0.5">{formatMoney(getItemPrice(item) * item.qty)}</div>
-                            </div>
-                            
-                            {/* Guest selector circles */}
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {/* Shared circle */}
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const newAssignments = { ...splitItemAssignments, [idx]: -1 };
-                                  setSplitItemAssignments(newAssignments);
-                                  updateTicketSplits({ splitItemAssignments: newAssignments });
-                                }}
-                                className={`w-8 h-8 rounded-full font-bold text-[8.5px] uppercase tracking-wider transition-all cursor-pointer ${
-                                  assignedGuest === -1 
-                                    ? 'bg-[#ffe2ab] text-[#402d00] shadow' 
-                                    : 'bg-white/5 border border-white/5 text-[#A69984]'
-                                }`}
-                                title={t('Split evenly among all guests', 'すべてのゲストで均等分割')}
-                              >
-                                {t('Shr', '共有')}
-                              </button>
-                              {/* Guest circles */}
-                              {Array.from({ length: splitGuestCount }).map((_, gIdx) => {
-                                const guestLetter = String.fromCharCode(65 + gIdx);
-                                return (
-                                  <button
-                                    key={gIdx}
-                                    type="button"
-                                    onClick={() => {
-                                      const newAssignments = { ...splitItemAssignments, [idx]: gIdx };
-                                      setSplitItemAssignments(newAssignments);
-                                      updateTicketSplits({ splitItemAssignments: newAssignments });
-                                    }}
-                                    className={`w-8 h-8 rounded-full font-bold text-[10.5px] transition-all cursor-pointer ${
-                                      assignedGuest === gIdx 
-                                        ? 'bg-white/10 border border-[#ffe2ab]/50 text-white' 
-                                        : 'bg-transparent border border-white/5 text-[#A69984]/40 hover:text-white hover:border-white/15'
-                                    }`}
-                                    title={t(`Assign to Guest ${guestLetter}`, `ゲスト ${guestLetter} に割り当て`)}
-                                  >
-                                    {guestLetter}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Calculated totals breakdown */}
-                  {(() => {
-                    // Calculate totals per guest dynamically
-                    const totals = Array.from({ length: splitGuestCount }, () => ({ subtotal: 0, tax: 0, gratuity: 0, discount: 0, tip: 0, total: 0 }));
-                    let sharedSubtotal = 0;
-
-                    selectedTicket.items.forEach((item, itemIdx) => {
-                      const assignedGuest = splitItemAssignments[itemIdx] ?? -1;
-                      const itemCost = getItemPrice(item) * item.qty;
-                      if (assignedGuest !== -1 && assignedGuest < splitGuestCount) {
-                        totals[assignedGuest].subtotal += itemCost;
-                      } else {
-                        sharedSubtotal += itemCost;
-                      }
-                    });
-
-                    // Distribute shared subtotal
-                    const sharedPerGuest = sharedSubtotal / splitGuestCount;
-                    totals.forEach((t, gIdx) => {
-                      t.subtotal += sharedPerGuest;
-                      const tTaxRate = getTicketTaxRate(selectedTicket);
-                      const tGratuityRate = getTicketGratuityRate(selectedTicket);
-                      t.tax = taxType === 'pre-tax' 
-                        ? t.subtotal * tTaxRate 
-                        : t.subtotal - (t.subtotal / (1 + tTaxRate));
-                      t.gratuity = t.subtotal * tGratuityRate;
-                      t.discount = subtotal > 0 ? (t.subtotal / subtotal) * discountAmount : 0;
-                      t.tip = subtotal > 0 ? (t.subtotal / subtotal) * tipAmount : 0;
-                      t.total = Math.max(0, taxType === 'pre-tax' 
-                        ? t.subtotal + t.tax + t.gratuity - t.discount + t.tip
-                        : t.subtotal + t.gratuity - t.discount + t.tip
-                      );
-                    });
-
-                    return (
-                      <div className="space-y-3 pt-2 shrink-0">
-                        <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider block select-none">{t('Calculated Portions', '計算された分割分')}</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[160px] overflow-y-auto pr-1">
-                          {totals.map((gTotal, gIdx) => {
-                            const guestLetter = String.fromCharCode(65 + gIdx);
-                            const isPaid = splitPaidGuests.includes(gIdx);
-                            return (
-                              <div key={gIdx} className={`p-4 border rounded-xl flex justify-between items-center transition-all ${isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-[#161513]/20 border-white/5 text-white'}`}>
-                                <div className="font-sans">
-                                  <div className="text-[10px] text-[#A69984] font-bold uppercase tracking-wider">{t('Guest', 'ゲスト')} {guestLetter}</div>
-                                  <div className="font-serif text-lg font-bold mt-1 text-[#ffe2ab]">{formatMoney(gTotal.total)}</div>
-                                  <div className="text-[9px] text-[#A69984]/45 mt-0.5 leading-none">
-                                    {t('Sub', '小計')}: {formatMoney(gTotal.subtotal)} • {t('Tax', '税')}: {formatMoney(gTotal.tax)}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    let newPaid = [];
-                                    if (isPaid) {
-                                      newPaid = splitPaidGuests.filter(g => g !== gIdx);
-                                      setSplitPaidGuests(newPaid);
-                                      triggerToast(t(`Guest ${guestLetter}'s payment refunded.`, `ゲスト ${guestLetter} の支払いが払い戻されました。`));
-                                    } else {
-                                      newPaid = [...splitPaidGuests, gIdx];
-                                      setSplitPaidGuests(newPaid);
-                                      triggerToast(t(`Guest ${guestLetter}'s portion of ${formatMoney(gTotal.total)} paid via ${checkoutPaymentMethod.toUpperCase()}!`, `ゲスト ${guestLetter} の ${formatMoney(gTotal.total)} の支払いが ${checkoutPaymentMethod.toUpperCase()} で完了しました！`));
-                                    }
-                                    updateTicketSplits({ splitPaidGuests: newPaid });
-                                  }}
-                                  className={`px-3 py-1.5 rounded-lg text-[9.5px] font-bold uppercase tracking-wider border cursor-pointer transition-all ${isPaid ? 'bg-emerald-500 text-[#022c22] border-emerald-500 hover:bg-emerald-600' : 'bg-transparent text-[#ffe2ab] border-[#ffe2ab]/20 hover:border-[#ffe2ab]/50 hover:bg-white/5'}`}
-                                >
-                                  {isPaid ? `✓ ${t('Paid', '支払済')}` : t('Pay Portion', '一部支払')}
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
-
-            {/* Modal Actions Footer */}
-            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex items-center justify-between select-none shrink-0 font-sans mt-4">
-              <div className="text-left">
-                <div className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">{t('Portions Progress', '支払い状況')}</div>
-                <div className="text-white text-xs font-bold mt-1">
-                  {splitPaidGuests.length} / {splitGuestCount} {t('Paid', '支払済')}
-                  {splitPaidGuests.length === splitGuestCount && <span className="text-emerald-400 ml-1.5">✓ {t('Settled', '精算済')}</span>}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSplitPaidGuests([]);
-                    setSplitItemAssignments({});
-                    updateTicketSplits({ splitPaidGuests: [], splitItemAssignments: {} });
-                    triggerToast(t('Splits reset.', '分割設定をリセットしました。'));
-                  }}
-                  className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer text-center"
-                >
-                  {t('Reset', 'リセット')}
-                </button>
-                
-                {splitPaidGuests.length === splitGuestCount ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProcessing(true);
-                      setTimeout(() => {
-                        setIsProcessing(false);
-                        closeActiveTicket(t(`Checkout completed! Ticket for Table ${selectedTicket.tableNumber} fully paid via split billing.`, `会計が完了しました！テーブル ${selectedTicket.tableNumber} の伝票は分割払いで全額支払われました。`));
-                      }, 2000);
-                    }}
-                    disabled={isProcessing}
-                    className="px-5 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-widest transition-colors cursor-pointer text-center flex items-center justify-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">check_circle</span>
-                    <span>{isProcessing ? t('Processing...', '処理中...') : t('Finalize Paid Ticket', '支払いを確定する')}</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      updateTicketSplits({ isSplit: true });
-                      setSplitModalOpen(false);
-                      triggerToast(t(`Saved split billing configurations for Table ${selectedTicket.tableNumber}.`, `テーブル ${selectedTicket.tableNumber} の分割支払い設定を保存しました。`));
-                    }}
-                    className="px-5 py-2.5 bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer text-center"
-                  >
-                    {t('Save & Apply Splits', '分割設定を保存して適用')}
-                  </button>
-                )}
-              </div>
-            </div>
-
-          </div>
-        </div>
+        <SplitPaymentModal
+          t={t}
+          currency={currency}
+          splitModalOpen={splitModalOpen}
+          setSplitModalOpen={setSplitModalOpen}
+          selectedTicket={selectedTicket}
+          splitMethod={splitMethod}
+          setSplitMethod={setSplitMethod}
+          splitGuestCount={splitGuestCount}
+          setSplitGuestCount={setSplitGuestCount}
+          splitPaidGuests={splitPaidGuests}
+          setSplitPaidGuests={setSplitPaidGuests}
+          splitItemAssignments={splitItemAssignments}
+          setSplitItemAssignments={setSplitItemAssignments}
+          updateTicketSplits={updateTicketSplits}
+          triggerToast={triggerToast}
+          checkoutPaymentMethod={checkoutPaymentMethod}
+          tipAmount={tipAmount}
+          getItemPrice={getItemPrice}
+        />
       )}
-
       {/* DIGITAL MENU CATALOG MODAL */}
       {menuModalOpen && selectedTicket && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#12110f] border border-[#ffe2ab]/20 rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl animate-fade-in flex flex-col h-[85vh]">
-            
-            {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none bg-[#0a0a09]">
-              <div>
-                <h3 className="font-serif font-bold text-lg text-white">{t('Digital Menu Catalog', 'デジタルメニューカタログ')}</h3>
-                <p className="text-[10px] text-[#ffe2ab]/75 font-bold uppercase tracking-wider mt-1">
-                  {t('Add products to ', '商品を追加: ')}{selectedTicket.tableNumber}
-                </p>
-              </div>
-              
-              {/* Search Box */}
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <span className="material-symbols-outlined absolute left-3 top-2.5 text-[#A69984]/40 text-sm">search</span>
-                  <input
-                    type="text"
-                    placeholder={t('Search menu...', 'メニューを検索...')}
-                    value={menuSearchQuery}
-                    onChange={(e) => setMenuSearchQuery(e.target.value)}
-                    className="bg-[#161513] border border-white/5 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/30 w-[180px] sm:w-[220px] transition-colors"
-                  />
-                </div>
-                
-                <button
-                  type="button"
-                  onClick={() => setMenuModalOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-lg">close</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Category Filter Tabs */}
-            <div className="px-6 py-3 border-b border-white/5 bg-[#0e0e0d] flex gap-2 overflow-x-auto scrollbar-none select-none shrink-0 font-sans">
-              <button
-                onClick={() => setActiveCategory('all')}
-                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer shrink-0 ${
-                  activeCategory === 'all'
-                    ? 'bg-[#ffe2ab] text-[#402d00]'
-                    : 'text-[#A69984]/80 bg-white/5 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                {t('All Items', '全商品')}
-              </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat.id}
-                  onClick={() => setActiveCategory(cat.id)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center gap-1 shrink-0 ${
-                    activeCategory === cat.id
-                      ? 'bg-[#ffe2ab] text-[#402d00]'
-                      : 'text-[#A69984]/80 bg-white/5 hover:text-white hover:bg-white/10'
-                  }`}
-                >
-                  {cat.icon && (
-                    <span className="material-symbols-outlined text-xs leading-none">{cat.icon}</span>
-                  )}
-                  {t(cat.name, cat.name === 'Our Special' ? 'おすすめ' : cat.name === 'Combo Set' ? 'コンボセット' : cat.name === 'Starters' ? '前菜' : cat.name === 'Main Course' ? 'メインコース' : cat.name === 'Desserts' ? 'デザート' : cat.name === 'Drinks' ? 'ドリンク' : cat.name)}
-                </button>
-              ))}
-            </div>
-
-            {/* Modal Body: Products Grid */}
-            <div className="flex-1 p-6 overflow-y-auto bg-[#12110f]">
-              {(() => {
-                const filtered = menuItems.filter(item => {
-                  if (item.active === false) return false;
-                  const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
-                  const matchesSearch = item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
-                                       (item.description && item.description.toLowerCase().includes(menuSearchQuery.toLowerCase()));
-                  return matchesCategory && matchesSearch;
-                });
-
-                if (filtered.length === 0) {
-                  return (
-                    <div className="h-full flex flex-col items-center justify-center text-[#A69984]/40 py-20 select-none">
-                      <span className="material-symbols-outlined text-4xl mb-2 font-light">restaurant_menu</span>
-                      <p className="text-xs">{t('No matching menu items found.', '該当するメニューが見つかりません。')}</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filtered.map((item) => {
-                      const imageSrc = item.image && item.image.startsWith('/images/')
-                        ? `/images/${item.image.split('/').pop()}`
-                        : item.image || '/images/placeholder.png';
-
-                      const getTicketItemQty = (ticket: any, itemName: string): number => {
-                        if (!ticket || !ticket.items) return 0;
-                        return ticket.items
-                          .filter((i: any) => i.name === itemName)
-                          .reduce((sum: number, i: any) => sum + i.qty, 0);
-                      };
-                      const itemQtyInTicket = getTicketItemQty(selectedTicket, item.name);
-
-                      return (
-                        <div
-                          key={item.id}
-                          className={`border rounded-xl p-4 flex flex-col justify-between hover:border-white/10 transition-all group ${
-                            itemQtyInTicket > 0
-                              ? 'border-[#ffe2ab]/30 bg-[#ffe2ab]/5 shadow-[0_0_15px_rgba(254,226,171,0.03)]'
-                              : 'border-white/5 bg-[#161513]/40'
-                          }`}
-                        >
-                          <div>
-                            {/* Image Header */}
-                            <div className="w-full h-32 rounded-lg overflow-hidden bg-black/40 border border-white/5 relative mb-3 select-none">
-                              <img
-                                src={imageSrc}
-                                alt={item.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=200&auto=format&fit=crop';
-                                }}
-                              />
-                              <div className="absolute top-2 right-2 flex gap-1">
-                                {item.tags && item.tags.map((tag: string) => (
-                                  <span
-                                    key={tag}
-                                    className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded select-none ${
-                                      tag === 'Veg' || tag === 'GF'
-                                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                        : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                                    }`}
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Info */}
-                            <div className="flex justify-between items-start gap-2 mb-1.5">
-                              <h4 className="font-serif font-bold text-sm text-white group-hover:text-[#ffe2ab] transition-colors line-clamp-1">{item.name}</h4>
-                              <span className="font-sans font-bold text-sm text-[#ffe2ab] shrink-0">{formatMoney(item.price)}</span>
-                            </div>
-                            
-                            <p className="text-[11px] text-[#A69984]/70 line-clamp-2 mb-3 h-[32px] overflow-hidden leading-relaxed select-text">
-                              {item.description || 'No description available.'}
-                            </p>
-
-                            {/* Modifiers / Options selection in card */}
-                            {itemModifiersConfig[item.id] && (
-                              <div className="space-y-3 mt-1.5 mb-3 border-t border-white/5 pt-2">
-                                {itemModifiersConfig[item.id].map((group) => {
-                                  const selectedList = catalogModifiers[item.id] || [];
-                                  return (
-                                    <div key={group.title} className="space-y-1">
-                                      <span className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider block">{group.title}</span>
-                                      <div className="flex flex-wrap gap-1">
-                                        {group.options.map((opt) => {
-                                          const isSelected = selectedList.includes(opt.name);
-                                          return (
-                                            <button
-                                              key={opt.name}
-                                              type="button"
-                                              onClick={() => handleToggleCatalogModifier(item.id, opt.name, group.type, group.title)}
-                                              className={`text-[8.5px] font-bold px-2 py-1 rounded transition-all cursor-pointer border ${
-                                                isSelected
-                                                  ? 'bg-[#ffe2ab]/15 border-[#ffe2ab]/40 text-[#ffe2ab]'
-                                                  : 'bg-black/20 border-white/5 text-[#A69984]/70 hover:text-white hover:border-white/10'
-                                              }`}
-                                            >
-                                              {opt.name}
-                                              {opt.price ? ` (+${formatMoney(opt.price)})` : ''}
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Notes input & add action */}
-                          <div className="space-y-2.5 pt-2 border-t border-white/5">
-                            <input
-                              type="text"
-                              placeholder={t('Add kitchen note (e.g. Rare, No onions)', '厨房へのメモを追加 (例: レア、玉ねぎ抜き)')}
-                              value={itemNotes[item.id] || ''}
-                              onChange={(e) => setItemNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
-                              className="w-full bg-black/40 border border-white/5 rounded-lg px-2.5 py-1.5 text-[10px] text-white placeholder-white/25 focus:outline-none focus:border-[#ffe2ab]/25 transition-colors"
-                            />
-                            
-                            {itemQtyInTicket > 0 ? (
-                              <div className="flex items-center justify-between gap-2 w-full pt-1">
-                                <button
-                                  type="button"
-                                  onClick={() => handleUpdateItemQty(selectedTicket.id, item.name, -1)}
-                                  className="flex-1 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg font-sans font-bold text-[9px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-0.5 cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-[10px]">remove</span>
-                                  {t('Remove 1', '1つ減らす')}
-                                </button>
-                                <span className="px-2.5 py-1 bg-[#ffe2ab]/5 border border-[#ffe2ab]/25 text-[#ffe2ab] rounded-lg font-mono font-bold text-xs select-none">
-                                  x{itemQtyInTicket}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const selectedModsNames = catalogModifiers[item.id] || [];
-                                    const selectedModsObjects = selectedModsNames.map(name => {
-                                      const isAllergy = name.toUpperCase().includes('ALLERGY') || name.toUpperCase().includes('NO GARLIC') || name.toUpperCase().includes('NO NUTS');
-                                      const isHighlight = name.toUpperCase().startsWith('NO ') || name.toUpperCase().includes('EXTRA');
-                                      return {
-                                        text: name,
-                                        type: isAllergy ? 'allergy' as const : isHighlight ? 'highlight' as const : 'default' as const
-                                      };
-                                    });
-                                    handleAddItemToTicket(selectedTicket.id, item, itemNotes[item.id], selectedModsObjects);
-                                    setItemNotes(prev => ({ ...prev, [item.id]: '' }));
-                                  }}
-                                  className="flex-1 py-1.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-lg font-sans font-bold text-[9px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-0.5 cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-[10px]">add</span>
-                                  {t('Add More', 'さらに追加')}
-                                </button>
-                              </div>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const selectedModsNames = catalogModifiers[item.id] || [];
-                                  const selectedModsObjects = selectedModsNames.map(name => {
-                                    const isAllergy = name.toUpperCase().includes('ALLERGY') || name.toUpperCase().includes('NO GARLIC') || name.toUpperCase().includes('NO NUTS');
-                                    const isHighlight = name.toUpperCase().startsWith('NO ') || name.toUpperCase().includes('EXTRA');
-                                    return {
-                                      text: name,
-                                      type: isAllergy ? 'allergy' as const : isHighlight ? 'highlight' as const : 'default' as const
-                                    };
-                                  });
-                                  handleAddItemToTicket(selectedTicket.id, item, itemNotes[item.id], selectedModsObjects);
-                                  setItemNotes(prev => ({ ...prev, [item.id]: '' }));
-                                }}
-                                className="w-full py-2 bg-white/5 hover:bg-[#ffe2ab] hover:text-[#402d00] text-[#ffe2ab] border border-white/10 hover:border-transparent rounded-lg font-sans font-bold text-[10px] uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1 cursor-pointer"
-                              >
-                                <span className="material-symbols-outlined text-xs">add_circle</span>
-                                {t('Add to Order', '注文に追加')}
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 bg-[#0a0a09] border-t border-white/5 flex justify-end select-none shrink-0">
-              <button
-                type="button"
-                onClick={() => setMenuModalOpen(false)}
-                className="px-6 py-2.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] rounded-xl font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer"
-              >
-                Done Adding
-              </button>
-            </div>
-          </div>
-        </div>
+        <MenuCatalogModal
+          t={t}
+          currency={currency}
+          menuModalOpen={menuModalOpen}
+          setMenuModalOpen={setMenuModalOpen}
+          selectedTicket={selectedTicket}
+          categories={categories}
+          activeCategory={activeCategory}
+          setActiveCategory={setActiveCategory}
+          menuSearchQuery={menuSearchQuery}
+          setMenuSearchQuery={setMenuSearchQuery}
+          filteredMenuItems={filteredMenuItems}
+          menuItems={menuItems}
+          handleAddItemToTicket={handleAddItemToTicket}
+          handleUpdateItemQty={handleUpdateItemQty}
+          handleToggleCatalogModifier={handleToggleCatalogModifier}
+          itemModifiersConfig={itemModifiersConfig}
+          catalogModifiers={catalogModifiers}
+          setCatalogModifiers={setCatalogModifiers}
+          itemNotes={itemNotes}
+          setItemNotes={setItemNotes}
+        />
       )}
-
       {/* CASH DRAWER PANEL */}
       <CashDrawerPanel
         isOpen={drawerPanelOpen}

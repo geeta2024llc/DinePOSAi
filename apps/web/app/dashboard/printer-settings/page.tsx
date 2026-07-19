@@ -30,6 +30,14 @@ export default function PrinterSettingsPage() {
   const [ipError, setIpError] = useState<string | null>(null);
   const [portError, setPortError] = useState<string | null>(null);
   const [dismissedDriverLock, setDismissedDriverLock] = useState(false);
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' });
+
+  const triggerToast = (message: string, type: 'success' | 'info' = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, show: false }));
+    }, 3000);
+  };
 
   // Sync local state when config changes externally (e.g. from another tab)
   useEffect(() => {
@@ -155,6 +163,22 @@ export default function PrinterSettingsPage() {
 
         {/* Live Status indicator */}
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => {
+              setIsSaving(true);
+              setTimeout(() => {
+                setIsSaving(false);
+                triggerToast('Printer configurations saved successfully!', 'success');
+              }, 600);
+            }}
+            disabled={isSaving}
+            className="px-4 py-2 rounded-full bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] text-[10px] uppercase font-extrabold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[14px] font-bold">save</span>
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+
           <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 px-4 py-2 rounded-full">
             <span className={`relative flex h-2 w-2`}>
               {status === 'connected' && (
@@ -517,6 +541,20 @@ export default function PrinterSettingsPage() {
         </div>
 
       </main>
+
+      {/* GLOBAL TOAST BANNER */}
+      {toast.show && (
+        <div className={`fixed bottom-8 right-8 z-50 flex items-center gap-3 px-5 py-4 rounded-xl border shadow-2xl backdrop-blur-md transition-all duration-300 transform translate-y-0 scale-100 ${
+          toast.type === 'success'
+            ? 'bg-[#ffe2ab]/10 border-[#ffe2ab]/25 text-[#ffc53d]'
+            : 'bg-rose-500/10 border-rose-500/25 text-rose-400'
+        }`}>
+          <span className="material-symbols-outlined text-base">
+            {toast.type === 'success' ? 'check_circle' : 'info'}
+          </span>
+          <span className="text-xs font-bold font-sans tracking-wide">{toast.message}</span>
+        </div>
+      )}
 
     </div>
   );

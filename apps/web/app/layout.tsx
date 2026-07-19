@@ -1,22 +1,12 @@
 import './globals.css';
 import type { Metadata } from 'next';
-import { Playfair_Display, Inter } from 'next/font/google';
 import { AuthProvider } from './authContext';
 import { PrinterProvider } from './printerContext';
 import { PostHogProvider } from './providers';
 import DemoBanner from '@/components/DemoBanner';
 
-const playfair = Playfair_Display({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-playfair',
-});
-
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-inter',
-});
+const playfair = { variable: 'font-serif' };
+const inter = { variable: 'font-sans' };
 
 export const metadata: Metadata = {
   title: 'DinePOS AI - Modern Hospitality Systems',
