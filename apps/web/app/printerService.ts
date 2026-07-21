@@ -31,6 +31,7 @@ export interface PrintReceiptData {
   isPaid: boolean;
   paymentMethod?: string;
   authCode?: string;
+  kickDrawer?: boolean;
 }
 
 export class PrinterService {
@@ -104,8 +105,13 @@ export class PrinterService {
 
   private encodeReceipt(data: PrintReceiptData): Uint8Array {
     const encoder = new EscposEncoder();
-    encoder.init()
-      .align('center')
+    encoder.init();
+    
+    if (data.kickDrawer) {
+      encoder.pulseDrawer(0, 48, 240);
+    }
+
+    encoder.align('center')
       .size(true)
       .bold(true)
       .line('DinePosAi')

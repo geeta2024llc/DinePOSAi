@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { recordActivity } from '@/utils/activityLogger';
+import { isDemoTenant, apiRequest } from '@/utils/api';
 
 interface StaffTabProps {
   t: any;
@@ -11,10 +12,12 @@ interface StaffTabProps {
 }
 
 export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTabProps) {
-  const [staffMembers, setStaffMembers] = useState<Array<{id: string; name: string; role: string; status: string; performance: number; avatar: string}>>([]);
+  const [staffMembers, setStaffMembers] = useState<Array<{id: string; name: string; email?: string; role: string; status: string; performance: number; avatar: string}>>([]);
   
   const [newEmployee, setNewEmployee] = useState({
     name: '',
+    email: '',
+    password: '',
     role: 'Server',
     status: 'OFF_DUTY',
     performance: 5.0
@@ -43,6 +46,79 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
     'John Watson': { 'MON 13': '09:00 - 22:00', 'TUE 14': '09:00 - 22:00', 'WED 15': 'OFF', 'THU 16': 'OFF', 'FRI 17': '09:00 - 22:00', 'SAT 18': '09:00 - 22:00', 'SUN 19': 'OFF' }
   });
 
+  const dbToUiRole = (dbRole: string): string => {
+    switch (dbRole) {
+      case 'WAITER': return 'Server';
+      case 'CASHIER': return 'Bartender';
+      case 'KITCHEN': return 'Line Cook';
+      case 'MANAGER': return 'Manager';
+      case 'OWNER': return 'Owner';
+      default: return dbRole;
+    }
+  };
+
+  const uiToDbRole = (uiRole: string): string => {
+    switch (uiRole) {
+      case 'Server': return 'WAITER';
+      case 'Bartender': return 'CASHIER';
+      case 'Line Cook': return 'KITCHEN';
+      case 'Manager': return 'MANAGER';
+      case 'Owner': return 'OWNER';
+      default: return uiRole;
+    }
+  };
+
+  const defaultMockMembers = [
+    { id: 'EMP-101', name: 'Elena Rodriguez', email: 'elena@dinepos.ai', role: 'Server', status: 'ON_SHIFT', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-102', name: 'Marcus Chen', email: 'marcus@dinepos.ai', role: 'Bartender', status: 'OFF_DUTY', performance: 4.8, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-103', name: 'Sarah Jenkins', email: 'sarah@dinepos.ai', role: 'Line Cook', status: 'ON_SHIFT', performance: 4.5, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-104', name: 'David Vance', email: 'david@dinepos.ai', role: 'Server', status: 'OFF_DUTY', performance: 4.0, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-105', name: 'Lisa Kim', email: 'lisa@dinepos.ai', role: 'Manager', status: 'ON_SHIFT', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1573496799652-408c2ac9fe98?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-106', name: 'Robert Taylor', email: 'robert@dinepos.ai', role: 'Line Cook', status: 'OFF_DUTY', performance: 4.8, avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-107', name: 'Emily Davis', email: 'emily@dinepos.ai', role: 'Server', status: 'OVERTIME', performance: 4.5, avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?q=80&w=120&auto=format&fit=crop' },
+    { id: 'EMP-108', name: 'John Watson', email: 'john@dinepos.ai', role: 'Bartender', status: 'OFF_DUTY', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' }
+  ];
+
+  const loadStaffMembers = async () => {
+    if (isDemoTenant()) {
+      const stored = localStorage.getItem('dinepos_staff_admin');
+      if (stored) {
+        try {
+          setStaffMembers(JSON.parse(stored));
+        } catch {
+          setStaffMembers(defaultMockMembers);
+          localStorage.setItem('dinepos_staff_admin', JSON.stringify(defaultMockMembers));
+        }
+      } else {
+        setStaffMembers(defaultMockMembers);
+        localStorage.setItem('dinepos_staff_admin', JSON.stringify(defaultMockMembers));
+      }
+    } else {
+      try {
+        const response = await apiRequest<any[]>('/api/tenant/users');
+        if (response.success && Array.isArray(response.data)) {
+          const mapped = response.data.map((user: any) => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            role: dbToUiRole(user.role),
+            status: user.is_active ? 'ON_SHIFT' : 'OFF_DUTY',
+            performance: 5.0,
+            avatar: ''
+          }));
+          setStaffMembers(mapped);
+        }
+      } catch (error) {
+        console.error('Failed to fetch staff members:', error);
+        triggerToast('Failed to load staff list from server.', 'info');
+      }
+    }
+  };
+
+  useEffect(() => {
+    loadStaffMembers();
+  }, []);
+
   return (
     <>
       {/* STAFF TAB JSX */}
@@ -60,7 +136,18 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                 </div>
 
                 <button type="button"
-                  onClick={() => setShowAddEmployeeModal(true)}
+                  onClick={() => {
+                    setNewEmployee({
+                      name: '',
+                      email: '',
+                      password: '',
+                      role: 'Server',
+                      status: 'OFF_DUTY',
+                      performance: 5.0
+                    });
+                    setEditingEmployee(null);
+                    setShowAddEmployeeModal(true);
+                  }}
                   className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none"
                 >
                   <span className="material-symbols-outlined text-sm font-bold">add</span>
@@ -259,6 +346,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                                         setEditingEmployee(member);
                                         setNewEmployee({
                                           name: member.name,
+                                          email: member.email || '',
+                                          password: '',
                                           role: member.role,
                                           status: member.status,
                                           performance: member.performance
@@ -274,9 +363,26 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                                       type="button"
                                       onClick={async () => {
                                         if (confirm(`Are you sure you want to delete ${member.name}?`)) {
-                                          setStaffMembers(staffMembers.filter(m => m.id !== member.id));
+                                          if (isDemoTenant()) {
+                                            const updated = staffMembers.filter(m => m.id !== member.id);
+                                            setStaffMembers(updated);
+                                            localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                                            triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+                                          } else {
+                                            try {
+                                              const res = await apiRequest(`/api/tenant/users/${member.id}`, { method: 'DELETE' });
+                                              if (res.success) {
+                                                triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+                                                await loadStaffMembers();
+                                              } else {
+                                                triggerToast(res.error || 'Failed to delete staff user.', 'info');
+                                              }
+                                            } catch (err) {
+                                              console.error('Delete error:', err);
+                                              triggerToast('Error deleting staff user.', 'info');
+                                            }
+                                          }
                                           await recordActivity('staff_deleted', `Deleted employee ${member.name}`, 'Staff', { id: member.id, role: member.role });
-                                          triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
                                         }
                                       }}
                                       className={`p-1.5 rounded-lg hover:${t.cardHover} ${t.textMuted} hover:text-red-400 transition-colors cursor-pointer flex items-center justify-center`}
@@ -759,6 +865,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                   setEditingEmployee(null);
                   setNewEmployee({
                     name: '',
+                    email: '',
+                    password: '',
                     role: 'Server',
                     status: 'OFF_DUTY',
                     performance: 5.0
@@ -776,43 +884,123 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                 triggerToast('Please enter an employee name.', 'info');
                 return;
               }
-              if (editingEmployee) {
-                const updatedMembers = staffMembers.map(member => 
-                  member.id === editingEmployee.id 
-                    ? { ...member, name: newEmployee.name, role: newEmployee.role, status: newEmployee.status, performance: newEmployee.performance }
-                    : member
-                );
-                setStaffMembers(updatedMembers);
-                await recordActivity(
-                  'staff_updated',
-                  `Updated details for employee ${newEmployee.name}`,
-                  'Staff',
-                  { id: editingEmployee.id, role: newEmployee.role }
-                );
-                triggerToast(`Successfully updated employee ${newEmployee.name}!`, 'success');
-              } else {
-                const newId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
-                const addedMember = {
-                  id: newId,
-                  name: newEmployee.name,
-                  role: newEmployee.role,
-                  status: newEmployee.status,
-                  performance: newEmployee.performance,
-                  avatar: ''
-                };
-                setStaffMembers([...staffMembers, addedMember]);
-                await recordActivity(
-                  'staff_created',
-                  `Created employee ${newEmployee.name} with role ${newEmployee.role}`,
-                  'Staff',
-                  { id: newId, role: newEmployee.role }
-                );
-                triggerToast(`Successfully added employee ${addedMember.name}!`, 'success');
+              if (!newEmployee.email.trim()) {
+                triggerToast('Please enter an email address.', 'info');
+                return;
               }
+              if (!editingEmployee && (!newEmployee.password || newEmployee.password.length < 8)) {
+                triggerToast('Password must be at least 8 characters.', 'info');
+                return;
+              }
+              if (newEmployee.password && newEmployee.password.length < 8) {
+                triggerToast('Password must be at least 8 characters.', 'info');
+                return;
+              }
+
+              if (isDemoTenant()) {
+                if (editingEmployee) {
+                  const updatedMembers = staffMembers.map(member => 
+                    member.id === editingEmployee.id 
+                      ? { ...member, name: newEmployee.name, email: newEmployee.email, role: newEmployee.role, status: newEmployee.status, performance: newEmployee.performance }
+                      : member
+                  );
+                  setStaffMembers(updatedMembers);
+                  localStorage.setItem('dinepos_staff_admin', JSON.stringify(updatedMembers));
+                  await recordActivity(
+                    'staff_updated',
+                    `Updated details for employee ${newEmployee.name}`,
+                    'Staff',
+                    { id: editingEmployee.id, role: newEmployee.role }
+                  );
+                  triggerToast(`Successfully updated employee ${newEmployee.name}!`, 'success');
+                } else {
+                  const newId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
+                  const addedMember = {
+                    id: newId,
+                    name: newEmployee.name,
+                    email: newEmployee.email,
+                    role: newEmployee.role,
+                    status: newEmployee.status,
+                    performance: newEmployee.performance,
+                    avatar: ''
+                  };
+                  const updated = [...staffMembers, addedMember];
+                  setStaffMembers(updated);
+                  localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                  await recordActivity(
+                    'staff_created',
+                    `Created employee ${newEmployee.name} with role ${newEmployee.role}`,
+                    'Staff',
+                    { id: newId, role: newEmployee.role }
+                  );
+                  triggerToast(`Successfully added employee ${addedMember.name}!`, 'success');
+                }
+              } else {
+                try {
+                  if (editingEmployee) {
+                    const updatePayload: any = {
+                      name: newEmployee.name,
+                      email: newEmployee.email,
+                      role: uiToDbRole(newEmployee.role)
+                    };
+                    if (newEmployee.password) {
+                      updatePayload.password = newEmployee.password;
+                    }
+                    const res = await apiRequest(`/api/tenant/users/${editingEmployee.id}`, {
+                      method: 'PUT',
+                      body: JSON.stringify(updatePayload)
+                    });
+                    if (res.success) {
+                      triggerToast(`Successfully updated employee ${newEmployee.name}!`, 'success');
+                      await recordActivity(
+                        'staff_updated',
+                        `Updated details for employee ${newEmployee.name}`,
+                        'Staff',
+                        { id: editingEmployee.id, role: newEmployee.role }
+                      );
+                      await loadStaffMembers();
+                    } else {
+                      triggerToast(res.error || 'Failed to update employee.', 'info');
+                      return;
+                    }
+                  } else {
+                    const createPayload = {
+                      name: newEmployee.name,
+                      email: newEmployee.email,
+                      password: newEmployee.password,
+                      role: uiToDbRole(newEmployee.role)
+                    };
+                    const res = await apiRequest('/api/tenant/users', {
+                      method: 'POST',
+                      body: JSON.stringify(createPayload)
+                    });
+                    if (res.success && res.data) {
+                      triggerToast(`Successfully added employee ${newEmployee.name}!`, 'success');
+                      await recordActivity(
+                        'staff_created',
+                        `Created employee ${newEmployee.name} with role ${newEmployee.role}`,
+                        'Staff',
+                        { id: res.data.id, role: newEmployee.role }
+                      );
+                      await loadStaffMembers();
+                    } else {
+                      triggerToast(res.error || 'Failed to create employee.', 'info');
+                      return;
+                    }
+                  }
+                } catch (err: any) {
+                  console.error('Save staff error:', err);
+                  triggerToast(err.message || 'Error saving employee.', 'info');
+                  return;
+                }
+              }
+
               setShowAddEmployeeModal(false);
               setEditingEmployee(null);
               setNewEmployee({
                 name: '',
+                email: '',
+                password: '',
                 role: 'Server',
                 status: 'OFF_DUTY',
                 performance: 5.0
@@ -828,6 +1016,35 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                   placeholder="e.g. John Doe"
                   className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
                   required
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Email Address</label>
+                <input 
+                  type="email" 
+                  value={newEmployee.email}
+                  onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                  placeholder="e.g. john@example.com"
+                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                  required
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>
+                  Password {editingEmployee && <span className="opacity-50">(Leave blank to keep current)</span>}
+                </label>
+                <input 
+                  type="password" 
+                  value={newEmployee.password}
+                  onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                  placeholder={editingEmployee ? "••••••••" : "At least 8 characters"}
+                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                  required={!editingEmployee}
+                  minLength={8}
                 />
               </div>
 
@@ -896,6 +1113,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                     setEditingEmployee(null);
                     setNewEmployee({
                       name: '',
+                      email: '',
+                      password: '',
                       role: 'Server',
                       status: 'OFF_DUTY',
                       performance: 5.0

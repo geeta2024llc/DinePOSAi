@@ -226,14 +226,14 @@ export const createStaffSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email format'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['SUPER_ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN']),
+  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN']),
 });
 
 export const updateStaffSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email('Invalid email format').optional(),
   password: z.string().min(8).optional(),
-  role: z.enum(['SUPER_ADMIN', 'MANAGER', 'CASHIER', 'KITCHEN']).optional(),
+  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN']).optional(),
   isActive: z.boolean().optional(),
 });
 

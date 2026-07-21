@@ -4,31 +4,91 @@ import React, { useState } from 'react';
 
 export default function ReferralsManager(props: any) {
   const {
-    t, theme, isLightTheme, activeTab, triggerToast, ambassadorsList: ambassadors,
+    t, theme, isLightTheme, activeTab, triggerToast, ambassadorsList,
     showAddAmbassadorModal,
     setShowAddAmbassadorModal, newAmbassadorData, setNewAmbassadorData,
-    handleAddAmbassador, showEditAmbassadorBankModal, setShowEditAmbassadorBankModal,
-    editingAmbassadorForBank, setEditingAmbassadorForBank, bankDetailsForm,
-    setBankDetailsForm, handleUpdateBankDetails, showQrPosterModal,
-    setShowQrPosterModal, selectedAmbassadorForQr, setSelectedAmbassadorForQr,
-    showPartnerDashboardPreviewModal, setShowPartnerDashboardPreviewModal,
-    selectedAmbassadorForDashboard, setSelectedAmbassadorForDashboard,
-    showEditAmbassadorProfileModal,
-    setShowEditAmbassadorProfileModal, editingAmbassadorForProfile,
-    setEditingAmbassadorForProfile, ambassadorProfileForm, setAmbassadorProfileForm,
-    handleUpdateAmbassadorProfile, showAddReferredBusinessModal,
-    setShowAddReferredBusinessModal, newReferredBusinessData,
-    setNewReferredBusinessData, handleAddReferredBusiness, showPayoutProcessModal,
-    setShowPayoutProcessModal, selectedPayoutTransaction, setSelectedPayoutTransaction,
-    handleProcessPayoutSubmit, referralsSubTab: referralSubTab,
+    handleAddAmbassador,
+    showEditAmbassadorBankModal: showEditBankModal,
+    setShowEditAmbassadorBankModal: setShowEditBankModal,
+    editingAmbassadorForBank: editBankTarget,
+    setEditingAmbassadorForBank: setEditBankTarget,
+    bankDetailsForm: editBankData,
+    setBankDetailsForm: setEditBankData,
+    handleUpdateBankDetails: handleSaveEditBank,
+    showQrPosterModal: showQrModal,
+    setShowQrPosterModal: setShowQrModal,
+    selectedAmbassadorForQr: qrModalAmbassador,
+    setSelectedAmbassadorForQr: setQrModalAmbassador,
+    showPartnerDashboardPreviewModal: showPartnerViewModal,
+    setShowPartnerDashboardPreviewModal: setShowPartnerViewModal,
+    selectedAmbassadorForDashboard: partnerViewAmbassador,
+    setSelectedAmbassadorForDashboard: setPartnerViewAmbassador,
+    showEditAmbassadorProfileModal: showEditAmbassadorModal,
+    setShowEditAmbassadorProfileModal: setShowEditAmbassadorModal,
+    editingAmbassadorForProfile: editAmbassadorTarget,
+    setEditingAmbassadorForProfile: setEditAmbassadorTarget,
+    ambassadorProfileForm: editAmbassadorData,
+    setAmbassadorProfileForm: setEditAmbassadorData,
+    handleUpdateAmbassadorProfile: handleEditAmbassador,
+    showAddReferredBusinessModal: showAddReferralModal,
+    setShowAddReferredBusinessModal: setShowAddReferralModal,
+    newReferredBusinessData: newReferralData,
+    setNewReferredBusinessData: setNewReferralData,
+    handleAddReferredBusiness: handleAddReferral,
+    showPayoutProcessModal: showPayoutModal,
+    setShowPayoutProcessModal: setShowPayoutModal,
+    selectedPayoutTransaction: payoutTarget,
+    setSelectedPayoutTransaction: setPayoutTarget,
+    handleProcessPayoutSubmit: handleProcessPayout, referralsSubTab: referralSubTab,
     setReferralsSubTab: setReferralSubTab, activeActionMenuId, setActiveActionMenuId, hBg, hText,
-    ambassadorSearchQuery, setAmbassadorSearchQuery, ambassadorFilterStatus,
-    setAmbassadorFilterStatus, showAddAmbassadorModalLocal,
+    payoutAmount, setPayoutAmount, payoutNote, setPayoutNote, payoutHistory, handleExportPayoutHistory,
+    ambassadorSearchQuery: ambassadorSearch, setAmbassadorSearchQuery: setAmbassadorSearch, ambassadorFilterStatus: ambassadorStatusFilter,
+    setAmbassadorFilterStatus: setAmbassadorStatusFilter, showAddAmbassadorModalLocal,
     showEditAmbassadorBankModalLocal, showQrPosterModalLocal,
     showPartnerDashboardPreviewModalLocal, showEditAmbassadorProfileModalLocal,
     showAddReferredBusinessModalLocal, showPayoutProcessModalLocal,
-    referralConfig, setReferralConfig, handleExportReferrals
+    referralConfig, setReferralConfig, handleExportReferrals,
+    batchPayoutMode, selectedAmbIds, addReferralTarget, setAddReferralTarget, handleOpenEditBank, handleToggleAmbassadorStatus,
+    generateReferralCode
   } = props;
+
+interface InvitedBusiness {
+  id: string;
+  name: string;
+  status: string;
+  joinedDate: string;
+  plan?: string;
+  contact?: string;
+  services?: string[];
+  reward?: number;
+}
+
+interface BankDetails {
+  bankName?: string;
+  accountHolder?: string;
+  accountNumber?: string;
+  routingNumber?: string;
+  branchName?: string;
+}
+
+interface Ambassador {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  status: string;
+  code: string;
+  joinedDate: string;
+  paidRewards: number;
+  pendingRewards: number;
+  invitedBusinesses: InvitedBusiness[];
+  bank?: BankDetails;
+  notes?: string;
+}
+
+  const ambassadors: Ambassador[] = ambassadorsList || [];
+  const setBatchPayoutMode = props.setBatchPayoutMode as React.Dispatch<React.SetStateAction<boolean>>;
+  const setSelectedAmbIds = props.setSelectedAmbIds as React.Dispatch<React.SetStateAction<string[]>>;
 
   return (
     <>
@@ -105,11 +165,11 @@ export default function ReferralsManager(props: any) {
               {/* KPI Summary Row */}
               <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 font-sans">
                 {[
-                  { label: 'Ambassadors', value: ambassadors.length, sub: `${ambassadors.filter(a => a.status === 'active').length} active`, color: 'text-white' },
-                  { label: 'Businesses Referred', value: ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0), sub: 'All time', color: 'text-violet-400' },
-                  { label: 'Conversion Rate', value: ambassadors.length === 0 ? '0%' : `${Math.round((ambassadors.reduce((s, a) => s + a.invitedBusinesses.filter(b => b.status === 'Subscribed' || b.status === 'Active').length, 0) / Math.max(ambassadors.reduce((s, a) => s + a.invitedBusinesses.length, 0), 1)) * 100)}%`, sub: 'Referred → subscribed', color: 'text-sky-400' },
-                  { label: 'Pending Payouts', value: `¥${ambassadors.reduce((s, a) => s + a.pendingRewards, 0).toLocaleString()}`, sub: 'Awaiting release', color: 'text-amber-400' },
-                  { label: 'Total Paid Out', value: `¥${ambassadors.reduce((s, a) => s + a.paidRewards, 0).toLocaleString()}`, sub: 'All time', color: 'text-emerald-400' },
+                  { label: 'Ambassadors', value: ambassadors.length, sub: `${ambassadors.filter((a: any) => a.status === 'active').length} active`, color: 'text-white' },
+                  { label: 'Businesses Referred', value: ambassadors.reduce((s: number, a: any) => s + (a.invitedBusinesses || []).length, 0), sub: 'All time', color: 'text-violet-400' },
+                  { label: 'Conversion Rate', value: ambassadors.length === 0 ? '0%' : `${Math.round((ambassadors.reduce((s: number, a: any) => s + (a.invitedBusinesses || []).filter((b: any) => b.status === 'Subscribed' || b.status === 'Active').length, 0) / Math.max(ambassadors.reduce((s: number, a: any) => s + (a.invitedBusinesses || []).length, 0), 1)) * 100)}%`, sub: 'Referred → subscribed', color: 'text-sky-400' },
+                  { label: 'Pending Payouts', value: `¥${ambassadors.reduce((s: number, a: any) => s + a.pendingRewards, 0).toLocaleString()}`, sub: 'Awaiting release', color: 'text-amber-400' },
+                  { label: 'Total Paid Out', value: `¥${ambassadors.reduce((s: number, a: any) => s + a.paidRewards, 0).toLocaleString()}`, sub: 'All time', color: 'text-emerald-400' },
                 ].map(kpi => (
                   <div key={kpi.label} className={`${theme.cardBg} border rounded-2xl p-5 flex flex-col justify-between`}>
                     <span className="font-bold text-[9.5px] text-[#A69984]/65 uppercase tracking-widest">{kpi.label}</span>
@@ -379,11 +439,11 @@ export default function ReferralsManager(props: any) {
                                   <span className="material-symbols-outlined text-[11px]">account_balance</span>
                                   Banking Details
                                 </p>
-                                {amb.bank.bankName ? (
+                                {amb.bank?.bankName ? (
                                   <>
-                                    <p className="text-white font-sans font-bold text-xs">{amb.bank.bankName}</p>
-                                    <p className="text-[#A69984]/65 font-sans text-[10px] mt-0.5">A/C: •••• {(amb.bank.accountNumber || '').slice(-4) || '——'}</p>
-                                    <p className="text-[#A69984]/65 font-sans text-[10px]">Holder: {amb.bank.accountHolder || '—'}</p>
+                                    <p className="text-white font-sans font-bold text-xs">{amb.bank?.bankName}</p>
+                                    <p className="text-[#A69984]/65 font-sans text-[10px] mt-0.5">A/C: •••• {(amb.bank?.accountNumber || '').slice(-4) || '——'}</p>
+                                    <p className="text-[#A69984]/65 font-sans text-[10px]">Holder: {amb.bank?.accountHolder || '—'}</p>
                                   </>
                                 ) : (
                                   <p className="text-[#A69984]/35 text-[10px] font-sans italic">No banking details on file.</p>
@@ -429,7 +489,7 @@ export default function ReferralsManager(props: any) {
                                     className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-sky-500/25 text-sky-400 hover:bg-sky-500/10 transition-all cursor-pointer flex items-center gap-1"
                                   >
                                     <span className="material-symbols-outlined text-xs">account_balance</span>
-                                    {amb.bank.bankName ? 'Edit Bank' : 'Add Bank'}
+                                    {amb.bank?.bankName ? 'Edit Bank' : 'Add Bank'}
                                   </button>
                                   <button type="button"
                                     onClick={() => handleToggleAmbassadorStatus(amb.id)}
@@ -477,7 +537,7 @@ export default function ReferralsManager(props: any) {
                                       <p className="text-[#A69984]/60 text-[10px] font-sans">Contact: {biz.contact}</p>
                                       <p className="text-[#A69984]/45 text-[10px] font-sans">Joined: {biz.joinedDate}</p>
                                       <div className="flex flex-wrap gap-1 mt-1">
-                                        {biz.services.map((svc, si) => (
+                                        {biz.services?.map((svc, si) => (
                                           <span key={si} className="px-1.5 py-0.5 bg-white/5 border border-white/[0.08] rounded text-[8.5px] text-[#A69984]/70 font-medium">{svc}</span>
                                         ))}
                                       </div>
@@ -489,23 +549,23 @@ export default function ReferralsManager(props: any) {
                             )}
 
                             {/* Per-ambassador payout history inline */}
-                            {payoutHistory.filter(tx => tx.ambassadorId === amb.id).length > 0 && (
+                            {payoutHistory.filter((tx: any) => tx.ambassadorId === amb.id).length > 0 && (
                               <div className="mt-4 border-t border-white/5 pt-4">
                                 <p className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
                                   <span className="material-symbols-outlined text-xs">receipt_long</span>
                                   Payout History
                                 </p>
                                 <div className="flex flex-wrap gap-2">
-                                  {payoutHistory.filter(tx => tx.ambassadorId === amb.id).slice(0, 5).map(tx => (
+                                  {payoutHistory.filter((tx: any) => tx.ambassadorId === amb.id).slice(0, 5).map((tx: any) => (
                                     <div key={tx.id} className="flex items-center gap-2 bg-emerald-500/5 border border-emerald-500/15 rounded-lg px-3 py-1.5">
                                       <span className="material-symbols-outlined text-emerald-400 text-xs">check_circle</span>
                                       <span className="text-emerald-400 font-bold text-[10px]">${tx.amount.toFixed(2)}</span>
                                       <span className="text-[#A69984]/45 text-[9.5px] font-mono">{tx.date}</span>
                                     </div>
                                   ))}
-                                  {payoutHistory.filter(tx => tx.ambassadorId === amb.id).length > 5 && (
+                                  {payoutHistory.filter((tx: any) => tx.ambassadorId === amb.id).length > 5 && (
                                     <div className="flex items-center px-3 py-1.5 text-[#A69984]/45 text-[9.5px]">
-                                      +{payoutHistory.filter(tx => tx.ambassadorId === amb.id).length - 5} more
+                                      +{payoutHistory.filter((tx: any) => tx.ambassadorId === amb.id).length - 5} more
                                     </div>
                                   )}
                                 </div>
@@ -634,7 +694,7 @@ export default function ReferralsManager(props: any) {
                 const maxSignups = Math.max(...monthlyData.map(d => d.signups), 1);
 
                 const activityFeed: { icon: string; color: string; bg: string; msg: string; time: string }[] = [
-                  ...payoutHistory.slice(0, 2).map(tx => ({
+                  ...payoutHistory.slice(0, 2).map((tx: any) => ({
                     icon: 'payments', color: 'text-emerald-400', bg: 'bg-emerald-500/10',
                     msg: `$${tx.amount.toFixed(2)} payout processed to ${tx.ambassadorName}`, time: tx.date,
                   })),
@@ -926,7 +986,7 @@ export default function ReferralsManager(props: any) {
                             aria-label="Commission Rate"
                             type="number" min="1" max="50"
                             value={referralConfig.commissionRate}
-                            onChange={e => setReferralConfig(prev => ({ ...prev, commissionRate: parseInt(e.target.value) || 0 }))}
+                            onChange={e => setReferralConfig((prev: any) => ({ ...prev, commissionRate: parseInt(e.target.value) || 0 }))}
                             className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
                           />
                           <span className="text-[#A69984]/60 text-sm font-bold">%</span>
@@ -940,7 +1000,7 @@ export default function ReferralsManager(props: any) {
                             aria-label="Flat Reward per Signup in JPY"
                             type="number" min="0"
                             value={referralConfig.rewardPerSignup}
-                            onChange={e => setReferralConfig(prev => ({ ...prev, rewardPerSignup: parseInt(e.target.value) || 0 }))}
+                            onChange={e => setReferralConfig((prev: any) => ({ ...prev, rewardPerSignup: parseInt(e.target.value) || 0 }))}
                             className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
                           />
                           <span className="text-[#A69984]/60 text-sm font-bold">JPY</span>
@@ -953,7 +1013,7 @@ export default function ReferralsManager(props: any) {
                           aria-label="Minimum Payout Threshold in JPY"
                           type="number" min="0"
                           value={referralConfig.minPayoutThreshold}
-                          onChange={e => setReferralConfig(prev => ({ ...prev, minPayoutThreshold: parseInt(e.target.value) || 0 }))}
+                          onChange={e => setReferralConfig((prev: any) => ({ ...prev, minPayoutThreshold: parseInt(e.target.value) || 0 }))}
                           className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
                         />
                         <p className="text-[9px] text-[#A69984]/40 mt-1.5">Ambassadors must accumulate this balance before a payout can be requested.</p>
@@ -974,7 +1034,7 @@ export default function ReferralsManager(props: any) {
                           aria-label="Referral Base URL"
                           type="text"
                           value={referralConfig.referralBaseUrl}
-                          onChange={e => setReferralConfig(prev => ({ ...prev, referralBaseUrl: e.target.value }))}
+                          onChange={e => setReferralConfig((prev: any) => ({ ...prev, referralBaseUrl: e.target.value }))}
                           className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-[#A69984] font-mono focus:outline-none focus:border-[#ffc53d]/45"
                         />
                         <p className="text-[9px] text-[#A69984]/40 mt-1.5">Ambassador code is appended to this URL to form the full referral link.</p>
@@ -985,7 +1045,7 @@ export default function ReferralsManager(props: any) {
                           aria-label="Cookie Tracking Duration in Days"
                           type="number" min="1" max="365"
                           value={referralConfig.cookieDuration}
-                          onChange={e => setReferralConfig(prev => ({ ...prev, cookieDuration: parseInt(e.target.value) || 30 }))}
+                          onChange={e => setReferralConfig((prev: any) => ({ ...prev, cookieDuration: parseInt(e.target.value) || 30 }))}
                           className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
                         />
                         <p className="text-[9px] text-[#A69984]/40 mt-1.5">How long a referral attribution cookie is retained for returning visitors.</p>
@@ -997,7 +1057,7 @@ export default function ReferralsManager(props: any) {
                           <p className="text-[#A69984]/50 text-[9.5px] mt-0.5">Accept new referral sign-ups and award commissions</p>
                         </div>
                         <button type="button"
-                          onClick={() => setReferralConfig(prev => ({ ...prev, programActive: !prev.programActive }))}
+                          onClick={() => setReferralConfig((prev: any) => ({ ...prev, programActive: !prev.programActive }))}
                           className={`relative w-11 h-6 rounded-full transition-all cursor-pointer flex-shrink-0 ${referralConfig.programActive ? 'bg-emerald-500' : 'bg-white/10'}`}
                         >
                           <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${referralConfig.programActive ? 'left-[22px]' : 'left-0.5'}`}></span>
@@ -1036,7 +1096,7 @@ export default function ReferralsManager(props: any) {
                               <p className="text-[#A69984]/50 text-[9.5px] mt-0.5 leading-relaxed">{setting.desc}</p>
                             </div>
                             <button type="button"
-                              onClick={() => setReferralConfig(prev => ({ ...prev, [setting.key]: !prev[setting.key] }))}
+                              onClick={() => setReferralConfig((prev: any) => ({ ...prev, [setting.key]: !prev[setting.key] }))}
                               className={`relative w-11 h-6 rounded-full transition-all cursor-pointer flex-shrink-0 mt-0.5 ${referralConfig[setting.key] ? 'bg-emerald-500' : 'bg-white/10'}`}
                             >
                               <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${referralConfig[setting.key] ? 'left-[22px]' : 'left-0.5'}`}></span>
@@ -1055,9 +1115,9 @@ export default function ReferralsManager(props: any) {
                               { value: 'ach', label: 'ACH Direct', icon: 'swap_horiz', desc: 'Automated Clearing House — US domestic only' },
                               { value: 'wire', label: 'International Wire', icon: 'public', desc: 'SWIFT/SEPA for international ambassadors' },
                               { value: 'paypal', label: 'PayPal', icon: 'currency_exchange', desc: 'PayPal business account transfer' },
-                            ] as { value: ReferralConfig['paymentMethod']; label: string; icon: string; desc: string }[]).map(opt => (
+                            ] as { value: string; label: string; icon: string; desc: string }[]).map(opt => (
                               <button key={opt.value} type="button"
-                                onClick={() => setReferralConfig(prev => ({ ...prev, paymentMethod: opt.value }))}
+                                onClick={() => setReferralConfig((prev: any) => ({ ...prev, paymentMethod: opt.value }))}
                                 className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer text-left ${
                                   referralConfig.paymentMethod === opt.value
                                     ? 'bg-[#ffc53d]/8 border-[#ffc53d]/30'
@@ -1107,7 +1167,7 @@ export default function ReferralsManager(props: any) {
                     </button>
                   </div>
                   <div className="divide-y divide-white/5">
-                    {payoutHistory.map(tx => (
+                    {payoutHistory.map((tx: any) => (
                       <div key={tx.id} className="px-6 py-4 flex items-center justify-between hover:bg-white/[0.015] transition-colors">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/15 flex items-center justify-center flex-shrink-0">
@@ -1164,7 +1224,7 @@ export default function ReferralsManager(props: any) {
                       <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Full Name *</label>
                       <input type="text" required placeholder="e.g. Sarah Johnson"
                         value={newAmbassadorData.name}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, name: e.target.value }))}
                         className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                       />
                     </div>
@@ -1172,7 +1232,7 @@ export default function ReferralsManager(props: any) {
                       <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Phone Number</label>
                       <input type="tel" placeholder="+1 555 000 0000"
                         value={newAmbassadorData.phone}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, phone: e.target.value }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, phone: e.target.value }))}
                         className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                       />
                     </div>
@@ -1181,7 +1241,7 @@ export default function ReferralsManager(props: any) {
                     <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Email Address *</label>
                     <input type="email" required placeholder="e.g. sarah@restaurant.com"
                       value={newAmbassadorData.email}
-                      onChange={e => setNewAmbassadorData(prev => ({ ...prev, email: e.target.value }))}
+                      onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, email: e.target.value }))}
                       className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                     />
                   </div>
@@ -1191,11 +1251,11 @@ export default function ReferralsManager(props: any) {
                       <input type="text"
                         placeholder={newAmbassadorData.name ? generateReferralCode(newAmbassadorData.name) : 'e.g. SARAH421'}
                         value={newAmbassadorData.code}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
                         className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
                       />
                       <button type="button"
-                        onClick={() => setNewAmbassadorData(prev => ({ ...prev, code: generateReferralCode(prev.name || 'AMB') }))}
+                        onClick={() => setNewAmbassadorData((prev: any) => ({ ...prev, code: generateReferralCode(prev.name || 'AMB') }))}
                         className="px-3 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
                       >
                         <span className="material-symbols-outlined text-sm">shuffle</span>
@@ -1218,7 +1278,7 @@ export default function ReferralsManager(props: any) {
                       <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Bank Name</label>
                       <input type="text" placeholder="e.g. JPMorgan Chase"
                         value={newAmbassadorData.bankName}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, bankName: e.target.value }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, bankName: e.target.value }))}
                         className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40"
                       />
                     </div>
@@ -1226,7 +1286,7 @@ export default function ReferralsManager(props: any) {
                       <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Account Holder Name</label>
                       <input type="text" placeholder="e.g. Sarah Johnson LLC"
                         value={newAmbassadorData.accountHolder}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, accountHolder: e.target.value }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, accountHolder: e.target.value }))}
                         className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40"
                       />
                     </div>
@@ -1236,7 +1296,7 @@ export default function ReferralsManager(props: any) {
                       <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Account Number / IBAN</label>
                       <input type="text" placeholder="Full account number"
                         value={newAmbassadorData.accountNumber}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, accountNumber: e.target.value }))}
                         className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40 font-mono"
                       />
                     </div>
@@ -1244,7 +1304,7 @@ export default function ReferralsManager(props: any) {
                       <label className="block text-[9px] text-[#A69984]/55 font-bold uppercase tracking-widest mb-1.5">Routing / SWIFT / BIC</label>
                       <input type="text" placeholder="e.g. 021000021"
                         value={newAmbassadorData.routingNumber}
-                        onChange={e => setNewAmbassadorData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                        onChange={e => setNewAmbassadorData((prev: any) => ({ ...prev, routingNumber: e.target.value }))}
                         className="w-full bg-[#12110f] border border-white/8 rounded-lg px-3 py-2.5 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/40 font-mono"
                       />
                     </div>
@@ -1318,7 +1378,7 @@ export default function ReferralsManager(props: any) {
                   <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Bank Name *</label>
                   <input type="text" required placeholder="e.g. JPMorgan Chase"
                     value={editBankData.bankName}
-                    onChange={e => setEditBankData(prev => ({ ...prev, bankName: e.target.value }))}
+                    onChange={e => setEditBankData((prev: any) => ({ ...prev, bankName: e.target.value }))}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
@@ -1326,7 +1386,7 @@ export default function ReferralsManager(props: any) {
                   <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Account Holder *</label>
                   <input type="text" required placeholder="Legal account holder name"
                     value={editBankData.accountHolder}
-                    onChange={e => setEditBankData(prev => ({ ...prev, accountHolder: e.target.value }))}
+                    onChange={e => setEditBankData((prev: any) => ({ ...prev, accountHolder: e.target.value }))}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
@@ -1342,7 +1402,7 @@ export default function ReferralsManager(props: any) {
                 </label>
                 <input type="text" placeholder="Leave blank to keep existing number"
                   value={editBankData.accountNumber}
-                  onChange={e => setEditBankData(prev => ({ ...prev, accountNumber: e.target.value }))}
+                  onChange={e => setEditBankData((prev: any) => ({ ...prev, accountNumber: e.target.value }))}
                   className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/15 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
                 />
                 <p className="text-[9px] text-[#A69984]/35 mt-1 font-medium">Will be masked on save — only last 4 digits stored visibly.</p>
@@ -1351,7 +1411,7 @@ export default function ReferralsManager(props: any) {
                 <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Routing Number / SWIFT / BIC *</label>
                 <input type="text" required placeholder="e.g. 021000021 or CHASUS33"
                   value={editBankData.routingNumber}
-                  onChange={e => setEditBankData(prev => ({ ...prev, routingNumber: e.target.value }))}
+                  onChange={e => setEditBankData((prev: any) => ({ ...prev, routingNumber: e.target.value }))}
                   className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
                 />
               </div>
@@ -1567,7 +1627,7 @@ export default function ReferralsManager(props: any) {
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-white/[0.04]">
-                              {amb.invitedBusinesses.map(biz => (
+                              {amb.invitedBusinesses.map((biz: any) => (
                                 <tr key={biz.id} className="hover:bg-white/[0.01] transition-colors">
                                   <td className="px-6 py-4">
                                     <p className="text-white font-bold text-xs">{biz.name}</p>
@@ -1576,7 +1636,7 @@ export default function ReferralsManager(props: any) {
                                   <td className="px-4 py-4 text-[#A69984]/60 text-xs font-semibold">{biz.joinedDate}</td>
                                   <td className="px-4 py-4">
                                     <div className="flex flex-wrap gap-1">
-                                      {biz.services.map((svc, si) => (
+                                      {biz.services.map((svc: any, si: any) => (
                                         <span key={si} className="px-2 py-0.5 bg-white/[0.04] border border-white/[0.07] rounded text-[8.5px] text-[#A69984]/65 font-bold uppercase tracking-wider">{svc}</span>
                                       ))}
                                     </div>
@@ -1708,7 +1768,7 @@ export default function ReferralsManager(props: any) {
                   <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Full Name *</label>
                   <input type="text" required placeholder="Full name"
                     value={editAmbassadorData.name}
-                    onChange={e => setEditAmbassadorData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={e => setEditAmbassadorData((prev: any) => ({ ...prev, name: e.target.value }))}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
@@ -1716,7 +1776,7 @@ export default function ReferralsManager(props: any) {
                   <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Phone</label>
                   <input type="tel" placeholder="+1 555 000 0000"
                     value={editAmbassadorData.phone}
-                    onChange={e => setEditAmbassadorData(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={e => setEditAmbassadorData((prev: any) => ({ ...prev, phone: e.target.value }))}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
@@ -1725,7 +1785,7 @@ export default function ReferralsManager(props: any) {
                 <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Email Address *</label>
                 <input type="email" required placeholder="email@example.com"
                   value={editAmbassadorData.email}
-                  onChange={e => setEditAmbassadorData(prev => ({ ...prev, email: e.target.value }))}
+                  onChange={e => setEditAmbassadorData((prev: any) => ({ ...prev, email: e.target.value }))}
                   className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                 />
               </div>
@@ -1736,11 +1796,11 @@ export default function ReferralsManager(props: any) {
                     aria-label="Referral Code"
                     placeholder="e.g. MARCUS421"
                     value={editAmbassadorData.code}
-                    onChange={e => setEditAmbassadorData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+                    onChange={e => setEditAmbassadorData((prev: any) => ({ ...prev, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
                     className="flex-1 bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 uppercase"
                   />
                   <button type="button"
-                    onClick={() => setEditAmbassadorData(prev => ({ ...prev, code: generateReferralCode(prev.name || editAmbassadorTarget.name) }))}
+                    onClick={() => setEditAmbassadorData((prev: any) => ({ ...prev, code: generateReferralCode(prev.name || editAmbassadorTarget.name) }))}
                     className="px-3 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#ffe2ab] rounded-xl text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
                   >
                     <span className="material-symbols-outlined text-sm">shuffle</span>
@@ -1797,7 +1857,7 @@ export default function ReferralsManager(props: any) {
                   <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Business Name *</label>
                   <input type="text" required placeholder="e.g. Nobu Chicago"
                     value={newReferralData.name}
-                    onChange={e => setNewReferralData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={e => setNewReferralData((prev: any) => ({ ...prev, name: e.target.value }))}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
@@ -1805,7 +1865,7 @@ export default function ReferralsManager(props: any) {
                   <label className="block text-[9.5px] text-[#A69984]/60 font-bold uppercase tracking-widest mb-1.5">Contact Email *</label>
                   <input type="email" required placeholder="owner@business.com"
                     value={newReferralData.contact}
-                    onChange={e => setNewReferralData(prev => ({ ...prev, contact: e.target.value }))}
+                    onChange={e => setNewReferralData((prev: any) => ({ ...prev, contact: e.target.value }))}
                     className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
                   />
                 </div>
@@ -1816,7 +1876,7 @@ export default function ReferralsManager(props: any) {
                 <div className="grid grid-cols-3 gap-2">
                   {(['Pending', 'Active', 'Subscribed'] as const).map(s => (
                     <button key={s} type="button"
-                      onClick={() => setNewReferralData(prev => ({ ...prev, status: s }))}
+                      onClick={() => setNewReferralData((prev: any) => ({ ...prev, status: s }))}
                       className={`py-2.5 rounded-xl font-bold text-[10px] uppercase tracking-widest border transition-all cursor-pointer ${
                         newReferralData.status === s
                           ? s === 'Subscribed' ? 'bg-emerald-500/15 border-emerald-500/35 text-emerald-400'
@@ -1841,9 +1901,9 @@ export default function ReferralsManager(props: any) {
                     const selected = newReferralData.services.includes(svc);
                     return (
                       <button key={svc} type="button"
-                        onClick={() => setNewReferralData(prev => ({
+                        onClick={() => setNewReferralData((prev: any) => ({
                           ...prev,
-                          services: selected ? prev.services.filter(s => s !== svc) : [...prev.services, svc]
+                          services: selected ? prev.services.filter((s: string) => s !== svc) : [...prev.services, svc]
                         }))}
                         className={`px-3 py-1.5 rounded-lg font-bold text-[10px] border transition-all cursor-pointer ${
                           selected ? 'bg-[#ffc53d]/10 border-[#ffc53d]/25 text-[#ffc53d]' : 'bg-white/[0.03] border-white/[0.08] text-[#A69984]/55 hover:border-white/15'
@@ -1885,63 +1945,7 @@ export default function ReferralsManager(props: any) {
         </div>
       )}
 
-      {/* MODAL 0: LINK STRIPE Platform credentials */}
-      {showStripeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
-          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
-            
-            <button type="button" 
-              onClick={() => setShowStripeModal(false)}
-              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
 
-            <h3 className="font-serif text-white font-bold text-2xl mb-2">Link Stripe Platform Account</h3>
-            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Enter your Stripe API credentials to charge restaurant subscribers.</p>
-            
-            <div className="space-y-5">
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Stripe Secret Key (sk_live_... / sk_test_...)</label>
-                <input 
-                  type="password" 
-                  required
-                  placeholder="sk_test_..."
-                  value={stripeSecretKeyInput}
-                  onChange={(e) => setStripeSecretKeyInput(e.target.value)}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Stripe Webhook Secret (whsec_...) - Optional</label>
-                <input 
-                  type="password" 
-                  placeholder="whsec_..."
-                  value={stripeWebhookSecretInput}
-                  onChange={(e) => setStripeWebhookSecretInput(e.target.value)}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 font-mono"
-                />
-              </div>
-
-              <div className="bg-[#ffc53d]/5 border border-[#ffc53d]/15 p-3 rounded-lg flex gap-2.5 items-start">
-                <span className="material-symbols-outlined text-[#ffc53d] text-sm mt-0.5">info</span>
-                <p className="text-[10px] text-[#A69984] leading-relaxed">
-                  Stripe key details will be stored securely in the platform registry. Leave Webhook Secret blank to fall back to environment configurations.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleLinkStripe}
-                className="w-full py-4 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer shadow-lg"
-              >
-                Link Stripe Account
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* MODAL 1: ADD NEW BUSINESS TENANT */}
       {showAddTenantModal && (
@@ -2240,197 +2244,6 @@ export default function ReferralsManager(props: any) {
         </div>
       )}
 
-      {/* MODAL 2: REGISTER NEW ADMIN OWNER */}
-      {showAddAdminModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
-          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
-            
-            <button type="button" 
-              onClick={() => setShowAddAdminModal(false)}
-              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-
-            <h3 className="font-serif text-white font-bold text-2xl mb-2">Register Admin Owner</h3>
-            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Create the admin owner credentials linked to an active Tenant.</p>
-            
-            <form onSubmit={handleAddAdmin} className="space-y-5">
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Owner Full Name</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="e.g. Thomas Keller"
-                  value={newAdminData.name}
-                  onChange={(e) => setNewAdminData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Work Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="e.g. keller@bouchon.com"
-                  value={newAdminData.email}
-                  onChange={(e) => setNewAdminData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Linked Restaurant (Tenant)</label>
-                <select
-                  aria-label="Linked restaurant tenant"
-                  value={newAdminData.tenant}
-                  onChange={(e) => setNewAdminData(prev => ({ ...prev, tenant: e.target.value }))}
-                  required
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
-                >
-                  <option value="">-- Choose Tenant --</option>
-                  {tenants.map(t => (
-                    <option key={t.id} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="pt-4 flex gap-4">
-                <button type="button" 
-                  onClick={() => setShowAddAdminModal(false)}
-                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                 <button type="submit" 
-                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
-                >
-                  Create Admin
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL 2.5: EDIT ADMIN OWNER */}
-      {showEditAdminModal && selectedAdminToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in duration-300">
-          <div className="bg-[#161513] border border-white/10 w-full max-w-[480px] p-8 rounded-2xl shadow-2xl relative font-sans">
-            
-            <button type="button" 
-              onClick={() => { setShowEditAdminModal(false); setSelectedAdminToEdit(null); }}
-              className="absolute top-6 right-6 text-[#A69984]/50 hover:text-white transition-colors"
-            >
-              <span className="material-symbols-outlined text-lg">close</span>
-            </button>
-
-            <h3 className="font-serif text-white font-bold text-2xl mb-2">Edit Admin Owner</h3>
-            <p className="text-[11px] text-[#A69984]/55 font-semibold mb-6">Modify the admin owner credentials and details.</p>
-            
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setAdmins(prev => prev.map(a => 
-                a.id === selectedAdminToEdit.id 
-                  ? { ...a, name: editAdminData.name, email: editAdminData.email, tenant: editAdminData.tenant, status: editAdminData.status } 
-                  : a
-              ));
-              setShowEditAdminModal(false);
-              setSelectedAdminToEdit(null);
-              triggerToast(`Admin "${editAdminData.name}" updated successfully.`, 'success');
-              
-              await recordActivity(
-                'Edit Admin Details',
-                `Edited details of admin "${editAdminData.name}" (${editAdminData.email})`,
-                'Security',
-                { adminId: selectedAdminToEdit.id, name: editAdminData.name, email: editAdminData.email, tenant: editAdminData.tenant, status: editAdminData.status }
-              );
-
-              setAuditLogs(logs => [
-                {
-                  id: Date.now(),
-                  time: 'Just now',
-                  actor: 'Super Admin',
-                  action: `Edited details of admin "${editAdminData.name}"`,
-                  tenant: 'Access Control',
-                  type: 'info'
-                },
-                ...logs
-              ]);
-            }} className="space-y-5">
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Owner Full Name</label>
-                <input 
-                  type="text" 
-                  required
-                  placeholder="e.g. Thomas Keller"
-                  value={editAdminData.name}
-                  onChange={(e) => setEditAdminData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Work Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="e.g. keller@bouchon.com"
-                  value={editAdminData.email}
-                  onChange={(e) => setEditAdminData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Linked Restaurant (Tenant)</label>
-                <select
-                  aria-label="Linked restaurant tenant"
-                  value={editAdminData.tenant}
-                  onChange={(e) => setEditAdminData(prev => ({ ...prev, tenant: e.target.value }))}
-                  required
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
-                >
-                  <option value="">-- Choose Tenant --</option>
-                  {tenants.map(t => (
-                    <option key={t.id} value={t.name}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider mb-2">Account Status</label>
-                <select
-                  aria-label="Account status"
-                  value={editAdminData.status}
-                  onChange={(e) => setEditAdminData(prev => ({ ...prev, status: e.target.value as any }))}
-                  required
-                  className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
-                >
-                  <option value="ACTIVE">ACTIVE</option>
-                  <option value="SUSPENDED">SUSPENDED</option>
-                  <option value="INACTIVE">INACTIVE</option>
-                </select>
-              </div>
-
-              <div className="pt-4 flex gap-4">
-                <button type="button" 
-                  onClick={() => { setShowEditAdminModal(false); setSelectedAdminToEdit(null); }}
-                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest border border-white/15 text-[#A69984] rounded-xl hover:bg-white/5 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button type="submit" 
-                  className="flex-1 py-3 text-[11px] font-bold uppercase tracking-widest bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] rounded-xl transition-all duration-300 cursor-pointer shadow-md"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* MODAL 3: PASSCODE RESET FORM FOR ISSUE HANDLING */}
       {/* MODAL: PROCESS REFERRAL PAYOUT */}

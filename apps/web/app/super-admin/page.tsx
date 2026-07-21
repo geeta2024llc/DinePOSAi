@@ -2305,8 +2305,12 @@ export default function SuperAdminPage() {
                 setShowPayoutProcessModal: setShowPayoutModal, selectedPayoutTransaction: payoutTarget, setSelectedPayoutTransaction: setPayoutTarget,
                 handleProcessPayoutSubmit: handleProcessPayout, referralsSubTab: referralSubTab,
                 setReferralsSubTab: setReferralSubTab, activeActionMenuId, setActiveActionMenuId, hBg, hText,
+                payoutAmount, setPayoutAmount, payoutNote, setPayoutNote, payoutHistory, handleExportPayoutHistory,
                 ambassadorSearchQuery: ambassadorSearch, setAmbassadorSearchQuery: setAmbassadorSearch, ambassadorFilterStatus: ambassadorStatusFilter,
-                setAmbassadorFilterStatus: setAmbassadorStatusFilter, referralConfig, setReferralConfig, handleExportReferrals
+                setAmbassadorFilterStatus: setAmbassadorStatusFilter, referralConfig, setReferralConfig, handleExportReferrals,
+                batchPayoutMode, setBatchPayoutMode, selectedAmbIds, setSelectedAmbIds,
+                addReferralTarget, setAddReferralTarget, handleOpenEditBank, handleToggleAmbassadorStatus,
+                generateReferralCode
               }}
             />
           )}

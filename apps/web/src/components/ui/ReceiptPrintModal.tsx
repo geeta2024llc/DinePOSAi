@@ -63,6 +63,15 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
     const tableNum = parseInt(data.tableLabel.replace(/[^0-9]/g, ''), 10) || 0;
     const taxRate = data.subtotal > 0 ? data.tax / data.subtotal : 0.085;
 
+    let kickDrawer = false;
+    if (typeof window !== 'undefined') {
+      const savedDrawerAutoOpen = localStorage.getItem('dinepos_cashier_drawer_autoopen');
+      const drawerAutoOpen = savedDrawerAutoOpen !== 'false';
+      if (drawerAutoOpen && data.paymentMethod?.toUpperCase() === 'CASH') {
+        kickDrawer = true;
+      }
+    }
+
     return {
       tableNumber: tableNum,
       orderId: data.orderId,
@@ -80,7 +89,8 @@ export default function ReceiptPrintModal({ isOpen, onClose, receiptData, format
       total: data.total,
       isPaid: true,
       paymentMethod: data.paymentMethod,
-      authCode: data.paymentDetails
+      authCode: data.paymentDetails,
+      kickDrawer
     };
   };
 
