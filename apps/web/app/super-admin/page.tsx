@@ -2279,7 +2279,8 @@ export default function SuperAdminPage() {
                 t, theme, isLightTheme, activeTab, triggerToast, logsList,
                 logsSearch, setLogsSearch, logsFilter, setLogsFilter, logsPage,
                 setLogsPage, handleClearLogs: async () => { await clearActivityLogs(); const logs = await getActivityLogs(); setLogsList(logs); }, tenants, fleet, admins,
-                tickets, setActiveTab, clearActivityLogs, getActivityLogs, setLogsList
+                tickets, setActiveTab, clearActivityLogs, getActivityLogs, setLogsList,
+                filteredFleet, ambassadors
               }}
             />
           )}
@@ -2325,7 +2326,8 @@ export default function SuperAdminPage() {
                 setStripeSecretKeyInput, stripeWebhookSecretInput, setStripeWebhookSecretInput,
                 stripeLoading, showStripeModal, setShowStripeModal, handleLinkStripe,
                 handleUnlinkStripe, activeActionMenuId, setActiveActionMenuId, hBg, hText,
-                ticketFilterStatus, setTicketFilterStatus, ticketFilterType, setTicketFilterType
+                ticketFilterStatus, setTicketFilterStatus, ticketFilterType, setTicketFilterType,
+                setShowPlanEditorModal
               }}
             />
           )}

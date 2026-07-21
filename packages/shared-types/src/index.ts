@@ -4,7 +4,7 @@
 
 export type TenantPlan = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'SUSPENDED';
 export type TenantStatus = 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
-export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN';
+export type UserRole = 'SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN' | 'CUSTOMER';
 export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'RESERVED';
 export type OrderCustomerType = 'DINE_IN' | 'TAKE_OUT' | 'DELIVERY';
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'COOKING' | 'READY' | 'SERVED' | 'CANCELLED';
@@ -52,6 +52,7 @@ export interface User {
   role: UserRole;
   isActive: boolean;
   lastLogin: string | null;
+  custom_permissions?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -170,6 +171,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   ],
   KITCHEN: [
     'menu.view', 'kds.view', 'kds.update'
+  ],
+  CUSTOMER: [
+    'menu.view', 'tables.view', 'orders.create'
   ]
 };
 

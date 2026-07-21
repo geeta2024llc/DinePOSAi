@@ -7,7 +7,8 @@ export default function SystemAnalytics(props: any) {
     t, theme, isLightTheme, activeTab, triggerToast, logsList,
     logsSearch, setLogsSearch, logsFilter, setLogsFilter, logsPage,
     setLogsPage, handleClearLogs, tenants, fleet, admins,
-    tickets, setActiveTab, clearActivityLogs, getActivityLogs, setLogsList
+    tickets, setActiveTab, clearActivityLogs, getActivityLogs, setLogsList,
+    filteredFleet, ambassadors
   } = props;
 
   const [analyticsMetricTimeframe, setAnalyticsMetricTimeframe] = React.useState('30d');
@@ -42,21 +43,21 @@ export default function SystemAnalytics(props: any) {
                 <div className={`${theme.cardBg} border rounded-2xl p-6 flex justify-between items-center shadow-md`}>
                   <div>
                     <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">Online Terminals</span>
-                    <h4 className="text-2xl font-bold text-white mt-1">{fleet.filter(f => f.status === 'ONLINE').length} / {fleet.length}</h4>
+                    <h4 className="text-2xl font-bold text-white mt-1">{fleet.filter((f: any) => f.status === 'ONLINE').length} / {fleet.length}</h4>
                   </div>
                   <span className="w-3.5 h-3.5 rounded-full bg-emerald-500"></span>
                 </div>
                 <div className={`${theme.cardBg} border rounded-2xl p-6 flex justify-between items-center shadow-md`}>
                   <div>
                     <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">Device Warnings</span>
-                    <h4 className="text-2xl font-bold text-amber-400 mt-1">{fleet.filter(f => f.status === 'WARNING_LOW_PAPER').length} Alerts</h4>
+                    <h4 className="text-2xl font-bold text-amber-400 mt-1">{fleet.filter((f: any) => f.status === 'WARNING_LOW_PAPER').length} Alerts</h4>
                   </div>
                   <span className="w-3.5 h-3.5 rounded-full bg-amber-400 motion-safe:animate-pulse"></span>
                 </div>
                 <div className={`${theme.cardBg} border rounded-2xl p-6 flex justify-between items-center shadow-md`}>
                   <div>
                     <span className="text-[10px] text-[#A69984]/50 font-bold uppercase tracking-wider">Offline Status</span>
-                    <h4 className="text-2xl font-bold text-rose-400 mt-1">{fleet.filter(f => f.status === 'OFFLINE').length} Terminals</h4>
+                    <h4 className="text-2xl font-bold text-rose-400 mt-1">{fleet.filter((f: any) => f.status === 'OFFLINE').length} Terminals</h4>
                   </div>
                   <span className="w-3.5 h-3.5 rounded-full bg-rose-500"></span>
                 </div>
@@ -83,7 +84,7 @@ export default function SystemAnalytics(props: any) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-semibold text-white/90">
-                      {filteredFleet.map(f => (
+                      {filteredFleet.map((f: any) => (
                         <tr key={f.id} className="hover:bg-white/[0.01] transition-colors">
                           <td className="py-4 px-4 text-sm font-serif font-bold text-white flex items-center gap-2">
                             <span className="material-symbols-outlined text-[#A69984] text-sm">
@@ -130,47 +131,47 @@ export default function SystemAnalytics(props: any) {
           {activeTab === 'analytics' && (() => {
             // Derived metrics from live state
             const totalTenants = tenants.length;
-            const activeTenants = tenants.filter(t => t.status === 'ACTIVE').length;
-            const suspendedTenants = tenants.filter(t => t.status === 'SUSPENDED').length;
-            const trialTenants = tenants.filter(t => t.plan === 'TRIAL').length;
+            const activeTenants = tenants.filter((t: any) => t.status === 'ACTIVE').length;
+            const suspendedTenants = tenants.filter((t: any) => t.status === 'SUSPENDED').length;
+            const trialTenants = tenants.filter((t: any) => t.plan === 'TRIAL').length;
             const churnRate = totalTenants > 0 ? ((suspendedTenants / totalTenants) * 100).toFixed(1) : '0.0';
             const trialConversion = totalTenants > 0 ? (((totalTenants - trialTenants - suspendedTenants) / totalTenants) * 100).toFixed(1) : '0.0';
 
-            const businessTenants = tenants.filter(t => t.tier === 'Business');
-            const growthTenants = tenants.filter(t => t.tier === 'Growth');
-            const starterTenants = tenants.filter(t => t.tier === 'Starter');
+            const businessTenants = tenants.filter((t: any) => t.tier === 'Business');
+            const growthTenants = tenants.filter((t: any) => t.tier === 'Growth');
+            const starterTenants = tenants.filter((t: any) => t.tier === 'Starter');
 
             const parseRevenue = (r: string) => parseFloat(r.replace(/[¥$,]/g, '')) || 0;
-            const totalRevenue = tenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
-            const businessRevenue = businessTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
-            const growthRevenue = growthTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
-            const starterRevenue = starterTenants.reduce((sum, t) => sum + parseRevenue(t.revenue), 0);
+            const totalRevenue = tenants.reduce((sum: any, t: any) => sum + parseRevenue(t.revenue), 0);
+            const businessRevenue = businessTenants.reduce((sum: any, t: any) => sum + parseRevenue(t.revenue), 0);
+            const growthRevenue = growthTenants.reduce((sum: any, t: any) => sum + parseRevenue(t.revenue), 0);
+            const starterRevenue = starterTenants.reduce((sum: any, t: any) => sum + parseRevenue(t.revenue), 0);
 
-            const totalTerminals = tenants.reduce((sum, t) => sum + t.terminals, 0);
+            const totalTerminals = tenants.reduce((sum: any, t: any) => sum + t.terminals, 0);
             const avgTerminalsPerTenant = totalTenants > 0 ? (totalTerminals / totalTenants).toFixed(1) : '0';
 
-            const onlineDevices = fleet.filter(d => d.status === 'ONLINE').length;
-            const offlineDevices = fleet.filter(d => d.status === 'OFFLINE').length;
-            const warningDevices = fleet.filter(d => d.status === 'WARNING_LOW_PAPER').length;
+            const onlineDevices = fleet.filter((d: any) => d.status === 'ONLINE').length;
+            const offlineDevices = fleet.filter((d: any) => d.status === 'OFFLINE').length;
+            const warningDevices = fleet.filter((d: any) => d.status === 'WARNING_LOW_PAPER').length;
             const deviceUptime = fleet.length > 0 ? ((onlineDevices / fleet.length) * 100).toFixed(1) : '100.0';
 
-            const posDevices = fleet.filter(d => d.type === 'POS').length;
-            const kdsDevices = fleet.filter(d => d.type === 'KDS').length;
-            const tabletDevices = fleet.filter(d => d.type === 'TABLET').length;
-            const printerDevices = fleet.filter(d => d.type === 'PRINTER').length;
+            const posDevices = fleet.filter((d: any) => d.type === 'POS').length;
+            const kdsDevices = fleet.filter((d: any) => d.type === 'KDS').length;
+            const tabletDevices = fleet.filter((d: any) => d.type === 'TABLET').length;
+            const printerDevices = fleet.filter((d: any) => d.type === 'PRINTER').length;
 
-            const activeAdmins = admins.filter(a => a.status === 'ACTIVE').length;
-            const inactiveAdmins = admins.filter(a => a.status !== 'ACTIVE').length;
+            const activeAdmins = admins.filter((a: any) => a.status === 'ACTIVE').length;
+            const inactiveAdmins = admins.filter((a: any) => a.status !== 'ACTIVE').length;
 
-            const openTickets = tickets.filter(t => t.status === 'OPEN').length;
-            const inProgressTickets = tickets.filter(t => t.status === 'IN_PROGRESS').length;
-            const resolvedTickets = tickets.filter(t => t.status === 'RESOLVED').length;
+            const openTickets = tickets.filter((t: any) => t.status === 'OPEN').length;
+            const inProgressTickets = tickets.filter((t: any) => t.status === 'IN_PROGRESS').length;
+            const resolvedTickets = tickets.filter((t: any) => t.status === 'RESOLVED').length;
             const ticketResolutionRate = tickets.length > 0 ? ((resolvedTickets / tickets.length) * 100).toFixed(0) : '0';
 
-            const totalPendingPayouts = ambassadors.reduce((sum: number, a: Ambassador) => sum + a.pendingRewards, 0);
-            const totalPaidPayouts = ambassadors.reduce((sum: number, a: Ambassador) => sum + a.paidRewards, 0);
+            const totalPendingPayouts = ambassadors.reduce((sum: number, a: any) => sum + a.pendingRewards, 0);
+            const totalPaidPayouts = ambassadors.reduce((sum: number, a: any) => sum + a.paidRewards, 0);
             const totalAmbassadors = ambassadors.length;
-            const totalReferredBusinesses = ambassadors.reduce((sum: number, a: Ambassador) => sum + a.invitedBusinesses.length, 0);
+            const totalReferredBusinesses = ambassadors.reduce((sum: number, a: any) => sum + a.invitedBusinesses.length, 0);
 
             const mrr = (totalRevenue / 12).toFixed(0);
             const arr = totalRevenue.toFixed(0);
@@ -335,7 +336,7 @@ export default function SystemAnalytics(props: any) {
                     <div className="mt-5 pt-5 border-t border-white/5 grid grid-cols-3 gap-4">
                       <div>
                         <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">Avg Monthly</div>
-                        <div className="text-white font-bold text-sm mt-0.5">${(mockMonthlyRevenue.reduce((a, b) => a + b, 0) / 6 / 1000).toFixed(0)}K</div>
+                        <div className="text-white font-bold text-sm mt-0.5">${(mockMonthlyRevenue.reduce((a: any, b: any) => a + b, 0) / 6 / 1000).toFixed(0)}K</div>
                       </div>
                       <div>
                         <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">YTD Growth</div>
@@ -681,7 +682,7 @@ export default function SystemAnalytics(props: any) {
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {(() => {
-                        const filtered = logsList.filter(log => {
+                        const filtered = logsList.filter((log: any) => {
                           const matchesCat = logsFilter === 'All' || log.category?.toLowerCase() === logsFilter.toLowerCase();
                           const matchesSearch = !logsSearch || 
                             log.message?.toLowerCase().includes(logsSearch.toLowerCase()) ||
@@ -697,7 +698,7 @@ export default function SystemAnalytics(props: any) {
 
                         return (
                           <>
-                            {paginated.map((log, idx) => {
+                            {paginated.map((log: any, idx: number) => {
                               let catBadge = 'bg-white/5 text-white/70';
                               if (log.category === 'Tenants') catBadge = 'bg-sky-500/10 border border-sky-500/20 text-sky-400';
                               else if (log.category === 'Support') catBadge = 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
@@ -755,7 +756,7 @@ export default function SystemAnalytics(props: any) {
 
                 {/* Pagination Footer */}
                 {(() => {
-                  const filtered = logsList.filter(log => {
+                  const filtered = logsList.filter((log: any) => {
                     const matchesCat = logsFilter === 'All' || log.category?.toLowerCase() === logsFilter.toLowerCase();
                     const matchesSearch = !logsSearch || 
                       log.message?.toLowerCase().includes(logsSearch.toLowerCase()) ||
@@ -778,7 +779,7 @@ export default function SystemAnalytics(props: any) {
                         <button
                           type="button"
                           disabled={logsPage === 1}
-                          onClick={() => setLogsPage(prev => Math.max(prev - 1, 1))}
+                          onClick={() => setLogsPage((prev: any) => Math.max(prev - 1, 1))}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                             logsPage === 1 ? 'opacity-30 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10'
                           }`}
@@ -793,7 +794,7 @@ export default function SystemAnalytics(props: any) {
                         <button
                           type="button"
                           disabled={logsPage === totalPages}
-                          onClick={() => setLogsPage(prev => Math.min(prev + 1, totalPages))}
+                          onClick={() => setLogsPage((prev: any) => Math.min(prev + 1, totalPages))}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
                             logsPage === totalPages ? 'opacity-30 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10'
                           }`}

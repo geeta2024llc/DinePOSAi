@@ -226,15 +226,17 @@ export const createStaffSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   email: z.string().email('Invalid email format'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN']),
+  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN', 'CUSTOMER']),
+  custom_permissions: z.array(z.string()).optional(),
 });
 
 export const updateStaffSchema = z.object({
   name: z.string().min(1).optional(),
   email: z.string().email('Invalid email format').optional(),
   password: z.string().min(8).optional(),
-  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN']).optional(),
+  role: z.enum(['SUPER_ADMIN', 'OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN', 'CUSTOMER']).optional(),
   isActive: z.boolean().optional(),
+  custom_permissions: z.array(z.string()).optional(),
 });
 
 // 4. GET ALL STAFF/USERS
@@ -245,7 +247,7 @@ export const getTenantUsers = async (req: AuthenticatedRequest, res: Response<Ap
   try {
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, name, email, role, is_active, created_at, last_login')
+      .select('id, name, email, role, is_active, custom_permissions, created_at, last_login')
       .eq('tenant_id', tenantId)
       .order('name', { ascending: true });
 
@@ -265,7 +267,7 @@ export const createTenantUser = async (req: AuthenticatedRequest, res: Response<
   const tenantId = req.user?.tenantId;
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
 
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, custom_permissions } = req.body;
   const emailLower = email.toLowerCase().trim();
   let createdAuthUserId: string | null = null;
 
@@ -309,9 +311,10 @@ export const createTenantUser = async (req: AuthenticatedRequest, res: Response<
         email: emailLower,
         password_hash: passwordHash,
         role,
-        is_active: true
+        is_active: true,
+        custom_permissions: custom_permissions || []
       })
-      .select('id, name, email, role, is_active, created_at')
+      .select('id, name, email, role, is_active, custom_permissions, created_at')
       .single();
 
     if (dbErr || !newUser) {
@@ -339,7 +342,7 @@ export const updateTenantUser = async (req: AuthenticatedRequest, res: Response<
   
   if (!tenantId) return res.status(400).json({ success: false, error: 'Tenant context missing.' });
 
-  const { name, email, password, role, isActive } = req.body;
+  const { name, email, password, role, isActive, custom_permissions } = req.body;
 
   try {
     const { data: existingUser } = await supabase
@@ -371,6 +374,7 @@ export const updateTenantUser = async (req: AuthenticatedRequest, res: Response<
     if (email !== undefined) updates.email = email.toLowerCase().trim();
     if (role !== undefined) updates.role = role;
     if (isActive !== undefined) updates.is_active = isActive;
+    if (custom_permissions !== undefined) updates.custom_permissions = custom_permissions;
     if (password !== undefined) {
       updates.password_hash = await bcrypt.hash(password, 12);
     }
@@ -381,7 +385,7 @@ export const updateTenantUser = async (req: AuthenticatedRequest, res: Response<
       .update(updates)
       .eq('id', id)
       .eq('tenant_id', tenantId)
-      .select('id, name, email, role, is_active, created_at, updated_at')
+      .select('id, name, email, role, is_active, custom_permissions, created_at, updated_at')
       .single();
 
     if (error || !updatedUser) {

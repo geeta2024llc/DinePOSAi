@@ -6,7 +6,7 @@ import { useAuth } from '../../../app/authContext';
 
 interface AuthGuardProps {
   children: React.ReactNode;
-  allowedRoles?: ('SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN')[];
+  allowedRoles?: ('SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN' | 'CUSTOMER')[];
 }
 
 export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {

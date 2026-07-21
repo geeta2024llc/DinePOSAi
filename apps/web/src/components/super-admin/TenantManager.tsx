@@ -145,7 +145,7 @@ export default function TenantManager(props: any) {
                     {/* List View */}
                     {locationsView === 'list' && (
                       <div className="space-y-2 max-h-[370px] overflow-y-auto pr-1">
-                        {tenants.map(t => (
+                        {tenants.map((t: any) => (
                           <div key={t.id} className="flex items-center justify-between px-4 py-3 bg-white/[0.025] border border-white/5 rounded-xl hover:bg-white/[0.04] transition-colors">
                             <div className="flex items-center gap-3 min-w-0">
                               <div className={`w-2 h-2 rounded-full flex-shrink-0 ${t.status === 'ACTIVE' ? 'bg-emerald-400' : 'bg-rose-400'}`} />
@@ -421,7 +421,7 @@ export default function TenantManager(props: any) {
                   </div>
                   <div className="z-10 flex items-baseline gap-3">
                     <h3 className="font-serif text-5xl font-bold text-white tracking-wide">
-                      {138 + tenants.filter(t => t.status === 'ACTIVE').length}
+                      {138 + tenants.filter((t: any) => t.status === 'ACTIVE').length}
                     </h3>
                     <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 leading-none">
                       <span className="material-symbols-outlined text-sm font-bold leading-none">arrow_upward</span>
@@ -462,7 +462,7 @@ export default function TenantManager(props: any) {
                   </div>
                   <div className="z-10">
                     <h3 className="font-serif text-5xl font-bold text-rose-500 tracking-wide">
-                      {tenants.filter(t => t.status === 'SUSPENDED' || checkExpiryStatus(t.expiryDate) === 'expired' || t.billingFailed).length}
+                      {tenants.filter((t: any) => t.status === 'SUSPENDED' || checkExpiryStatus(t.expiryDate) === 'expired' || t.billingFailed).length}
                     </h3>
                     <p className="text-[10px] text-rose-400/70 font-semibold mt-1 uppercase tracking-wider">Suspended/Issue</p>
                   </div>
@@ -550,7 +550,7 @@ export default function TenantManager(props: any) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-semibold text-white/90">
-                      {filteredTenants.map(t => (
+                      {filteredTenants.map((t: any) => (
                         <tr key={t.id} className="hover:bg-white/[0.01] transition-colors">
                           <td className="py-4 px-4 text-sm font-serif font-bold text-white flex items-center gap-3">
                             <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/5 flex items-center justify-center flex-shrink-0 select-none">
@@ -780,7 +780,7 @@ export default function TenantManager(props: any) {
                         </div>
                         <button type="button" 
                           onClick={() => {
-                            setGlobalFeatures(prev => ({ ...prev, aiConcierge: !prev.aiConcierge }));
+                            setGlobalFeatures((prev: any) => ({ ...prev, aiConcierge: !prev.aiConcierge }));
                             triggerToast(`AI Concierge feature status changed.`, 'success');
                           }}
                           className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 focus:outline-none ${globalFeatures.aiConcierge ? 'bg-emerald-500' : 'bg-white/10'}`}
@@ -799,7 +799,7 @@ export default function TenantManager(props: any) {
                             <select
                               value={globalFeatures.llmModel}
                               onChange={(e) => {
-                                setGlobalFeatures(prev => ({ ...prev, llmModel: e.target.value }));
+                                setGlobalFeatures((prev: any) => ({ ...prev, llmModel: e.target.value }));
                                 triggerToast('LLM model provider updated.', 'success');
                               }}
                               className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
@@ -818,7 +818,7 @@ export default function TenantManager(props: any) {
                               type="password"
                               placeholder="sk-..."
                               value={globalFeatures.llmApiKey}
-                              onChange={(e) => setGlobalFeatures(prev => ({ ...prev, llmApiKey: e.target.value }))}
+                              onChange={(e) => setGlobalFeatures((prev: any) => ({ ...prev, llmApiKey: e.target.value }))}
                               className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffc53d]/45 transition-colors"
                             />
                             <p className="text-[9.5px] text-[#A69984]/50 mt-1.5">Your API key is stored securely and used to process Concierge requests.</p>
@@ -834,7 +834,7 @@ export default function TenantManager(props: any) {
                         </div>
                         <button type="button" 
                           onClick={() => {
-                            setGlobalFeatures(prev => ({ ...prev, selfCheckout: !prev.selfCheckout }));
+                            setGlobalFeatures((prev: any) => ({ ...prev, selfCheckout: !prev.selfCheckout }));
                             triggerToast(`Self-Checkout feature status changed.`, 'success');
                           }}
                           className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 focus:outline-none ${globalFeatures.selfCheckout ? 'bg-emerald-500' : 'bg-white/10'}`}
@@ -851,7 +851,7 @@ export default function TenantManager(props: any) {
                         </div>
                         <button type="button" 
                           onClick={() => {
-                            setGlobalFeatures(prev => ({ ...prev, offlineMode: !prev.offlineMode }));
+                            setGlobalFeatures((prev: any) => ({ ...prev, offlineMode: !prev.offlineMode }));
                             triggerToast(`Offline Mode status changed.`, 'success');
                           }}
                           className={`w-12 h-6 rounded-full p-1 transition-colors duration-300 focus:outline-none ${globalFeatures.offlineMode ? 'bg-emerald-500' : 'bg-white/10'}`}
@@ -876,7 +876,7 @@ export default function TenantManager(props: any) {
                           aria-label="Backup interval"
                           value={globalFeatures.backupInterval}
                           onChange={(e) => {
-                            setGlobalFeatures(prev => ({ ...prev, backupInterval: e.target.value }));
+                            setGlobalFeatures((prev: any) => ({ ...prev, backupInterval: e.target.value }));
                             triggerToast(`Backup policy interval updated to: ${e.target.value}`, 'success');
                           }}
                           className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
@@ -893,7 +893,7 @@ export default function TenantManager(props: any) {
                           aria-label="Backup retention"
                           value={globalFeatures.backupRetention}
                           onChange={(e) => {
-                            setGlobalFeatures(prev => ({ ...prev, backupRetention: parseInt(e.target.value) }));
+                            setGlobalFeatures((prev: any) => ({ ...prev, backupRetention: parseInt(e.target.value) }));
                             triggerToast(`Backup retention updated to last ${e.target.value} logs.`, 'success');
                           }}
                           className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d]/45"
@@ -939,7 +939,7 @@ export default function TenantManager(props: any) {
                     </div>
 
                     <div className="space-y-4 text-xs select-text overflow-y-auto max-h-[380px] pr-1">
-                      {filteredLogs.map(log => (
+                      {filteredLogs.map((log: any) => (
                         <div key={log.id} className="border-b border-white/5 pb-3 last:border-none">
                           <div className="flex gap-2 items-start">
                             <span className={`material-symbols-outlined text-sm mt-0.5 ${

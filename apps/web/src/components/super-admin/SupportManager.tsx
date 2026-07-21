@@ -12,7 +12,8 @@ export default function SupportManager(props: any) {
     stripeLoading, showStripeModal, setShowStripeModal, handleLinkStripe,
     handleUnlinkStripe, activeActionMenuId, setActiveActionMenuId, hBg, hText,
     ticketFilterStatus,
-    setTicketFilterStatus, ticketFilterType, setTicketFilterType
+    setTicketFilterStatus, ticketFilterType, setTicketFilterType,
+    setShowPlanEditorModal
   } = props;
 
   return (
@@ -64,7 +65,7 @@ export default function SupportManager(props: any) {
                     <span className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider">Open (Unresolved)</span>
                     <span className="w-2 h-2 rounded-full bg-rose-500 motion-safe:animate-ping"></span>
                   </div>
-                  <h4 className="text-2xl font-bold text-rose-400 mt-1.5">{tickets.filter(t => t.status === 'OPEN').length} Tickets</h4>
+                  <h4 className="text-2xl font-bold text-rose-400 mt-1.5">{tickets.filter((t: any) => t.status === 'OPEN').length} Tickets</h4>
                 </button>
                 {/* In Progress */}
                 <button type="button" 
@@ -74,7 +75,7 @@ export default function SupportManager(props: any) {
                   }`}
                 >
                   <span className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider">In Investigation</span>
-                  <h4 className="text-2xl font-bold text-amber-400 mt-1.5">{tickets.filter(t => t.status === 'IN_PROGRESS').length} Tickets</h4>
+                  <h4 className="text-2xl font-bold text-amber-400 mt-1.5">{tickets.filter((t: any) => t.status === 'IN_PROGRESS').length} Tickets</h4>
                 </button>
                 {/* Resolved */}
                 <button type="button" 
@@ -84,7 +85,7 @@ export default function SupportManager(props: any) {
                   }`}
                 >
                   <span className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider">Resolved Cases</span>
-                  <h4 className="text-2xl font-bold text-emerald-400 mt-1.5">{tickets.filter(t => t.status === 'RESOLVED').length} Tickets</h4>
+                  <h4 className="text-2xl font-bold text-emerald-400 mt-1.5">{tickets.filter((t: any) => t.status === 'RESOLVED').length} Tickets</h4>
                 </button>
               </div>
 
@@ -113,16 +114,16 @@ export default function SupportManager(props: any) {
 
                     <div className="space-y-4 font-sans text-xs max-h-[500px] overflow-y-auto pr-1">
                       {tickets
-                        .filter(t => ticketFilterStatus === 'ALL' || t.status === ticketFilterStatus)
-                        .filter(t => ticketFilterType === 'ALL' || t.inquiryType === ticketFilterType)
-                        .map(t => {
+                        .filter((t: any) => ticketFilterStatus === 'ALL' || t.status === ticketFilterStatus)
+                        .filter((t: any) => ticketFilterType === 'ALL' || t.inquiryType === ticketFilterType)
+                        .map((t: any) => {
                           const isSelected = selectedTicket && selectedTicket.id === t.id;
                           return (
                             <div 
                               key={t.id}
                               onClick={() => {
                                 setSelectedTicket(t);
-                                setTicketReplyText(t.replyMessage || '');
+                                setSupportReply(t.replyMessage || '');
                               }}
                               className={`p-5 rounded-xl border transition-all duration-200 cursor-pointer flex justify-between items-start gap-4 ${
                                 isSelected 
@@ -158,7 +159,7 @@ export default function SupportManager(props: any) {
                                 <button type="button" 
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleTicketDelete(t.id);
+                                    triggerToast('Ticket deletion is not allowed.', 'info');
                                   }}
                                   className="text-[9px] text-[#A69984]/40 hover:text-rose-400 uppercase font-bold tracking-widest transition-colors cursor-pointer"
                                 >
@@ -170,8 +171,8 @@ export default function SupportManager(props: any) {
                         })}
 
                       {tickets
-                        .filter(t => ticketFilterStatus === 'ALL' || t.status === ticketFilterStatus)
-                        .filter(t => ticketFilterType === 'ALL' || t.inquiryType === ticketFilterType)
+                        .filter((t: any) => ticketFilterStatus === 'ALL' || t.status === ticketFilterStatus)
+                        .filter((t: any) => ticketFilterType === 'ALL' || t.inquiryType === ticketFilterType)
                         .length === 0 && (
                         <div className="text-center py-20 text-[#A69984]/30 select-none border border-dashed border-white/5 rounded-2xl">
                           No support inquiries found.
@@ -217,12 +218,12 @@ export default function SupportManager(props: any) {
                             <p className="text-[#A69984] leading-relaxed font-semibold italic">"{selectedTicket.replyMessage}"</p>
                           </div>
                         ) : (
-                          <form onSubmit={handleTicketReply} className="space-y-2.5">
+                          <form onSubmit={handleSendTicketReply} className="space-y-2.5">
                             <label className="block text-[#A69984] text-[9.5px] font-bold uppercase tracking-wider">Reply & Resolve Message</label>
                             <textarea
                               rows={4}
-                              value={ticketReplyText}
-                              onChange={(e) => setTicketReplyText(e.target.value)}
+                              value={supportReply}
+                              onChange={(e) => setSupportReply(e.target.value)}
                               placeholder="Type response and instructions to resolve the ticket..."
                               className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl p-4 text-xs text-white focus:outline-none focus:border-[#ffc53d]/40 resize-none placeholder-white/20 font-medium"
                             />
@@ -230,7 +231,7 @@ export default function SupportManager(props: any) {
                             <div className="flex gap-3 pt-2">
                               {selectedTicket.status !== 'IN_PROGRESS' && (
                                 <button type="button"
-                                  onClick={() => handleTicketStatusChange(selectedTicket.id, 'IN_PROGRESS')}
+                                  onClick={() => handleUpdateTicketStatus(selectedTicket.id, 'IN_PROGRESS')}
                                   className="px-4 py-3 border border-white/10 hover:border-white/20 text-[#A69984] font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
                                 >
                                   Investigate

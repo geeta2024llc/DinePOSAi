@@ -114,7 +114,21 @@ export const authenticateUser = async (
         logger.error(`Failed to load permissions for role ${decoded.role}: ${permErr.message}`);
       }
 
-      permissions = permissionsData?.map((p) => p.permission) || [];
+      const rolePermissions = permissionsData?.map((p) => p.permission) || [];
+
+      // Fetch custom permissions from users table
+      const { data: userData, error: userErr } = await supabase
+        .from('users')
+        .select('custom_permissions')
+        .eq('id', decoded.id)
+        .maybeSingle();
+
+      if (userErr) {
+        logger.error(`Failed to load custom permissions for user ${decoded.id}: ${userErr.message}`);
+      }
+
+      const userCustomPermissions = userData?.custom_permissions || [];
+      permissions = userCustomPermissions.length > 0 ? userCustomPermissions : rolePermissions;
 
       // Save to active memory cache
       authCache.set(cacheKey, {

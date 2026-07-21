@@ -6,7 +6,7 @@ import React from 'react';
 import { useAuth } from '../../../app/authContext';
 
 interface RoleGateProps {
-  roles: ('SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN')[];
+  roles: ('SUPER_ADMIN' | 'OWNER' | 'MANAGER' | 'CASHIER' | 'WAITER' | 'KITCHEN' | 'CUSTOMER')[];
   fallback?: React.ReactNode;
   children: React.ReactNode;
 }

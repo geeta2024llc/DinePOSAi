@@ -3,6 +3,67 @@
 import React, { useState, useEffect } from 'react';
 import { recordActivity } from '@/utils/activityLogger';
 import { isDemoTenant, apiRequest } from '@/utils/api';
+import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, UserRole } from '@dineposai/shared-types';
+
+const FEATURE_GROUPS = [
+  {
+    title: 'Orders & Payments',
+    permissions: [
+      { key: 'orders.create', label: 'Create Orders' },
+      { key: 'orders.edit', label: 'Edit/Modify Orders' },
+      { key: 'orders.refund', label: 'Issue Refunds' },
+      { key: 'orders.cancel', label: 'Cancel Orders' },
+      { key: 'invoice.print', label: 'Print Invoices/Receipts' },
+    ]
+  },
+  {
+    title: 'Tables & Layouts',
+    permissions: [
+      { key: 'tables.view', label: 'View Floor Plan & Tables' },
+      { key: 'tables.manage', label: 'Manage Tables & Floor Plan' },
+    ]
+  },
+  {
+    title: 'Menu & Catalog',
+    permissions: [
+      { key: 'menu.view', label: 'View Menu Items' },
+      { key: 'menu.manage', label: 'Edit & Manage Menu Catalog' },
+    ]
+  },
+  {
+    title: 'Kitchen Display System (KDS)',
+    permissions: [
+      { key: 'kds.view', label: 'View KDS Board' },
+      { key: 'kds.update', label: 'Complete/Update Cooking States' },
+    ]
+  },
+  {
+    title: 'Inventory Management',
+    permissions: [
+      { key: 'inventory.view', label: 'View Stock & Ingredients' },
+      { key: 'inventory.manage', label: 'Manage Stock Levels & Ordering' },
+    ]
+  },
+  {
+    title: 'Cash Drawer Control',
+    permissions: [
+      { key: 'cash_drawer.open', label: 'Open Cash Drawer' },
+      { key: 'cash_drawer.no_sale', label: 'No Sale / Open without Transaction' },
+      { key: 'cash_drawer.cash_in', label: 'Perform Cash In / Pay Ins' },
+      { key: 'cash_drawer.cash_out', label: 'Perform Cash Out / Safe Drops' },
+    ]
+  },
+  {
+    title: 'Office & Security',
+    permissions: [
+      { key: 'staff.view', label: 'View Employees & Rosters' },
+      { key: 'staff.manage', label: 'Manage Roster & Permissions' },
+      { key: 'billing.view', label: 'View Platform Subscription' },
+      { key: 'reports.view', label: 'View Business Analytics & Reports' },
+      { key: 'audit.view', label: 'View System Audit Logs' },
+    ]
+  }
+];
 
 interface StaffTabProps {
   t: any;
@@ -12,16 +73,18 @@ interface StaffTabProps {
 }
 
 export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTabProps) {
-  const [staffMembers, setStaffMembers] = useState<Array<{id: string; name: string; email?: string; role: string; status: string; performance: number; avatar: string}>>([]);
+  const [staffMembers, setStaffMembers] = useState<Array<{id: string; name: string; email?: string; role: string; status: string; performance: number; avatar: string; custom_permissions?: string[]}>>([]);
   
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     email: '',
     password: '',
-    role: 'Server',
+    role: 'Waiter',
     status: 'OFF_DUTY',
     performance: 5.0
   });
+
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
@@ -48,10 +111,11 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
 
   const dbToUiRole = (dbRole: string): string => {
     switch (dbRole) {
-      case 'WAITER': return 'Server';
-      case 'CASHIER': return 'Bartender';
-      case 'KITCHEN': return 'Line Cook';
+      case 'WAITER': return 'Waiter';
+      case 'CASHIER': return 'Cashier';
+      case 'KITCHEN': return 'KDS';
       case 'MANAGER': return 'Manager';
+      case 'CUSTOMER': return 'Customer';
       case 'OWNER': return 'Owner';
       default: return dbRole;
     }
@@ -59,24 +123,25 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
 
   const uiToDbRole = (uiRole: string): string => {
     switch (uiRole) {
-      case 'Server': return 'WAITER';
-      case 'Bartender': return 'CASHIER';
-      case 'Line Cook': return 'KITCHEN';
+      case 'Waiter': return 'WAITER';
+      case 'Cashier': return 'CASHIER';
+      case 'KDS': return 'KITCHEN';
       case 'Manager': return 'MANAGER';
+      case 'Customer': return 'CUSTOMER';
       case 'Owner': return 'OWNER';
       default: return uiRole;
     }
   };
 
   const defaultMockMembers = [
-    { id: 'EMP-101', name: 'Elena Rodriguez', email: 'elena@dinepos.ai', role: 'Server', status: 'ON_SHIFT', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-102', name: 'Marcus Chen', email: 'marcus@dinepos.ai', role: 'Bartender', status: 'OFF_DUTY', performance: 4.8, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-103', name: 'Sarah Jenkins', email: 'sarah@dinepos.ai', role: 'Line Cook', status: 'ON_SHIFT', performance: 4.5, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-104', name: 'David Vance', email: 'david@dinepos.ai', role: 'Server', status: 'OFF_DUTY', performance: 4.0, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-105', name: 'Lisa Kim', email: 'lisa@dinepos.ai', role: 'Manager', status: 'ON_SHIFT', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1573496799652-408c2ac9fe98?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-106', name: 'Robert Taylor', email: 'robert@dinepos.ai', role: 'Line Cook', status: 'OFF_DUTY', performance: 4.8, avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-107', name: 'Emily Davis', email: 'emily@dinepos.ai', role: 'Server', status: 'OVERTIME', performance: 4.5, avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?q=80&w=120&auto=format&fit=crop' },
-    { id: 'EMP-108', name: 'John Watson', email: 'john@dinepos.ai', role: 'Bartender', status: 'OFF_DUTY', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop' }
+    { id: 'EMP-101', name: 'Elena Rodriguez', email: 'elena@dinepos.ai', role: 'Waiter', status: 'ON_SHIFT', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=120&auto=format&fit=crop', custom_permissions: ['orders.create', 'orders.edit', 'tables.view', 'menu.view'] },
+    { id: 'EMP-102', name: 'Marcus Chen', email: 'marcus@dinepos.ai', role: 'Cashier', status: 'OFF_DUTY', performance: 4.8, avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=120&auto=format&fit=crop', custom_permissions: ['orders.create', 'orders.edit', 'orders.refund', 'orders.cancel', 'invoice.print', 'tables.view', 'menu.view', 'cash_drawer.open', 'cash_drawer.cash_in', 'cash_drawer.cash_out', 'cash_drawer.no_sale'] },
+    { id: 'EMP-103', name: 'Sarah Jenkins', email: 'sarah@dinepos.ai', role: 'KDS', status: 'ON_SHIFT', performance: 4.5, avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=120&auto=format&fit=crop', custom_permissions: ['menu.view', 'kds.view', 'kds.update'] },
+    { id: 'EMP-104', name: 'David Vance', email: 'david@dinepos.ai', role: 'Waiter', status: 'OFF_DUTY', performance: 4.0, avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=120&auto=format&fit=crop', custom_permissions: ['orders.create', 'orders.edit', 'tables.view', 'menu.view'] },
+    { id: 'EMP-105', name: 'Lisa Kim', email: 'lisa@dinepos.ai', role: 'Manager', status: 'ON_SHIFT', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1573496799652-408c2ac9fe98?q=80&w=120&auto=format&fit=crop', custom_permissions: ['orders.create', 'orders.edit', 'orders.refund', 'orders.cancel', 'invoice.print', 'tables.view', 'tables.manage', 'menu.view', 'menu.manage', 'kds.view', 'kds.update', 'inventory.view', 'inventory.manage', 'staff.view', 'billing.view', 'reports.view', 'audit.view', 'cash_drawer.open', 'cash_drawer.cash_in', 'cash_drawer.cash_out', 'cash_drawer.no_sale'] },
+    { id: 'EMP-106', name: 'Robert Taylor', email: 'robert@dinepos.ai', role: 'KDS', status: 'OFF_DUTY', performance: 4.8, avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?q=80&w=120&auto=format&fit=crop', custom_permissions: ['menu.view', 'kds.view', 'kds.update'] },
+    { id: 'EMP-107', name: 'Emily Davis', email: 'emily@dinepos.ai', role: 'Waiter', status: 'OVERTIME', performance: 4.5, avatar: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?q=80&w=120&auto=format&fit=crop', custom_permissions: ['orders.create', 'orders.edit', 'tables.view', 'menu.view'] },
+    { id: 'EMP-108', name: 'John Watson', email: 'john@dinepos.ai', role: 'Cashier', status: 'OFF_DUTY', performance: 5.0, avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=120&auto=format&fit=crop', custom_permissions: ['orders.create', 'orders.edit', 'orders.refund', 'orders.cancel', 'invoice.print', 'tables.view', 'menu.view', 'cash_drawer.open', 'cash_drawer.cash_in', 'cash_drawer.cash_out', 'cash_drawer.no_sale'] }
   ];
 
   const loadStaffMembers = async () => {
@@ -141,10 +206,11 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                       name: '',
                       email: '',
                       password: '',
-                      role: 'Server',
+                      role: 'Waiter',
                       status: 'OFF_DUTY',
                       performance: 5.0
                     });
+                    setSelectedPermissions(DEFAULT_ROLE_PERMISSIONS['WAITER']);
                     setEditingEmployee(null);
                     setShowAddEmployeeModal(true);
                   }}
@@ -271,9 +337,9 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                               
                               // Filter by role category
                               if (staffRoleFilter === 'foh') {
-                                  return matchesSearch && (member.role === 'Server' || member.role === 'Bartender');
+                                  return matchesSearch && (member.role === 'Waiter' || member.role === 'Cashier' || member.role === 'Customer');
                               } else if (staffRoleFilter === 'kitchen') {
-                                return matchesSearch && (member.role === 'Line Cook');
+                                return matchesSearch && (member.role === 'KDS');
                               }
                               return matchesSearch;
                             });
@@ -352,6 +418,9 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                                           status: member.status,
                                           performance: member.performance
                                         });
+                                        const dbRole = uiToDbRole(member.role);
+                                        const defaultPerms = DEFAULT_ROLE_PERMISSIONS[dbRole as UserRole] || [];
+                                        setSelectedPermissions(member.custom_permissions || defaultPerms);
                                         setShowAddEmployeeModal(true);
                                       }}
                                       className={`p-1.5 rounded-lg hover:${t.cardHover} ${t.textMuted} hover:${t.accent} transition-colors cursor-pointer flex items-center justify-center`}
@@ -627,14 +696,16 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                     <div className="space-y-4 font-sans select-none">
                       {(() => {
                         const total = staffMembers.length || 1;
-                        const fohCount = staffMembers.filter(m => ['Bartender', 'Server'].includes(m.role)).length;
-                        const kitchenCount = staffMembers.filter(m => ['Line Cook'].includes(m.role)).length;
+                        const fohCount = staffMembers.filter(m => ['Cashier', 'Waiter'].includes(m.role)).length;
+                        const kitchenCount = staffMembers.filter(m => ['KDS'].includes(m.role)).length;
                         const mgmtCount = staffMembers.filter(m => ['Manager'].includes(m.role)).length;
-                        const supportCount = total - fohCount - kitchenCount - mgmtCount;
+                        const customerCount = staffMembers.filter(m => ['Customer'].includes(m.role)).length;
+                        const supportCount = total - fohCount - kitchenCount - mgmtCount - customerCount;
 
                         const fohPct = Math.round((fohCount / total) * 100);
                         const kitchenPct = Math.round((kitchenCount / total) * 100);
                         const mgmtPct = Math.round((mgmtCount / total) * 100);
+                        const customerPct = Math.round((customerCount / total) * 100);
                         const supportPct = Math.round((supportCount / total) * 100);
 
                         return (
@@ -653,7 +724,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                             {/* Kitchen */}
                             <div className="space-y-1.5">
                               <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
-                                <span>Kitchen Staff</span>
+                                <span>Kitchen Staff (KDS)</span>
                                 <span className={t.accent}>{kitchenPct}%</span>
                               </div>
                               <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
@@ -672,10 +743,21 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                               </div>
                             </div>
 
+                            {/* Customer */}
+                            <div className="space-y-1.5">
+                              <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
+                                <span>Customer Accounts</span>
+                                <span className={t.accent}>{customerPct}%</span>
+                              </div>
+                              <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
+                                <div className={`${t.accentBg} h-full rounded-full`} style={{ width: `${customerPct}%` }}></div>
+                              </div>
+                            </div>
+
                             {/* Support / Cleaning */}
                             <div className="space-y-1.5">
                               <div className={`flex justify-between text-[10px] font-bold uppercase tracking-wider ${t.text}`}>
-                                <span>Support / Cleaning</span>
+                                <span>Support / Other</span>
                                 <span className={t.accent}>{supportPct}%</span>
                               </div>
                               <div className={`w-full ${t.inputBg} h-[6px] rounded-full overflow-hidden`}>
@@ -867,10 +949,11 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                     name: '',
                     email: '',
                     password: '',
-                    role: 'Server',
+                    role: 'Waiter',
                     status: 'OFF_DUTY',
                     performance: 5.0
                   });
+                  setSelectedPermissions([]);
                 }}
                 className={`w-8 h-8 rounded-lg hover:${t.cardHover} flex items-center justify-center ${t.textMuted} hover:${t.text} transition-colors cursor-pointer`}
               >
@@ -901,7 +984,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                 if (editingEmployee) {
                   const updatedMembers = staffMembers.map(member => 
                     member.id === editingEmployee.id 
-                      ? { ...member, name: newEmployee.name, email: newEmployee.email, role: newEmployee.role, status: newEmployee.status, performance: newEmployee.performance }
+                      ? { ...member, name: newEmployee.name, email: newEmployee.email, role: newEmployee.role, status: newEmployee.status, performance: newEmployee.performance, custom_permissions: selectedPermissions }
                       : member
                   );
                   setStaffMembers(updatedMembers);
@@ -922,7 +1005,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                     role: newEmployee.role,
                     status: newEmployee.status,
                     performance: newEmployee.performance,
-                    avatar: ''
+                    avatar: '',
+                    custom_permissions: selectedPermissions
                   };
                   const updated = [...staffMembers, addedMember];
                   setStaffMembers(updated);
@@ -941,7 +1025,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                     const updatePayload: any = {
                       name: newEmployee.name,
                       email: newEmployee.email,
-                      role: uiToDbRole(newEmployee.role)
+                      role: uiToDbRole(newEmployee.role),
+                      custom_permissions: selectedPermissions
                     };
                     if (newEmployee.password) {
                       updatePayload.password = newEmployee.password;
@@ -968,7 +1053,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                       name: newEmployee.name,
                       email: newEmployee.email,
                       password: newEmployee.password,
-                      role: uiToDbRole(newEmployee.role)
+                      role: uiToDbRole(newEmployee.role),
+                      custom_permissions: selectedPermissions
                     };
                     const res = await apiRequest('/api/tenant/users', {
                       method: 'POST',
@@ -1001,10 +1087,11 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                 name: '',
                 email: '',
                 password: '',
-                role: 'Server',
+                role: 'Waiter',
                 status: 'OFF_DUTY',
                 performance: 5.0
               });
+              setSelectedPermissions([]);
             }} className="space-y-4">
               {/* Name */}
               <div>
@@ -1055,15 +1142,60 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                   <select
                     aria-label="Employee role"
                     value={newEmployee.role}
-                    onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                    onChange={(e) => {
+                      const selectedRole = e.target.value;
+                      setNewEmployee({...newEmployee, role: selectedRole});
+                      const dbRole = uiToDbRole(selectedRole);
+                      const defaultPerms = DEFAULT_ROLE_PERMISSIONS[dbRole as UserRole] || [];
+                      setSelectedPermissions(defaultPerms);
+                    }}
                     className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
                   >
-                    <option value="Server">Server</option>
-                    <option value="Bartender">Bartender</option>
-                    <option value="Line Cook">Line Cook</option>
+                    <option value="Customer">Customer</option>
+                    <option value="Waiter">Waiter</option>
+                    <option value="KDS">KDS</option>
+                    <option value="Cashier">Cashier</option>
                     <option value="Manager">Manager</option>
                   </select>
                   <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
+                </div>
+              </div>
+
+              {/* Custom Access Features selection */}
+              <div>
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>
+                  User Access Features ({selectedPermissions.length} selected)
+                </label>
+                <div className={`w-full max-h-[200px] overflow-y-auto ${t.inputBg} border ${t.inputBorder} rounded-xl p-4 space-y-4 font-sans`}>
+                  {FEATURE_GROUPS.map((group) => (
+                    <div key={group.title} className="space-y-2">
+                      <div className={`text-[9.5px] font-bold uppercase tracking-wider text-[#ffe2ab]/70 border-b border-white/5 pb-1`}>
+                        {group.title}
+                      </div>
+                      <div className="grid grid-cols-1 gap-2 pl-1">
+                        {group.permissions.map((perm) => {
+                          const isChecked = selectedPermissions.includes(perm.key);
+                          return (
+                            <label key={perm.key} className={`flex items-start gap-2.5 text-[11px] font-semibold text-white/90 cursor-pointer select-none`}>
+                              <input 
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  if (isChecked) {
+                                    setSelectedPermissions(selectedPermissions.filter(p => p !== perm.key));
+                                  } else {
+                                    setSelectedPermissions([...selectedPermissions, perm.key]);
+                                  }
+                                }}
+                                className="rounded border-white/10 bg-black/40 text-amber-500 focus:ring-amber-500/50 w-4 h-4 cursor-pointer mt-0.5"
+                              />
+                              <span className="leading-tight">{perm.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -1115,10 +1247,11 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                       name: '',
                       email: '',
                       password: '',
-                      role: 'Server',
+                      role: 'Waiter',
                       status: 'OFF_DUTY',
                       performance: 5.0
                     });
+                    setSelectedPermissions([]);
                   }}
                   className={`flex-1 py-3 bg-white/5 hover:${t.cardHover} ${t.text} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer text-center`}
                 >
