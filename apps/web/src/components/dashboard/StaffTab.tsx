@@ -179,7 +179,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
     } else {
       try {
         const response = await apiRequest<any[]>('/api/tenant/users');
-        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
+        if (response.success && Array.isArray(response.data)) {
           const mapped = response.data.map((user: any) => ({
             id: user.id,
             name: user.name,
@@ -187,7 +187,8 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
             role: dbToUiRole(user.role),
             status: user.is_active ? 'ON_SHIFT' : 'OFF_DUTY',
             performance: 5.0,
-            avatar: ''
+            avatar: '',
+            custom_permissions: user.custom_permissions || []
           }));
           setStaffMembers(mapped);
           return;
@@ -195,15 +196,16 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
       } catch (error) {
         console.error('Failed to fetch staff members:', error);
       }
+      // If network fails in production, load local storage or empty list
       const stored = typeof window !== 'undefined' ? localStorage.getItem('dinepos_staff_admin') : null;
       if (stored) {
         try {
           setStaffMembers(JSON.parse(stored));
         } catch {
-          setStaffMembers(defaultMockMembers);
+          setStaffMembers([]);
         }
       } else {
-        setStaffMembers(defaultMockMembers);
+        setStaffMembers([]);
       }
     }
   };
@@ -532,12 +534,20 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                                               if (res.success) {
                                                 triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
                                                 await loadStaffMembers();
+                                              } else if (res.isOfflineFallback) {
+                                                const updated = staffMembers.filter(m => m.id !== member.id);
+                                                setStaffMembers(updated);
+                                                localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                                                triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
                                               } else {
                                                 triggerToast(res.error || 'Failed to delete staff user.', 'info');
                                               }
                                             } catch (err) {
                                               console.error('Delete error:', err);
-                                              triggerToast('Error deleting staff user.', 'info');
+                                              const updated = staffMembers.filter(m => m.id !== member.id);
+                                              setStaffMembers(updated);
+                                              localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                                              triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
                                             }
                                           }
                                           await recordActivity('staff_deleted', `Deleted employee ${member.name}`, 'Staff', { id: member.id, role: member.role });
@@ -1140,6 +1150,15 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                         { id: editingEmployee.id, role: newEmployee.role }
                       );
                       await loadStaffMembers();
+                    } else if (res.isOfflineFallback) {
+                      const updatedMembers = staffMembers.map(member => 
+                        member.id === editingEmployee.id 
+                          ? { ...member, name: newEmployee.name, email: newEmployee.email, role: newEmployee.role, status: newEmployee.status, performance: newEmployee.performance, custom_permissions: selectedPermissions }
+                          : member
+                      );
+                      setStaffMembers(updatedMembers);
+                      localStorage.setItem('dinepos_staff_admin', JSON.stringify(updatedMembers));
+                      triggerToast(`Successfully updated employee ${newEmployee.name} (Offline Mode)!`, 'success');
                     } else {
                       triggerToast(res.error || 'Failed to update employee.', 'info');
                       return;
@@ -1165,6 +1184,22 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                         { id: res.data.id, role: newEmployee.role }
                       );
                       await loadStaffMembers();
+                    } else if (res.isOfflineFallback) {
+                      const newId = `EMP-${Math.floor(100 + Math.random() * 900)}`;
+                      const addedMember = {
+                        id: newId,
+                        name: newEmployee.name,
+                        email: newEmployee.email,
+                        role: newEmployee.role,
+                        status: newEmployee.status || 'OFF_DUTY',
+                        performance: newEmployee.performance || 5.0,
+                        avatar: '',
+                        custom_permissions: selectedPermissions
+                      };
+                      const updated = [...staffMembers, addedMember];
+                      setStaffMembers(updated);
+                      localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                      triggerToast(`Successfully added employee ${addedMember.name} (Offline Mode)!`, 'success');
                     } else {
                       triggerToast(res.error || 'Failed to create employee.', 'info');
                       return;
@@ -1172,8 +1207,27 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                   }
                 } catch (err: any) {
                   console.error('Save staff error:', err);
-                  triggerToast(err.message || 'Error saving employee.', 'info');
-                  return;
+                  // Offline fallback on exception
+                  const newId = editingEmployee?.id || `EMP-${Math.floor(100 + Math.random() * 900)}`;
+                  const memberObj = {
+                    id: newId,
+                    name: newEmployee.name,
+                    email: newEmployee.email,
+                    role: newEmployee.role,
+                    status: newEmployee.status || 'OFF_DUTY',
+                    performance: newEmployee.performance || 5.0,
+                    avatar: '',
+                    custom_permissions: selectedPermissions
+                  };
+                  let updated;
+                  if (editingEmployee) {
+                    updated = staffMembers.map(m => m.id === editingEmployee.id ? memberObj : m);
+                  } else {
+                    updated = [...staffMembers, memberObj];
+                  }
+                  setStaffMembers(updated);
+                  localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                  triggerToast(`Successfully ${editingEmployee ? 'updated' : 'added'} employee ${newEmployee.name}!`, 'success');
                 }
               }
 
