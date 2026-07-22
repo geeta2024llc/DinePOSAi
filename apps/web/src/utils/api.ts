@@ -148,18 +148,6 @@ export async function apiRequest<T = any>(
   const { useAuth = true, ...fetchOptions } = options;
   const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
 
-  // In standalone local browser mode without a live API server, immediately return offline fallback
-  if (typeof window !== 'undefined') {
-    const enableApi = localStorage.getItem('dinepos_enable_api');
-    if (enableApi !== 'true') {
-      return {
-        success: false,
-        error: 'Network connection failed. Server is currently offline.',
-        isOfflineFallback: true,
-      };
-    }
-  }
-
   // 1. Prepare headers
   const headers = new Headers(fetchOptions.headers || {});
   if (!headers.has('Content-Type') && !(fetchOptions.body instanceof FormData)) {

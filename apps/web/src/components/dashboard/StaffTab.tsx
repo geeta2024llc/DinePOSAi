@@ -87,6 +87,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   const [showAddEmployeeModal, setShowAddEmployeeModal] = useState(false);
+  const [showPasswordInModal, setShowPasswordInModal] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
@@ -1274,15 +1275,27 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                 <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>
                   Password {editingEmployee && <span className="opacity-50">(Leave blank to keep current)</span>}
                 </label>
-                <input 
-                  type="password" 
-                  value={newEmployee.password}
-                  onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
-                  placeholder={editingEmployee ? "••••••••" : "At least 8 characters"}
-                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                  required={!editingEmployee}
-                  minLength={editingEmployee ? undefined : 8}
-                />
+                <div className="relative flex items-center">
+                  <input 
+                    type={showPasswordInModal ? "text" : "password"} 
+                    value={newEmployee.password}
+                    onChange={(e) => setNewEmployee({...newEmployee, password: e.target.value})}
+                    placeholder={editingEmployee ? "••••••••" : "At least 8 characters"}
+                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-4 pr-11 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
+                    required={!editingEmployee}
+                    minLength={editingEmployee ? undefined : 8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordInModal(!showPasswordInModal)}
+                    className="absolute right-3.5 text-[#A69984]/60 hover:text-[#ffe2ab] transition-colors cursor-pointer flex items-center justify-center p-1"
+                    title={showPasswordInModal ? "Hide password" : "Show password"}
+                  >
+                    <span className="material-symbols-outlined text-base select-none">
+                      {showPasswordInModal ? "visibility_off" : "visibility"}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Role */}
