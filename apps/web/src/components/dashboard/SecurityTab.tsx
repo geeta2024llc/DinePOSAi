@@ -12,11 +12,12 @@ interface SecurityTabProps {
 export default function SecurityTab({ t, tr, triggerToast }: SecurityTabProps) {
   const [editingRolePermissions, setEditingRolePermissions] = useState<string | null>(null);
   const [editingGlobalPermission, setEditingGlobalPermission] = useState<string | null>(null);
-  const defaultSecurityPermissions = {
+  const defaultSecurityPermissions: Record<string, Record<string, boolean>> = {
     'Manager': { 'refundOrders': true, 'compDishes': true, 'reopenDays': true, 'editMenu': true, 'voidItems': true },
-    'Server': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
-    'Bartender': { 'refundOrders': false, 'compDishes': true, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
-    'Line Cook': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
+    'Cashier': { 'refundOrders': true, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
+    'Waiter': { 'refundOrders': false, 'compDishes': true, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
+    'KDS': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
+    'Customer': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
   };
 
   const defaultGlobalPermissions = {
@@ -27,7 +28,7 @@ export default function SecurityTab({ t, tr, triggerToast }: SecurityTabProps) {
 
   const defaultAuditLogs = [
     { id: 1, time: '10m ago', actor: 'Sarah Jenkins (Manager)', action: 'Authorized $42.00 check void', type: 'warning' },
-    { id: 2, time: '42m ago', actor: 'Elena Rodriguez (Bartender)', action: 'Re-routed drink queue to Service Bar Printer', type: 'info' },
+    { id: 2, time: '42m ago', actor: 'Elena Rodriguez (Waiter)', action: 'Re-routed drink queue to Kitchen Display', type: 'info' },
     { id: 3, time: '1h 15m ago', actor: 'System Auto-Daemon', action: 'Created night audit backup (db_dump_0603.sql)', type: 'success' },
     { id: 4, time: '3h ago', actor: 'Admin', action: 'Modified Stripe API keys', type: 'security' },
   ];
@@ -51,7 +52,12 @@ export default function SecurityTab({ t, tr, triggerToast }: SecurityTabProps) {
       const saved = localStorage.getItem('dinepos_security_permissions');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if ('Bartender' in parsed || 'Line Cook' in parsed || 'Server' in parsed || !('Waiter' in parsed) || !('Cashier' in parsed)) {
+            localStorage.setItem('dinepos_security_permissions', JSON.stringify(defaultSecurityPermissions));
+            return defaultSecurityPermissions;
+          }
+          return parsed;
         } catch (e) {
           console.error(e);
         }
@@ -179,7 +185,7 @@ export default function SecurityTab({ t, tr, triggerToast }: SecurityTabProps) {
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${t.divider} ${t.text} font-semibold`}>
-                  {['Manager', 'Server', 'Bartender', 'Line Cook'].map((role) => (
+                  {['Manager', 'Cashier', 'Waiter', 'KDS', 'Customer'].map((role) => (
                     <tr key={role} className="hover:bg-white/[0.01] transition-colors">
                       <td className="py-3.5 px-3 font-bold">{role}</td>
                       
