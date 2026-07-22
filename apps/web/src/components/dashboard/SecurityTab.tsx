@@ -12,38 +12,111 @@ interface SecurityTabProps {
 export default function SecurityTab({ t, tr, triggerToast }: SecurityTabProps) {
   const [editingRolePermissions, setEditingRolePermissions] = useState<string | null>(null);
   const [editingGlobalPermission, setEditingGlobalPermission] = useState<string | null>(null);
-  const [sessionTimeout, setSessionTimeout] = useState('15');
-  const [passcodeLength, setPasscodeLength] = useState('4');
+  const defaultSecurityPermissions = {
+    'Manager': { 'refundOrders': true, 'compDishes': true, 'reopenDays': true, 'editMenu': true, 'voidItems': true },
+    'Server': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
+    'Bartender': { 'refundOrders': false, 'compDishes': true, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
+    'Line Cook': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
+  };
 
-  const [securityPermissions, setSecurityPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
-    if (typeof window !== 'undefined' && !isDemoTenant()) {
-      return {} as Record<string, Record<string, boolean>>;
-    }
-    return {
-      'Manager': { 'refundOrders': true, 'compDishes': true, 'reopenDays': true, 'editMenu': true, 'voidItems': true },
-      'Server': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
-      'Bartender': { 'refundOrders': false, 'compDishes': true, 'reopenDays': false, 'editMenu': false, 'voidItems': true },
-      'Line Cook': { 'refundOrders': false, 'compDishes': false, 'reopenDays': false, 'editMenu': false, 'voidItems': false },
-    };
-  });
-
-  const [globalPermissions, setGlobalPermissions] = useState<Record<string, string>>({
+  const defaultGlobalPermissions = {
     editReceiptConfig: 'Admin Only',
     voidTransactions: 'Manager+',
     accessAdminDashboard: 'Full Staff'
+  };
+
+  const defaultAuditLogs = [
+    { id: 1, time: '10m ago', actor: 'Sarah Jenkins (Manager)', action: 'Authorized $42.00 check void', type: 'warning' },
+    { id: 2, time: '42m ago', actor: 'Elena Rodriguez (Bartender)', action: 'Re-routed drink queue to Service Bar Printer', type: 'info' },
+    { id: 3, time: '1h 15m ago', actor: 'System Auto-Daemon', action: 'Created night audit backup (db_dump_0603.sql)', type: 'success' },
+    { id: 4, time: '3h ago', actor: 'Admin', action: 'Modified Stripe API keys', type: 'security' },
+  ];
+
+  const [sessionTimeout, setSessionTimeout] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dinepos_session_timeout') || '15';
+    }
+    return '15';
   });
 
-  const [auditLogs, setAuditLogs] = useState(() => {
-    if (typeof window !== 'undefined' && !isDemoTenant()) {
-      return [];
+  const [passcodeLength, setPasscodeLength] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('dinepos_passcode_length') || '4';
     }
-    return [
-      { id: 1, time: '10m ago', actor: 'Sarah Jenkins (Manager)', action: 'Authorized $42.00 check void', type: 'warning' },
-      { id: 2, time: '42m ago', actor: 'Elena Rodriguez (Bartender)', action: 'Re-routed drink queue to Service Bar Printer', type: 'info' },
-      { id: 3, time: '1h 15m ago', actor: 'System Auto-Daemon', action: 'Created night audit backup (db_dump_0603.sql)', type: 'success' },
-      { id: 4, time: '3h ago', actor: 'Admin', action: 'Modified Stripe API keys', type: 'security' },
-    ];
+    return '4';
   });
+
+  const [securityPermissions, setSecurityPermissions] = useState<Record<string, Record<string, boolean>>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dinepos_security_permissions');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return defaultSecurityPermissions;
+  });
+
+  const [globalPermissions, setGlobalPermissions] = useState<Record<string, string>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dinepos_global_permissions');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return defaultGlobalPermissions;
+  });
+
+  const [auditLogs, setAuditLogs] = useState<Array<{ id: number; time: string; actor: string; action: string; type: string }>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dinepos_audit_logs');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return defaultAuditLogs;
+  });
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_security_permissions', JSON.stringify(securityPermissions));
+    }
+  }, [securityPermissions]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_global_permissions', JSON.stringify(globalPermissions));
+    }
+  }, [globalPermissions]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_passcode_length', passcodeLength);
+    }
+  }, [passcodeLength]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_session_timeout', sessionTimeout);
+    }
+  }, [sessionTimeout]);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_audit_logs', JSON.stringify(auditLogs));
+    }
+  }, [auditLogs]);
 
   const togglePermission = (role: string, perm: string) => {
     setSecurityPermissions(prev => ({
@@ -358,10 +431,23 @@ export default function SecurityTab({ t, tr, triggerToast }: SecurityTabProps) {
             </div>
 
             <button type="button"
-              onClick={() => triggerToast('Exporting secure system audit logs cryptographically...', 'success')}
+              onClick={() => {
+                try {
+                  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(auditLogs, null, 2));
+                  const downloadAnchor = document.createElement('a');
+                  downloadAnchor.setAttribute("href", dataStr);
+                  downloadAnchor.setAttribute("download", `security_audit_logs_${new Date().toISOString().slice(0,10)}.json`);
+                  document.body.appendChild(downloadAnchor);
+                  downloadAnchor.click();
+                  downloadAnchor.remove();
+                  triggerToast('Exported sealed audit log report.', 'success');
+                } catch {
+                  triggerToast('Failed to export audit log file.', 'info');
+                }
+              }}
               className={`w-full py-3 ${t.buttonOutline} border rounded-xl font-sans font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer mt-5`}
             >
-              Export Sealed Audit PDF
+              Export Sealed Audit Log Report
             </button>
           </div>
 

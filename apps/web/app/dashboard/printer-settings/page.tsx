@@ -5,30 +5,13 @@ import Link from 'next/link';
 import { usePrinter } from '../../printerContext';
 import { PrinterType, PrinterConfig } from '../../printerService';
 
-function isValidIp(ip: string): boolean {
-  if (!ip) return false;
-  const parts = ip.split('.');
-  if (parts.length !== 4) return false;
-  return parts.every(p => {
-    if (!/^\d{1,3}$/.test(p)) return false;
-    const n = parseInt(p, 10);
-    return n >= 0 && n <= 255;
-  });
-}
-
 export default function PrinterSettingsPage() {
-  const { config, status, logs, setConfig, scanAndPair, testPrint, kickCashDrawer, forgetConfig } = usePrinter();
+  const { config, status, logs, setConfig, scanAndPair, testPrint, clearLogs, forgetConfig } = usePrinter();
   
-  const [ip, setIp] = useState(config.ip || '192.168.1.100');
-  const [port, setPort] = useState(config.port || 9100);
-  const [networkName, setNetworkName] = useState(config.name || 'Network Thermal Printer');
   const [isScanning, setIsScanning] = useState(false);
   const [scanErrors, setScanErrors] = useState<Record<string, string | null>>({});
   const [isTestPrinting, setIsTestPrinting] = useState(false);
-  const [isKicking, setIsKicking] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [ipError, setIpError] = useState<string | null>(null);
-  const [portError, setPortError] = useState<string | null>(null);
   const [dismissedDriverLock, setDismissedDriverLock] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' });
 
@@ -37,52 +20,6 @@ export default function PrinterSettingsPage() {
     setTimeout(() => {
       setToast(prev => ({ ...prev, show: false }));
     }, 3000);
-  };
-
-  // Sync local state when config changes externally (e.g. from another tab)
-  useEffect(() => {
-    setIp(config.ip || '192.168.1.100');
-    setPort(config.port || 9100);
-    setNetworkName(config.name || 'Network Thermal Printer');
-  }, [config]);
-
-
-  const validateIp = (value: string): boolean => {
-    if (!isValidIp(value)) {
-      setIpError('Invalid IP address format (e.g. 192.168.1.100)');
-      return false;
-    }
-    setIpError(null);
-    return true;
-  };
-
-  const validatePort = (value: number): boolean => {
-    if (!Number.isInteger(value) || value < 1 || value > 65535) {
-      setPortError('Port must be between 1 and 65535');
-      return false;
-    }
-    setPortError(null);
-    return true;
-  };
-
-  const handleNetworkSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const ipValid = validateIp(ip);
-    const portValid = validatePort(port);
-    if (!ipValid || !portValid) return;
-
-    setIsSaving(true);
-    try {
-      const newCfg: PrinterConfig = {
-        type: 'network',
-        name: networkName,
-        ip,
-        port: Number(port)
-      };
-      setConfig(newCfg);
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   const handleSelectBrowser = () => {
@@ -129,16 +66,6 @@ export default function PrinterSettingsPage() {
     }
   };
 
-  const handleCashDrawer = async () => {
-    setIsKicking(true);
-    try {
-      await kickCashDrawer();
-    } catch (_) {
-    } finally {
-      setIsKicking(false);
-    }
-  };
-
   const isActive = (type: string) => config.type === type;
 
   const hasDriverLockError = logs.some(log => log.includes('Windows driver lock detected') || log.includes('Access denied - Windows Driver Lock'));
@@ -163,21 +90,10 @@ export default function PrinterSettingsPage() {
 
         {/* Live Status indicator */}
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setIsSaving(true);
-              setTimeout(() => {
-                setIsSaving(false);
-                triggerToast('Printer configurations saved successfully!', 'success');
-              }, 600);
-            }}
-            disabled={isSaving}
-            className="px-4 py-2 rounded-full bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] text-[10px] uppercase font-extrabold tracking-wider transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-[14px] font-bold">save</span>
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div className="px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[#A69984] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 select-none">
+            <span className="material-symbols-outlined text-[13px] text-emerald-400">check_circle</span>
+            Auto-Saved
+          </div>
 
           <div className="flex items-center gap-2.5 bg-white/5 border border-white/10 px-4 py-2 rounded-full">
             <span className={`relative flex h-2 w-2`}>
@@ -510,31 +426,42 @@ export default function PrinterSettingsPage() {
                   </>
                 )}
               </button>
-
-              <button 
-                type="button"
-                onClick={handleCashDrawer}
-                disabled={isKicking || status === 'connecting'}
-                className="w-full py-3.5 bg-transparent border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] hover:bg-[#ffe2ab]/5 font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                {isKicking ? (
-                  <>
-                    <span className="material-symbols-outlined text-base animate-spin">progress_activity</span>
-                    Opening...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-base">point_of_sale</span>
-                    Test Cash Drawer
-                  </>
-                )}
-              </button>
             </div>
 
             {/* Active connection details */}
             <div className="bg-[#0e0e0d] border border-white/5 rounded-xl p-3 space-y-1 font-sans">
               <div className="text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider select-none">Active Connection</div>
               <div className="text-xs text-white font-semibold">{config.type.toUpperCase()} — {config.name}</div>
+            </div>
+
+            {/* Real-time Hardware Diagnostic Logs Terminal */}
+            <div className="bg-[#0c0c0b] border border-white/5 rounded-xl p-3.5 space-y-2 font-mono">
+              <div className="flex items-center justify-between border-b border-white/5 pb-2 select-none">
+                <span className="text-[10px] text-[#ffc53d] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ffc53d] animate-pulse"></span>
+                  Console Diagnostic Stream
+                </span>
+                {logs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearLogs}
+                    className="text-[9px] text-[#A69984]/60 hover:text-white transition-colors cursor-pointer uppercase font-bold"
+                  >
+                    Clear Logs
+                  </button>
+                )}
+              </div>
+              <div className="max-h-36 overflow-y-auto space-y-1 text-[10px] text-[#A69984] leading-relaxed scrollbar-thin">
+                {logs.length === 0 ? (
+                  <p className="text-[#A69984]/40 italic">No hardware activity recorded yet. Run a test print to verify protocol response.</p>
+                ) : (
+                  logs.slice(-10).map((log, idx) => (
+                    <div key={idx} className="break-all font-mono">
+                      {log}
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
 
           </div>

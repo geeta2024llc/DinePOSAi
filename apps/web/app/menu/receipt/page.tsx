@@ -375,12 +375,12 @@ export default function ReceiptPreviewPage() {
       </header>
 
       {/* Center White Receipt Document Container */}
-      <main id="printable-receipt" className="w-full max-w-[380px] bg-white text-[#1c1c1c] rounded-2xl p-8 shadow-2xl z-10 flex flex-col justify-between flex-grow-0 mb-10 transform scale-[1.01]">
+      <main id="printable-receipt" className="w-full max-w-[340px] bg-white text-[#1c1c1c] rounded-2xl p-6 sm:p-7 shadow-2xl z-10 flex flex-col justify-between flex-grow-0 mb-10 transform scale-[1.01]">
         
         {/* Header details */}
-        <div className="text-center mb-6">
+        <div className="text-center mb-4 select-none">
           {isCartEmpty && (
-            <div className="mb-4 bg-amber-50 border border-amber-200 text-amber-800 text-[10px] font-sans font-bold uppercase tracking-wider py-2 px-3 rounded-lg shadow-sm">
+            <div className="mb-4 bg-amber-50 border-2 border-amber-400 text-amber-950 text-[10px] font-sans font-black uppercase tracking-wider py-2 px-3 rounded-lg shadow-sm">
               ⚠️ Showing Sample Receipt
             </div>
           )}
@@ -395,54 +395,54 @@ export default function ReceiptPreviewPage() {
               />
             </div>
           )}
-          <h2 className="font-serif font-black text-2xl tracking-wide text-black mb-1">{restaurantName}</h2>
-          <div className="flex items-center justify-center gap-1.5 mb-3">
-            <div className="h-[1px] w-6 bg-[#ffe2ab]/80"></div>
-            <span className="font-sans font-bold text-[8.5px] text-[#A69984] tracking-[0.25em] uppercase">Aura Hospitality Group</span>
-            <div className="h-[1px] w-6 bg-[#ffe2ab]/80"></div>
+          <h2 className="font-sans font-black text-2xl tracking-tight text-black mb-1 uppercase">{restaurantName}</h2>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className="h-[2px] w-8 bg-black"></div>
+            <span className="font-sans font-black text-[9px] text-black tracking-[0.2em] uppercase">Aura Hospitality Group</span>
+            <div className="h-[2px] w-8 bg-black"></div>
           </div>
-          <div className="font-sans text-[10.5px] text-[#555] font-semibold leading-relaxed">
+          <div className="font-sans text-[11px] text-black font-extrabold leading-tight">
             {restaurantAddress.split('\n').map((line, i) => <div key={i}>{line}</div>)}
           </div>
         </div>
 
-        {/* Ticket Metadata bordered by dotted lines */}
-        <div className="border-y border-dashed border-black/15 py-4 my-4 font-sans text-[11px] font-semibold text-[#444] select-none">
-          <div className="flex justify-between items-center mb-2">
+        {/* Ticket Metadata bordered by solid black box */}
+        <div className="border-2 border-black p-3 my-3 font-sans text-[11px] font-black text-black select-none rounded-lg bg-white">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="text-black font-extrabold uppercase">Table {tableNumber}</div>
-              <div className="text-[10px] text-[#666] mt-0.5">Terminal 01</div>
-              <div className="text-[10px] text-[#666]">Server: Julian B.</div>
+              <div className="text-black font-black uppercase text-xs">TABLE {tableNumber}</div>
+              <div className="text-[10px] text-black font-extrabold mt-0.5">TERMINAL 01</div>
+              <div className="text-[10px] text-black font-extrabold">SERVER: JULIAN B.</div>
             </div>
             
             <div className="text-right">
-              <div>May 24, 2024</div>
-              <div className="text-[10px] text-[#666] mt-0.5">20:42 PM</div>
-              <div className="text-[10px] text-black font-extrabold mt-0.5">ORDER #DP-88392</div>
+              <div className="font-black text-xs">MAY 24, 2024</div>
+              <div className="text-[10px] text-black font-extrabold mt-0.5">20:42 PM</div>
+              <div className="text-[10px] text-black font-black mt-0.5 uppercase">ORDER #DP-88392</div>
             </div>
           </div>
         </div>
 
         {/* Item listing */}
-        <div className="space-y-4 font-sans py-2">
+        <div className="space-y-3 font-sans py-2 border-t-2 border-black">
           {isCartEmpty ? (
             <>
               {/* Row 1 */}
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start py-1 border-b border-black/20">
                 <div className="max-w-[70%]">
-                  <div className="text-xs text-black font-extrabold">Tasting Menu - Chef's Reserve</div>
-                  <div className="text-[10px] text-[#666] italic mt-1 font-semibold">x2 @ $295.00 each</div>
+                  <div className="text-xs text-black font-black">Tasting Menu - Chef's Reserve</div>
+                  <div className="text-[10px] text-black font-extrabold mt-0.5">x2 @ $295.00 each</div>
                 </div>
-                <div className="text-right text-xs text-black font-extrabold">$590.00</div>
+                <div className="text-right text-xs text-black font-black">$590.00</div>
               </div>
 
               {/* Row 2 */}
-              <div className="flex justify-between items-start">
+              <div className="flex justify-between items-start py-1 border-b border-black/20">
                 <div className="max-w-[70%]">
-                  <div className="text-xs text-black font-extrabold">Vintage Champagne Upgrade</div>
-                  <div className="text-[10px] text-[#666] italic mt-1 font-semibold">x1 @ $150.00 each</div>
+                  <div className="text-xs text-black font-black">Vintage Champagne Upgrade</div>
+                  <div className="text-[10px] text-black font-extrabold mt-0.5">x1 @ $150.00 each</div>
                 </div>
-                <div className="text-right text-xs text-black font-extrabold">$150.00</div>
+                <div className="text-right text-xs text-black font-black">$150.00</div>
               </div>
             </>
           ) : (
@@ -464,27 +464,27 @@ export default function ReceiptPreviewPage() {
               const rowTotal = singlePrice * ci.quantity;
 
               return (
-                <div key={cartKey} className="flex flex-col gap-1 py-1 border-b border-black/5 last:border-0 select-none">
+                <div key={cartKey} className="flex flex-col gap-1 py-1.5 border-b border-black/15 last:border-0 select-none">
                   <div className="flex justify-between items-start">
                     <div className="max-w-[75%]">
-                      <div className="text-xs text-black font-extrabold leading-tight">{item.name}</div>
+                      <div className="text-xs text-black font-black leading-tight">{item.name} <span className="text-[10px] font-black">[x{ci.quantity}]</span></div>
                       {ci.modifiers.length > 0 && (
-                        <div className="text-[9px] text-[#ffe2ab] bg-black px-1.5 py-0.5 rounded inline-block mt-1 font-bold font-sans">
-                          {ci.modifiers.join(', ')}
+                        <div className="text-[9px] text-white bg-black px-1.5 py-0.5 rounded inline-block mt-1 font-black font-sans uppercase">
+                          + {ci.modifiers.join(', ')}
                         </div>
                       )}
                       {ci.notes && (
-                        <div className="text-[9px] text-[#666] font-sans italic mt-1 flex items-start gap-1">
-                          <span className="material-symbols-outlined text-[11px] shrink-0 select-none">edit_note</span>
-                          <span>"{ci.notes}"</span>
+                        <div className="text-[9.5px] text-black font-extrabold font-sans mt-1 flex items-start gap-1">
+                          <span className="material-symbols-outlined text-[11px] shrink-0 select-none font-bold">edit_note</span>
+                          <span>NOTE: "{ci.notes}"</span>
                         </div>
                       )}
-                      <div className="text-[9px] text-[#666] font-semibold mt-1 flex gap-2 items-center">
-                        <span>x{ci.quantity} @ ${singlePrice.toFixed(2)} each</span>
-                        <span className="uppercase text-[8px] bg-gray-100 px-1 rounded text-[#888] font-extrabold font-sans">[{ci.course}]</span>
+                      <div className="text-[9.5px] text-black font-bold mt-1 flex gap-2 items-center">
+                        <span>@ ${singlePrice.toFixed(2)} each</span>
+                        <span className="uppercase text-[8px] bg-black text-white px-1 rounded font-black font-sans">[{ci.course}]</span>
                       </div>
                     </div>
-                    <div className="text-right text-xs text-black font-extrabold shrink-0">${rowTotal.toFixed(2)}</div>
+                    <div className="text-right text-xs text-black font-black shrink-0">${rowTotal.toFixed(2)}</div>
                   </div>
                 </div>
               );
@@ -493,47 +493,47 @@ export default function ReceiptPreviewPage() {
         </div>
 
         {/* Calculations summary */}
-        <div className="border-t border-black/10 pt-4 mt-4 space-y-2.5 font-sans select-none text-[11px] font-semibold text-[#555] pb-4">
+        <div className="border-t-2 border-black pt-3 mt-2 space-y-2 font-sans select-none text-[11.5px] font-extrabold text-black">
           <div className="flex justify-between">
-            <span>{taxType === 'post-tax' ? 'Subtotal (Tax Incl.)' : 'Subtotal'}</span>
-            <span className="text-black font-bold">${subtotal.toFixed(2)}</span>
+            <span>{taxType === 'post-tax' ? 'SUBTOTAL (TAX INCL.)' : 'SUBTOTAL'}</span>
+            <span className="text-black font-black">${subtotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span>{taxType === 'post-tax' ? 'Included Tax' : 'Sales Tax'} ({(taxRate * 100).toFixed(1)}%)</span>
-            <span className="text-black font-bold">${tax.toFixed(2)}</span>
+            <span>{taxType === 'post-tax' ? 'INCLUDED TAX' : 'SALES TAX'} ({(taxRate * 100).toFixed(1)}%)</span>
+            <span className="text-black font-black">${tax.toFixed(2)}</span>
           </div>
           <div className="flex justify-between">
-            <span>Auto-Gratuity (20%)</span>
-            <span className="text-black font-bold">${serviceCharge.toFixed(2)}</span>
+            <span>AUTO-GRATUITY (20%)</span>
+            <span className="text-black font-black">${serviceCharge.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Total Paid / Balance Due block */}
-        <div className="border-t-2 border-black/15 pt-4 mt-2 flex justify-between items-baseline font-sans select-none mb-4">
-          <span className="text-xs text-black font-extrabold uppercase">
-            {activeTab === 'receipt' ? 'Total Paid' : 'Balance Due'}
+        {/* Total Paid / Balance Due High-Contrast Block */}
+        <div className="border-3 border-black bg-black text-white p-3 my-3 flex justify-between items-center font-sans select-none rounded-lg shadow-sm" style={{ printColorAdjust: 'exact' } as React.CSSProperties}>
+          <span className="text-xs font-black uppercase tracking-wider text-white">
+            {activeTab === 'receipt' ? 'TOTAL PAID' : 'BALANCE DUE'}
           </span>
-          <span className="font-serif text-[28px] font-black text-black tracking-wide leading-none">
+          <span className="font-sans text-2xl font-black text-white tracking-tight leading-none">
             ${total.toFixed(2)}
           </span>
         </div>
 
         {/* Payment Confirmation / Status Box */}
-        <div className="bg-[#f7f7f7] border border-black/5 p-4 rounded-xl font-sans select-none">
+        <div className="border-2 border-black p-3 rounded-lg font-sans select-none text-center bg-white">
           {activeTab === 'receipt' ? (
             <>
-              <div className="text-[10px] text-black font-black uppercase tracking-wider mb-2">Payment Confirmed</div>
-              <div className="flex justify-between text-[10px] text-[#666] font-semibold">
-                <span>Method: Credit Card</span>
-                <span className="font-mono">Auth: **** 4242</span>
+              <div className="text-[11px] text-black font-black uppercase tracking-wider mb-1">*** PAYMENT CONFIRMED ***</div>
+              <div className="flex justify-center gap-4 text-[10px] text-black font-extrabold uppercase">
+                <span>METHOD: CREDIT CARD</span>
+                <span className="font-mono font-black">AUTH: OK-200 / **** 4242</span>
               </div>
             </>
           ) : (
             <>
-              <div className="text-[10px] text-[#A69984] font-black uppercase tracking-wider mb-2">Invoice Proforma</div>
-              <div className="flex justify-between text-[10px] text-[#666] font-semibold">
-                <span>Status: Unpaid</span>
-                <span>Terms: Immediate</span>
+              <div className="text-[11px] text-black font-black uppercase tracking-wider mb-1">*** INVOICE PROFORMA ***</div>
+              <div className="flex justify-center gap-4 text-[10px] text-black font-extrabold uppercase">
+                <span>STATUS: UNPAID</span>
+                <span>TERMS: IMMEDIATE</span>
               </div>
             </>
           )}

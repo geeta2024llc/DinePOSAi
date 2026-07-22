@@ -90,7 +90,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
   const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   
   const [staffSearchQuery, setStaffSearchQuery] = useState('');
-  const [staffRoleFilter, setStaffRoleFilter] = useState('All');
+  const [staffRoleFilter, setStaffRoleFilter] = useState('all');
   
   const [staffPageSize, setStaffPageSize] = useState(10);
   const [staffCurrentPage, setStaffCurrentPage] = useState(1);
@@ -98,16 +98,34 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
   const [timelineTab, setTimelineTab] = useState<'timeline' | 'month'>('timeline');
 
   const [editingShift, setEditingShift] = useState<{ employee: string; day: string } | null>(null);
-  const [rosterShifts, setRosterShifts] = useState<Record<string, Record<string, string>>>({
-    'Elena Rodriguez': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 22:00', 'THU 16': 'OFF', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': '10:00 - 18:00' },
-    'Marcus Chen': { 'MON 13': 'OFF', 'TUE 14': '14:00 - 22:00', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': '14:00 - 22:00', 'SAT 18': '14:00 - 22:00', 'SUN 19': 'OFF' },
-    'Sarah Jenkins': { 'MON 13': '16:00 - 00:00', 'TUE 14': '16:00 - 00:00', 'WED 15': 'OFF', 'THU 16': '16:00 - 00:00', 'FRI 17': '16:00 - 00:00', 'SAT 18': 'OFF', 'SUN 19': '16:00 - 00:00' },
-    'David Vance': { 'MON 13': '14:00 - 22:00', 'TUE 14': 'OFF', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': 'OFF', 'SAT 18': '14:00 - 22:00', 'SUN 19': '14:00 - 22:00' },
-    'Lisa Kim': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': 'OFF', 'THU 16': '09:00 - 17:00', 'FRI 17': '09:00 - 17:00', 'SAT 18': 'OFF', 'SUN 19': '09:00 - 17:00' },
-    'Robert Taylor': { 'MON 13': 'OFF', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 17:00', 'THU 16': 'OFF', 'FRI 17': '09:00 - 17:00', 'SAT 18': '09:00 - 17:00', 'SUN 19': 'OFF' },
-    'Emily Davis': { 'MON 13': '10:00 - 18:00', 'TUE 14': '10:00 - 18:00', 'WED 15': 'OFF', 'THU 16': '10:00 - 18:00', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': 'OFF' },
-    'John Watson': { 'MON 13': '09:00 - 22:00', 'TUE 14': '09:00 - 22:00', 'WED 15': 'OFF', 'THU 16': 'OFF', 'FRI 17': '09:00 - 22:00', 'SAT 18': '09:00 - 22:00', 'SUN 19': 'OFF' }
+  const [rosterShifts, setRosterShifts] = useState<Record<string, Record<string, string>>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('dinepos_roster_shifts');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    }
+    return {
+      'Elena Rodriguez': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 22:00', 'THU 16': 'OFF', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': '10:00 - 18:00' },
+      'Marcus Chen': { 'MON 13': 'OFF', 'TUE 14': '14:00 - 22:00', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': '14:00 - 22:00', 'SAT 18': '14:00 - 22:00', 'SUN 19': 'OFF' },
+      'Sarah Jenkins': { 'MON 13': '16:00 - 00:00', 'TUE 14': '16:00 - 00:00', 'WED 15': 'OFF', 'THU 16': '16:00 - 00:00', 'FRI 17': '16:00 - 00:00', 'SAT 18': 'OFF', 'SUN 19': '16:00 - 00:00' },
+      'David Vance': { 'MON 13': '14:00 - 22:00', 'TUE 14': 'OFF', 'WED 15': '14:00 - 22:00', 'THU 16': '14:00 - 22:00', 'FRI 17': 'OFF', 'SAT 18': '14:00 - 22:00', 'SUN 19': '14:00 - 22:00' },
+      'Lisa Kim': { 'MON 13': '09:00 - 17:00', 'TUE 14': '09:00 - 17:00', 'WED 15': 'OFF', 'THU 16': '09:00 - 17:00', 'FRI 17': '09:00 - 17:00', 'SAT 18': 'OFF', 'SUN 19': '09:00 - 17:00' },
+      'Robert Taylor': { 'MON 13': 'OFF', 'TUE 14': '09:00 - 17:00', 'WED 15': '09:00 - 17:00', 'THU 16': 'OFF', 'FRI 17': '09:00 - 17:00', 'SAT 18': '09:00 - 17:00', 'SUN 19': 'OFF' },
+      'Emily Davis': { 'MON 13': '10:00 - 18:00', 'TUE 14': '10:00 - 18:00', 'WED 15': 'OFF', 'THU 16': '10:00 - 18:00', 'FRI 17': '10:00 - 18:00', 'SAT 18': '10:00 - 18:00', 'SUN 19': 'OFF' },
+      'John Watson': { 'MON 13': '09:00 - 22:00', 'TUE 14': '09:00 - 22:00', 'WED 15': 'OFF', 'THU 16': 'OFF', 'FRI 17': '09:00 - 22:00', 'SAT 18': '09:00 - 22:00', 'SUN 19': 'OFF' }
+    };
   });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_roster_shifts', JSON.stringify(rosterShifts));
+    }
+  }, [rosterShifts]);
 
   const dbToUiRole = (dbRole: string): string => {
     switch (dbRole) {
@@ -161,7 +179,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
     } else {
       try {
         const response = await apiRequest<any[]>('/api/tenant/users');
-        if (response.success && Array.isArray(response.data)) {
+        if (response.success && Array.isArray(response.data) && response.data.length > 0) {
           const mapped = response.data.map((user: any) => ({
             id: user.id,
             name: user.name,
@@ -172,10 +190,20 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
             avatar: ''
           }));
           setStaffMembers(mapped);
+          return;
         }
       } catch (error) {
         console.error('Failed to fetch staff members:', error);
-        triggerToast('Failed to load staff list from server.', 'info');
+      }
+      const stored = typeof window !== 'undefined' ? localStorage.getItem('dinepos_staff_admin') : null;
+      if (stored) {
+        try {
+          setStaffMembers(JSON.parse(stored));
+        } catch {
+          setStaffMembers(defaultMockMembers);
+        }
+      } else {
+        setStaffMembers(defaultMockMembers);
       }
     }
   };
@@ -183,6 +211,25 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
   useEffect(() => {
     loadStaffMembers();
   }, []);
+
+  const exportRosterSchedule = () => {
+    const days = ['MON 13', 'TUE 14', 'WED 15', 'THU 16', 'FRI 17', 'SAT 18', 'SUN 19'];
+    let csv = 'Employee ID,Employee Name,Role,Status,' + days.join(',') + '\n';
+    
+    staffMembers.forEach(m => {
+      const shifts = days.map(d => `"${rosterShifts[m.name]?.[d] || 'OFF'}"`).join(',');
+      csv += `"${m.id}","${m.name}","${m.role}","${m.status}",${shifts}\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `staff_roster_schedule_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    triggerToast('Weekly Staff Shift Roster schedule exported!', 'success');
+  };
 
   return (
     <>
@@ -200,25 +247,35 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                   </p>
                 </div>
 
-                <button type="button"
-                  onClick={() => {
-                    setNewEmployee({
-                      name: '',
-                      email: '',
-                      password: '',
-                      role: 'Waiter',
-                      status: 'OFF_DUTY',
-                      performance: 5.0
-                    });
-                    setSelectedPermissions(DEFAULT_ROLE_PERMISSIONS['WAITER']);
-                    setEditingEmployee(null);
-                    setShowAddEmployeeModal(true);
-                  }}
-                  className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none"
-                >
-                  <span className="material-symbols-outlined text-sm font-bold">add</span>
-                  Add employee
-                </button>
+                <div className="flex gap-3 items-center flex-wrap">
+                  <button type="button"
+                    onClick={exportRosterSchedule}
+                    className="text-white/80 hover:text-white px-4 py-3 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none border border-white/10 rounded-xl bg-white/5 hover:bg-white/10"
+                    title="Export weekly shift roster to CSV"
+                  >
+                    <span className="material-symbols-outlined text-base">download</span>
+                    Export Roster
+                  </button>
+                  <button type="button"
+                    onClick={() => {
+                      setNewEmployee({
+                        name: '',
+                        email: '',
+                        password: '',
+                        role: 'Waiter',
+                        status: 'OFF_DUTY',
+                        performance: 5.0
+                      });
+                      setSelectedPermissions(DEFAULT_ROLE_PERMISSIONS['WAITER']);
+                      setEditingEmployee(null);
+                      setShowAddEmployeeModal(true);
+                    }}
+                    className="bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-widest transition-all duration-300 shadow-[0_4px_16px_rgba(255,226,171,0.15)] hover:scale-[1.01] cursor-pointer flex items-center gap-2 select-none"
+                  >
+                    <span className="material-symbols-outlined text-sm font-bold">add</span>
+                    Add employee
+                  </button>
+                </div>
               </div>
 
               {/* KPI Cards Row */}
@@ -277,7 +334,10 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                           type="text"
                           placeholder="Search by name, role, or ID..."
                           value={staffSearchQuery}
-                          onChange={(e) => setStaffSearchQuery(e.target.value)}
+                          onChange={(e) => {
+                            setStaffSearchQuery(e.target.value);
+                            setStaffCurrentPage(1);
+                          }}
                           className={`bg-transparent border ${t.inputBorder} rounded-xl pl-9 pr-4 py-2 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/20 w-full transition-colors font-medium`}
                         />
                       </div>
@@ -285,7 +345,10 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                       {/* Filter Tabs */}
                       <div className={`flex items-center gap-1.5 ${t.inputBg} p-1 rounded-xl border ${t.border}`}>
                         <button type="button"
-                          onClick={() => setStaffRoleFilter('all')}
+                          onClick={() => {
+                            setStaffRoleFilter('all');
+                            setStaffCurrentPage(1);
+                          }}
                           className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                             staffRoleFilter === 'all'
                               ? `${t.accentBg} ${t.accentText}`
@@ -295,7 +358,10 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                           All Roles
                         </button>
                         <button type="button"
-                          onClick={() => setStaffRoleFilter('foh')}
+                          onClick={() => {
+                            setStaffRoleFilter('foh');
+                            setStaffCurrentPage(1);
+                          }}
                           className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                             staffRoleFilter === 'foh'
                               ? `${t.accentBg} ${t.accentText}`
@@ -305,7 +371,10 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                           Front of House
                         </button>
                         <button type="button"
-                          onClick={() => setStaffRoleFilter('kitchen')}
+                          onClick={() => {
+                            setStaffRoleFilter('kitchen');
+                            setStaffCurrentPage(1);
+                          }}
                           className={`px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all ${
                             staffRoleFilter === 'kitchen'
                               ? `${t.accentBg} ${t.accentText}`
@@ -374,23 +443,43 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                                   {member.role}
                                 </td>
                                 <td className="px-6 py-4 align-middle">
-                                  {member.status === 'ON_SHIFT' && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-sky-500/10 border border-sky-500/20 text-sky-400 font-bold text-[9px] uppercase tracking-wider rounded-full">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 motion-safe:animate-pulse"></span>
-                                      + On Shift
-                                    </span>
-                                  )}
-                                  {member.status === 'OFF_DUTY' && (
-                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 border ${t.borderStrong} ${t.textMuted} font-bold text-[9px] uppercase tracking-wider rounded-full`}>
-                                      Off Duty
-                                    </span>
-                                  )}
-                                  {member.status === 'OVERTIME' && (
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[9px] uppercase tracking-wider rounded-full">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 motion-safe:animate-pulse"></span>
-                                      Approaching (Overtime)
-                                    </span>
-                                  )}
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const nextStatus = member.status === 'ON_SHIFT' ? 'OFF_DUTY' : member.status === 'OFF_DUTY' ? 'OVERTIME' : 'ON_SHIFT';
+                                      const updated = staffMembers.map(m => m.id === member.id ? { ...m, status: nextStatus } : m);
+                                      setStaffMembers(updated);
+                                      localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                                      const statusLabel = nextStatus === 'ON_SHIFT' ? 'Clocked IN' : nextStatus === 'OFF_DUTY' ? 'Clocked OUT' : 'Set to Overtime';
+                                      triggerToast(`${member.name} ${statusLabel}`, 'success');
+                                      await recordActivity(
+                                        'staff_clock_toggle',
+                                        `${member.name} changed status to ${nextStatus}`,
+                                        'Staff',
+                                        { id: member.id, status: nextStatus }
+                                      );
+                                    }}
+                                    className="cursor-pointer hover:scale-105 transition-transform text-left"
+                                    title="Click to toggle Clock In / Clock Out status"
+                                  >
+                                    {member.status === 'ON_SHIFT' && (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-[9px] uppercase tracking-wider rounded-full hover:bg-emerald-500/20">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse"></span>
+                                        On Shift (Clocked In)
+                                      </span>
+                                    )}
+                                    {member.status === 'OFF_DUTY' && (
+                                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 bg-white/5 border ${t.borderStrong} ${t.textMuted} font-bold text-[9px] uppercase tracking-wider rounded-full hover:bg-white/10`}>
+                                        Off Duty (Clocked Out)
+                                      </span>
+                                    )}
+                                    {member.status === 'OVERTIME' && (
+                                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-[9px] uppercase tracking-wider rounded-full hover:bg-amber-500/20">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 motion-safe:animate-pulse"></span>
+                                        Approaching (Overtime)
+                                      </span>
+                                    )}
+                                  </button>
                                 </td>
                                 <td className="px-6 py-4 align-middle">
                                   <div className="flex items-center gap-1.5">
@@ -498,9 +587,9 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                             member.id.toLowerCase().includes(staffSearchQuery.toLowerCase());
                           
                           if (staffRoleFilter === 'foh') {
-                              return matchesSearch && (member.role === 'Server' || member.role === 'Bartender');
+                              return matchesSearch && (member.role === 'Waiter' || member.role === 'Cashier' || member.role === 'Customer');
                           } else if (staffRoleFilter === 'kitchen') {
-                            return matchesSearch && (member.role === 'Line Cook');
+                            return matchesSearch && (member.role === 'KDS');
                           }
                           return matchesSearch;
                         });
@@ -679,7 +768,14 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                     </div>
 
                     <button type="button" 
-                      onClick={() => triggerToast('Navigate to Staff tab to manage schedules.', 'info')}
+                      onClick={() => {
+                        const el = document.getElementById('roster-timeline');
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth' });
+                        } else {
+                          triggerToast('Weekly shift timeline is below.', 'info');
+                        }
+                      }}
                       className={`w-full py-3 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer select-none`}
                     >
                       Manage Schedule
@@ -774,7 +870,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
               </div>
 
               {/* Roster & Weekly Timeline Section */}
-              <div className={`${t.cardBg} border rounded-2xl p-7 shadow-xl space-y-6`}>
+              <div id="roster-timeline" className={`${t.cardBg} border rounded-2xl p-7 shadow-xl space-y-6`}>
                 <div className={`flex flex-col md:flex-row justify-between items-start md:items-center border-b ${t.border} pb-4 gap-4 select-none`}>
                   <div>
                     <h3 className={`font-serif text-lg ${t.text} font-medium tracking-wide`}>Roster & Weekly Timeline</h3>
@@ -1131,7 +1227,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                   placeholder={editingEmployee ? "••••••••" : "At least 8 characters"}
                   className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
                   required={!editingEmployee}
-                  minLength={8}
+                  minLength={editingEmployee ? undefined : 8}
                 />
               </div>
 
@@ -1163,9 +1259,31 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
 
               {/* Custom Access Features selection */}
               <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>
-                  User Access Features ({selectedPermissions.length} selected)
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider`}>
+                    User Access Features ({selectedPermissions.length} selected)
+                  </label>
+                  <div className="flex gap-2 text-[9px] font-bold uppercase tracking-wider select-none">
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const allPerms = FEATURE_GROUPS.flatMap(g => g.permissions.map(p => p.key));
+                        setSelectedPermissions(allPerms);
+                      }}
+                      className={`${t.accent} hover:underline cursor-pointer`}
+                    >
+                      Select All
+                    </button>
+                    <span className="text-white/20">|</span>
+                    <button 
+                      type="button"
+                      onClick={() => setSelectedPermissions([])}
+                      className="text-white/40 hover:text-white hover:underline cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
                 <div className={`w-full max-h-[200px] overflow-y-auto ${t.inputBg} border ${t.inputBorder} rounded-xl p-4 space-y-4 font-sans`}>
                   {FEATURE_GROUPS.map((group) => (
                     <div key={group.title} className="space-y-2">

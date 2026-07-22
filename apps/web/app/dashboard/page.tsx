@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { getCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, isDemoTenant } from '@/utils/api';
 import { useAuth } from '../authContext';
 import { usePrinter } from '../printerContext';
 import { recordActivity } from '@/utils/activityLogger';
@@ -249,6 +249,7 @@ export default function DashboardPage() {
   // Load menu items for recipe mapper
   useEffect(() => {
     const fetchItems = async () => {
+      if (isDemoTenant()) return;
       try {
         const itemRes = await apiRequest<any[]>('/api/menu/items');
         if (itemRes.success && itemRes.data) {

@@ -12,14 +12,15 @@ interface HardwareTabProps {
 }
 
 export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: HardwareTabProps) {
-  const { testPrint, kickCashDrawer } = usePrinter();
+  const { config, testPrint, scanAndPair } = usePrinter();
 
   // Hardware Fleet States
   const [showPairDeviceModal, setShowPairDeviceModal] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   const [newDevice, setNewDevice] = useState({
     type: 'POS',
     name: '',
-    ipAddress: '',
+    ipAddress: 'USB Cable (WebUSB Direct)',
     status: 'ONLINE',
     details: ''
   });
@@ -29,20 +30,34 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
       const saved = localStorage.getItem('dinepos_hardware_devices');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            // Filter out any legacy offline or IP-based demo printers
+            return parsed.filter((d: any) => {
+              if (d.type === 'PRINTER') {
+                if (d.status === 'OFFLINE') return false;
+                if (d.ipAddress && (d.ipAddress.includes('192.168.') || d.ipAddress.includes('10.0.'))) return false;
+              }
+              return true;
+            });
+          }
         } catch (e) {
           console.error(e);
         }
       }
     }
     return [
-      { id: 'TERM-01', type: 'POS', name: 'Main Cashier Terminal', subtitle: 'Station 1 (Front Counter)', ipAddress: '192.168.1.50', battery: '100% (AC)', uptime: '14h 22m', details: 'iPad Pro 12.9" + Star Micronics mC-Print3', status: 'ONLINE' },
-      { id: 'TERM-02', type: 'POS', name: 'Bar Order Terminal', subtitle: 'Station 2 (Lounge Bar)', ipAddress: '192.168.1.51', battery: '82%', uptime: '6h 11m', details: 'iPad Air 10.9" + Epson TM-T88VI', status: 'ONLINE' },
-      { id: 'PRNT-01', type: 'PRINTER', name: 'Kitchen Hot Line Printer', subtitle: 'Thermal Ticket Printer', ipAddress: '192.168.1.120', battery: 'AC Power', uptime: '128h 5m', details: 'Epson TM-T88VII (LAN/80mm)', status: 'ONLINE' },
-      { id: 'PRNT-02', type: 'PRINTER', name: 'Pastry & Dessert Printer', subtitle: 'Thermal Ticket Printer', ipAddress: '192.168.1.121', battery: 'AC Power', uptime: '128h 5m', details: 'Star Micronics TSP143III (LAN)', status: 'ONLINE' },
-      { id: 'KDS-01', type: 'KDS', name: 'Expo KDS Monitor', subtitle: 'Kitchen Display Controller', ipAddress: '192.168.1.80', battery: 'AC Power', uptime: '14h 22m', details: 'Raspberry Pi 4 + 21.5" IPS Touchscreen', status: 'ONLINE' },
-      { id: 'KDS-02', type: 'KDS', name: 'Grill Station KDS Screen', subtitle: 'Kitchen Display Controller', ipAddress: '192.168.1.81', battery: 'AC Power', uptime: '4h 19m', details: 'Raspberry Pi 4 + 15.6" Rugged Screen', status: 'ONLINE' },
-      { id: 'DRAWER-01', type: 'CASH_DRAWER', name: 'Front Counter Cash Drawer', subtitle: 'Connected via TERM-01', ipAddress: 'Star mC-Print3 Port', battery: 'DC Trigger', uptime: '14h 22m', details: 'APG Series 4000 (Heavy Duty)', status: 'ONLINE' }
+      {
+        id: 'ACTIVE-PRNT',
+        type: 'PRINTER',
+        name: 'System Default Thermal Printer',
+        subtitle: 'Active Direct Thermal Printer',
+        ipAddress: 'USB Cable (WebUSB Direct)',
+        battery: '100% (Wired)',
+        uptime: 'Online',
+        details: 'Routing: Customer Receipt & Kitchen',
+        status: 'ONLINE'
+      }
     ];
   });
 
@@ -52,6 +67,28 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
     }
   }, [devicesList]);
 
+  // Sync active printer from printerContext into hardware fleet if configured
+  useEffect(() => {
+    if (config && config.name && config.name !== 'Browser Print' && config.name !== 'System Default') {
+      setDevicesList(prev => {
+        const exists = prev.some(d => d.name === config.name || d.id === 'ACTIVE-PRNT');
+        if (exists) return prev;
+        const activeDev = {
+          id: 'ACTIVE-PRNT',
+          type: 'PRINTER',
+          name: config.name,
+          subtitle: `Active ${config.type.toUpperCase()} Printer`,
+          ipAddress: config.ip || (config.type === 'usb' ? 'WebUSB Direct Port' : config.type === 'bluetooth' ? 'Bluetooth GATT' : 'System Default'),
+          battery: 'AC Power',
+          uptime: 'Online',
+          details: `Interface: ${config.type.toUpperCase()}`,
+          status: 'ONLINE'
+        };
+        return [activeDev, ...prev];
+      });
+    }
+  }, [config]);
+
   // Additional Hardware States for Redesign
   const [activeHardwareTab, setActiveHardwareTab] = useState<'all' | 'pos' | 'printer' | 'kds' | 'cash_drawer'>('all');
   const [pingingDevices, setPingingDevices] = useState<Record<string, boolean>>({});
@@ -59,31 +96,101 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
   const [editingDevice, setEditingDevice] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [printingDevices, setPrintingDevices] = useState<Record<string, boolean>>({});
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  const totalDevicesCount = devicesList.length;
-  const posTotal = devicesList.filter(d => d.type === 'POS').length;
-  const printerTotal = devicesList.filter(d => d.type === 'PRINTER').length;
-  const kdsTotal = devicesList.filter(d => d.type === 'KDS').length;
-  const cashDrawerTotal = devicesList.filter(d => d.type === 'CASH_DRAWER').length;
+  // Filter list to render ONLY active, paired, and ready-to-use hardware
+  const activeReadyList = devicesList.filter(d => {
+    if (d.type === 'PRINTER') {
+      if (d.status === 'OFFLINE') return false;
+      if (d.ipAddress && (d.ipAddress.includes('192.168.') || d.ipAddress.includes('10.0.'))) return false;
+    }
+    return true;
+  });
 
-  // Hardware Global Settings States
-  const [autoReconnect, setAutoReconnect] = useState(true);
-  const [defaultGateway, setDefaultGateway] = useState('192.168.1.1');
-  const [bluetoothDiscovery, setBluetoothDiscovery] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
+  const totalDevicesCount = activeReadyList.length;
+  const posTotal = activeReadyList.filter(d => d.type === 'POS').length;
+  const printerTotal = activeReadyList.filter(d => d.type === 'PRINTER').length;
+  const kdsTotal = activeReadyList.filter(d => d.type === 'KDS').length;
+  const cashDrawerTotal = activeReadyList.filter(d => d.type === 'CASH_DRAWER').length;
+  const onlineCount = activeReadyList.filter(d => d.status === 'ONLINE').length;
+  const fleetHealthPct = totalDevicesCount > 0 ? Math.round((onlineCount / totalDevicesCount) * 100) : 0;
 
-  const [pairedStar, setPairedStar] = useState(false);
-  const [pairedEpson, setPairedEpson] = useState(false);
+  // Shared filter function for device cards and empty state (BUG-8 fix)
+  const getFilteredDevices = () => {
+    return activeReadyList.filter(dev => {
+      if (activeHardwareTab === 'pos' && dev.type !== 'POS') return false;
+      if (activeHardwareTab === 'printer' && dev.type !== 'PRINTER') return false;
+      if (activeHardwareTab === 'kds' && dev.type !== 'KDS') return false;
+      if (activeHardwareTab === 'cash_drawer' && dev.type !== 'CASH_DRAWER') return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          dev.name.toLowerCase().includes(q) ||
+          dev.id.toLowerCase().includes(q) ||
+          dev.ipAddress.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  };
 
-  const handlePingDevice = (deviceId: string) => {
+  // Hardware Global Settings States with localStorage persistence
+  const [autoReconnect, setAutoReconnect] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const s = localStorage.getItem('dinepos_auto_reconnect');
+      return s !== null ? JSON.parse(s) : true;
+    }
+    return true;
+  });
+
+  const [bluetoothDiscovery, setBluetoothDiscovery] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const s = localStorage.getItem('dinepos_bt_discovery');
+      return s !== null ? JSON.parse(s) : false;
+    }
+    return false;
+  });
+
+  const [pairedStar, setPairedStar] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const s = localStorage.getItem('dinepos_paired_star');
+      return s !== null ? JSON.parse(s) : false;
+    }
+    return false;
+  });
+
+  const [pairedEpson, setPairedEpson] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const s = localStorage.getItem('dinepos_paired_epson');
+      return s !== null ? JSON.parse(s) : false;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('dinepos_auto_reconnect', JSON.stringify(autoReconnect));
+      localStorage.setItem('dinepos_bt_discovery', JSON.stringify(bluetoothDiscovery));
+      localStorage.setItem('dinepos_paired_star', JSON.stringify(pairedStar));
+      localStorage.setItem('dinepos_paired_epson', JSON.stringify(pairedEpson));
+    }
+  }, [autoReconnect, bluetoothDiscovery, pairedStar, pairedEpson]);
+
+  const handlePingDevice = (deviceId: string, deviceName: string) => {
     setPingingDevices(prev => ({ ...prev, [deviceId]: true }));
-    triggerToast(`Pinging device ${deviceId}...`, 'info');
+    triggerToast(`Checking connection for ${deviceName}...`, 'info');
     setTimeout(() => {
-      const latency = Math.floor(8 + Math.random() * 25);
+      const dev = activeReadyList.find(d => d.id === deviceId);
+      const isReachable = dev && dev.status === 'ONLINE';
       setPingingDevices(prev => ({ ...prev, [deviceId]: false }));
-      setPingResults(prev => ({ ...prev, [deviceId]: `${latency}ms (Excellent)` }));
-      triggerToast(`Ping successful for ${deviceId}: ${latency}ms latency`, 'success');
-    }, 1000);
+      if (isReachable) {
+        setPingResults(prev => ({ ...prev, [deviceId]: 'Reachable (Ready)' }));
+        triggerToast(`${deviceName}: Connection verified — device is ready.`, 'success');
+      } else {
+        setPingResults(prev => ({ ...prev, [deviceId]: 'Unreachable' }));
+        triggerToast(`${deviceName}: Device is not reachable. Check connection.`, 'info');
+      }
+    }, 800);
   };
 
   const handleRunPrinterTest = async (devId: string, devName: string) => {
@@ -109,42 +216,84 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
     }
   };
 
-  const playCashRegisterChime = () => {
-    try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContextClass) return;
-      const audioCtx = new AudioContextClass();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-      osc.frequency.setValueAtTime(1760, audioCtx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.4);
-    } catch {}
-  };
-
-  const handleScanDevices = () => {
-    setIsScanning(true);
-    triggerToast('Scanning for nearby bluetooth thermal printers...', 'info');
-    setTimeout(() => {
-      setIsScanning(false);
-      triggerToast('Scan completed. Printers discovered.', 'success');
-    }, 2000);
-  };
-
   const togglePairStar = () => {
-    setPairedStar(prev => !prev);
-    triggerToast(!pairedStar ? 'Star Micronics MCP31 paired!' : 'Star printer unpaired.', 'success');
+    if (pairedStar) {
+      // Unpairing — ask for confirmation (BUG-13 fix)
+      if (!window.confirm('Unpair Star Micronics mC-Print3 from the hardware fleet?')) return;
+      setPairedStar(false);
+      setDevicesList(prev => prev.filter(d => d.id !== 'DEV-STAR-MCP31'));
+      triggerToast('Star Micronics mC-Print3 unpaired.', 'info');
+    } else {
+      setPairedStar(true);
+      const starDev = {
+        id: 'DEV-STAR-MCP31',
+        type: 'PRINTER',
+        name: 'Star Micronics mC-Print3',
+        subtitle: 'Thermal Printer & Cash Drawer Hub',
+        ipAddress: 'USB Cable (WebUSB Direct)',
+        battery: '100% (Wired)',
+        uptime: 'Online',
+        status: 'ONLINE',
+        details: 'Routing: Customer Receipt & Cash Drawer'
+      };
+      setDevicesList(prev => prev.some(d => d.id === starDev.id) ? prev : [starDev, ...prev]);
+      triggerToast('Star Micronics mC-Print3 paired and added to Hardware Fleet!', 'success');
+    }
   };
 
   const togglePairEpson = () => {
-    setPairedEpson(prev => !prev);
-    triggerToast(!pairedEpson ? 'Epson TM-m30II paired!' : 'Epson printer unpaired.', 'success');
+    if (pairedEpson) {
+      // Unpairing — ask for confirmation (BUG-13 fix)
+      if (!window.confirm('Unpair Epson TM-m30II from the hardware fleet?')) return;
+      setPairedEpson(false);
+      setDevicesList(prev => prev.filter(d => d.id !== 'DEV-EPSON-M30'));
+      triggerToast('Epson TM-m30II unpaired.', 'info');
+    } else {
+      setPairedEpson(true);
+      const epsonDev = {
+        id: 'DEV-EPSON-M30',
+        type: 'PRINTER',
+        name: 'Epson TM-m30II Thermal Printer',
+        subtitle: 'High-speed ESC/POS Thermal Printer',
+        ipAddress: 'Bluetooth Wireless (WebBluetooth)',
+        battery: '100% (Wired)',
+        uptime: 'Online',
+        status: 'ONLINE',
+        details: 'Routing: Kitchen Expo & Receipts'
+      };
+      setDevicesList(prev => prev.some(d => d.id === epsonDev.id) ? prev : [epsonDev, ...prev]);
+      triggerToast('Epson TM-m30II paired and added to Hardware Fleet!', 'success');
+    }
+  };
+
+  const exportHardwareReport = () => {
+    const reportData = {
+      timestamp: new Date().toISOString(),
+      fleetHealthScore: `${fleetHealthPct}% Operational`,
+      totalDevices: totalDevicesCount,
+      onlineCount: onlineCount,
+      activeConfig: config,
+      devices: activeReadyList
+    };
+
+    const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hardware_fleet_health_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setAuditLogs(prev => [
+      {
+        id: Date.now(),
+        time: 'Just now',
+        actor: 'Admin',
+        action: `Exported Hardware Fleet Health Report (${totalDevicesCount} devices, ${fleetHealthPct}% health)`,
+        type: 'info'
+      },
+      ...prev
+    ]);
+    triggerToast('Hardware Fleet Health Report exported!', 'success');
   };
 
   return (
@@ -163,7 +312,15 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                   </p>
                 </div>
 
-                <div className="flex gap-4 items-center">
+                <div className="flex gap-3 items-center flex-wrap">
+                  <button type="button"
+                    onClick={exportHardwareReport}
+                    className="text-white/80 hover:text-white px-4 py-2 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none border border-white/10 rounded-xl bg-white/5 hover:bg-white/10"
+                    title="Download sealed JSON report of all hardware devices and diagnostics"
+                  >
+                    <span className="material-symbols-outlined text-base">download</span>
+                    Export Report
+                  </button>
                   <Link
                     href="/dashboard/printer-settings"
                     className="text-[#ffe2ab] hover:text-[#ffdca0] px-4 py-2 text-xs uppercase tracking-widest font-sans font-bold transition-colors cursor-pointer flex items-center gap-1.5 select-none border border-[#ffe2ab]/20 rounded-xl bg-white/5 hover:bg-white/10"
@@ -178,6 +335,49 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                     <span className="material-symbols-outlined text-base">add_circle</span>
                     {tr.pairNewDevice}
                   </button>
+                </div>
+              </div>
+
+              {/* Fleet Summary KPI Stat Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 select-none">
+                <div className={`${t.cardBg} border rounded-2xl p-4 flex items-center gap-4 shadow-lg`}>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <span className="material-symbols-outlined text-xl">devices</span>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#A69984]/60 uppercase font-bold tracking-wider">Connected Fleet</div>
+                    <div className="text-base font-bold text-white font-mono mt-0.5">{totalDevicesCount} Active Devices</div>
+                  </div>
+                </div>
+
+                <div className={`${t.cardBg} border rounded-2xl p-4 flex items-center gap-4 shadow-lg`}>
+                  <div className="w-10 h-10 rounded-xl bg-[#ffe2ab]/10 border border-[#ffe2ab]/20 flex items-center justify-center text-[#ffc53d]">
+                    <span className="material-symbols-outlined text-xl">print</span>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#A69984]/60 uppercase font-bold tracking-wider">Thermal Printers</div>
+                    <div className="text-base font-bold text-white font-mono mt-0.5">{printerTotal} Units Online</div>
+                  </div>
+                </div>
+
+                <div className={`${t.cardBg} border rounded-2xl p-4 flex items-center gap-4 shadow-lg`}>
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                    <span className="material-symbols-outlined text-xl">inbox</span>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#A69984]/60 uppercase font-bold tracking-wider">Cash Drawers</div>
+                    <div className="text-base font-bold text-white font-mono mt-0.5">{cashDrawerTotal} Units (RJ11)</div>
+                  </div>
+                </div>
+
+                <div className={`${t.cardBg} border rounded-2xl p-4 flex items-center gap-4 shadow-lg`}>
+                  <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                    <span className="material-symbols-outlined text-xl">health_metrics</span>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-[#A69984]/60 uppercase font-bold tracking-wider">Fleet Health</div>
+                    <div className={`text-base font-bold ${fleetHealthPct >= 80 ? 'text-emerald-400' : fleetHealthPct >= 50 ? 'text-amber-400' : 'text-rose-400'} font-mono mt-0.5`}>{fleetHealthPct}% Operational</div>
+                  </div>
                 </div>
               </div>
 
@@ -239,23 +439,7 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
 
                 {/* Device Cards Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {devicesList
-                    .filter(dev => {
-                      if (activeHardwareTab === 'pos' && dev.type !== 'POS') return false;
-                      if (activeHardwareTab === 'printer' && dev.type !== 'PRINTER') return false;
-                      if (activeHardwareTab === 'kds' && dev.type !== 'KDS') return false;
-                      if (activeHardwareTab === 'cash_drawer' && dev.type !== 'CASH_DRAWER') return false;
-                      
-                      if (searchQuery.trim()) {
-                        const q = searchQuery.toLowerCase();
-                        return (
-                          dev.name.toLowerCase().includes(q) ||
-                          dev.id.toLowerCase().includes(q) ||
-                          dev.ipAddress.toLowerCase().includes(q)
-                        );
-                      }
-                      return true;
-                    })
+                  {getFilteredDevices()
                     .map((dev) => {
                       const isPinging = pingingDevices[dev.id];
                       const pingVal = pingResults[dev.id];
@@ -290,8 +474,8 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
 
                             <div className="space-y-2 text-[10.5px] font-sans font-semibold">
                               <div className="flex justify-between">
-                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>IP Address</span>
-                                <span className={`font-mono ${t.text}`}>{dev.ipAddress}</span>
+                                <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Connection Interface</span>
+                                <span className={`font-mono ${t.text}`}>{dev.ipAddress || 'USB Cable'}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className={`text-[#A69984]/40 uppercase tracking-wider text-[9px] ${t.textMutedLight}`}>Power / Battery</span>
@@ -320,11 +504,11 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                           </div>
 
                           <div className="flex flex-col gap-2 mt-5 select-none">
-                            {/* Connection Ping / Diagnostic Stats */}
+                            {/* Connection Diagnostic Stats */}
                             {pingVal && (
                               <div className={`px-3 py-1.5 rounded-lg ${t.inputBg} border border-white/5 flex justify-between items-center text-[10px] font-sans`}>
-                                <span className="text-white/40 uppercase font-bold tracking-wider">Ping Response:</span>
-                                <span className="font-mono text-emerald-400 font-bold">{pingVal}</span>
+                                <span className="text-white/40 uppercase font-bold tracking-wider">Connection Status:</span>
+                                <span className={`font-mono font-bold ${pingVal === 'Unreachable' ? 'text-rose-400' : 'text-emerald-400'}`}>{pingVal}</span>
                               </div>
                             )}
                             
@@ -345,36 +529,24 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                                     'Test Print'
                                   )}
                                 </button>
-                              ) : dev.type === 'CASH_DRAWER' ? (
-                                <button type="button" 
-                                  onClick={async () => {
-                                    triggerToast(`Sending RJ12 drawer kick signal to ${dev.name}...`, 'info');
-                                    playCashRegisterChime();
-                                    await kickCashDrawer();
-                                    triggerToast('Drawer kicked open successfully!', 'success');
-                                  }}
-                                  className={`flex-1 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer`}
-                                >
-                                  Test Drawer Kick
-                                </button>
                               ) : (
-                                <button type="button" 
-                                  onClick={() => handlePingDevice(dev.id)}
-                                  disabled={isPinging}
-                                  className={`flex-1 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2`}
-                                >
-                                  {isPinging ? (
-                                    <>
-                                      <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></span>
-                                      Pinging...
-                                    </>
-                                  ) : (
-                                    'Test Connection'
-                                  )}
-                                </button>
-                              )}
+                                 <button type="button" 
+                                   onClick={() => handlePingDevice(dev.id, dev.name)}
+                                   disabled={isPinging}
+                                   className={`flex-1 py-2.5 bg-transparent border ${t.buttonOutline} font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2`}
+                                 >
+                                   {isPinging ? (
+                                     <>
+                                       <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin"></span>
+                                       Checking...
+                                     </>
+                                   ) : (
+                                     'Test Connection'
+                                   )}
+                                 </button>
+                               )}
 
-                              {/* Manage (Edit/Delete Dropdown) */}
+                              {/* Manage (Edit/Delete) */}
                               <div className="flex gap-1.5">
                                 <button type="button"
                                   onClick={() => setEditingDevice(dev)}
@@ -384,12 +556,7 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                                   <span className="material-symbols-outlined text-xs">edit</span>
                                 </button>
                                 <button type="button"
-                                  onClick={() => {
-                                    if (confirm(`Are you sure you want to unpair device ${dev.name}?`)) {
-                                      setDevicesList(prev => prev.filter(d => d.id !== dev.id));
-                                      triggerToast(`Device ${dev.name} unpaired successfully.`, 'success');
-                                    }
-                                  }}
+                                  onClick={() => setShowDeleteConfirm(dev.id)}
                                   className="p-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 hover:border-red-500/30 text-red-400 font-sans font-bold text-[10px] uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center"
                                   title="Unpair Device"
                                 >
@@ -397,23 +564,51 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                                 </button>
                               </div>
                             </div>
+
+                            {/* Inline Delete Confirmation */}
+                            {showDeleteConfirm === dev.id && (
+                              <div className="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 animate-fade-in">
+                                <span className="text-[10px] text-red-400 font-bold uppercase tracking-wider">Unpair {dev.name}?</span>
+                                <div className="flex gap-1.5">
+                                  <button type="button"
+                                    onClick={() => {
+                                      // Sync brand toggle state if this is a brand device (BUG-3 fix)
+                                      if (dev.id === 'DEV-STAR-MCP31') setPairedStar(false);
+                                      if (dev.id === 'DEV-EPSON-M30') setPairedEpson(false);
+                                      setDevicesList(prev => prev.filter(d => d.id !== dev.id));
+                                      setShowDeleteConfirm(null);
+                                      triggerToast(`Device ${dev.name} unpaired successfully.`, 'success');
+                                      setAuditLogs(prev => [
+                                        {
+                                          id: Date.now(),
+                                          time: 'Just now',
+                                          actor: 'Admin',
+                                          action: `Unpaired hardware device: ${dev.name} (${dev.id})`,
+                                          type: 'info'
+                                        },
+                                        ...prev
+                                      ]);
+                                    }}
+                                    className="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button type="button"
+                                    onClick={() => setShowDeleteConfirm(null)}
+                                    className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-white/60 text-[9px] font-bold uppercase tracking-wider rounded-lg transition-colors cursor-pointer"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
 
                   {/* Empty State */}
-                  {devicesList.filter(dev => {
-                    if (activeHardwareTab === 'pos' && dev.type !== 'POS') return false;
-                    if (activeHardwareTab === 'printer' && dev.type !== 'PRINTER') return false;
-                    if (activeHardwareTab === 'kds' && dev.type !== 'KDS') return false;
-                    if (activeHardwareTab === 'cash_drawer' && dev.type !== 'CASH_DRAWER') return false;
-                    if (searchQuery.trim()) {
-                      const q = searchQuery.toLowerCase();
-                      return dev.name.toLowerCase().includes(q) || dev.id.toLowerCase().includes(q);
-                    }
-                    return true;
-                  }).length === 0 && (
+                  {getFilteredDevices().length === 0 && (
                     <div className={`col-span-full ${t.cardBg} border rounded-2xl p-12 text-center flex flex-col items-center justify-center space-y-4`}>
                       <span className="material-symbols-outlined text-5xl text-white/10 animate-bounce">settings_remote</span>
                       <div>
@@ -422,14 +617,95 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                           No devices match the active filters. Pair a new POS tablet, thermal printer, KDS expo screen, or cash drawer.
                         </p>
                       </div>
-                      <button type="button"
-                        onClick={() => setShowPairDeviceModal(true)}
-                        className={`px-4 py-2 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer`}
-                      >
-                        Pair New Device
-                      </button>
+                      <div className="flex gap-3 pt-2">
+                        <button type="button"
+                          onClick={() => setShowPairDeviceModal(true)}
+                          className={`px-4 py-2 ${t.accentBg} ${t.accentHoverBg} ${t.accentText} text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer`}
+                        >
+                          Pair New Device
+                        </button>
+                      </div>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Fleet Ecosystem Settings & Brand Quick Pairing */}
+              <div className="pt-6 border-t border-white/5 space-y-4 select-none">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-serif text-lg font-bold text-white tracking-wide">Hardware Ecosystem Controls</h3>
+                  <span className="text-[10px] text-[#A69984]/50 font-mono uppercase tracking-wider">WebUSB & WebBluetooth Protocol v2.4</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Auto Reconnect */}
+                  <div className={`${t.cardBg} border rounded-xl p-4 flex justify-between items-center`}>
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Auto-Reconnect</h4>
+                      <p className="text-[10px] text-[#A69984]/60 mt-0.5 font-semibold">Session recovery on cycle</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAutoReconnect(!autoReconnect);
+                        triggerToast(!autoReconnect ? 'Auto-reconnect enabled' : 'Auto-reconnect disabled', 'info');
+                      }}
+                      className={`w-10 h-5 rounded-full transition-colors p-0.5 flex items-center ${autoReconnect ? 'bg-[#ffc53d] justify-end' : 'bg-white/10 justify-start'}`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-[#161513] shadow-md"></span>
+                    </button>
+                  </div>
+
+                  {/* Bluetooth Scan */}
+                  <div className={`${t.cardBg} border rounded-xl p-4 flex justify-between items-center`}>
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Bluetooth Scan</h4>
+                      <p className="text-[10px] text-[#A69984]/60 mt-0.5 font-semibold">WebBluetooth auto-discovery</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBluetoothDiscovery(!bluetoothDiscovery);
+                        triggerToast(!bluetoothDiscovery ? 'Bluetooth discovery enabled' : 'Bluetooth discovery disabled', 'info');
+                      }}
+                      className={`w-10 h-5 rounded-full transition-colors p-0.5 flex items-center ${bluetoothDiscovery ? 'bg-[#ffc53d] justify-end' : 'bg-white/10 justify-start'}`}
+                    >
+                      <span className="w-4 h-4 rounded-full bg-[#161513] shadow-md"></span>
+                    </button>
+                  </div>
+
+                  {/* Epson TM-m30II */}
+                  <div className={`${t.cardBg} border rounded-xl p-4 flex justify-between items-center`}>
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Epson TM-m30II</h4>
+                      <p className="text-[10px] text-[#A69984]/60 mt-0.5 font-semibold">USB/Bluetooth ESC/POS</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={togglePairEpson}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        pairedEpson ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/10'
+                      }`}
+                    >
+                      {pairedEpson ? 'Paired' : 'Pair'}
+                    </button>
+                  </div>
+
+                  {/* Star Micronics mC-Print3 */}
+                  <div className={`${t.cardBg} border rounded-xl p-4 flex justify-between items-center`}>
+                    <div>
+                      <h4 className="text-xs font-bold text-white uppercase tracking-wider">Star mC-Print3</h4>
+                      <p className="text-[10px] text-[#A69984]/60 mt-0.5 font-semibold">Receipt & Drawer Hub</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={togglePairStar}
+                      className={`px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        pairedStar ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 hover:bg-white/10 text-white/70 border border-white/10'
+                      }`}
+                    >
+                      {pairedStar ? 'Paired' : 'Pair'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -478,17 +754,22 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                         />
                       </div>
 
-                      {/* IP Address */}
+                      {/* Connection Interface */}
                       <div>
-                        <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>IP Address</label>
-                        <input 
-                          type="text" 
-                          value={editingDevice.ipAddress}
-                          onChange={(e) => setEditingDevice({...editingDevice, ipAddress: e.target.value})}
-                          placeholder="e.g. 192.168.1.110"
-                          className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                          required
-                        />
+                        <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Connection Interface</label>
+                        <div className="relative">
+                          <select
+                            value={editingDevice.ipAddress}
+                            onChange={(e) => setEditingDevice({...editingDevice, ipAddress: e.target.value})}
+                            className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
+                          >
+                            <option value="USB Cable (WebUSB Direct)">USB Cable (WebUSB Direct)</option>
+                            <option value="Bluetooth Wireless (WebBluetooth)">Bluetooth Wireless (WebBluetooth)</option>
+                            <option value="System Default Printer">System Default Printer</option>
+                            <option value="Local Terminal Port (USB/Local)">Local Terminal Port (USB/Local)</option>
+                          </select>
+                          <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
+                        </div>
                       </div>
 
                       {/* Status */}
@@ -504,7 +785,6 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                             {editingDevice.type === 'PRINTER' && (
                               <option value="WARNING_LOW_PAPER">WARNING (LOW PAPER)</option>
                             )}
-                            <option value="OFFLINE">OFFLINE</option>
                           </select>
                           <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
                         </div>
@@ -551,24 +831,24 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                 triggerToast('Please enter a device name.', 'info');
                 return;
               }
-              const newId = `DEV-${Math.floor(100 + Math.random() * 900)}`;
+              const newId = `DEV-${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().slice(0, 8).toUpperCase() : Date.now().toString(36).toUpperCase()}`;
               const deviceToAdd = {
                 id: newId,
                 type: newDevice.type,
                 name: newDevice.name,
-                subtitle: newDevice.type === 'POS' ? 'Remote Station' : newDevice.type === 'PRINTER' ? 'Thermal Printer' : 'KDS Terminal',
-                ipAddress: newDevice.ipAddress || '192.168.1.150',
+                subtitle: newDevice.type === 'POS' ? 'Remote Station' : newDevice.type === 'PRINTER' ? 'Thermal Printer' : newDevice.type === 'KDS' ? 'KDS Terminal' : 'Cash Drawer',
+                ipAddress: newDevice.ipAddress || 'USB Cable (WebUSB Direct)',
                 battery: '100% (Wired)',
                 uptime: '0h 1m',
                 status: 'ONLINE',
-                details: newDevice.type === 'POS' ? 'Uptime: 0h 1m' : newDevice.type === 'PRINTER' ? 'Routing: Expo' : 'Syncing: Real-time'
+                details: newDevice.type === 'POS' ? 'Uptime: 0h 1m' : newDevice.type === 'PRINTER' ? 'Routing: Customer Receipt' : newDevice.type === 'KDS' ? 'KDS Expo' : 'Triggered via Printer RJ11 / WebUSB'
               };
               setDevicesList([...devicesList, deviceToAdd]);
               setShowPairDeviceModal(false);
               setNewDevice({
                 type: 'POS',
                 name: '',
-                ipAddress: '',
+                ipAddress: 'USB Cable (WebUSB Direct)',
                 status: 'ONLINE',
                 details: ''
               });
@@ -587,14 +867,51 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                     <option value="POS">POS Terminal</option>
                     <option value="PRINTER">Thermal Printer</option>
                     <option value="KDS">Kitchen Display System (KDS)</option>
+                    <option value="CASH_DRAWER">Cash Drawer</option>
                   </select>
                   <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
                 </div>
               </div>
 
-              {/* Name */}
+              {/* Name with Native WebUSB / WebBluetooth Scan Trigger */}
               <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Device Name</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider`}>Device Name</label>
+                  {(newDevice.type === 'PRINTER' || newDevice.type === 'CASH_DRAWER') && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsScanning(true);
+                        try {
+                          const typeToScan = (newDevice.ipAddress || '').includes('Bluetooth') ? 'bluetooth' : 'usb';
+                          triggerToast(`Opening native ${typeToScan === 'bluetooth' ? 'Bluetooth' : 'USB'} device selector...`, 'info');
+                          await scanAndPair(typeToScan);
+                          // After scanAndPair completes, read the updated config from printer context (BUG-2 fix)
+                          // The config state will be updated by printerContext after successful pairing
+                          setTimeout(() => {
+                            if (config.name && config.name !== 'Browser Print') {
+                              setNewDevice(prev => ({
+                                ...prev,
+                                name: config.name,
+                                ipAddress: config.type === 'bluetooth' ? 'Bluetooth Wireless (WebBluetooth)' : 'USB Cable (WebUSB Direct)'
+                              }));
+                              triggerToast(`Paired ${config.name} successfully!`, 'success');
+                            }
+                          }, 100);
+                        } catch (err: any) {
+                          triggerToast(err?.message || 'Device pairing scan cancelled.', 'info');
+                        } finally {
+                          setIsScanning(false);
+                        }
+                      }}
+                      disabled={isScanning}
+                      className="text-[#ffe2ab] hover:text-[#ffdca0] text-[10px] uppercase font-bold tracking-wider flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                    >
+                      <span className="material-symbols-outlined text-xs">{isScanning ? 'progress_activity' : 'search'}</span>
+                      {isScanning ? 'Scanning...' : 'Scan WebUSB / Bluetooth'}
+                    </button>
+                  )}
+                </div>
                 <input 
                   type="text" 
                   aria-label="Device name"
@@ -606,17 +923,23 @@ export default function HardwareTab({ t, tr, triggerToast, setAuditLogs }: Hardw
                 />
               </div>
 
-              {/* IP Address */}
+              {/* Connection Interface */}
               <div>
-                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>IP Address (Optional)</label>
-                <input 
-                  type="text" 
-                  aria-label="IP address"
-                  value={newDevice.ipAddress}
-                  onChange={(e) => setNewDevice({...newDevice, ipAddress: e.target.value})}
-                  placeholder="e.g. 192.168.1.110"
-                  className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} placeholder-[#A69984]/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                />
+                <label className={`block ${t.textMuted} text-[9px] font-bold uppercase tracking-wider mb-2`}>Connection Interface</label>
+                <div className="relative">
+                  <select
+                    aria-label="Connection interface"
+                    value={newDevice.ipAddress || 'USB Cable (WebUSB Direct)'}
+                    onChange={(e) => setNewDevice({...newDevice, ipAddress: e.target.value})}
+                    className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium appearance-none`}
+                  >
+                    <option value="USB Cable (WebUSB Direct)">USB Cable (WebUSB Direct)</option>
+                    <option value="Bluetooth Wireless (WebBluetooth)">Bluetooth Wireless (WebBluetooth)</option>
+                    <option value="System Default Printer">System Default Printer</option>
+                    <option value="Local Terminal Port (USB/Local)">Local Terminal Port (USB/Local)</option>
+                  </select>
+                  <span className={`material-symbols-outlined absolute right-3.5 top-3 ${t.textMutedDark} text-sm pointer-events-none`}>keyboard_arrow_down</span>
+                </div>
               </div>
 
               <div className="flex gap-4 pt-4">

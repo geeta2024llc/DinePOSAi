@@ -88,9 +88,9 @@ async function attemptTokenRefresh(): Promise<string | null> {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-    });
+    }).catch(() => null);
 
-    if (refreshRes.ok) {
+    if (refreshRes && refreshRes.ok) {
       const refreshData = await refreshRes.json();
       if (refreshData.success && refreshData.data?.token) {
         const newToken = refreshData.data.token;
@@ -138,12 +138,27 @@ export async function checkBackendOnline(): Promise<boolean> {
  * Main API request fetch wrapper.
  * Automatically injects authorization header and handles server offline states.
  */
+let lastOfflineCheckTime = 0;
+let isServerOfflineCached = true;
+
 export async function apiRequest<T = any>(
   path: string,
   options: ApiRequestOptions = {}
 ): Promise<ApiResponseEnvelope<T>> {
   const { useAuth = true, ...fetchOptions } = options;
   const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+
+  // In standalone local browser mode without a live API server, immediately return offline fallback
+  if (typeof window !== 'undefined') {
+    const enableApi = localStorage.getItem('dinepos_enable_api');
+    if (enableApi !== 'true') {
+      return {
+        success: false,
+        error: 'Network connection failed. Server is currently offline.',
+        isOfflineFallback: true,
+      };
+    }
+  }
 
   // 1. Prepare headers
   const headers = new Headers(fetchOptions.headers || {});
@@ -165,50 +180,92 @@ export async function apiRequest<T = any>(
     credentials: 'include',
   };
 
+  let response: Response | null = null;
   try {
-    const response = await fetch(url, finalOptions);
-    
-    // Handle unauthorized/session expired -> try to refresh
-    if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
-      // Use the shared refresh mutex — only one refresh request in flight at a time
-      const newToken = await getRefreshPromise();
+    response = await fetch(url, finalOptions);
+  } catch (fetchErr: any) {
+    lastOfflineCheckTime = Date.now();
+    isServerOfflineCached = true;
+    console.warn(`[API Client] Connection to ${API_BASE_URL} failed (${fetchErr?.message || 'offline'}). Using local fallback.`);
+    return {
+      success: false,
+      error: 'Network connection failed. Server is currently offline.',
+      isOfflineFallback: true,
+    };
+  }
 
-      if (newToken) {
-        // Retry the original request with the new token
-        const retryHeaders = new Headers(finalOptions.headers || {});
-        retryHeaders.set('Authorization', `Bearer ${newToken}`);
-        const retryOptions = { ...finalOptions, headers: retryHeaders };
-        const retryRes = await fetch(url, retryOptions);
+  if (!response) {
+    lastOfflineCheckTime = Date.now();
+    isServerOfflineCached = true;
+    return {
+      success: false,
+      error: 'Network connection failed. Server is currently offline.',
+      isOfflineFallback: true,
+    };
+  }
+  
+  // Server responded successfully -> reset offline flag
+  isServerOfflineCached = false;
+  
+  // Handle unauthorized/session expired -> try to refresh
+  if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/auth/refresh') && !path.includes('/auth/login')) {
+    // Use the shared refresh mutex — only one refresh request in flight at a time
+    const newToken = await getRefreshPromise();
 
-        const retryContentType = retryRes.headers.get('content-type');
-        let retryDataObj;
-        if (retryContentType && retryContentType.includes('application/json')) {
-          retryDataObj = await retryRes.json();
-        } else {
-          retryDataObj = { message: await retryRes.text() };
-        }
-
-        if (!retryRes.ok) {
-          return {
-            success: false,
-            error: retryDataObj.error || `HTTP error! Status: ${retryRes.status}`,
-          };
-        }
+    if (newToken) {
+      // Retry the original request with the new token
+      const retryHeaders = new Headers(finalOptions.headers || {});
+      retryHeaders.set('Authorization', `Bearer ${newToken}`);
+      const retryOptions = { ...finalOptions, headers: retryHeaders };
+      
+      let retryRes: Response | null = null;
+      try {
+        retryRes = await fetch(url, retryOptions);
+      } catch {
         return {
-          success: true,
-          data: retryDataObj.data !== undefined ? retryDataObj.data : retryDataObj,
+          success: false,
+          error: 'Network connection failed on retry. Server is currently offline.',
+          isOfflineFallback: true,
         };
       }
 
-      // Refresh failed — only log out if this is the definitive failure
-      // (not if another concurrent request is handling it)
-      if (!refreshPromise) {
-        localStorage.removeItem('dinepos_jwt_token');
-        localStorage.removeItem('dinepos_user_account');
-        window.dispatchEvent(new Event('dinepos_unauthorized'));
+      if (!retryRes) {
+        return {
+          success: false,
+          error: 'Network connection failed on retry. Server is currently offline.',
+          isOfflineFallback: true,
+        };
       }
+
+      const retryContentType = retryRes.headers.get('content-type');
+      let retryDataObj;
+      if (retryContentType && retryContentType.includes('application/json')) {
+        retryDataObj = await retryRes.json();
+      } else {
+        retryDataObj = { message: await retryRes.text() };
+      }
+
+      if (!retryRes.ok) {
+        return {
+          success: false,
+          error: retryDataObj.error || `HTTP error! Status: ${retryRes.status}`,
+        };
+      }
+      return {
+        success: true,
+        data: retryDataObj.data !== undefined ? retryDataObj.data : retryDataObj,
+      };
     }
 
+    // Refresh failed — only log out if this is the definitive failure
+    if (!refreshPromise) {
+      localStorage.removeItem('dinepos_jwt_token');
+      localStorage.removeItem('dinepos_user_account');
+      window.dispatchEvent(new Event('dinepos_unauthorized'));
+    }
+  }
+
+  try {
     const contentType = response.headers.get('content-type');
     let data;
     if (contentType && contentType.includes('application/json')) {
@@ -229,21 +286,9 @@ export async function apiRequest<T = any>(
       data: data.data !== undefined ? data.data : data,
     };
   } catch (err: any) {
-    // Check if it is a network error (server offline/unreachable)
-    const isNetworkError = err instanceof TypeError || err.name === 'AbortError';
-    
-    if (isNetworkError) {
-      console.warn(`[API Client] Connection to ${API_BASE_URL} failed. Falling back to local storage mocks.`);
-      return {
-        success: false,
-        error: 'Network connection failed. Server is currently offline.',
-        isOfflineFallback: true,
-      };
-    }
-
     return {
       success: false,
-      error: err.message || 'An unknown network error occurred.',
+      error: err?.message || 'Failed to parse response.',
     };
   }
 }

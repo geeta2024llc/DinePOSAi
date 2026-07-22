@@ -111,60 +111,59 @@ export class PrinterService {
       encoder.pulseDrawer(0, 48, 240);
     }
 
-    encoder.align('center')
+    encoder.bold(true)
+      .align('center')
       .size(true)
-      .bold(true)
       .line('DinePosAi')
       .size(false)
-      .bold(false)
-      .line('Aura Hospitality Group')
+      .line('AURA HOSPITALITY GROUP')
       .line('1200 Gastronomy Way, Suite 400')
       .line('New York, NY 10001')
       .line('+1 (212) 555-0198')
       .line('================================================')
       .align('left')
-      .line(`Table: ${data.tableNumber}`)
-      .line(`Order ID: ${data.orderId}`)
-      .line(`Date: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
-      .line('------------------------------------------------');
+      .line(`TABLE: ${data.tableNumber}    ORDER #${data.orderId}`)
+      .line(`DATE: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
+      .line('================================================');
 
     data.items.forEach(item => {
       const itemPrice = item.price * item.quantity;
-      const leftCol = `${item.name.slice(0, 30)} x${item.quantity}`;
+      const leftCol = `${item.name.slice(0, 26)} x${item.quantity}`;
       const rightCol = `$${itemPrice.toFixed(2)}`;
-      const dots = '.'.repeat(Math.max(2, 48 - leftCol.length - rightCol.length));
-      encoder.line(`${leftCol}${dots}${rightCol}`);
+      const spaces = ' '.repeat(Math.max(1, 44 - leftCol.length - rightCol.length));
+      encoder.line(`${leftCol}${spaces}${rightCol}`);
       
       if (item.modifiers && item.modifiers.length > 0) {
-        encoder.line(`  (${item.modifiers.join(', ')})`);
+        encoder.line(`   + ${item.modifiers.join(', ')}`);
       }
       if (item.notes) {
-        encoder.line(`  Note: "${item.notes}"`);
+        encoder.line(`   NOTE: "${item.notes}"`);
       }
     });
 
     encoder.line('------------------------------------------------')
       .align('right')
-      .line(`Subtotal: $${data.subtotal.toFixed(2)}`)
-      .line(`Tax (${(data.taxRate * 100).toFixed(1)}%): $${data.tax.toFixed(2)}`)
-      .line(`Auto-Gratuity (20%): $${data.serviceCharge.toFixed(2)}`)
+      .line(`SUBTOTAL: $${data.subtotal.toFixed(2)}`)
+      .line(`TAX (${(data.taxRate * 100).toFixed(1)}%): $${data.tax.toFixed(2)}`)
+      .line(`AUTO-GRATUITY (20%): $${data.serviceCharge.toFixed(2)}`)
       .line('================================================')
-      .bold(true)
+      .size(true)
       .line(`TOTAL: $${data.total.toFixed(2)}`)
-      .bold(false)
+      .size(false)
+      .line('================================================')
       .align('center')
-      .feed(2);
+      .feed(1);
 
     if (data.isPaid) {
       encoder.line('*** PAYMENT CONFIRMED ***')
-        .line(`Method: ${data.paymentMethod || 'Credit Card'}`)
-        .line(`Auth: ${data.authCode || '**** 4242'}`);
+        .line(`METHOD: ${data.paymentMethod || 'CREDIT CARD'}`)
+        .line(`AUTH: ${data.authCode || 'OK-200 / **** 4242'}`);
     } else {
       encoder.line('*** BALANCE DUE ***');
     }
 
-    encoder.feed(3)
-      .line('Thank you for dining with us!')
+    encoder.feed(2)
+      .line('THANK YOU FOR DINING WITH US!')
       .feed(2)
       .cut();
 
@@ -179,21 +178,30 @@ export class PrinterService {
 
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-    const itemRows = data.items.map(item => {
+    const itemRowsHtml = data.items.map(item => {
       const itemPrice = item.price * item.quantity;
-      const name = item.name.length > 30 ? item.name.slice(0, 30) : item.name;
-      const leftCol = `${esc(name)} x${item.quantity}`;
-      const rightCol = `$${itemPrice.toFixed(2)}`;
-      const dots = '.'.repeat(Math.max(2, 48 - leftCol.length - rightCol.length));
+      const name = esc(item.name);
+      const qtyStr = `x${item.quantity}`;
       let modHtml = '';
       if (item.modifiers && item.modifiers.length > 0) {
-        modHtml = `<div style="padding-left:12px;font-size:11px;color:#555;font-weight:900;">(${item.modifiers.map(m => esc(m)).join(', ')})</div>`;
+        modHtml = `<div class="item-details">+ ${item.modifiers.map(m => esc(m)).join(', ')}</div>`;
       }
       let noteHtml = '';
       if (item.notes) {
-        noteHtml = `<div style="padding-left:12px;font-size:11px;color:#555;font-weight:900;">Note: "${esc(item.notes)}"</div>`;
+        noteHtml = `<div class="item-details">NOTE: "${esc(item.notes)}"</div>`;
       }
-      return `<div style="font-family:'Courier New',monospace;font-size:13px;white-space:pre;font-weight:900;">${leftCol}${dots}${rightCol}</div>${modHtml}${noteHtml}`;
+      return `
+        <tr>
+          <td class="item-name">
+            <strong>${name}</strong> <span style="font-weight:900;">[${qtyStr}]</span>
+            ${modHtml}
+            ${noteHtml}
+          </td>
+          <td class="item-price">
+            <strong>$${itemPrice.toFixed(2)}</strong>
+          </td>
+        </tr>
+      `;
     }).join('');
 
     const taxPct = (data.taxRate * 100).toFixed(1);
@@ -205,49 +213,97 @@ export class PrinterService {
 <head>
 <title>Receipt - ${esc(data.orderId)}</title>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-weight:900; }
-  body { background:#fff; padding:10px; font-family:'Courier New',monospace; }
-  .receipt { max-width:300px; width:300px; margin:0 auto; }
+  * { margin:0; padding:0; box-sizing:border-box; font-weight:900 !important; color:#000000 !important; }
+  html, body { width:100%; background:#fff; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  body { padding:8px 6px; }
+  .receipt { width:100%; max-width:275px; margin:0 auto; padding:4px 8px; }
   .center { text-align:center; }
-  .sep { border:none; border-top:2px dashed #000; margin:10px 0; }
-  .sep2 { border:none; border-top:1px dashed #999; margin:8px 0; }
-  .totals td { padding:3px 0; font-size:13px; font-weight:900; }
-  .total-row td { border-top:2px solid #000; padding-top:6px; font-size:15px; font-weight:900; }
-  @media print { @page { margin:0; } body { padding:8px; } * { font-weight:900 !important; } }
+  .header-title { font-size:22px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+  .header-sub { font-size:11px; font-weight:900; margin-bottom:2px; text-transform:uppercase; }
+  .meta-box { border:2px solid #000; padding:6px 8px; margin:8px 0; font-size:11px; font-weight:900; line-height:1.4; border-radius:4px; }
+  .sep-solid { border:none; border-top:2px solid #000; margin:8px 0; }
+  .sep-double { border:none; border-top:3px double #000; margin:8px 0; }
+  .item-table { width:100%; border-collapse:collapse; margin:6px 0; }
+  .item-table td { padding:4px 0; font-size:12px; font-weight:900; vertical-align:top; border-bottom:1px solid #eee; }
+  .item-table tr:last-child td { border-bottom:none; }
+  .item-name { font-weight:900; padding-right:10px; text-align:left; word-break:break-word; }
+  .item-price { text-align:right; font-weight:900; white-space:nowrap; width:65px; }
+  .item-details { padding-left:8px; font-size:10.5px; font-weight:900; margin-top:2px; }
+  .totals-table { width:100%; border-collapse:collapse; margin-top:6px; }
+  .totals-table td { padding:3px 0; font-size:12px; font-weight:900; }
+  .total-banner { border:3px solid #000; background:#000 !important; color:#fff !important; padding:6px 10px; margin:10px 0; font-size:16px; font-weight:900; display:flex; justify-content:space-between; align-items:center; border-radius:4px; }
+  .total-banner * { color:#fff !important; }
+  .payment-box { border:2px solid #000; padding:6px 8px; text-align:center; margin:10px 0; font-weight:900; font-size:12px; line-height:1.4; border-radius:4px; }
+  @media print {
+    @page { margin: 3mm 4mm; size: 80mm auto; }
+    html, body { width:100%; background:#fff; margin:0; padding:0; }
+    .receipt { width:100% !important; max-width:270px !important; margin:0 auto !important; padding:4px 6px !important; }
+    * { color:#000000 !important; font-weight:900 !important; }
+    .total-banner { background:#000 !important; color:#fff !important; }
+    .total-banner * { color:#fff !important; }
+  }
 </style>
 </head>
 <body>
 <div class="receipt">
   <div class="center">
-    <div style="font-size:22px;font-weight:900;">DinePosAi</div>
-    <div style="font-size:11px;">Aura Hospitality Group</div>
-    <div style="font-size:11px;">1200 Gastronomy Way, Suite 400</div>
-    <div style="font-size:11px;">New York, NY 10001</div>
-    <div style="font-size:11px;">+1 (212) 555-0198</div>
+    <div class="header-title">DinePosAi</div>
+    <div class="header-sub">AURA HOSPITALITY GROUP</div>
+    <div class="header-sub">1200 Gastronomy Way, Suite 400</div>
+    <div class="header-sub">New York, NY 10001 · +1 (212) 555-0198</div>
   </div>
-  <hr class="sep">
-  <div style="font-size:12px;">
-    <div>Table: ${data.tableNumber}</div>
-    <div>Order ID: ${esc(data.orderId)}</div>
-    <div>Date: ${dateStr}</div>
+
+  <div class="meta-box">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <span><strong>TABLE: ${data.tableNumber}</strong></span>
+      <span><strong>ORDER #${esc(data.orderId)}</strong></span>
+    </div>
+    <div style="margin-top:3px; font-size:10.5px;">
+      DATE: ${dateStr}
+    </div>
   </div>
-  <hr class="sep2">
-  ${itemRows}
-  <hr class="sep2">
-  <table class="totals" style="width:100%;">
-    <tr><td>Subtotal:</td><td style="text-align:right;">$${data.subtotal.toFixed(2)}</td></tr>
-    <tr><td>Tax (${taxPct}%):</td><td style="text-align:right;">$${data.tax.toFixed(2)}</td></tr>
-    <tr><td>Auto-Gratuity (20%):</td><td style="text-align:right;">$${data.serviceCharge.toFixed(2)}</td></tr>
-    <tr class="total-row"><td>TOTAL:</td><td style="text-align:right;">$${data.total.toFixed(2)}</td></tr>
+
+  <hr class="sep-solid">
+
+  <table class="item-table">
+    ${itemRowsHtml}
   </table>
-  <hr class="sep">
-  ${data.isPaid ? `<div class="center" style="font-weight:900;margin:6px 0;">*** PAYMENT CONFIRMED ***</div>
-  <div class="center" style="font-size:12px;">Method: ${esc(data.paymentMethod || 'Credit Card')}</div>
-  <div class="center" style="font-size:12px;">Auth: ${esc(data.authCode || '**** 4242')}</div>` :
-  `<div class="center" style="font-weight:900;margin:6px 0;">*** BALANCE DUE ***</div>`}
-  <br>
-  <div class="center" style="font-size:11px;">Thank you for dining with us!</div>
-  <br><br>
+
+  <hr class="sep-double">
+
+  <table class="totals-table">
+    <tr>
+      <td>SUBTOTAL:</td>
+      <td style="text-align:right;">$${data.subtotal.toFixed(2)}</td>
+    </tr>
+    <tr>
+      <td>TAX (${taxPct}%):</td>
+      <td style="text-align:right;">$${data.tax.toFixed(2)}</td>
+    </tr>
+    <tr>
+      <td>AUTO-GRATUITY (20%):</td>
+      <td style="text-align:right;">$${data.serviceCharge.toFixed(2)}</td>
+    </tr>
+  </table>
+
+  <div class="total-banner">
+    <span>TOTAL:</span>
+    <span>$${data.total.toFixed(2)}</span>
+  </div>
+
+  <div class="payment-box">
+    ${data.isPaid ? `
+      <div>*** PAYMENT CONFIRMED ***</div>
+      <div style="font-size:11px; margin-top:2px;">METHOD: ${esc(data.paymentMethod || 'CREDIT CARD').toUpperCase()}</div>
+      <div style="font-size:10.5px; margin-top:2px;">AUTH: ${esc(data.authCode || 'OK-200 / **** 4242')}</div>
+    ` : `
+      <div>*** BALANCE DUE ***</div>
+    `}
+  </div>
+
+  <div class="center" style="font-size:11px; font-weight:900; margin-top:10px;">
+    THANK YOU FOR DINING WITH US!
+  </div>
 </div>
 </body>
 </html>`;
