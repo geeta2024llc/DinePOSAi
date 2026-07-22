@@ -570,6 +570,7 @@ export default function DigitalMenuPage() {
     }
     
     const defaultCategories = [
+      { id: 'all', name: 'All Menu Items', icon: 'menu_book' },
       { id: 'special', name: 'Our Special', icon: 'auto_awesome' },
       { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' },
       { id: 'starters', name: 'Starters', icon: 'restaurant' },
@@ -583,11 +584,14 @@ export default function DigitalMenuPage() {
       const itemRes = await apiRequest<any[]>('/api/menu/items');
 
       if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
-        const mappedCategories = catRes.data.map((c: any) => ({
-          id: c.id,
-          name: c.name,
-          icon: c.icon || 'restaurant'
-        }));
+        const mappedCategories = [
+          { id: 'all', name: 'All Menu Items', icon: 'menu_book' },
+          ...catRes.data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            icon: c.icon || 'restaurant'
+          }))
+        ];
         
         const mappedItems = itemRes.data.map((item: any) => ({
           id: item.id,
@@ -640,6 +644,9 @@ export default function DigitalMenuPage() {
           loadedCategories = loadedCategories.map((c: any) => 
             c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
           );
+          if (!loadedCategories.some((c: any) => c.id === 'all')) {
+            loadedCategories.unshift({ id: 'all', name: 'All Menu Items', icon: 'menu_book' });
+          }
           if (!loadedCategories.some((c: any) => c.id === 'combos')) {
             const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
             if (specIdx !== -1) {
