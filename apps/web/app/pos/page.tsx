@@ -1453,7 +1453,21 @@ export default function PosPage() {
 
   const filteredMenuItems = useMemo(() => {
     return menuItems.filter(item => {
-      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+      const matchCategory = (catA?: string, catB?: string): boolean => {
+        if (!catA || !catB) return false;
+        if (catB === 'all') return true;
+        const a = catA.trim().toLowerCase();
+        const b = catB.trim().toLowerCase();
+        if (a === b) return true;
+        if ((a === 'starters' || a === 'starter') && (b === 'starters' || b === 'starter')) return true;
+        if ((a === 'mains' || a === 'main' || a === 'main course') && (b === 'mains' || b === 'main' || b === 'main course')) return true;
+        if ((a === 'desserts' || a === 'dessert') && (b === 'desserts' || b === 'dessert')) return true;
+        if ((a === 'drinks' || a === 'drink') && (b === 'drinks' || b === 'drink')) return true;
+        if ((a === 'special' || a === 'our special') && (b === 'special' || b === 'our special')) return true;
+        if ((a === 'combos' || a === 'combo set' || a === 'combo') && (b === 'combos' || b === 'combo set' || b === 'combo')) return true;
+        return false;
+      };
+      const matchesCategory = activeCategory === 'all' || matchCategory(item.category, activeCategory);
       const matchesSearch = item.name.toLowerCase().includes(menuSearchQuery.toLowerCase()) ||
                             (item.description && item.description.toLowerCase().includes(menuSearchQuery.toLowerCase()));
       return matchesCategory && matchesSearch;

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { migrateCart, generateCartKey } from './cartUtils';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, clearDemoLocalStorage, isDemoTenant } from '@/utils/api';
 
 type SpicyLevel = 'Mild' | 'Normal' | 'Hot' | 'Super Hot';
 
@@ -618,38 +618,18 @@ export default function DigitalMenuPage() {
       if (savedMenu) {
         try {
           let loadedItems = JSON.parse(savedMenu);
-          if (!loadedItems.some((item: any) => item.category === 'combos')) {
-            const defaultCombos = [
-              {
-                id: 'combo-1',
-                name: 'Imperial Signature Combo',
-                category: 'combos',
-                price: 120,
-                description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.',
-                image: '/images/wagyu_ribeye.png',
-                tags: ['Non-Veg'],
-                allergens: ['Dairy', 'Gluten']
-              },
-              {
-                id: 'combo-2',
-                name: 'Royal Vegetarian Tasting Set',
-                category: 'combos',
-                price: 75,
-                description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.',
-                image: '/images/mushroom_risotto.png',
-                tags: ['Veg', 'GF'],
-                allergens: ['Dairy']
-              }
-            ];
-            loadedItems = [...loadedItems, ...defaultCombos];
-            localStorage.setItem('dinepos_menu_items', JSON.stringify(loadedItems));
-          }
           setItems(loadedItems);
         } catch (e) {
           console.error('Failed to parse saved menu:', e);
         }
       } else {
-        localStorage.setItem('dinepos_menu_items', JSON.stringify(menuItems));
+        if (isDemoTenant()) {
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(menuItems));
+          setItems(menuItems);
+        } else {
+          setItems([]);
+          localStorage.setItem('dinepos_menu_items', JSON.stringify([]));
+        }
       }
 
       const savedCategories = localStorage.getItem('dinepos_menu_categories');
@@ -972,7 +952,22 @@ export default function DigitalMenuPage() {
         }
       }
 
-      if (item.category !== activeCategory) return false;
+      const matchCategory = (catA?: string, catB?: string): boolean => {
+        if (!catA || !catB) return false;
+        if (catB === 'all') return true;
+        const a = catA.trim().toLowerCase();
+        const b = catB.trim().toLowerCase();
+        if (a === b) return true;
+        if ((a === 'starters' || a === 'starter') && (b === 'starters' || b === 'starter')) return true;
+        if ((a === 'mains' || a === 'main' || a === 'main course') && (b === 'mains' || b === 'main' || b === 'main course')) return true;
+        if ((a === 'desserts' || a === 'dessert') && (b === 'desserts' || b === 'dessert')) return true;
+        if ((a === 'drinks' || a === 'drink') && (b === 'drinks' || b === 'drink')) return true;
+        if ((a === 'special' || a === 'our special') && (b === 'special' || b === 'our special')) return true;
+        if ((a === 'combos' || a === 'combo set' || a === 'combo') && (b === 'combos' || b === 'combo set' || b === 'combo')) return true;
+        return false;
+      };
+
+      if (!matchCategory(item.category, activeCategory)) return false;
       
       // Dining filter check
       if (diningOption !== 'all') {
