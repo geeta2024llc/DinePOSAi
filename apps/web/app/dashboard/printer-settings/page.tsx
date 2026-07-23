@@ -15,9 +15,41 @@ export default function PrinterSettingsPage() {
   const [dismissedDriverLock, setDismissedDriverLock] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' as 'success' | 'info' });
 
+  const [hasWebUSB, setHasWebUSB] = useState(true);
+  const [hasWebBluetooth, setHasWebBluetooth] = useState(true);
+
+  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setHasWebUSB(!!navigator.usb);
+      setHasWebBluetooth(!!navigator.bluetooth);
+    }
+  }, []);
+
+  // Auto-scroll diagnostic logs terminal to latest log line
+  useEffect(() => {
+    if (logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  // Clean up toast timer on unmount
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
   const triggerToast = (message: string, type: 'success' | 'info' = 'success') => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
     setToast({ show: true, message, type });
-    setTimeout(() => {
+    toastTimerRef.current = setTimeout(() => {
       setToast(prev => ({ ...prev, show: false }));
     }, 3000);
   };
@@ -29,28 +61,48 @@ export default function PrinterSettingsPage() {
       name: `System Default (${defaultType === 'usb' ? 'USB' : 'Bluetooth'})`,
       defaultSystemType: defaultType
     });
+    triggerToast('Switched to System Default (Browser Print)', 'success');
   };
 
   const handleSelectType = (type: PrinterType) => {
     setScanErrors(prev => ({ ...prev, [type]: null }));
     if (type === 'bluetooth') {
       setConfig({ type: 'bluetooth', name: config.type === 'bluetooth' ? config.name : 'Bluetooth Printer' });
+      triggerToast('Selected Bluetooth Wireless mode', 'info');
     } else if (type === 'usb') {
       setConfig({ type: 'usb', name: config.type === 'usb' ? config.name : 'USB Printer' });
+      triggerToast('Selected USB Cable mode', 'info');
     }
   };
 
   const handleForgetConfig = () => {
     forgetConfig();
+    setScanErrors({});
+    setDismissedDriverLock(false);
+    triggerToast('Printer connection reset', 'info');
   };
 
   const handleScanDevice = async (type: 'bluetooth' | 'usb') => {
+    if (type === 'usb' && !hasWebUSB) {
+      setScanErrors(prev => ({ ...prev, usb: 'WebUSB is not supported in this browser or HTTP environment. Use HTTPS or Browser Print.' }));
+      triggerToast('WebUSB unsupported in current environment', 'info');
+      return;
+    }
+    if (type === 'bluetooth' && !hasWebBluetooth) {
+      setScanErrors(prev => ({ ...prev, bluetooth: 'WebBluetooth is not supported in this browser or HTTP environment. Use HTTPS or Browser Print.' }));
+      triggerToast('WebBluetooth unsupported in current environment', 'info');
+      return;
+    }
+
     setIsScanning(true);
     setScanErrors(prev => ({ ...prev, [type]: null }));
     try {
       await scanAndPair(type);
+      triggerToast(`Paired successfully with ${type.toUpperCase()} printer!`, 'success');
     } catch (err: any) {
-      setScanErrors(prev => ({ ...prev, [type]: err.message || 'Connection request cancelled or failed.' }));
+      const msg = err.message || 'Connection request cancelled or failed.';
+      setScanErrors(prev => ({ ...prev, [type]: msg }));
+      triggerToast(`Pairing failed: ${msg}`, 'info');
     } finally {
       setIsScanning(false);
     }
@@ -60,7 +112,10 @@ export default function PrinterSettingsPage() {
     setIsTestPrinting(true);
     try {
       await testPrint();
-    } catch (_) {
+      triggerToast(config.type === 'browser' ? 'Browser print dialog opened!' : 'Test print receipt sent to printer!', 'success');
+    } catch (err: any) {
+      const msg = err?.message || 'Printer hardware error or unreachable';
+      triggerToast(`Test print failed: ${msg}`, 'info');
     } finally {
       setIsTestPrinting(false);
     }
@@ -451,7 +506,7 @@ export default function PrinterSettingsPage() {
                   </button>
                 )}
               </div>
-              <div className="max-h-36 overflow-y-auto space-y-1 text-[10px] text-[#A69984] leading-relaxed scrollbar-thin">
+              <div ref={logContainerRef} className="max-h-36 overflow-y-auto space-y-1 text-[10px] text-[#A69984] leading-relaxed scrollbar-thin">
                 {logs.length === 0 ? (
                   <p className="text-[#A69984]/40 italic">No hardware activity recorded yet. Run a test print to verify protocol response.</p>
                 ) : (
