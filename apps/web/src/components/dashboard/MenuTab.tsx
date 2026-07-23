@@ -127,7 +127,13 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
         if (savedMenu) {
           try {
             let loadedItems = JSON.parse(savedMenu);
-            if (isDemoTenant() && !loadedItems.some((item: any) => item.category === 'combos')) {
+            const containsDemoItems = Array.isArray(loadedItems) && loadedItems.some((it: any) =>
+              it.id?.startsWith('wagyu-') || it.id?.startsWith('caviar-') || it.id?.startsWith('app-') || it.id?.startsWith('main-')
+            );
+            if (!isDemoTenant() && containsDemoItems) {
+              loadedItems = [];
+              localStorage.setItem('dinepos_menu_items', JSON.stringify([]));
+            } else if (isDemoTenant() && !loadedItems.some((item: any) => item.category === 'combos')) {
               const defaultCombos = [
                 { id: 'combo-1', name: 'Imperial Signature Combo', category: 'combos', price: 120, cost: 40, description: 'A luxurious set featuring our Wagyu Beef Tartare starter, Truffle Glazed Filet Mignon main course, and Chocolate Soufflé dessert.', image: '/images/wagyu_ribeye.png', tags: ['Non-Veg'] },
                 { id: 'combo-2', name: 'Royal Vegetarian Tasting Set', category: 'combos', price: 75, cost: 20, description: 'A curated vegetarian experience: Truffle Burrata Salad starter, Acquerello Mushroom Risotto main, and Saffron Crème Brûlée.', image: '/images/mushroom_risotto.png', tags: ['Veg', 'GF'] }

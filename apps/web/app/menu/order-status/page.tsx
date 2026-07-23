@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
+import { MenuSidebar } from '@/components/ui/MenuSidebar';
 import { migrateCart, CartItem } from '../cartUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
@@ -544,62 +545,32 @@ export default function OrderStatusPage() {
   return (
     <div className="flex w-full h-screen bg-[#0e0e0e] text-[#f5f5f5] font-sans overflow-hidden antialiased select-none relative">
       
-      {/* Sidebar navigation panel */}
-      <aside className={`h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-20 transition-all duration-300 ${
-        sidebarCollapsed 
-          ? 'w-0 opacity-0 pointer-events-none border-r-0' 
-          : 'w-[280px]'
-      }`}>
-        <div>
-          {/* Brand header */}
-          <div className="p-8 pb-4">
-            <Link href="/" className="font-serif font-bold text-[#ffe2ab] text-2xl tracking-wide select-none block hover:opacity-85 transition-opacity mb-4">
-              DinePOS AI
-            </Link>
-            <div className="font-sans font-bold text-xs text-white/90 mb-1 select-none">DinePOS Executive Suite</div>
-            <div className="font-sans text-[11px] text-[#A69984]/60 select-none">Main Dining Room</div>
-          </div>
-          
-          {/* Main options (matching screenshot layout) */}
-          <nav className="px-5 space-y-2 mt-6">
-            <Link 
-              href="/menu" 
-              className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all duration-300"
-            >
-              <span className="material-symbols-outlined text-lg leading-none">menu_book</span>
-              Menu
-            </Link>
-            {exclusionsConfig.showAIConcierge && (
-              <Link 
-                href="/menu/concierge"
-                className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-wider text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all duration-300"
-              >
-                <span className="material-symbols-outlined text-lg leading-none">auto_awesome</span>
-                Concierge
-              </Link>
-            )}
-            <button 
-              className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl font-sans font-bold text-xs uppercase tracking-wider bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_12px_rgba(255,226,171,0.15)] transition-all duration-300"
-            >
-              <span className="material-symbols-outlined text-lg leading-none">hourglass_empty</span>
-              Order Status
-            </button>
-          </nav>
-        </div>
-
-        {/* Bottom checkout action inside sidebar */}
-        {exclusionsConfig.enableSelfCheckout && (
-          <div className="px-5 pb-8">
-            <Link
-              href="/menu/checkout"
-              className="flex items-center justify-center gap-3 w-full py-3.5 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] font-sans font-bold text-xs uppercase tracking-widest rounded-xl transition-all duration-300 shadow-[0_4px_20px_rgba(255,226,171,0.1)]"
-            >
-              <span className="material-symbols-outlined text-base">credit_card</span>
-              Self Checkout
-            </Link>
-          </div>
-        )}
-      </aside>
+      {/* Redesigned Premium Menu Sidebar */}
+      <MenuSidebar
+        categories={[
+          { id: 'all', name: 'ALL MENU ITEMS', icon: 'menu_book' },
+          { id: 'special', name: 'OUR SPECIAL', icon: 'auto_awesome' },
+          { id: 'combos', name: 'COMBO SET', icon: 'lunch_dining' },
+          { id: 'starters', name: 'STARTER', icon: 'restaurant' },
+          { id: 'mains', name: 'MAIN COURSE', icon: 'restaurant_menu' },
+          { id: 'desserts', name: 'DESSERT', icon: 'icecream' },
+          { id: 'drinks', name: 'DRINKS', icon: 'local_bar' }
+        ]}
+        activeCategory="all"
+        onSelectCategory={() => {
+          if (typeof window !== 'undefined') {
+            window.location.href = '/menu';
+          }
+        }}
+        isMobileOpen={false}
+        onCloseMobile={() => {}}
+        sidebarCollapsed={sidebarCollapsed}
+        enableSelfCheckout={exclusionsConfig.enableSelfCheckout}
+        tableNumber={tableNumber}
+        diningOption={diningOption}
+        activeOrdersCount={1}
+        activePath="order-status"
+      />
 
       <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 

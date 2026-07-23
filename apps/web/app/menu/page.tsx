@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
+import { MenuSidebar } from '@/components/ui/MenuSidebar';
 import { migrateCart, generateCartKey } from './cartUtils';
 import { apiRequest, clearDemoLocalStorage, isDemoTenant } from '@/utils/api';
 
@@ -269,11 +270,63 @@ const drinkPairings: { [itemId: string]: { id: string; name: string; price: numb
   'dess-2': { id: 'drink-2', name: 'Signature Emerald Gimlet', price: 22, image: '/images/emerald_gimlet.png', desc: 'Empress gin, fresh lime, botanical cucumber elixir, fresh mint essence.' }
 };
 
+const getCanonicalCategoryId = (raw: string): string => {
+  if (!raw) return '';
+  const s = raw.trim().toLowerCase();
+  if (s === 'all' || s === 'all menu items') return 'all';
+  if (s === 'special' || s === 'our special') return 'special';
+  if (s === 'combos' || s === 'combo set' || s === 'combo') return 'combos';
+  if (s === 'starter' || s === 'starters') return 'starters';
+  if (s === 'main' || s === 'mains' || s === 'main course') return 'mains';
+  if (s === 'dessert' || s === 'desserts') return 'desserts';
+  if (s === 'drink' || s === 'drinks') return 'drinks';
+  return s;
+};
+
+const defaultMenuCategories = [
+  { id: 'all', name: 'ALL MENU ITEMS', icon: 'menu_book' },
+  { id: 'special', name: 'OUR SPECIAL', icon: 'auto_awesome' },
+  { id: 'combos', name: 'COMBO SET', icon: 'lunch_dining' },
+  { id: 'starters', name: 'STARTER', icon: 'restaurant' },
+  { id: 'mains', name: 'MAIN COURSE', icon: 'restaurant_menu' },
+  { id: 'desserts', name: 'DESSERT', icon: 'icecream' },
+  { id: 'drinks', name: 'DRINKS', icon: 'local_bar' }
+];
+
+const normalizeCategoriesList = (rawCats: any[]) => {
+  const map = new Map<string, any>();
+  defaultMenuCategories.forEach(d => map.set(d.id, { ...d }));
+
+  if (Array.isArray(rawCats)) {
+    rawCats.forEach(c => {
+      if (!c) return;
+      const canonicalId = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
+      if (!canonicalId) return;
+
+      const existing = map.get(canonicalId);
+      if (existing) {
+        map.set(canonicalId, {
+          ...existing,
+          icon: c.icon || existing.icon
+        });
+      } else {
+        map.set(canonicalId, {
+          id: canonicalId,
+          name: (c.name || canonicalId).toUpperCase(),
+          icon: c.icon || 'restaurant'
+        });
+      }
+    });
+  }
+
+  return Array.from(map.values());
+};
+
 export default function DigitalMenuPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   const [items, setItems] = useState<MenuItem[]>(menuItems);
-  const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>([]);
-  const [activeCategory, setActiveCategory] = useState<string>('starters');
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>(defaultMenuCategories);
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [selectedSpicyLevel, setSelectedSpicyLevel] = useState<SpicyLevel>('Normal');
 
@@ -520,6 +573,30 @@ export default function DigitalMenuPage() {
     return pairings;
   }, [cart, items]);
 
+  const categoryItemCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    counts['all'] = items.length;
+    categories.forEach(cat => {
+      if (cat.id !== 'all') {
+        const canonicalCatId = getCanonicalCategoryId(cat.id);
+        counts[cat.id] = items.filter(item => getCanonicalCategoryId(item.category || '') === canonicalCatId).length;
+      }
+    });
+    return counts;
+  }, [categories, items]);
+
+  const activeOrdersCount = useMemo(() => {
+    if (typeof window === 'undefined') return 0;
+    const shared = localStorage.getItem('dinepos_shared_tickets');
+    if (!shared) return 0;
+    try {
+      const tickets = JSON.parse(shared);
+      return Array.isArray(tickets) ? tickets.filter((t: any) => t.status !== 'complete' && t.status !== 'paid').length : 0;
+    } catch (e) {
+      return 0;
+    }
+  }, [cart, orderSubmitted]);
+
   // migrateCart helper is imported from cartUtils
 
   // Load cart, table number, menu items, and categories from localStorage on mount
@@ -584,36 +661,40 @@ export default function DigitalMenuPage() {
       const itemRes = await apiRequest<any[]>('/api/menu/items');
 
       if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
-        const mappedCategories = [
-          { id: 'all', name: 'All Menu Items', icon: 'menu_book' },
-          ...catRes.data.map((c: any) => ({
-            id: c.id,
-            name: c.name,
-            icon: c.icon || 'restaurant'
-          }))
-        ];
-        
-        const mappedItems = itemRes.data.map((item: any) => ({
-          id: item.id,
-          name: item.name,
-          category: item.categoryId,
-          price: item.price,
-          description: item.description || '',
-          image: item.imageUrl || '/images/wagyu_ribeye.png',
-          tags: item.tags || [],
-          allergens: item.allergens || [],
-          active: item.isAvailable !== false
+        const dbCategoryToCanonicalMap: Record<string, string> = {};
+        catRes.data.forEach((c: any) => {
+          if (c.id) {
+            dbCategoryToCanonicalMap[c.id] = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
+          }
+        });
+
+        const rawFromCat = catRes.data.map((c: any) => ({
+          id: getCanonicalCategoryId(c.name || '') || c.id,
+          name: c.name,
+          icon: c.icon || 'restaurant'
         }));
+        const mappedCategories = normalizeCategoriesList(rawFromCat);
+        
+        const mappedItems = itemRes.data.map((item: any) => {
+          const canonicalCat = dbCategoryToCanonicalMap[item.categoryId] || getCanonicalCategoryId(item.category || item.categoryId || '');
+          return {
+            id: item.id,
+            name: item.name,
+            category: canonicalCat || 'mains',
+            price: item.price,
+            description: item.description || '',
+            image: item.imageUrl || '/images/wagyu_ribeye.png',
+            tags: item.tags || [],
+            allergens: item.allergens || [],
+            active: item.isAvailable !== false
+          };
+        });
 
         setCategories(mappedCategories);
         setItems(mappedItems);
         
         localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
         localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
-        
-        if (mappedCategories.length > 0) {
-          setActiveCategory(mappedCategories[0].id);
-        }
         return;
       }
 
@@ -622,14 +703,30 @@ export default function DigitalMenuPage() {
       if (savedMenu) {
         try {
           let loadedItems = JSON.parse(savedMenu);
+          const containsDemoItems = Array.isArray(loadedItems) && loadedItems.some((it: any) =>
+            it.id?.startsWith('wagyu-') || it.id?.startsWith('caviar-') || it.id?.startsWith('app-') || it.id?.startsWith('main-')
+          );
+          if (!isDemoTenant() && containsDemoItems) {
+            loadedItems = [];
+            localStorage.setItem('dinepos_menu_items', JSON.stringify([]));
+          } else {
+            loadedItems = loadedItems.map((item: any) => ({
+              ...item,
+              category: getCanonicalCategoryId(item.category || item.categoryId || '') || 'mains'
+            }));
+          }
           setItems(loadedItems);
         } catch (e) {
           console.error('Failed to parse saved menu:', e);
         }
       } else {
         if (isDemoTenant()) {
-          localStorage.setItem('dinepos_menu_items', JSON.stringify(menuItems));
-          setItems(menuItems);
+          const normalizedDemo = menuItems.map(item => ({
+            ...item,
+            category: getCanonicalCategoryId(item.category || '') || 'mains'
+          }));
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(normalizedDemo));
+          setItems(normalizedDemo);
         } else {
           setItems([]);
           localStorage.setItem('dinepos_menu_items', JSON.stringify([]));
@@ -637,35 +734,18 @@ export default function DigitalMenuPage() {
       }
 
       const savedCategories = localStorage.getItem('dinepos_menu_categories');
-      let loadedCategories = defaultCategories;
+      let loadedCategories = defaultMenuCategories;
       if (savedCategories) {
         try {
-          loadedCategories = JSON.parse(savedCategories);
-          loadedCategories = loadedCategories.map((c: any) => 
-            c.id === 'combos' ? { ...c, name: 'Combo Set' } : c
-          );
-          if (!loadedCategories.some((c: any) => c.id === 'all')) {
-            loadedCategories.unshift({ id: 'all', name: 'All Menu Items', icon: 'menu_book' });
-          }
-          if (!loadedCategories.some((c: any) => c.id === 'combos')) {
-            const specIdx = loadedCategories.findIndex((c: any) => c.id === 'special');
-            if (specIdx !== -1) {
-              loadedCategories.splice(specIdx + 1, 0, { id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
-            } else {
-              loadedCategories.unshift({ id: 'combos', name: 'Combo Set', icon: 'lunch_dining' });
-            }
-          }
-          localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
+          const parsed = JSON.parse(savedCategories);
+          loadedCategories = normalizeCategoriesList(parsed);
         } catch (e) {
           console.error('Failed to parse saved categories:', e);
+          loadedCategories = defaultMenuCategories;
         }
-      } else {
-        localStorage.setItem('dinepos_menu_categories', JSON.stringify(defaultCategories));
       }
+      localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
       setCategories(loadedCategories);
-      if (loadedCategories.length > 0) {
-        setActiveCategory(loadedCategories[0].id);
-      }
     };
 
     loadMenuAndCategories();
@@ -961,17 +1041,9 @@ export default function DigitalMenuPage() {
 
       const matchCategory = (catA?: string, catB?: string): boolean => {
         if (!catA || !catB) return false;
-        if (catB === 'all') return true;
-        const a = catA.trim().toLowerCase();
-        const b = catB.trim().toLowerCase();
-        if (a === b) return true;
-        if ((a === 'starters' || a === 'starter') && (b === 'starters' || b === 'starter')) return true;
-        if ((a === 'mains' || a === 'main' || a === 'main course') && (b === 'mains' || b === 'main' || b === 'main course')) return true;
-        if ((a === 'desserts' || a === 'dessert') && (b === 'desserts' || b === 'dessert')) return true;
-        if ((a === 'drinks' || a === 'drink') && (b === 'drinks' || b === 'drink')) return true;
-        if ((a === 'special' || a === 'our special') && (b === 'special' || b === 'our special')) return true;
-        if ((a === 'combos' || a === 'combo set' || a === 'combo') && (b === 'combos' || b === 'combo set' || b === 'combo')) return true;
-        return false;
+        const bCanonical = getCanonicalCategoryId(catB);
+        if (bCanonical === 'all') return true;
+        return getCanonicalCategoryId(catA) === bCanonical;
       };
 
       if (!matchCategory(item.category, activeCategory)) return false;
@@ -1293,80 +1365,27 @@ export default function DigitalMenuPage() {
   return (
     <div className="flex w-full h-screen bg-[#0e0e0e] text-on-surface font-body-md overflow-hidden antialiased select-none relative">
       
-      {/* Sidebar navigation panel */}
-      {isMobileSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/75 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300" 
-          onClick={() => setIsMobileSidebarOpen(false)} 
-        />
-      )}
-      <aside className={`fixed lg:relative top-0 left-0 h-full flex flex-col justify-between border-r border-white/5 bg-[#0a0a09] flex-shrink-0 z-50 transition-all duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${
-        sidebarCollapsed 
-          ? 'w-0 lg:w-0 opacity-0 pointer-events-none border-r-0' 
-          : 'w-[280px] opacity-100'
-      }`}>
-        <div>
-          {/* Brand header */}
-          <div className="p-8 pb-4 flex items-start justify-between">
-            <div>
-              <Link href="/" className="font-serif font-bold text-[#ffe2ab] text-2xl tracking-wide select-none block hover:opacity-85 transition-opacity mb-4">
-                DinePOS AI
-              </Link>
-              <div className="font-sans font-bold text-xs text-white/90 mb-1 select-none">DinePOS Executive Suite</div>
-              <div className="font-sans text-[11px] text-[#A69984]/60 select-none">Main Dining Room</div>
-            </div>
-            <button 
-              type="button"
-              onClick={() => setIsMobileSidebarOpen(false)}
-              className="lg:hidden w-8 h-8 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-[#A69984] hover:text-white"
-              aria-label="Close sidebar"
-            >
-              <span className="material-symbols-outlined text-sm">close</span>
-            </button>
-          </div>
-          
-          {/* Category tabs */}
-          <nav className="px-5 space-y-2.5 mt-6 max-h-[40vh] overflow-y-auto scrollbar-hide">
-            {categories.map(cat => (
-              <button 
-                key={cat.id}
-                onClick={() => { setActiveCategory(cat.id); setDiningOption('dine-in'); setDietaryOption('all'); setSpicyFilter('all'); setIsMobileSidebarOpen(false); }}
-                className={`flex items-center gap-4 w-full px-4 py-3 rounded-xl font-sans font-bold text-xs uppercase tracking-wider transition-all duration-300 ${activeCategory === cat.id ? 'bg-[#ffe2ab] text-[#402d00] shadow-[0_4px_12px_rgba(255,226,171,0.15)]' : 'text-[#A69984]/80 hover:text-white hover:bg-white/5'}`}
-              >
-                <span className="material-symbols-outlined text-lg leading-none">{cat.icon || 'restaurant_menu'}</span>
-                {cat.name}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        {/* Bottom utility triggers */}
-        <div className="px-5 pb-8 space-y-2">
-          <Link 
-            href="/menu/order-status"
-            className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#ffe2ab]/90 hover:text-white hover:bg-white/5 transition-all font-sans font-bold text-xs w-full text-left uppercase tracking-wider"
-          >
-            <span className="material-symbols-outlined text-lg leading-none">hourglass_empty</span>
-            Order Status
-          </Link>
-          {exclusionsConfig.enableSelfCheckout && (
-            <Link 
-              href="/menu/checkout"
-              className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#ffe2ab]/90 hover:text-white hover:bg-white/5 transition-all font-sans font-bold text-xs w-full text-left uppercase tracking-wider"
-            >
-              <span className="material-symbols-outlined text-lg leading-none">credit_card</span>
-              Self Checkout
-            </Link>
-          )}
-          <button 
-            onClick={() => { handleCallWaiter(); setIsMobileSidebarOpen(false); }}
-            className="flex items-center gap-4 px-4 py-2.5 rounded-xl text-[#A69984]/80 hover:text-white hover:bg-white/5 transition-all font-sans font-semibold text-xs w-full text-left uppercase tracking-wider"
-          >
-            <span className="material-symbols-outlined text-lg leading-none">notifications</span>
-            Call Waiter
-          </button>
-        </div>
-      </aside>
+      {/* Redesigned Premium Menu Sidebar */}
+      <MenuSidebar
+        categories={categories}
+        activeCategory={activeCategory}
+        onSelectCategory={(id) => {
+          setActiveCategory(id);
+          setDiningOption('dine-in');
+          setDietaryOption('all');
+          setSpicyFilter('all');
+        }}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        sidebarCollapsed={sidebarCollapsed}
+        onCallWaiter={handleCallWaiter}
+        enableSelfCheckout={exclusionsConfig.enableSelfCheckout}
+        tableNumber={tableNumber}
+        diningOption={diningOption}
+        activeOrdersCount={activeOrdersCount}
+        itemCounts={categoryItemCounts}
+        activePath="menu"
+      />
 
       <SidebarToggleButton sidebarCollapsed={sidebarCollapsed} onToggle={toggleSidebar} />
 
@@ -1519,12 +1538,25 @@ export default function DigitalMenuPage() {
               <button 
                 onClick={() => { setIsSearchOpen(!isSearchOpen); if (isSearchOpen) setSearchQuery(''); }}
                 className={`w-10 h-10 sm:w-[42px] sm:h-[42px] flex items-center justify-center bg-transparent border border-[#A69984]/25 rounded-xl text-[#ffe2ab] hover:border-[#ffe2ab]/40 transition-all cursor-pointer ${isSearchOpen ? 'bg-white/5 border-[#ffe2ab]/30' : ''}`}
+                title="Search Menu"
               >
                 <span className="material-symbols-outlined text-lg sm:text-xl leading-none">
                   {isSearchOpen ? 'close' : 'search'}
                 </span>
               </button>
             </div>
+
+            {/* AI Concierge Trigger in Header */}
+            {exclusionsConfig.showAIConcierge && (
+              <button 
+                type="button"
+                onClick={() => setIsAIChatOpen(true)}
+                className="w-10 h-10 sm:w-[42px] sm:h-[42px] flex items-center justify-center bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 rounded-xl text-[#ffe2ab] hover:bg-[#ffe2ab]/20 transition-all cursor-pointer shadow-sm"
+                title="Ask AI Concierge"
+              >
+                <span className="material-symbols-outlined text-lg sm:text-xl leading-none">auto_awesome</span>
+              </button>
+            )}
 
             {/* Tune Toggler (Mobile/Tablet Only) */}
             <button 
@@ -1641,7 +1673,7 @@ export default function DigitalMenuPage() {
 
           {filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-8">
-              {filteredItems.map(item => {
+              {filteredItems.map((item, index) => {
                 const qty = cartQuantities[item.id] || 0;
                 return (
                   <div 
@@ -1655,6 +1687,8 @@ export default function DigitalMenuPage() {
                         src={item.image} 
                         alt={item.name} 
                         fill
+                        loading={index < 8 ? 'eager' : 'lazy'}
+                        priority={index < 8}
                         sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         className="object-cover group-hover:scale-[1.05] transition-transform duration-700 ease-out select-none"
                       />
@@ -1742,17 +1776,6 @@ export default function DigitalMenuPage() {
             </div>
           )}
         </div>
-
-        {/* Floating Ask AI Button */}
-        {exclusionsConfig.showAIConcierge && (
-          <button 
-            onClick={() => setIsAIChatOpen(true)}
-            className="absolute bottom-[120px] sm:bottom-[110px] right-4 sm:right-10 bg-[#ffe2ab] hover:bg-[#ffdca0] text-[#402d00] px-6 py-3.5 rounded-2xl flex items-center gap-3 font-sans font-bold text-xs uppercase tracking-widest shadow-[0_8px_30px_rgba(255,226,171,0.2)] hover:-translate-y-0.5 transition-all duration-300 z-20 cursor-pointer text-center"
-          >
-            <span className="material-symbols-outlined text-lg leading-none">auto_awesome</span>
-            Ask AI Concierge
-          </button>
-        )}
 
         {/* Bottom Sticky Order Bar */}
         <div className="absolute bottom-0 left-0 w-full bg-[#161513] border-t border-white/5 px-4 sm:px-10 py-4 sm:py-5 flex flex-col sm:flex-row gap-4 sm:gap-0 sm:items-center sm:justify-between z-30 shadow-[0_-12px_40px_rgba(0,0,0,0.8)] select-none xl:hidden">
@@ -1883,6 +1906,7 @@ export default function DigitalMenuPage() {
                               alt={pairing.name} 
                               width={44}
                               height={44}
+                              loading="eager"
                               className="object-cover rounded-lg shrink-0 border border-white/10 select-none" 
                             />
                             <div className="min-w-0">
@@ -2068,6 +2092,7 @@ export default function DigitalMenuPage() {
                               alt={pairing.name} 
                               width={44}
                               height={44}
+                              loading="eager"
                               className="object-cover rounded-lg shrink-0 border border-white/10 select-none" 
                             />
                             <div className="min-w-0">
@@ -2144,6 +2169,7 @@ export default function DigitalMenuPage() {
                   src={selectedItem.image} 
                   alt={selectedItem.name} 
                   fill
+                  priority
                   sizes="(max-width: 768px) 100vw, 40vw"
                   className="object-cover select-none"
                 />
@@ -2485,6 +2511,7 @@ export default function DigitalMenuPage() {
                 src={selectedCustomizingItem.image}
                 alt={selectedCustomizingItem.name}
                 fill
+                priority
                 sizes="(max-width: 768px) 100vw, 500px"
                 className="object-cover select-none"
               />

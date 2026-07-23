@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   getTrialDaysRemaining,
   isTrialActive,
@@ -12,9 +13,10 @@ import {
 /**
  * TrialBanner
  * Floating bottom bar that shows trial countdown, subscription status, or is hidden.
- * Renders on every page via root layout.
+ * Renders on admin pages via root layout.
  */
 export default function TrialBanner() {
+  const pathname = usePathname();
   const [daysLeft, setDaysLeft] = useState<number>(-1);
   const [subscribed, setSubscribed] = useState(false);
   const [planName, setPlanName] = useState('');
@@ -43,6 +45,19 @@ export default function TrialBanner() {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  // Do not render on customer menu, checkout, order-status, concierge, or public landing routes
+  if (
+    pathname?.startsWith('/menu') ||
+    pathname?.startsWith('/login') ||
+    pathname?.startsWith('/register') ||
+    pathname?.startsWith('/subscribe') ||
+    pathname?.startsWith('/partners') ||
+    pathname?.startsWith('/privacy') ||
+    pathname?.startsWith('/terms')
+  ) {
+    return null;
+  }
 
   // Don't render until hydrated to avoid SSR mismatch
   if (!mounted) return null;

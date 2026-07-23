@@ -105,6 +105,34 @@ export function isTrialActive(): boolean {
   return new Date(account.trialEndsAt) > new Date();
 }
 
+/** Extends the trial for the current user in localStorage by a given number of days (default: 1 day or 48 hours). */
+export function extendTrialByDays(days: number = 2): void {
+  if (typeof window === 'undefined') return;
+  const newExpiry = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+  const raw = localStorage.getItem('dinepos_user_account');
+  if (raw) {
+    try {
+      const data = JSON.parse(raw);
+      if (data.tenant) {
+        data.tenant.plan = 'TRIAL';
+        data.tenant.trialEndsAt = newExpiry;
+      }
+      data.plan = 'TRIAL';
+      data.trialEndsAt = newExpiry;
+      localStorage.setItem('dinepos_user_account', JSON.stringify(data));
+    } catch (e) {
+      console.error('Error extending trial in localStorage:', e);
+    }
+  } else {
+    localStorage.setItem('dinepos_user_account', JSON.stringify({
+      email: 'wilxon.xtha@gmail.com',
+      plan: 'TRIAL',
+      trialEndsAt: newExpiry
+    }));
+  }
+  window.dispatchEvent(new Event('storage'));
+}
+
 // --------------------------------------------------------------------------
 // Subscription helpers
 // --------------------------------------------------------------------------

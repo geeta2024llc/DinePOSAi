@@ -21,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark scroll-smooth ${playfair.variable} ${inter.variable}`} suppressHydrationWarning data-gramm="false" data-grammarly-disable="true">
       <head>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             try {
@@ -44,8 +46,7 @@ export default function RootLayout({
                       message.includes('notranslate') ||
                       message.includes('translate="no"')
                     ) {
-                      console.warn("[Hydration Overruled]", ...args);
-                      return;
+                      return; // Silently suppress browser extension hydration attribute warnings
                     }
                     if (currentError) {
                       currentError.apply(console, args);
@@ -104,50 +105,6 @@ export default function RootLayout({
                 return originalSetNamedItemNS.apply(this, arguments);
               };
             } catch (e) {}
-
-            const handleClean = (root) => {
-              if (!root) return;
-              const icons = root.getElementsByClassName('material-symbols-outlined');
-              for (let i = 0; i < icons.length; i++) {
-                const icon = icons[i];
-                if (!icon.classList.contains('notranslate')) {
-                  icon.classList.add('notranslate');
-                }
-                icon.setAttribute('translate', 'no');
-              }
-              if (root.removeAttribute) {
-                if (root.hasAttribute && root.hasAttribute('bis_skin_checked')) {
-                  root.removeAttribute('bis_skin_checked');
-                }
-                const badDivs = root.querySelectorAll ? root.querySelectorAll('[bis_skin_checked]') : [];
-                for (let i = 0; i < badDivs.length; i++) {
-                  badDivs[i].removeAttribute('bis_skin_checked');
-                }
-              }
-            };
-
-            const observer = new MutationObserver((mutations) => {
-              for (let i = 0; i < mutations.length; i++) {
-                const mutation = mutations[i];
-                for (let j = 0; j < mutation.addedNodes.length; j++) {
-                  const node = mutation.addedNodes[j];
-                  if (node.nodeType === 1) {
-                    handleClean(node);
-                  }
-                }
-              }
-            });
-            observer.observe(document.documentElement, { childList: true, subtree: true });
-
-            const setup = () => {
-              handleClean(document.body);
-            };
-
-            if (document.readyState === 'loading') {
-              document.addEventListener('DOMContentLoaded', setup);
-            } else {
-              setup();
-            }
           })();
         ` }} />
       </head>
