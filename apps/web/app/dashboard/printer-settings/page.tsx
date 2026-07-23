@@ -23,8 +23,8 @@ export default function PrinterSettingsPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      setHasWebUSB(!!navigator.usb);
-      setHasWebBluetooth(!!navigator.bluetooth);
+      setHasWebUSB(!!(navigator as any).usb);
+      setHasWebBluetooth(!!(navigator as any).bluetooth);
     }
   }, []);
 
