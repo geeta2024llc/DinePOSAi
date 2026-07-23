@@ -21,6 +21,10 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark scroll-smooth ${playfair.variable} ${inter.variable}`} suppressHydrationWarning data-gramm="false" data-grammarly-disable="true">
       <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0e0e0d" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet" />
@@ -105,6 +109,17 @@ export default function RootLayout({
                 return originalSetNamedItemNS.apply(this, arguments);
               };
             } catch (e) {}
+
+            // Register Service Worker for offline PWA caching
+            if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+              window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(reg) {
+                  console.log('[SW] Registered successfully for scope:', reg.scope);
+                }).catch(function(err) {
+                  console.warn('[SW] Registration failed:', err);
+                });
+              });
+            }
           })();
         ` }} />
       </head>

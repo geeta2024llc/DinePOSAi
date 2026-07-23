@@ -18,6 +18,12 @@ export default function PrinterSettingsPage() {
   const [hasWebUSB, setHasWebUSB] = useState(true);
   const [hasWebBluetooth, setHasWebBluetooth] = useState(true);
 
+  const [customHeader, setCustomHeader] = useState('DinePosAi');
+  const [customVat, setCustomVat] = useState('VAT ID: US-994827104');
+  const [customFooter, setCustomFooter] = useState('THANK YOU FOR DINING WITH US!');
+  const [headerLogo, setHeaderLogo] = useState('');
+  const [isSecure, setIsSecure] = useState(true);
+
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
@@ -25,6 +31,18 @@ export default function PrinterSettingsPage() {
     if (typeof window !== 'undefined') {
       setHasWebUSB(!!(navigator as any).usb);
       setHasWebBluetooth(!!(navigator as any).bluetooth);
+      setIsSecure(window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
+
+      try {
+        const storedConfigStr = localStorage.getItem('dinepos_printer_config');
+        if (storedConfigStr) {
+          const cfg = JSON.parse(storedConfigStr);
+          if (cfg.customHeaderText) setCustomHeader(cfg.customHeaderText);
+          if (cfg.customVatId) setCustomVat(cfg.customVatId);
+          if (cfg.customFooterText) setCustomFooter(cfg.customFooterText);
+          if (cfg.headerLogoUrl) setHeaderLogo(cfg.headerLogoUrl);
+        }
+      } catch (e) {}
     }
   }, []);
 
@@ -80,6 +98,18 @@ export default function PrinterSettingsPage() {
     setScanErrors({});
     setDismissedDriverLock(false);
     triggerToast('Printer connection reset', 'info');
+  };
+
+  const handleSaveCustomization = () => {
+    const updated: PrinterConfig = {
+      ...config,
+      customHeaderText: customHeader,
+      customVatId: customVat,
+      customFooterText: customFooter,
+      headerLogoUrl: headerLogo
+    };
+    setConfig(updated);
+    triggerToast('Thermal receipt customization saved!', 'success');
   };
 
   const handleScanDevice = async (type: 'bluetooth' | 'usb') => {
@@ -481,6 +511,101 @@ export default function PrinterSettingsPage() {
                   </>
                 )}
               </button>
+            </div>
+
+            {/* HTTPS Security Origin Status Badge */}
+            <div className={`p-3.5 border rounded-xl font-sans text-xs flex items-center justify-between ${
+              isSecure 
+                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+            }`}>
+              <div className="flex items-center gap-2 font-bold">
+                <span className="material-symbols-outlined text-base">{isSecure ? 'lock' : 'lock_open'}</span>
+                <span>Origin Security Context: {isSecure ? 'HTTPS / Secure Context' : 'HTTP / Unsecure'}</span>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded bg-black/30">
+                {isSecure ? 'WebUSB & Bluetooth Enabled' : 'Limited Access'}
+              </span>
+            </div>
+
+            {/* Thermal Receipt Print Customization Card */}
+            <div className="bg-[#161513] border border-white/5 rounded-2xl p-5 space-y-4 font-sans">
+              <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                <h4 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <span className="material-symbols-outlined text-base text-[#ffe2ab]">receipt_long</span>
+                  Thermal Receipt Layout
+                </h4>
+                <button
+                  type="button"
+                  onClick={handleSaveCustomization}
+                  className="px-3 py-1 bg-[#ffe2ab] text-[#402d00] hover:bg-[#ffdca0] font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all cursor-pointer shadow-sm"
+                >
+                  Save Layout
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider mb-1">
+                    Business Name / Header Title
+                  </label>
+                  <input
+                    type="text"
+                    value={customHeader}
+                    onChange={(e) => setCustomHeader(e.target.value)}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#ffe2ab]/40"
+                    placeholder="e.g. DinePOS Executive Dining"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider mb-1">
+                    VAT / Tax Registration Number
+                  </label>
+                  <input
+                    type="text"
+                    value={customVat}
+                    onChange={(e) => setCustomVat(e.target.value)}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#ffe2ab]/40"
+                    placeholder="e.g. VAT ID: US-994827104"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider mb-1">
+                    Receipt Footer Message
+                  </label>
+                  <input
+                    type="text"
+                    value={customFooter}
+                    onChange={(e) => setCustomFooter(e.target.value)}
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#ffe2ab]/40"
+                    placeholder="e.g. THANK YOU FOR DINING WITH US!"
+                  />
+                </div>
+              </div>
+
+              {/* Live Receipt Preview */}
+              <div className="mt-3 bg-white text-black p-4 rounded-xl font-mono text-[11px] space-y-1 shadow-inner border border-gray-300">
+                <div className="text-center font-black uppercase text-sm">{customHeader || 'DINEPOS AI'}</div>
+                <div className="text-center font-bold text-[10px] uppercase text-gray-600">{customVat || 'VAT ID: US-994827104'}</div>
+                <div className="border-b border-dashed border-black my-2"></div>
+                <div className="flex justify-between font-bold">
+                  <span>Gold Leaf A5 Wagyu Ribeye x1</span>
+                  <span>$185.00</span>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <span>Royal Gold Old Fashioned x2</span>
+                  <span>$56.00</span>
+                </div>
+                <div className="border-b border-dashed border-black my-2"></div>
+                <div className="flex justify-between font-black text-xs">
+                  <span>TOTAL CHARGE:</span>
+                  <span>$265.10</span>
+                </div>
+                <div className="border-b border-dashed border-black my-2"></div>
+                <div className="text-center font-black text-[10px] mt-2 uppercase">{customFooter}</div>
+              </div>
             </div>
 
             {/* Active connection details */}

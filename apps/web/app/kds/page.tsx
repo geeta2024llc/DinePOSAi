@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { apiRequest } from '@/utils/api';
+import { kitchenChime } from '@/utils/kitchenChime';
 
 interface OrderItemOption {
   text: string;
@@ -202,12 +203,35 @@ export default function KdsPage() {
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
+  const prevTicketCountRef = React.useRef(0);
+
+  const unlockAudio = () => {
+    const success = kitchenChime.initAudio();
+    setAudioUnlocked(success);
+    return success;
+  };
+
+  const handleTestChime = () => {
+    unlockAudio();
+    kitchenChime.playNewOrderChime();
+    triggerToast('🔔 Kitchen Bell Chime (Ding-Dong!) Sound Test');
+  };
+
   // Sync active orders from backend with offline fallback
   const syncActiveOrders = async () => {
     try {
       const res = await apiRequest<any[]>('/api/orders');
       if (res.success && res.data) {
         const dbTickets = res.data.map(mapDbOrderToKdsTicket);
+        
+        // Check if new tickets arrived
+        if (dbTickets.length > prevTicketCountRef.current && prevTicketCountRef.current > 0) {
+          kitchenChime.playNewOrderChime();
+          const newest = dbTickets[0];
+          triggerToast(`🔔 NEW ORDER: ${newest.tableNumber}`);
+        }
+        prevTicketCountRef.current = dbTickets.length;
         setTickets(dbTickets);
         localStorage.setItem('dinepos_shared_tickets', JSON.stringify(dbTickets));
       } else {
@@ -227,11 +251,32 @@ export default function KdsPage() {
     }
   };
 
-  // Load tickets on mount and set up polling interval (5 seconds)
+  // Load tickets on mount and set up accelerated polling interval (3 seconds) + BroadcastChannel
   useEffect(() => {
     syncActiveOrders();
-    const pollInterval = setInterval(syncActiveOrders, 5000);
-    return () => clearInterval(pollInterval);
+    const pollInterval = setInterval(syncActiveOrders, 3000);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('dinepos_kds_realtime');
+        bc.onmessage = (event) => {
+          if (event.data && event.data.type === 'NEW_ORDER_DISPATCH') {
+            console.log('[KDS] Real-time order dispatch received:', event.data);
+            syncActiveOrders();
+            kitchenChime.playNewOrderChime();
+            triggerToast(`🔔 NEW ORDER DISPATCH: ${event.data.tableNumber || 'New Ticket'}`);
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('[KDS] BroadcastChannel init error:', e);
+    }
+
+    return () => {
+      clearInterval(pollInterval);
+      if (bc) bc.close();
+    };
   }, []);
 
   // Listen to StorageEvent updates
@@ -240,6 +285,10 @@ export default function KdsPage() {
       if (e.key === 'dinepos_shared_tickets' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
+          if (parsed.length > tickets.length && tickets.length > 0) {
+            kitchenChime.playNewOrderChime();
+            triggerToast('🔔 NEW ORDER RECEIVED!');
+          }
           setTickets(parsed);
         } catch (err) {
           console.error(err);
@@ -248,7 +297,7 @@ export default function KdsPage() {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [tickets.length]);
 
   // Real-time elapsed clock timers (kept in-memory to reduce localStorage write churn)
   useEffect(() => {
@@ -486,22 +535,34 @@ export default function KdsPage() {
             </div>
           </div>
           
-          {/* Legend Badges Capsule Container */}
-          <div className="hidden md:flex bg-[#161513] border border-white/5 rounded-full px-4 py-2 gap-3.5 items-center text-[10px] font-sans font-bold text-[#A69984]/75 tracking-wider shadow-inner">
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>
-              &lt;10m
-            </span>
-            <span className="text-white/10">|</span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#fb923c]"></span>
-              10-15m
-            </span>
-            <span className="text-white/10">|</span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444]"></span>
-              15m+
-            </span>
+          {/* Audio Chime Controls & Legend Badges Capsule Container */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleTestChime}
+              className="px-3.5 py-1.5 rounded-full bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 text-[#ffe2ab] hover:bg-[#ffe2ab]/20 font-sans text-[10px] uppercase font-bold tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+              title="Test Kitchen Bell Chime Sound"
+            >
+              <span className="material-symbols-outlined text-[13px] text-[#ffe2ab]">notifications_active</span>
+              <span>{audioUnlocked ? 'Test Chime' : 'Enable Sound'}</span>
+            </button>
+
+            <div className="hidden md:flex bg-[#161513] border border-white/5 rounded-full px-4 py-2 gap-3.5 items-center text-[10px] font-sans font-bold text-[#A69984]/75 tracking-wider shadow-inner">
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>
+                &lt;10m
+              </span>
+              <span className="text-white/10">|</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#fb923c]"></span>
+                10-15m
+              </span>
+              <span className="text-white/10">|</span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444]"></span>
+                15m+
+              </span>
+            </div>
           </div>
         </header>
 

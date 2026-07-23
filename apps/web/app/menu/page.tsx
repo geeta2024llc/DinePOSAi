@@ -1335,6 +1335,22 @@ export default function DigitalMenuPage() {
       localStorage.setItem('dinepos_active_ticket_id', finalOrderId);
       localStorage.setItem('dinepos_order_id', finalOrderId);
 
+      // Real-time zero-latency broadcast to KDS
+      try {
+        if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+          const bc = new BroadcastChannel('dinepos_kds_realtime');
+          bc.postMessage({
+            type: 'NEW_ORDER_DISPATCH',
+            orderId: finalOrderId,
+            tableNumber: `Table ${tableNumber.toString().padStart(2, '0')}`,
+            timestamp: new Date().toISOString()
+          });
+          bc.close();
+        }
+      } catch (bcErr) {
+        console.warn('[Order] BroadcastChannel dispatch failed:', bcErr);
+      }
+
       setIsCartOpen(false);
       setOrderSubmitted(true);
       localStorage.setItem('dinepos_order_submitted', 'true');

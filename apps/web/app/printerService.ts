@@ -9,6 +9,10 @@ export interface PrinterConfig {
   ip?: string;
   port?: number;
   defaultSystemType?: 'usb' | 'bluetooth';
+  customHeaderText?: string;
+  customVatId?: string;
+  customFooterText?: string;
+  headerLogoUrl?: string;
 }
 
 export interface PrintReceiptData {
@@ -176,6 +180,23 @@ export class PrinterService {
       return;
     }
 
+    let customHeader = 'DinePosAi';
+    let customSubHeader = 'AURA HOSPITALITY GROUP';
+    let customVat = 'VAT ID: US-994827104';
+    let customFooter = 'THANK YOU FOR DINING WITH US!';
+    let customLogo = '';
+
+    try {
+      const storedConfigStr = localStorage.getItem('dinepos_printer_config');
+      if (storedConfigStr) {
+        const storedConfig = JSON.parse(storedConfigStr);
+        if (storedConfig.customHeaderText) customHeader = storedConfig.customHeaderText;
+        if (storedConfig.customVatId) customVat = storedConfig.customVatId;
+        if (storedConfig.customFooterText) customFooter = storedConfig.customFooterText;
+        if (storedConfig.headerLogoUrl) customLogo = storedConfig.headerLogoUrl;
+      }
+    } catch (e) {}
+
     const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
     const itemRowsHtml = data.items.map(item => {
@@ -218,8 +239,8 @@ export class PrinterService {
   body { padding:8px 6px; }
   .receipt { width:100%; max-width:275px; margin:0 auto; padding:4px 8px; }
   .center { text-align:center; }
-  .header-title { font-size:22px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
-  .header-sub { font-size:11px; font-weight:900; margin-bottom:2px; text-transform:uppercase; }
+  .header-title { font-size:20px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
+  .header-sub { font-size:10.5px; font-weight:900; margin-bottom:2px; text-transform:uppercase; }
   .meta-box { border:2px solid #000; padding:6px 8px; margin:8px 0; font-size:11px; font-weight:900; line-height:1.4; border-radius:4px; }
   .sep-solid { border:none; border-top:2px solid #000; margin:8px 0; }
   .sep-double { border:none; border-top:3px double #000; margin:8px 0; }
@@ -247,10 +268,10 @@ export class PrinterService {
 <body>
 <div class="receipt">
   <div class="center">
-    <div class="header-title">DinePosAi</div>
-    <div class="header-sub">AURA HOSPITALITY GROUP</div>
-    <div class="header-sub">1200 Gastronomy Way, Suite 400</div>
-    <div class="header-sub">New York, NY 10001 · +1 (212) 555-0198</div>
+    ${customLogo ? `<img src="${esc(customLogo)}" style="max-width:120px; max-height:50px; margin-bottom:4px; display:inline-block;" alt="Logo" />` : ''}
+    <div class="header-title">${esc(customHeader)}</div>
+    <div class="header-sub">${esc(customSubHeader)}</div>
+    <div class="header-sub">${esc(customVat)}</div>
   </div>
 
   <div class="meta-box">

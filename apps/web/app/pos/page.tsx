@@ -921,7 +921,7 @@ export default function PosPage() {
     };
   }, []);
 
-  // Poll active tickets from the database
+  // Poll active tickets from the database + BroadcastChannel real-time listener
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -956,8 +956,24 @@ export default function PosPage() {
     };
 
     syncActiveTickets();
-    const interval = setInterval(syncActiveTickets, 5000);
-    return () => clearInterval(interval);
+    const interval = setInterval(syncActiveTickets, 3000);
+
+    let bc: BroadcastChannel | null = null;
+    try {
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        bc = new BroadcastChannel('dinepos_kds_realtime');
+        bc.onmessage = (event) => {
+          if (event.data && event.data.type === 'NEW_ORDER_DISPATCH') {
+            syncActiveTickets();
+          }
+        };
+      }
+    } catch (e) {}
+
+    return () => {
+      clearInterval(interval);
+      if (bc) bc.close();
+    };
   }, [isLoaded, taxRateDineIn, taxRateTakeaway, taxRateDelivery]);
 
   const triggerToast = (message: string) => {
