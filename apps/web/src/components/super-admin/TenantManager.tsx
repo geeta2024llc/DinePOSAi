@@ -18,6 +18,7 @@ export default function TenantManager(props: any) {
     setSelectedTenant, setEditingExpiryDate, setShowTenantDetailsModal,
     setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
     handleQuickRenew, handleRetryBilling, handleDeleteTenant,
+    handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
     globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs
   } = props;
 
@@ -670,8 +671,36 @@ export default function TenantManager(props: any) {
                                 {activeActionMenuId === t.id && (
                                   <div className="absolute right-0 mt-1.5 w-48 bg-[#161513] border border-white/10 rounded-xl shadow-2xl py-2 z-30 text-left font-sans animate-slide-in">
                                     <button type="button"
-                                      onClick={() => toggleTenantStatus(t.id, t.name, t.status)}
+                                      onClick={() => handleQuickRenew(t.id, 30)}
                                       className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>
+                                      Extend Expiry (+30d)
+                                    </button>
+
+                                    <button type="button"
+                                      onClick={() => handleQuickRenew(t.id, 365)}
+                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>
+                                      Extend Expiry (+1 Year)
+                                    </button>
+
+                                    <button type="button"
+                                      onClick={() => {
+                                        setSelectedTenant(t);
+                                        setEditingExpiryDate(t.expiryDate || new Date().toISOString().split('T')[0]);
+                                        setShowTenantDetailsModal(true);
+                                      }}
+                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-amber-400 font-semibold flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <span className="material-symbols-outlined text-sm text-amber-400">edit_calendar</span>
+                                      Custom Expiry Date...
+                                    </button>
+
+                                    <button type="button"
+                                      onClick={() => toggleTenantStatus(t.id, t.name, t.status)}
+                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer border-t border-white/5 mt-1 pt-2"
                                     >
                                       <span className="material-symbols-outlined text-sm text-[#A69984]">
                                         {t.status === 'ACTIVE' ? 'block' : 'check_circle'}
@@ -972,6 +1001,108 @@ export default function TenantManager(props: any) {
 
             </div>
           )}
+
+      {/* EXTEND EXPIRY & SUBSCRIPTION MODAL */}
+      {showTenantDetailsModal && selectedTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
+          <div className="bg-[#141413] border border-white/10 w-full max-w-[540px] rounded-2xl shadow-2xl overflow-hidden font-sans">
+            <div className="bg-[#1b1a18] px-6 py-4 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#ffc53d] text-xl">edit_calendar</span>
+                <div>
+                  <h3 className="font-serif text-base text-white font-bold tracking-wide">Extend Subscription Expiry</h3>
+                  <p className="text-[10px] text-[#A69984]/60 font-semibold">{selectedTenant.name} ({selectedTenant.location || 'Global Workspace'})</p>
+                </div>
+              </div>
+              <button type="button" 
+                onClick={() => setShowTenantDetailsModal(false)}
+                className="text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTenantExpiry} className="p-6 space-y-6">
+              {/* Current Expiry Display */}
+              <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[9.5px] text-[#A69984]/60 uppercase font-bold tracking-wider block">Current Expiry Date</span>
+                  <span className="text-white font-mono font-bold text-sm">{selectedTenant.expiryDate || 'No Expiry Set'}</span>
+                </div>
+                <span className="px-2.5 py-1 rounded bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[10px]">
+                  {getExpiryCountdownText ? getExpiryCountdownText(selectedTenant.expiryDate) : 'Active'}
+                </span>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div>
+                <label className="block text-[9.5px] text-[#A69984] font-bold uppercase tracking-widest mb-2.5">
+                  Quick Presets
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button type="button"
+                    onClick={() => {
+                      handleQuickRenew(selectedTenant.id, 30);
+                      setShowTenantDetailsModal(false);
+                    }}
+                    className="p-3 bg-white/5 hover:bg-[#ffc53d]/10 border border-white/10 hover:border-[#ffc53d]/40 rounded-xl text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-white font-bold text-xs group-hover:text-[#ffc53d]">+ 30 Days</span>
+                      <span className="material-symbols-outlined text-sm text-[#A69984] group-hover:text-[#ffc53d]">event_repeat</span>
+                    </div>
+                    <span className="text-[9.5px] text-[#A69984]/60 block mt-1 font-medium">Add 30 calendar days to active plan</span>
+                  </button>
+
+                  <button type="button"
+                    onClick={() => {
+                      handleQuickRenew(selectedTenant.id, 365);
+                      setShowTenantDetailsModal(false);
+                    }}
+                    className="p-3 bg-white/5 hover:bg-[#ffc53d]/10 border border-white/10 hover:border-[#ffc53d]/40 rounded-xl text-left transition-all cursor-pointer group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-white font-bold text-xs group-hover:text-[#ffc53d]">+ 1 Year</span>
+                      <span className="material-symbols-outlined text-sm text-[#A69984] group-hover:text-[#ffc53d]">calendar_add_on</span>
+                    </div>
+                    <span className="text-[9.5px] text-[#A69984]/60 block mt-1 font-medium">Add 365 days (Full Year Renewal)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Custom Date Input Picker */}
+              <div>
+                <label className="block text-[9.5px] text-[#A69984] font-bold uppercase tracking-widest mb-2">
+                  Or Set Custom Expiry Date
+                </label>
+                <input
+                  type="date"
+                  value={editingExpiryDate}
+                  onChange={(e) => setEditingExpiryDate(e.target.value)}
+                  className="w-full bg-[#0e0e0d] border border-white/15 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-[#ffc53d] transition-colors font-mono"
+                  required
+                />
+              </div>
+
+              {/* Submit / Cancel Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
+                <button type="button"
+                  onClick={() => setShowTenantDetailsModal(false)}
+                  className="px-4 py-2.5 text-xs text-[#A69984] hover:text-white font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button type="submit"
+                  className="px-5 py-2.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-sm font-black">save</span>
+                  Save Custom Expiry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </>
   );

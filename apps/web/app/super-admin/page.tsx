@@ -553,18 +553,21 @@ export default function SuperAdminPage() {
   const handleQuickRenew = (tenantId: string, days: number) => {
     setTenants(prev => prev.map(t => {
       if (t.id !== tenantId) return t;
-      const currentExpiry = new Date(t.expiryDate);
-      currentExpiry.setDate(currentExpiry.getDate() + days);
-      const newExpiryStr = currentExpiry.toISOString().split('T')[0];
+      const today = new Date();
+      const baseDate = (t.expiryDate && !isNaN(new Date(t.expiryDate).getTime())) ? new Date(t.expiryDate) : today;
+      const startDate = baseDate < today ? today : baseDate;
+      startDate.setDate(startDate.getDate() + days);
+      const newExpiryStr = startDate.toISOString().split('T')[0];
       
-      triggerToast(`Subscription for ${t.name} extended by ${days} days!`, 'success');
+      const label = days === 365 ? '1 year' : `${days} days`;
+      triggerToast(`Subscription for ${t.name} extended by ${label}!`, 'success');
       
       setAuditLogs(logs => [
         {
           id: Date.now(),
           time: 'Just now',
           actor: 'Super Admin',
-          action: `Extended subscription expiry for "${t.name}" by ${days} days to ${newExpiryStr}`,
+          action: `Extended subscription expiry for "${t.name}" by ${label} to ${newExpiryStr}`,
           tenant: t.name,
           type: 'success'
         },
@@ -573,8 +576,7 @@ export default function SuperAdminPage() {
       return { 
         ...t, 
         expiryDate: newExpiryStr, 
-        status: 'ACTIVE',
-        plan: 'ACTIVE' 
+        status: 'ACTIVE'
       };
     }));
   };
@@ -2109,6 +2111,7 @@ export default function SuperAdminPage() {
                 setSelectedTenant, setEditingExpiryDate, setShowTenantDetailsModal,
                 setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
                 handleQuickRenew, handleRetryBilling, handleDeleteTenant,
+                handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
                 globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs
               }}
             />
