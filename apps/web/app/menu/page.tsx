@@ -322,9 +322,36 @@ const normalizeCategoriesList = (rawCats: any[]) => {
   return Array.from(map.values());
 };
 
+export function resolveMenuItemImage(imageUrl?: string | null, category?: string, name?: string): string {
+  if (imageUrl && imageUrl.trim() !== '' && !imageUrl.includes('wagyu_ribeye.png')) {
+    return imageUrl;
+  }
+  const cat = (category || '').toLowerCase();
+  const lowerName = (name || '').toLowerCase();
+
+  if (lowerName.includes('caviar') || lowerName.includes('oyster')) return '/images/caviar_oysters.png';
+  if (lowerName.includes('tartare')) return '/images/wagyu_beef_tartare.png';
+  if (lowerName.includes('burrata') || lowerName.includes('salad')) return '/images/truffle_burrata_salad.png';
+  if (lowerName.includes('scallop')) return '/images/pan_seared_scallops.png';
+  if (lowerName.includes('risotto')) return '/images/mushroom_risotto.png';
+  if (lowerName.includes('bass') || lowerName.includes('fish') || lowerName.includes('salmon')) return '/images/sea_bass.png';
+  if (lowerName.includes('mignon') || lowerName.includes('steak') || lowerName.includes('beef') || lowerName.includes('wagyu')) return '/images/filet_mignon.png';
+  if (lowerName.includes('souffle') || lowerName.includes('cake') || lowerName.includes('brulee') || cat === 'desserts' || cat === 'dessert') return '/images/chocolate_souffle.png';
+  if (lowerName.includes('cocktail') || lowerName.includes('wine') || lowerName.includes('beer') || lowerName.includes('drink') || cat === 'drinks' || cat === 'drink') return '/images/old_fashioned.png';
+
+  // Category based defaults
+  if (cat === 'combos' || cat === 'combo') return '/images/mushroom_risotto.png';
+  if (cat === 'starters' || cat === 'starter') return '/images/truffle_burrata_salad.png';
+  if (cat === 'desserts' || cat === 'dessert') return '/images/chocolate_souffle.png';
+  if (cat === 'drinks' || cat === 'drink') return '/images/old_fashioned.png';
+
+  return '/images/wagyu_ribeye.png';
+}
+
 export default function DigitalMenuPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
-  const [items, setItems] = useState<MenuItem[]>(menuItems);
+  const [items, setItems] = useState<MenuItem[]>([]);
+  const [isMenuLoading, setIsMenuLoading] = useState<boolean>(true);
   const [categories, setCategories] = useState<Array<{ id: string; name: string; icon?: string }>>(defaultMenuCategories);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
@@ -426,11 +453,7 @@ export default function DigitalMenuPage() {
   const [isTableTemporarilyUnlocked, setIsTableTemporarilyUnlocked] = useState(false);
   
   // Cart State
-  const [cart, setCart] = useState<{ [cartKey: string]: CartItem }>({
-    'start-1--starter': { itemId: 'start-1', quantity: 1, modifiers: [], course: 'starter' },
-    'main-1--main': { itemId: 'main-1', quantity: 1, modifiers: [], course: 'main' },
-    'start-3--starter': { itemId: 'start-3', quantity: 1, modifiers: [], course: 'starter' }
-  });
+  const [cart, setCart] = useState<{ [cartKey: string]: CartItem }>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -604,6 +627,12 @@ export default function DigitalMenuPage() {
     const savedCart = localStorage.getItem('dinepos_cart');
     if (savedCart) {
       setCart(migrateCart(savedCart));
+    } else if (isDemoTenant()) {
+      setCart({
+        'start-1--starter': { itemId: 'start-1', quantity: 1, modifiers: [], course: 'starter' },
+        'main-1--main': { itemId: 'main-1', quantity: 1, modifiers: [], course: 'main' },
+        'start-3--starter': { itemId: 'start-3', quantity: 1, modifiers: [], course: 'starter' }
+      });
     }
     const dineInOk = localStorage.getItem('dinepos_dine_in_enabled') !== 'false';
     const takeawayOk = localStorage.getItem('dinepos_takeaway_enabled') !== 'false';
@@ -656,55 +685,19 @@ export default function DigitalMenuPage() {
       { id: 'drinks', name: 'Drinks', icon: 'local_bar' }
     ];
 
+    // =========================================================
+    // STALE-WHILE-REVALIDATE (SWR) MENU DATA LOADER
+    // =========================================================
     const loadMenuAndCategories = async () => {
-      const catRes = await apiRequest<any[]>('/api/menu/categories');
-      const itemRes = await apiRequest<any[]>('/api/menu/items');
-
-      if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
-        const dbCategoryToCanonicalMap: Record<string, string> = {};
-        catRes.data.forEach((c: any) => {
-          if (c.id) {
-            dbCategoryToCanonicalMap[c.id] = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
-          }
-        });
-
-        const rawFromCat = catRes.data.map((c: any) => ({
-          id: getCanonicalCategoryId(c.name || '') || c.id,
-          name: c.name,
-          icon: c.icon || 'restaurant'
-        }));
-        const mappedCategories = normalizeCategoriesList(rawFromCat);
-        
-        const mappedItems = itemRes.data.map((item: any) => {
-          const canonicalCat = dbCategoryToCanonicalMap[item.categoryId] || getCanonicalCategoryId(item.category || item.categoryId || '');
-          return {
-            id: item.id,
-            name: item.name,
-            category: canonicalCat || 'mains',
-            price: item.price,
-            description: item.description || '',
-            image: item.imageUrl || '/images/wagyu_ribeye.png',
-            tags: item.tags || [],
-            allergens: item.allergens || [],
-            active: item.isAvailable !== false
-          };
-        });
-
-        setCategories(mappedCategories);
-        setItems(mappedItems);
-        
-        localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
-        localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
-        return;
-      }
-
-      // Offline Fallback - load local storage
+      // Step 1: STALE HYDRATION - Render cached items & categories immediately (0ms delay)
       const savedMenu = localStorage.getItem('dinepos_menu_items');
       if (savedMenu) {
         try {
           let loadedItems = JSON.parse(savedMenu);
           const containsDemoItems = Array.isArray(loadedItems) && loadedItems.some((it: any) =>
-            it.id?.startsWith('wagyu-') || it.id?.startsWith('caviar-') || it.id?.startsWith('app-') || it.id?.startsWith('main-')
+            it.id?.startsWith('wagyu-') || it.id?.startsWith('caviar-') || it.id?.startsWith('app-') ||
+            it.id?.startsWith('main-') || it.id?.startsWith('spec-') || it.id?.startsWith('combo-') ||
+            it.id?.startsWith('start-') || it.id?.startsWith('dess-') || it.id?.startsWith('drink-')
           );
           if (!isDemoTenant() && containsDemoItems) {
             loadedItems = [];
@@ -712,7 +705,8 @@ export default function DigitalMenuPage() {
           } else {
             loadedItems = loadedItems.map((item: any) => ({
               ...item,
-              category: getCanonicalCategoryId(item.category || item.categoryId || '') || 'mains'
+              category: getCanonicalCategoryId(item.category || item.categoryId || '') || 'mains',
+              image: resolveMenuItemImage(item.imageUrl || item.image, item.category || item.categoryId, item.name)
             }));
           }
           setItems(loadedItems);
@@ -723,7 +717,8 @@ export default function DigitalMenuPage() {
         if (isDemoTenant()) {
           const normalizedDemo = menuItems.map(item => ({
             ...item,
-            category: getCanonicalCategoryId(item.category || '') || 'mains'
+            category: getCanonicalCategoryId(item.category || '') || 'mains',
+            image: resolveMenuItemImage(item.image, item.category, item.name)
           }));
           localStorage.setItem('dinepos_menu_items', JSON.stringify(normalizedDemo));
           setItems(normalizedDemo);
@@ -746,6 +741,58 @@ export default function DigitalMenuPage() {
       }
       localStorage.setItem('dinepos_menu_categories', JSON.stringify(loadedCategories));
       setCategories(loadedCategories);
+      
+      // Release loading skeleton if we successfully loaded cached restaurant items or demo items
+      setIsMenuLoading(false);
+
+      // Step 2: REVALIDATE - Fetch fresh data from API server concurrently in background
+      try {
+        const [catRes, itemRes] = await Promise.all([
+          apiRequest<any[]>('/api/menu/categories'),
+          apiRequest<any[]>('/api/menu/items')
+        ]);
+
+        if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+          const dbCategoryToCanonicalMap: Record<string, string> = {};
+          catRes.data.forEach((c: any) => {
+            if (c.id) {
+              dbCategoryToCanonicalMap[c.id] = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
+            }
+          });
+
+          const rawFromCat = catRes.data.map((c: any) => ({
+            id: getCanonicalCategoryId(c.name || '') || c.id,
+            name: c.name,
+            icon: c.icon || 'restaurant'
+          }));
+          const mappedCategories = normalizeCategoriesList(rawFromCat);
+          
+          const mappedItems = itemRes.data.map((item: any) => {
+            const canonicalCat = dbCategoryToCanonicalMap[item.categoryId] || getCanonicalCategoryId(item.category || item.categoryId || '');
+            return {
+              id: item.id,
+              name: item.name,
+              category: canonicalCat || 'mains',
+              price: item.price,
+              description: item.description || '',
+              image: resolveMenuItemImage(item.imageUrl || item.image, canonicalCat, item.name),
+              tags: item.tags || [],
+              allergens: item.allergens || [],
+              active: item.isAvailable !== false
+            };
+          });
+
+          setCategories(mappedCategories);
+          setItems(mappedItems);
+          
+          localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
+          localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+        }
+      } catch (err) {
+        console.warn('[SWR] Background menu revalidation failed, retaining stale cache:', err);
+      } finally {
+        setIsMenuLoading(false);
+      }
     };
 
     loadMenuAndCategories();
@@ -779,7 +826,7 @@ export default function DigitalMenuPage() {
     }
   }, []);
 
-  // Sync menu items and categories in real-time across browser tabs/windows
+  // Sync menu items and categories in real-time across browser tabs/windows & revalidate on focus (SWR)
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'dinepos_cart' && e.newValue) {
@@ -855,8 +902,85 @@ export default function DigitalMenuPage() {
         }
       }
     };
+
+    // Custom event handlers for intra-tab state sync
+    const handleMenuUpdated = () => {
+      const saved = localStorage.getItem('dinepos_menu_items');
+      if (saved) {
+        try { setItems(JSON.parse(saved)); } catch (err) {}
+      }
+    };
+
+    const handleCategoriesUpdated = () => {
+      const saved = localStorage.getItem('dinepos_menu_categories');
+      if (saved) {
+        try { setCategories(JSON.parse(saved)); } catch (err) {}
+      }
+    };
+
+    // SWR Window Focus Revalidation
+    const handleWindowFocus = () => {
+      if (document.visibilityState === 'visible') {
+        // Silently revalidate backend data on tab focus
+        Promise.all([
+          apiRequest<any[]>('/api/menu/categories'),
+          apiRequest<any[]>('/api/menu/items')
+        ]).then(([catRes, itemRes]) => {
+          if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+            const dbCategoryToCanonicalMap: Record<string, string> = {};
+            catRes.data.forEach((c: any) => {
+              if (c.id) {
+                dbCategoryToCanonicalMap[c.id] = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
+              }
+            });
+
+            const rawFromCat = catRes.data.map((c: any) => ({
+              id: getCanonicalCategoryId(c.name || '') || c.id,
+              name: c.name,
+              icon: c.icon || 'restaurant'
+            }));
+            const mappedCategories = normalizeCategoriesList(rawFromCat);
+            
+            const mappedItems = itemRes.data.map((item: any) => {
+              const canonicalCat = dbCategoryToCanonicalMap[item.categoryId] || getCanonicalCategoryId(item.category || item.categoryId || '');
+              return {
+                id: item.id,
+                name: item.name,
+                category: canonicalCat || 'mains',
+                price: item.price,
+                description: item.description || '',
+                image: resolveMenuItemImage(item.imageUrl || item.image, canonicalCat, item.name),
+                tags: item.tags || [],
+                allergens: item.allergens || [],
+                active: item.isAvailable !== false
+              };
+            });
+
+            setCategories(mappedCategories);
+            setItems(mappedItems);
+            
+            localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
+            localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+          }
+        }).catch(err => {
+          console.warn('[SWR] Focus revalidation skipped:', err);
+        });
+      }
+    };
+
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    window.addEventListener('dinepos_menu_updated', handleMenuUpdated);
+    window.addEventListener('dinepos_menu_categories_updated', handleCategoriesUpdated);
+    window.addEventListener('focus', handleWindowFocus);
+    window.addEventListener('visibilitychange', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('dinepos_menu_updated', handleMenuUpdated);
+      window.removeEventListener('dinepos_menu_categories_updated', handleCategoriesUpdated);
+      window.removeEventListener('focus', handleWindowFocus);
+      window.removeEventListener('visibilitychange', handleWindowFocus);
+    };
   }, []);
 
   // Save cart to localStorage when it changes
@@ -1686,8 +1810,26 @@ export default function DigitalMenuPage() {
         {/* Menu Items List */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-10 pb-44 sm:pb-40 pt-6 scrollbar-hide">
           
-
-          {filteredItems.length > 0 ? (
+          {isMenuLoading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-8 animate-pulse">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+                <div key={i} className="flex flex-col bg-[#181715]/60 border border-white/5 rounded-2xl overflow-hidden h-[360px]">
+                  <div className="w-full h-[220px] bg-white/5" />
+                  <div className="p-6 flex-1 flex flex-col justify-between space-y-3">
+                    <div className="space-y-2">
+                      <div className="h-4 bg-white/10 rounded w-3/4" />
+                      <div className="h-3 bg-white/5 rounded w-full" />
+                      <div className="h-3 bg-white/5 rounded w-1/2" />
+                    </div>
+                    <div className="flex justify-between items-center pt-2">
+                      <div className="h-4 bg-white/5 rounded w-16" />
+                      <div className="w-10 h-10 bg-white/10 rounded-xl" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-8">
               {filteredItems.map((item, index) => {
                 const qty = cartQuantities[item.id] || 0;

@@ -13,11 +13,18 @@ export function middleware(request: NextRequest) {
     pathname === '/reset-password' ||
     pathname === '/' ||
     pathname === '/demo' ||
+    pathname.startsWith('/menu') ||
     pathname.startsWith('/partners') ||
     pathname === '/subscribe' ||
     pathname === '/privacy' ||
     pathname === '/terms' ||
-    pathname === '/support';
+    pathname === '/support' ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
+    pathname.endsWith('.svg') ||
+    pathname.endsWith('.json') ||
+    pathname.endsWith('.png') ||
+    pathname.endsWith('.ico');
 
   // 1. Unauthenticated users: redirect to /login if they try to access protected pages
   if (!token && !isPublicRoute) {
@@ -83,8 +90,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - images (public images)
+     * - manifest.json & sw.js
+     * - images & static assets
      */
-    '/((?!api|monitoring|_next/static|_next/image|favicon.ico|images).*)',
+    '/((?!api|monitoring|_next/static|_next/image|favicon.ico|manifest.json|sw.js|images|.*\\.svg|.*\\.png|.*\\.jpg|.*\\.ico|.*\\.json).*)',
   ],
 };

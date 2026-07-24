@@ -20,7 +20,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[SW] Pre-caching offline POS shell assets');
-      return cache.addAll(STATIC_ASSETS);
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('[SW] Pre-cache warning (some assets missed):', err);
+      });
     }).then(() => self.skipWaiting())
   );
 });
@@ -43,6 +45,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch Event - Network first with Cache fallback for navigation & static assets
 self.addEventListener('fetch', (event) => {
+  // Only handle http and https requests (ignore chrome-extension://, devtools://, etc.)
+  if (!event.request.url.startsWith('http://') && !event.request.url.startsWith('https://')) {
+    return;
+  }
+
   // Ignore non-GET requests or backend API requests (API calls handle offline fallback internally)
   if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
     return;
@@ -52,11 +59,13 @@ self.addEventListener('fetch', (event) => {
     fetch(event.request)
       .then((networkResponse) => {
         // Clone and cache successful GET responses
-        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+        if (networkResponse && networkResponse.status === 200 && (networkResponse.type === 'basic' || networkResponse.type === 'cors')) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+            cache.put(event.request, responseToCache).catch(() => {
+              // Ignore cache write errors gracefully (e.g. extension requests, storage quota)
+            });
+          }).catch(() => {});
         }
         return networkResponse;
       })

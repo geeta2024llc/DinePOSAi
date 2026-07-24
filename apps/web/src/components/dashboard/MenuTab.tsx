@@ -223,6 +223,7 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
     );
     setMenuItemsList(updatedList);
     localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
+    window.dispatchEvent(new Event('dinepos_menu_updated'));
     triggerToast(item.category === 'special' ? `Removed ${item.name} from Specials.` : `Marked ${item.name} as Special Dish!`, 'success');
   };
 
@@ -239,6 +240,7 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
     );
     setMenuItemsList(updatedList);
     localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
+    window.dispatchEvent(new Event('dinepos_menu_updated'));
     triggerToast(isActive ? `Hid ${item.name} from Digital Menu.` : `Showed ${item.name} on Digital Menu!`, 'success');
   };
 
@@ -250,6 +252,7 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
     const updatedList = menuItemsList.filter(m => m.id !== id);
     setMenuItemsList(updatedList);
     localStorage.setItem('dinepos_menu_items', JSON.stringify(updatedList));
+    window.dispatchEvent(new Event('dinepos_menu_updated'));
     triggerToast('Menu item deleted successfully.', 'success');
   };
 

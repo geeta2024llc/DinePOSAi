@@ -68,21 +68,27 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Dynamic CORS configurations supporting multiple frontends
-const allowedOrigins = process.env.FRONTEND_URL
+const configuredOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map(url => url.trim().replace(/\/+$/, ''))
-  : ['http://localhost:3000'];
+  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
 
-console.log('CORS allowed origins:', allowedOrigins);
+console.log('CORS configured allowed origins:', configuredOrigins);
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     const normalizedOrigin = origin.replace(/\/+$/, '');
-    if (allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes('*')) {
+    if (configuredOrigins.includes(normalizedOrigin) || configuredOrigins.includes('*')) {
       return callback(null, true);
     }
+    // Allow local development origins on localhost / 127.0.0.1 / private LAN IPs in non-production
+    if (process.env.NODE_ENV !== 'production') {
+      if (/^http:\/\/(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/.test(normalizedOrigin)) {
+        return callback(null, true);
+      }
+    }
     console.error(`CORS blocked origin: ${origin}`);
-    return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'));
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -102,9 +108,11 @@ app.use(cookieParser());
 app.use(setSecurityHeaders);
 
 // Define Rate Limiters using express-rate-limit
+const isDev = process.env.NODE_ENV !== 'production';
+
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: isDev ? 10000 : 100, // Generous limit in dev to avoid blocking HMR and local UI interactions
   message: { success: false, error: 'Too many requests from this IP. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -112,7 +120,7 @@ const globalLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Max 5 login attempts per IP per 15 mins to block brute-force attacks
+  max: isDev ? 100 : 5, // Higher limit in dev mode
   message: { success: false, error: 'Too many authentication attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -120,7 +128,7 @@ const authLimiter = rateLimit({
 
 const conciergeLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 5,
+  max: isDev ? 60 : 5,
   message: { success: false, error: 'Too many concierge queries. Please wait a moment before sending another message.' },
   standardHeaders: true,
   legacyHeaders: false,

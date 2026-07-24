@@ -120,15 +120,16 @@ function getRefreshPromise(): Promise<string | null> {
 export async function checkBackendOnline(): Promise<boolean> {
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const timeoutId = setTimeout(() => controller.abort('Health check timeout'), 2000);
     
     const response = await fetch(`${API_BASE_URL}/health`, {
       method: 'GET',
       signal: controller.signal,
-    });
+      cache: 'no-store',
+    }).catch(() => null);
     
     clearTimeout(timeoutId);
-    return response.ok;
+    return response ? response.ok : false;
   } catch {
     return false;
   }
