@@ -500,15 +500,8 @@ export default function SuperAdminPage() {
     type: 'success'
   });
 
-  // Stateful mock database
-  const [tenants, setTenants] = useState<Tenant[]>([
-    { id: 'TEN-8821', name: 'The Obsidian Room', location: 'New York', terminals: 12, plan: 'ACTIVE', revenue: '¥342,500', status: 'ACTIVE', joined: '2024-03-12', tier: 'Business', region: 'North America - East', expiryDate: '2027-03-12' },
-    { id: 'TEN-7734', name: 'Lumière Brasserie', location: 'London', terminals: 80, plan: 'ACTIVE', revenue: '¥2,450,000', status: 'ACTIVE', joined: '2023-11-05', tier: 'Growth', region: 'Europe - West', expiryDate: '2027-11-05' },
-    { id: 'TEN-5512', name: 'Cafe Zenith', location: 'Kobarid', terminals: 6, plan: 'SUSPENDED', revenue: '¥28,000', status: 'SUSPENDED', joined: '2025-09-02', tier: 'Starter', region: 'Asia Pacific', billingFailed: true, expiryDate: '2025-09-02' },
-    { id: 'TEN-9021', name: 'Aman Resorts', location: 'Tokyo', terminals: 45, plan: 'ACTIVE', revenue: '¥1,280,000', status: 'ACTIVE', joined: '2024-01-18', tier: 'Business', region: 'Asia Pacific', expiryDate: '2027-01-18' },
-    { id: 'TEN-4581', name: 'Bouchon Bakery', location: 'Las Vegas', terminals: 8, plan: 'TRIAL', revenue: '¥45,000', status: 'ACTIVE', joined: '2026-05-20', tier: 'Starter', region: 'North America - East', expiryDate: '2026-07-20' },
-    { id: 'TEN-2195', name: 'Gaggan Anand', location: 'Bangkok', terminals: 14, plan: 'SUSPENDED', revenue: '¥122,000', status: 'SUSPENDED', joined: '2025-02-15', tier: 'Growth', region: 'Asia Pacific', expiryDate: '2025-02-15' },
-  ]);
+  // Real database tenants state
+  const [tenants, setTenants] = useState<Tenant[]>([]);
 
   const [showTenantDetailsModal, setShowTenantDetailsModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
@@ -625,75 +618,39 @@ export default function SuperAdminPage() {
     }
   };
 
-  const [admins, setAdmins] = useState<AdminUser[]>([
-    { id: 'adm-1', name: 'Eric Ripert', email: 'ripert@lebernardin.com', tenant: 'Le Bernardin Group', status: 'ACTIVE', lastActive: '2h ago' },
-    { id: 'adm-2', name: 'Vladislav Doronin', email: 'doronin@aman.com', tenant: 'Aman Resorts', status: 'ACTIVE', lastActive: '5m ago' },
-    { id: 'adm-3', name: 'Nick Jones', email: 'nick@sohohouse.com', tenant: 'Soho House', status: 'ACTIVE', lastActive: '1d ago' },
-    { id: 'adm-4', name: 'Thomas Keller', email: 'keller@bouchon.com', tenant: 'Bouchon Bakery', status: 'ACTIVE', lastActive: '4h ago' },
-    { id: 'adm-5', name: 'Ana Ros', email: 'ana@hisafranko.com', tenant: 'Hisa Franko', status: 'INACTIVE', lastActive: '12d ago' },
-    { id: 'adm-6', name: 'Gaggan Anand', email: 'gaggan@gaggan.com', tenant: 'Gaggan Anand', status: 'SUSPENDED', lastActive: '30d ago' },
-  ]);
+  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [fleet, setFleet] = useState<FleetDevice[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  const [fleet, setFleet] = useState<FleetDevice[]>([
-    { id: 'dev-1', type: 'POS', name: 'FOH Host Terminal', tenant: 'Le Bernardin Group', status: 'ONLINE', lastSeen: 'Just now', ip: '192.168.1.101' },
-    { id: 'dev-2', type: 'KDS', name: 'Expo Kitchen Main Screen', tenant: 'Le Bernardin Group', status: 'ONLINE', lastSeen: '1m ago', ip: '192.168.1.201' },
-    { id: 'dev-3', type: 'TABLET', name: 'Bar Right Handheld POS', tenant: 'Aman Resorts', status: 'ONLINE', lastSeen: 'Just now', ip: '10.0.4.12' },
-    { id: 'dev-4', type: 'PRINTER', name: 'Kitchen Hot Ticket Printer', tenant: 'Aman Resorts', status: 'WARNING_LOW_PAPER', lastSeen: '5m ago', ip: '10.0.4.88' },
-    { id: 'dev-5', type: 'POS', name: 'Main FOH Register', tenant: 'Soho House', status: 'ONLINE', lastSeen: 'Just now', ip: '172.16.8.10' },
-    { id: 'dev-6', type: 'KDS', name: 'Pastry Station display', tenant: 'Soho House', status: 'OFFLINE', lastSeen: '3h ago', ip: '172.16.8.35' },
-    { id: 'dev-7', type: 'POS', name: 'Bakery FOH Terminal', tenant: 'Bouchon Bakery', status: 'ONLINE', lastSeen: '10m ago', ip: '192.168.22.5' },
-  ]);
-
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([
-    { id: 1, time: '2m ago', actor: 'Vladislav Doronin (Admin)', action: 'Authorized menu update "Matsuhisa Caviar"', tenant: 'Aman Resorts', type: 'info' },
-    { id: 2, time: '12m ago', actor: 'Eric Ripert (Admin)', action: 'Authorized void check table 12 (¥34,250)', tenant: 'Le Bernardin Group', type: 'warning' },
-    { id: 3, time: '45m ago', actor: 'System Daemon', action: 'Daily sales metrics synchronized', tenant: 'Soho House', type: 'success' },
-    { id: 4, time: '1h ago', actor: 'Super Admin', action: 'Suspended business "Gaggan Anand" due to expired card billing', tenant: 'Gaggan Anand', type: 'security' },
-    { id: 5, time: '2h ago', actor: 'Super Admin', action: 'Triggered password reset link generation for Nick Jones', tenant: 'Soho House', type: 'security' },
-    { id: 6, time: '3h ago', actor: 'Thomas Keller (Admin)', action: 'Updated hardware gateway interface settings', tenant: 'Bouchon Bakery', type: 'info' },
-  ]);
+  // Sync real system overview data from backend API
+  useEffect(() => {
+    const loadOverview = async () => {
+      try {
+        const res = await apiRequest<any>('/api/admin/overview');
+        if (res.success && res.data) {
+          if (Array.isArray(res.data.tenants)) setTenants(res.data.tenants);
+          if (Array.isArray(res.data.users)) setAdmins(res.data.users);
+          if (Array.isArray(res.data.auditLogs)) setAuditLogs(res.data.auditLogs);
+        }
+      } catch (err) {
+        console.warn('[SuperAdmin] Backend sync note:', err);
+      }
+    };
+    loadOverview();
+  }, []);
 
   // Support ticket initialization & sync
   useEffect(() => {
     const stored = localStorage.getItem('dinepos_support_tickets');
     if (stored) {
-      setTickets(JSON.parse(stored));
+      try {
+        const parsed = JSON.parse(stored);
+        const filtered = Array.isArray(parsed) ? parsed.filter((t: any) => !['TCK-481902', 'TCK-294810', 'TCK-902183'].includes(t.id)) : [];
+        setTickets(filtered);
+        localStorage.setItem('dinepos_support_tickets', JSON.stringify(filtered));
+      } catch { setTickets([]); }
     } else {
-      const initial: SupportTicket[] = [
-        {
-          id: 'TCK-481902',
-          establishment: 'Le Bernardin Group',
-          name: 'Eric Ripert',
-          email: 'ripert@lebernardin.com',
-          inquiryType: 'Technical Support',
-          message: 'We are experiencing intermittent latency spikes on KDS screen 2 in the pastry station. Can you check if the node has the latest firmware?',
-          status: 'OPEN',
-          submittedAt: new Date(Date.now() - 1000 * 60 * 45).toISOString() // 45m ago
-        },
-        {
-          id: 'TCK-294810',
-          establishment: 'Cafe Zenith',
-          name: 'Jane Doe',
-          email: 'jane@cafezenith.com',
-          inquiryType: 'Billing',
-          message: 'Our corporate card on file was replaced last week. We received a payment failure notification today. We need to manually retry the payment for the growth plan.',
-          status: 'IN_PROGRESS',
-          submittedAt: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString() // 3h ago
-        },
-        {
-          id: 'TCK-902183',
-          establishment: 'Lumière Brasserie',
-          name: 'Pierre Gagnaire',
-          email: 'pierre@lumiere.com',
-          inquiryType: 'General Inquiry',
-          message: 'Is there a limit to the number of menu categories we can configure? We are planning a spring menu expansion and want to ensure compatibility.',
-          status: 'RESOLVED',
-          submittedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(), // 2d ago
-          replyMessage: 'Hello Pierre, there is no hard limit on menu categories in our system. However, for the best visual experience on the customer-facing menu and cashier POS, we recommend keeping it under 10 categories. Let us know if you need help organizing them!'
-        }
-      ];
-      localStorage.setItem('dinepos_support_tickets', JSON.stringify(initial));
-      setTickets(initial);
+      setTickets([]);
     }
 
     // Listener for new support tickets submitted while open
@@ -1116,76 +1073,49 @@ export default function SuperAdminPage() {
     }, ...prev]);
   };
 
+  const handleDeleteAmbassador = (ambId: string, name: string) => {
+    if (confirm(`Are you sure you want to permanently delete ambassador "${name}"?`)) {
+      const updated = ambassadors.filter(a => a.id !== ambId);
+      setAmbassadors(updated);
+      localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+      triggerToast(`Ambassador "${name}" deleted successfully.`, 'success');
+      setAuditLogs(prev => [{
+        id: Date.now(), time: 'Just now', actor: 'Super Admin',
+        action: `Deleted referral ambassador "${name}"`,
+        tenant: 'Referral Program', type: 'warning'
+      }, ...prev]);
+    }
+  };
+
+  const handleDeleteReferredBusiness = (ambId: string, bizId: string, bizName: string) => {
+    if (confirm(`Remove referred business "${bizName}" from this ambassador?`)) {
+      const updated = ambassadors.map(a => {
+        if (a.id !== ambId) return a;
+        return {
+          ...a,
+          invitedBusinesses: a.invitedBusinesses.filter(b => b.id !== bizId)
+        };
+      });
+      setAmbassadors(updated);
+      localStorage.setItem('dinepos_referrals', JSON.stringify(updated));
+      triggerToast(`Referred business "${bizName}" removed.`, 'success');
+    }
+  };
+
   useEffect(() => {
     const stored = localStorage.getItem('dinepos_referrals');
     if (stored) {
-      setAmbassadors(JSON.parse(stored));
+      try {
+        const parsed = JSON.parse(stored);
+        const filtered = Array.isArray(parsed) ? parsed.filter((a: any) => 
+          !['amb-1', 'amb-2', 'amb-3', 'amb-4'].includes(a.id) &&
+          !['Marcus Nguyen', 'Priya Sharma', 'Diego Vasquez', 'Christine LeBlanc'].includes(a.name)
+        ) : [];
+        setAmbassadors(filtered);
+        localStorage.setItem('dinepos_referrals', JSON.stringify(filtered));
+      } catch { setAmbassadors([]); }
     } else {
-      const initial: Ambassador[] = [
-        {
-          id: 'amb-1',
-          name: 'Marcus Nguyen',
-          email: 'marcus@restaurantgrowth.com',
-          phone: '+1 415 555 0182',
-          code: 'MARCUS421',
-          bank: { bankName: 'Wells Fargo', accountNumber: '••••7821', routingNumber: '121000248', accountHolder: 'Marcus Nguyen LLC' },
-          invitedBusinesses: [
-            { id: 'biz-1', name: 'Nobu Tokyo', contact: 'chef@nobu.com', joinedDate: '2026-03-18', status: 'Subscribed', services: ['POS', 'KDS', 'Analytics'], reward: 15000 },
-            { id: 'biz-2', name: 'Sketch London', contact: 'info@sketch.uk', joinedDate: '2026-04-02', status: 'Active', services: ['POS', 'Self Checkout'], reward: 15000 },
-            { id: 'biz-3', name: 'Osteria Francescana', contact: 'massimo@osteria.it', joinedDate: '2026-04-22', status: 'Pending', services: ['POS'], reward: 0 },
-          ],
-          pendingRewards: 30000,
-          paidRewards: 60000,
-          joinedDate: '2026-01-10',
-          status: 'active',
-        },
-        {
-          id: 'amb-2',
-          name: 'Priya Sharma',
-          email: 'priya@hospitalitybridge.io',
-          phone: '+44 7700 900891',
-          code: 'PRIYA882',
-          bank: { bankName: 'HSBC UK', accountNumber: '••••3309', routingNumber: 'MIDLGB22', accountHolder: 'Priya Sharma Consulting' },
-          invitedBusinesses: [
-            { id: 'biz-4', name: 'Hawksmoor Manchester', contact: 'gm@hawksmoor.com', joinedDate: '2026-02-14', status: 'Subscribed', services: ['POS', 'KDS'], reward: 15000 },
-            { id: 'biz-5', name: 'Hakkasan Dubai', contact: 'dubai@hakkasan.com', joinedDate: '2026-05-01', status: 'Active', services: ['POS', 'AI Concierge', 'Analytics'], reward: 15000 },
-          ],
-          pendingRewards: 15000,
-          paidRewards: 105000,
-          joinedDate: '2025-11-20',
-          status: 'active',
-        },
-        {
-          id: 'amb-3',
-          name: 'Diego Vasquez',
-          email: 'diego@chainops.mx',
-          phone: '+52 55 5555 9020',
-          code: 'DIEGO334',
-          bank: { bankName: '', accountNumber: '', routingNumber: '', accountHolder: '' },
-          invitedBusinesses: [
-            { id: 'biz-6', name: 'Quintonil', contact: 'jorge@quintonil.com', joinedDate: '2026-04-11', status: 'Pending', services: ['POS'], reward: 0 },
-          ],
-          pendingRewards: 0,
-          paidRewards: 0,
-          joinedDate: '2026-03-30',
-          status: 'active',
-        },
-        {
-          id: 'amb-4',
-          name: 'Christine LeBlanc',
-          email: 'christine@nexthospitality.ca',
-          phone: '+1 604 555 0334',
-          code: 'CHRI117',
-          bank: { bankName: 'RBC Royal Bank', accountNumber: '••••5501', routingNumber: '000300002', accountHolder: 'Christine LeBlanc' },
-          invitedBusinesses: [],
-          pendingRewards: 0,
-          paidRewards: 25000,
-          joinedDate: '2025-09-15',
-          status: 'suspended',
-        },
-      ];
-      localStorage.setItem('dinepos_referrals', JSON.stringify(initial));
-      setAmbassadors(initial);
+      setAmbassadors([]);
     }
     const storedPay = localStorage.getItem('dinepos_referral_payouts');
     if (storedPay) {
@@ -1203,85 +1133,17 @@ export default function SuperAdminPage() {
   useEffect(() => {
     const stored = localStorage.getItem('dinepos_promo_codes');
     if (stored) {
-      setPromoCodes(JSON.parse(stored));
+      try {
+        const parsed = JSON.parse(stored);
+        const filtered = Array.isArray(parsed) ? parsed.filter((p: any) => 
+          !['promo-1', 'promo-2', 'promo-3', 'promo-4', 'promo-5'].includes(p.id) &&
+          !['LAUNCH50', 'ENTERPRISE30', 'FLAT100', 'WINTER20', 'BUSINESS10000'].includes(p.code)
+        ) : [];
+        setPromoCodes(filtered);
+        localStorage.setItem('dinepos_promo_codes', JSON.stringify(filtered));
+      } catch { setPromoCodes([]); }
     } else {
-      const initial: PromoCode[] = [
-        {
-          id: 'promo-1',
-          code: 'LAUNCH50',
-          description: '50% off first month for new restaurant signups',
-          discountType: 'percentage',
-          discountValue: 50,
-          applicablePlan: 'all',
-          maxUses: 100,
-          currentUses: 47,
-          expiresAt: '2026-09-30',
-          status: 'active',
-          createdAt: '2026-01-15',
-          usageLog: [
-            { tenantId: 'TEN-4581', tenantName: 'Bouchon Bakery', usedAt: '2026-05-20', planId: 'plan-standard', discountAmount: 49.50 },
-            { tenantId: 'TEN-8821', tenantName: 'The Obsidian Room', usedAt: '2026-03-12', planId: 'plan-growth', discountAmount: 149.50 },
-          ]
-        },
-        {
-          id: 'promo-2',
-          code: 'ENTERPRISE30',
-          description: '30% off Enterprise Growth plan — partner tier only',
-          discountType: 'percentage',
-          discountValue: 30,
-          applicablePlan: 'plan-growth',
-          maxUses: 50,
-          currentUses: 18,
-          expiresAt: '2026-12-31',
-          status: 'active',
-          createdAt: '2026-02-01',
-          usageLog: []
-        },
-        {
-          id: 'promo-3',
-          code: 'FLAT100',
-          description: '$100 flat discount on any plan — ambassador referral perk',
-          discountType: 'flat',
-          discountValue: 100,
-          applicablePlan: 'all',
-          maxUses: null,
-          currentUses: 23,
-          expiresAt: null,
-          status: 'active',
-          createdAt: '2026-03-10',
-          usageLog: []
-        },
-        {
-          id: 'promo-4',
-          code: 'WINTER20',
-          description: '20% winter season promotional discount',
-          discountType: 'percentage',
-          discountValue: 20,
-          applicablePlan: 'all',
-          maxUses: 200,
-          currentUses: 200,
-          expiresAt: '2026-02-28',
-          status: 'expired',
-          createdAt: '2025-12-01',
-          usageLog: []
-        },
-        {
-          id: 'promo-5',
-          code: 'BUSINESS10000',
-          description: '¥10,000 off Business — currently paused for review',
-          discountType: 'flat',
-          discountValue: 10000,
-          applicablePlan: 'plan-premium',
-          maxUses: 30,
-          currentUses: 8,
-          expiresAt: '2026-12-31',
-          status: 'inactive',
-          createdAt: '2026-04-01',
-          usageLog: []
-        },
-      ];
-      localStorage.setItem('dinepos_promo_codes', JSON.stringify(initial));
-      setPromoCodes(initial);
+      setPromoCodes([]);
     }
     const handlePromoStorageChange = (e: StorageEvent) => {
       if (e.key === 'dinepos_promo_codes' && e.newValue) setPromoCodes(JSON.parse(e.newValue));
@@ -2311,7 +2173,7 @@ export default function SuperAdminPage() {
                 setAmbassadorFilterStatus: setAmbassadorStatusFilter, referralConfig, setReferralConfig, handleExportReferrals,
                 batchPayoutMode, setBatchPayoutMode, selectedAmbIds, setSelectedAmbIds,
                 addReferralTarget, setAddReferralTarget, handleOpenEditBank, handleToggleAmbassadorStatus,
-                generateReferralCode
+                generateReferralCode, handleDeleteAmbassador, handleDeleteReferredBusiness
               }}
             />
           )}

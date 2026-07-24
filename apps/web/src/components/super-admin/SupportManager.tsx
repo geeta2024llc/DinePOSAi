@@ -444,132 +444,42 @@ export default function SupportManager(props: any) {
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${theme.divider} font-sans text-xs`}>
-                      
-                      {/* Row 1 */}
-                      <tr className={`hover:${theme.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${theme.textMuted}`}>Nov 15, 2026</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>The Obsidian Room</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                            Business
-                          </span>
-                        </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥12,980</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-white/5 border border-white/10 text-[#A69984]/50 font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Upcoming
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading invoice preview...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Row 2 */}
-                      <tr className={`hover:${theme.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${theme.textMuted}`}>Oct 01, 2026</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Lumière Brasserie</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                            Growth
-                          </span>
-                        </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥6,980</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Paid
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading receipt...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Row 3 */}
-                      <tr className={`hover:${theme.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${theme.textMuted}`}>Sep 02, 2025</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Cafe Zenith</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-semibold">
-                            Starter
-                          </span>
-                        </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥3,980</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Failed
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Initiated manual retry of payment sequence for Cafe Zenith...', 'info')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-rose-400 transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">replay</span>
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Row 4 */}
-                      <tr className={`hover:${theme.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${theme.textMuted}`}>Nov 15, 2025</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>The Obsidian Room</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                            Business
-                          </span>
-                        </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥12,980</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Paid
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading receipt...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Row 5 */}
-                      <tr className={`hover:${theme.cardHover} transition-colors font-semibold`}>
-                        <td className={`px-6 py-4.5 ${theme.textMuted}`}>Feb 15, 2026</td>
-                        <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>Gaggan Anand</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/70 font-semibold">
-                            Growth
-                          </span>
-                        </td>
-                        <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>¥6,980</td>
-                        <td className="px-6 py-4.5">
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[#ffc53d] font-bold text-[8.5px] uppercase tracking-wider rounded-md">
-                            Paid
-                          </span>
-                        </td>
-                        <td className="px-6 py-4.5 text-center">
-                          <button type="button" 
-                            onClick={() => triggerToast('Downloading receipt...', 'success')}
-                            className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
-                          >
-                            <span className="material-symbols-outlined text-sm">download</span>
-                          </button>
-                        </td>
-                      </tr>
-
+                      {props.tenants && props.tenants.length > 0 ? (
+                        props.tenants.map((tenant: any) => (
+                          <tr key={tenant.id} className={`hover:${theme.cardHover} transition-colors font-semibold`}>
+                            <td className={`px-6 py-4.5 ${theme.textMuted}`}>{tenant.joined || new Date().toISOString().split('T')[0]}</td>
+                            <td className={`px-6 py-4.5 font-serif font-bold text-white text-[13.5px]`}>{tenant.name}</td>
+                            <td className="px-6 py-4.5">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
+                                {tenant.tier || 'Starter'}
+                              </span>
+                            </td>
+                            <td className={`px-6 py-4.5 text-right font-mono font-bold text-white`}>{tenant.revenue || '$0.00'}</td>
+                            <td className="px-6 py-4.5">
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 border text-[8.5px] font-bold uppercase tracking-wider rounded-md ${
+                                tenant.status === 'ACTIVE' ? 'bg-[#ffc53d]/10 border-[#ffc53d]/20 text-[#ffc53d]' : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                              }`}>
+                                {tenant.status || 'ACTIVE'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4.5 text-center">
+                              <button type="button" 
+                                onClick={() => triggerToast(`Exported invoice statement for ${tenant.name}.`, 'success')}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer mx-auto`}
+                              >
+                                <span className="material-symbols-outlined text-sm">download</span>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={6} className="text-center py-12 text-[#A69984]/50 font-semibold select-none">
+                            <span className="material-symbols-outlined text-3xl opacity-40 mb-2 block">receipt_long</span>
+                            No billing invoices or payment records found.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>

@@ -49,7 +49,7 @@ export default function ReferralsManager(props: any) {
     showAddReferredBusinessModalLocal, showPayoutProcessModalLocal,
     referralConfig, setReferralConfig, handleExportReferrals,
     batchPayoutMode, selectedAmbIds, addReferralTarget, setAddReferralTarget, handleOpenEditBank, handleToggleAmbassadorStatus,
-    generateReferralCode
+    generateReferralCode, handleDeleteAmbassador, handleDeleteReferredBusiness
   } = props;
 
 interface InvitedBusiness {
@@ -512,6 +512,13 @@ interface Ambassador {
                                     <span className="material-symbols-outlined text-xs">payments</span>
                                     Payout
                                   </button>
+                                  <button type="button"
+                                    onClick={() => handleDeleteAmbassador && handleDeleteAmbassador(amb.id, amb.name)}
+                                    className="px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wider border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer flex items-center gap-1"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">delete</span>
+                                    Delete
+                                  </button>
                                 </div>
                               </div>
                             </div>
@@ -525,14 +532,23 @@ interface Ambassador {
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                   {amb.invitedBusinesses.map(biz => (
-                                    <div key={biz.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col gap-1.5">
+                                    <div key={biz.id} className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5 flex flex-col gap-1.5 relative group/biz">
                                       <div className="flex items-center justify-between">
                                         <span className="text-white font-bold text-xs font-sans truncate">{biz.name}</span>
-                                        <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${
-                                          biz.status === 'Active' || biz.status === 'Subscribed'
-                                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                                            : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
-                                        }`}>{biz.status}</span>
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold uppercase tracking-wider border ${
+                                            biz.status === 'Active' || biz.status === 'Subscribed'
+                                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                                              : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                                          }`}>{biz.status}</span>
+                                          <button type="button"
+                                            onClick={() => handleDeleteReferredBusiness && handleDeleteReferredBusiness(amb.id, biz.id, biz.name)}
+                                            className="text-rose-400/60 hover:text-rose-400 transition-colors p-0.5"
+                                            title="Delete Referral"
+                                          >
+                                            <span className="material-symbols-outlined text-xs">delete</span>
+                                          </button>
+                                        </div>
                                       </div>
                                       <p className="text-[#A69984]/60 text-[10px] font-sans">Contact: {biz.contact}</p>
                                       <p className="text-[#A69984]/45 text-[10px] font-sans">Joined: {biz.joinedDate}</p>

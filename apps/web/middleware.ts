@@ -34,34 +34,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // 2. Authenticated users: redirect away from login/register to dashboard only if valid JWT and not logging out
-  const isLogoutOrSwitch = request.nextUrl.searchParams.has('logout') || request.nextUrl.searchParams.has('switch');
-
-  if (token && (pathname === '/login' || pathname === '/register') && !isLogoutOrSwitch) {
-    try {
-      const parts = token.split('.');
-      if (parts.length === 3 && parts[1]) {
-        const decoded = JSON.parse(atob(parts[1]));
-        if (decoded.exp && decoded.exp * 1000 < Date.now()) {
-          // Token is expired -> allow viewing login page
-          return NextResponse.next();
-        }
-
-        if (decoded.role === 'SUPER_ADMIN') {
-          return NextResponse.redirect(new URL('/super-admin', request.url));
-        } else if (decoded.role === 'CASHIER') {
-          return NextResponse.redirect(new URL('/pos', request.url));
-        } else if (decoded.role === 'KITCHEN') {
-          return NextResponse.redirect(new URL('/kds', request.url));
-        } else {
-          return NextResponse.redirect(new URL('/dashboard', request.url));
-        }
-      }
-    } catch {
-      // If token is invalid or non-standard, allow user to access login page
-      return NextResponse.next();
-    }
-  }
+  // 2. Allow visiting /login or /register freely so users can view login or switch accounts
 
   // 3. Super Admin Workspace Protection
   if (token && pathname.startsWith('/super-admin')) {

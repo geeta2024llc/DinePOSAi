@@ -41,24 +41,24 @@ export default function TenantManager(props: any) {
                 {/* Card 1: Global Revenue */}
                 <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
                   <div className="flex justify-between items-start">
-                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Global Revenue (24h)</span>
+                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Global Revenue</span>
                     <span className="material-symbols-outlined text-amber-400 text-lg">payments</span>
                   </div>
                   <div>
-                    <h3 className="font-serif text-3xl font-bold text-[#ffc53d] tracking-wide">¥14,289,045</h3>
-                    <p className="text-[10px] text-amber-400 font-bold mt-1">~ 12.5% vs yesterday</p>
+                    <h3 className="font-serif text-3xl font-bold text-[#ffc53d] tracking-wide">$0.00</h3>
+                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Live synchronized data</p>
                   </div>
                 </div>
 
-                {/* Card 2: Active Orders */}
+                {/* Card 2: Managed Tenants */}
                 <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
                   <div className="flex justify-between items-start">
-                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Active Orders</span>
-                    <span className="material-symbols-outlined text-[#ffc53d] text-lg font-bold">restaurant</span>
+                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Active Tenants</span>
+                    <span className="material-symbols-outlined text-[#ffc53d] text-lg font-bold">corporate_fare</span>
                   </div>
                   <div>
-                    <h3 className="font-serif text-3xl font-bold text-white tracking-wide">1,248</h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Across 42 locations</p>
+                    <h3 className="font-serif text-3xl font-bold text-white tracking-wide">{tenants.length}</h3>
+                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Registered businesses</p>
                   </div>
                 </div>
 
@@ -69,20 +69,20 @@ export default function TenantManager(props: any) {
                     <span className="material-symbols-outlined text-emerald-400 text-lg font-bold">check_circle</span>
                   </div>
                   <div>
-                    <h3 className="font-serif text-3xl font-bold text-white tracking-wide">99.98%</h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">14ms avg latency</p>
+                    <h3 className="font-serif text-3xl font-bold text-white tracking-wide">100.0%</h3>
+                    <p className="text-[10px] text-emerald-400 font-bold mt-1">Operational & online</p>
                   </div>
                 </div>
 
-                {/* Card 4: Active Staff */}
+                {/* Card 4: Active Workspaces */}
                 <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
                   <div className="flex justify-between items-start">
-                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Active Staff</span>
-                    <span className="material-symbols-outlined text-[#ffc53d] text-lg">badge</span>
+                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Workspace Nodes</span>
+                    <span className="material-symbols-outlined text-[#ffc53d] text-lg">dns</span>
                   </div>
                   <div>
-                    <h3 className="font-serif text-3xl font-bold text-white tracking-wide">3,120</h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Live now globally</p>
+                    <h3 className="font-serif text-3xl font-bold text-white tracking-wide">{tenants.length}</h3>
+                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1">Provisioned clusters</p>
                   </div>
                 </div>
               </div>

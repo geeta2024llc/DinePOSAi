@@ -248,8 +248,11 @@ export async function apiRequest<T = any>(
 
     // Refresh failed — only log out if this is the definitive failure
     if (!refreshPromise) {
-      localStorage.removeItem('dinepos_jwt_token');
-      localStorage.removeItem('dinepos_user_account');
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('dinepos_jwt_token');
+        localStorage.removeItem('dinepos_user_account');
+        document.cookie = 'dinepos_auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      }
       window.dispatchEvent(new Event('dinepos_unauthorized'));
     }
   }

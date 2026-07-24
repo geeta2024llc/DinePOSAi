@@ -56,10 +56,10 @@ export default function DashboardPage() {
   const [customTextMuted, setCustomTextMuted] = useState('#a69984');
 
   // Establishment Settings States
-  const [establishmentName, setEstablishmentName] = useState('Imperial Dining Room');
-  const [businessAddress, setBusinessAddress] = useState('742 Evergreens Terrace, Suite 100, Beverly Hills, CA 90210');
-  const [contactEmail, setContactEmail] = useState('concierge@imperialdining.com');
-  const [taxId, setTaxId] = useState('US-987654321');
+  const [establishmentName, setEstablishmentName] = useState('');
+  const [businessAddress, setBusinessAddress] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [taxId, setTaxId] = useState('');
   const [restaurantLogo, setRestaurantLogo] = useState('');
 
   // Receipts / Layout Config States

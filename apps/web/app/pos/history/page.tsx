@@ -49,64 +49,7 @@ interface TransactionRecord {
   paymentIcon: string;
 }
 
-const mockTransactions: TransactionRecord[] = [
-  {
-    id: 'tx-1',
-    orderId: '#ORD-9021',
-    date: 'Oct 24, 2023',
-    time: '21:45 PM',
-    tableType: 'table',
-    tableLabel: 'Tbl 14',
-    server: 'S. Reynolds',
-    amount: 342.50,
-    paymentMethod: 'Visa',
-    paymentType: 'card',
-    paymentDetails: '•••• 4242',
-    paymentIcon: 'credit_card'
-  },
-  {
-    id: 'tx-2',
-    orderId: '#ORD-9020',
-    date: 'Oct 24, 2023',
-    time: '21:12 PM',
-    tableType: 'takeout',
-    tableLabel: 'Takeout',
-    server: 'M. Chen',
-    amount: 85.00,
-    paymentMethod: 'Cash',
-    paymentType: 'cash',
-    paymentDetails: '',
-    paymentIcon: 'payments'
-  },
-  {
-    id: 'tx-3',
-    orderId: '#ORD-9019',
-    date: 'Oct 24, 2023',
-    time: '20:45 PM',
-    tableType: 'table',
-    tableLabel: 'Tbl 02',
-    server: 'L. Gomez',
-    amount: 510.25,
-    paymentMethod: 'Amex',
-    paymentType: 'card',
-    paymentDetails: '•••• 1005',
-    paymentIcon: 'credit_card'
-  },
-  {
-    id: 'tx-4',
-    orderId: '#ORD-9018',
-    date: 'Oct 24, 2023',
-    time: '20:15 PM',
-    tableType: 'table',
-    tableLabel: 'Tbl 08',
-    server: 'S. Reynolds',
-    amount: 124.00,
-    paymentMethod: 'MC',
-    paymentType: 'card',
-    paymentDetails: '•••• 8891',
-    paymentIcon: 'credit_card'
-  }
-];
+
 
 export default function TransactionHistoryPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
@@ -145,11 +88,11 @@ export default function TransactionHistoryPage() {
           setTransactions(JSON.parse(savedTransactions));
         } catch (e) {
           console.error(e);
-          setTransactions(mockTransactions);
+          setTransactions([]);
         }
       } else {
-        setTransactions(mockTransactions);
-        localStorage.setItem('dinepos_pos_transactions', JSON.stringify(mockTransactions));
+        setTransactions([]);
+        localStorage.setItem('dinepos_pos_transactions', JSON.stringify([]));
       }
       setIsLoaded(true);
 

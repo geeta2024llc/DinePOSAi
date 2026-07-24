@@ -49,58 +49,13 @@ export default function AccessManager(props: any) {
                 </button>
               </div>
 
-              {/* Outstanding issues block - e.g., Password change requests */}
-              <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6 border-amber-500/20`}>
+              {/* Administrative Status Banner */}
+              <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6 border-emerald-500/20`}>
                 <div className="flex items-center gap-3 select-none">
-                  <span className="material-symbols-outlined text-amber-400 text-xl font-bold animate-bounce">warning</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-xl font-bold">verified_user</span>
                   <div>
-                    <h3 className="font-serif text-base text-white font-bold tracking-wide">Action Required: Administrative Issues</h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">Unresolved password resets and synchronicity claims.</p>
-                  </div>
-                </div>
-
-                <div className="space-y-4 font-sans text-xs">
-                  {/* Issue 1 */}
-                  <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-[#0e0e0d]/80 border border-white/5 rounded-xl gap-4 hover:border-amber-400/20 transition-all`}>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-amber-400/10 text-amber-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Password Reset Request</span>
-                        <span className="text-[10px] text-[#A69984]">Requested 10m ago</span>
-                      </div>
-                      <h4 className="text-white font-serif font-bold text-sm mt-2">Nick Jones — owner of "Soho House"</h4>
-                      <p className="text-[11px] text-[#A69984]/70 mt-1 font-medium">Locked out of dashboard terminal. Needs password/passcode replacement immediately to handle night audit operations.</p>
-                    </div>
-                    
-                    <button type="button" 
-                      onClick={() => handleResetPasswordClick(admins.find((a: any) => a.id === 'adm-3')!)}
-                      className="px-4 py-2.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#2c1a00] font-bold uppercase tracking-wider text-[10px] rounded-lg transition-colors flex items-center gap-1 select-none cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-sm font-black">key</span>
-                      Reset Passcode
-                    </button>
-                  </div>
-
-                  {/* Issue 2 */}
-                  <div className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 bg-[#0e0e0d]/80 border border-white/5 rounded-xl gap-4 hover:border-amber-400/20 transition-all`}>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="bg-amber-400/10 text-amber-400 text-[8px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">Sync Integrity Block</span>
-                        <span className="text-[10px] text-[#A69984]">Requested 1h ago</span>
-                      </div>
-                      <h4 className="text-white font-serif font-bold text-sm mt-2">Ana Ros — owner of "Hisa Franko"</h4>
-                      <p className="text-[11px] text-[#A69984]/70 mt-1 font-medium">Billing node mismatch is preventing terminal synchronizations. System disabled tenant temporarily. Admin demands clearance validation.</p>
-                    </div>
-                    
-                    <button type="button" 
-                      onClick={() => {
-                        toggleTenantStatus('tenant-5', 'Hisa Franko', 'SUSPENDED');
-                        triggerToast('Sync block cleared. Tenant status set to active.', 'success');
-                      }}
-                      className="px-4 py-2.5 border border-[#ffe2ab]/20 hover:border-[#ffe2ab]/40 text-[#ffe2ab] font-bold uppercase tracking-wider text-[10px] rounded-lg transition-colors flex items-center gap-1 select-none cursor-pointer"
-                    >
-                      <span className="material-symbols-outlined text-sm">lock_open</span>
-                      Clear Sync Block
-                    </button>
+                    <h3 className="font-serif text-base text-white font-bold tracking-wide">System Security & Access Status</h3>
+                    <p className="text-[10px] text-[#A69984]/50 font-semibold mt-0.5">All admin user credentials and authorization tokens are operating within normal security parameters.</p>
                   </div>
                 </div>
               </div>

@@ -120,8 +120,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('dinepos_jwt_token', token);
       const isRemembered = localStorage.getItem('dinepos_remembered_email') !== null;
-      const maxAgeAttr = isRemembered ? 'max-age=2592000' : '';
-      document.cookie = `dinepos_auth_token=${token}; path=/; ${maxAgeAttr}; SameSite=Strict; Secure`;
+      const maxAgeAttr = isRemembered ? 'max-age=2592000;' : '';
+      const isSecure = window.location.protocol === 'https:';
+      const secureAttr = isSecure ? '; Secure' : '';
+      document.cookie = `dinepos_auth_token=${token}; path=/; ${maxAgeAttr} SameSite=Lax${secureAttr}`;
       localStorage.setItem('dinepos_user_account', JSON.stringify({
         user: cleanUser,
         tenant,
@@ -199,7 +201,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.setItem('dinepos_jwt_token', token);
           const isRemembered = localStorage.getItem('dinepos_remembered_email') !== null;
           const maxAgeAttr = isRemembered ? 'max-age=2592000' : '';
-          document.cookie = `dinepos_auth_token=${token}; path=/; ${maxAgeAttr}; SameSite=Strict; Secure`;
+          const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+          const secureAttr = isSecure ? '; Secure' : '';
+          document.cookie = `dinepos_auth_token=${token}; path=/; ${maxAgeAttr}; SameSite=Lax${secureAttr}`;
           localStorage.setItem('dinepos_user_account', JSON.stringify({ user: cleanUser, tenant: t }));
         }
       } else {

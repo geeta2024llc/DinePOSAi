@@ -26,6 +26,8 @@ export interface Subscription {
   expiresAt?: string;
 }
 
+import { isDemoTenant } from './api';
+
 /** Get the current user account from localStorage with migration support. */
 export function getUserAccount(): UserAccount | null {
   if (typeof window === 'undefined') return null;
@@ -57,7 +59,6 @@ export function getUserAccount(): UserAccount | null {
     }
     
     // Add backward compatibility for dashboard page.tsx:
-    // If userAccount.expiryDate is requested but not present, populate it with trialEndsAt or subscriptionExpiresAt
     if (!(account as any).expiryDate) {
       (account as any).expiryDate = account.subscriptionExpiresAt || account.trialEndsAt || '';
     }
@@ -71,7 +72,7 @@ export function getUserAccount(): UserAccount | null {
       account.trialEndsAt = endsAt.toISOString();
       localStorage.setItem('dinepos_user_account', JSON.stringify(account));
       localStorage.removeItem('dinepos_trial_start');
-      localStorage.removeItem('dinepos_subscription'); // also clean up old sub keys if any
+      localStorage.removeItem('dinepos_subscription');
     }
     
     return account;
@@ -87,8 +88,9 @@ export function getUserAccount(): UserAccount | null {
 /** Returns days remaining in the trial (0 if expired, -1 if never started or not on trial). */
 export function getTrialDaysRemaining(): number {
   const account = getUserAccount();
-  if (!account || account.plan !== 'TRIAL') return -1;
-  if (!account.trialEndsAt) return -1;
+  if (account?.role === 'SUPER_ADMIN') return 999;
+  if (!account || (account.plan && account.plan !== 'TRIAL')) return -1;
+  if (!account.trialEndsAt) return 7;
   
   const end = new Date(account.trialEndsAt);
   const now = new Date();
@@ -100,12 +102,25 @@ export function getTrialDaysRemaining(): number {
 /** Returns true if the trial is currently active and not yet expired. */
 export function isTrialActive(): boolean {
   const account = getUserAccount();
-  if (!account || account.plan !== 'TRIAL') return false;
-  if (!account.trialEndsAt) return false;
-  return new Date(account.trialEndsAt) > new Date();
+  if (!account) return true; // Default allow if guest/demo session
+  if (account.role === 'SUPER_ADMIN') return true; // Super admin trial never expires
+  
+  if (account.plan && ['STARTER', 'GROWTH', 'BUSINESS'].includes(account.plan.toUpperCase())) {
+    return isSubscribed();
+  }
+
+  if (!account.plan || account.plan === 'TRIAL') {
+    if (!account.trialEndsAt) {
+      extendTrialByDays(7);
+      return true;
+    }
+    return new Date(account.trialEndsAt) > new Date();
+  }
+
+  return false;
 }
 
-/** Extends the trial for the current user in localStorage by a given number of days (default: 1 day or 48 hours). */
+/** Extends the trial for the current user in localStorage by a given number of days (default: 2 days). */
 export function extendTrialByDays(days: number = 2): void {
   if (typeof window === 'undefined') return;
   const newExpiry = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
@@ -141,6 +156,13 @@ export function extendTrialByDays(days: number = 2): void {
 export function getSubscription(): Subscription | null {
   const account = getUserAccount();
   if (!account) return null;
+  if (account.role === 'SUPER_ADMIN') {
+    return {
+      plan: 'Business',
+      billingCycle: 'annual',
+      status: 'active'
+    };
+  }
   const plan = account.plan;
   if (!plan || plan === 'TRIAL' || plan === 'EXPIRED' || plan === 'SUSPENDED') return null;
   
@@ -163,6 +185,7 @@ export function getSubscription(): Subscription | null {
 export function isSubscribed(): boolean {
   const account = getUserAccount();
   if (!account) return false;
+  if (account.role === 'SUPER_ADMIN') return true;
   const plan = account.plan;
   if (!plan) return false;
   
@@ -181,8 +204,12 @@ export function isSubscribed(): boolean {
 
 /**
  * Returns true if the user should be allowed access to protected pages.
- * Access is allowed when: trial is active OR a paid subscription is active.
+ * Access is allowed when: super admin OR demo tenant OR trial is active OR a paid subscription is active.
  */
 export function isAccessAllowed(): boolean {
+  if (typeof window === 'undefined') return true;
+  const account = getUserAccount();
+  if (account?.role === 'SUPER_ADMIN') return true;
+  if (isDemoTenant()) return true;
   return isTrialActive() || isSubscribed();
 }

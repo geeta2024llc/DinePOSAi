@@ -197,7 +197,7 @@ const mapDbOrderToKdsTicket = (o: any): KdsTicket => {
 
 export default function KdsPage() {
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
-  const [tickets, setTickets] = useState<KdsTicket[]>(initialTickets);
+  const [tickets, setTickets] = useState<KdsTicket[]>([]);
   const [diningFilter, setDiningFilter] = useState<'all' | 'dine-in' | 'takeaway' | 'delivery'>('all');
   const [statusTab, setStatusTab] = useState<'pending' | 'cooking' | 'complete' | 'rejected'>('pending');
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
@@ -237,7 +237,13 @@ export default function KdsPage() {
       } else {
         const sharedTicketsStr = localStorage.getItem('dinepos_shared_tickets');
         if (sharedTicketsStr) {
-          setTickets(JSON.parse(sharedTicketsStr));
+          try {
+            setTickets(JSON.parse(sharedTicketsStr));
+          } catch (e) {}
+        } else if (isDemoTenant()) {
+          setTickets(initialTickets);
+        } else {
+          setTickets([]);
         }
       }
     } catch (err) {
@@ -247,6 +253,10 @@ export default function KdsPage() {
         try {
           setTickets(JSON.parse(sharedTicketsStr));
         } catch (e) {}
+      } else if (isDemoTenant()) {
+        setTickets(initialTickets);
+      } else {
+        setTickets([]);
       }
     }
   };

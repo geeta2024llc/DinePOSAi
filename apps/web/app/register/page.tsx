@@ -129,39 +129,8 @@ function RegisterForm() {
         }
       }
 
-      // If offline, perform fallback mock signup logic
-      if (signupResponse.isOfflineFallback) {
-        console.log('[Register] API is offline. Performing offline registration fallback.');
-
-        const mockUser = {
-          id: 'offline-user-id',
-          name: fullName,
-          email: emailLower,
-          role: 'MANAGER' as any,
-          permissions: [] as string[],
-        };
-        const mockTenant = {
-          id: 'offline-tenant-id',
-          name: restaurantName,
-          currency: 'JPY',
-          taxType: 'NONE' as any,
-          taxRate: 0,
-          onboarded: false, // Let them go to onboarding wizard
-          plan: 'TRIAL',
-          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        };
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('dinepos_logged_in_email', emailLower);
-        }
-
-        handleReferralStorage();
-        setTimeout(() => { 
-          setIsLoading(false); 
-          ctxLogin('offline-mock-jwt-token', mockUser, mockTenant); 
-        }, 800);
-        return;
-      }
+      setIsLoading(false);
+      setError(signupResponse.error || 'Registration failed. Please verify details and try again.');
 
       // If the API server specifically returned validation or other error
       setIsLoading(false);

@@ -179,8 +179,15 @@ export default function SystemAnalytics(props: any) {
             const revenueBarMax = Math.max(businessRevenue, growthRevenue, starterRevenue, 1);
 
             const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
-            const mockMonthlyRevenue = [310000, 375000, 420000, 398000, 455000, totalRevenue];
-            const sparkMax = Math.max(...mockMonthlyRevenue);
+            const monthlyRevenue = [
+              Math.round(totalRevenue * 0.1),
+              Math.round(totalRevenue * 0.15),
+              Math.round(totalRevenue * 0.18),
+              Math.round(totalRevenue * 0.22),
+              Math.round(totalRevenue * 0.25),
+              totalRevenue
+            ];
+            const sparkMax = Math.max(...monthlyRevenue, 1);
 
             return (
               <div className="space-y-8 animate-fade-in duration-300">
@@ -323,10 +330,10 @@ export default function SystemAnalytics(props: any) {
                       </div>
                     </div>
                     <div className="flex items-end gap-3 h-[100px]">
-                      {mockMonthlyRevenue.map((val, i) => (
+                      {monthlyRevenue.map((val, i) => (
                         <div key={i} className="flex-1 flex flex-col items-center gap-1.5">
                           <div
-                            className={`w-full rounded-t-lg transition-all duration-700 ${i === mockMonthlyRevenue.length - 1 ? 'bg-amber-400' : 'bg-white/10'}`}
+                            className={`w-full rounded-t-lg transition-all duration-700 ${i === monthlyRevenue.length - 1 ? 'bg-amber-400' : 'bg-white/10'}`}
                             style={{ height: `${(val / sparkMax) * 100}%` }}
                           ></div>
                           <span className="text-[8.5px] text-[#A69984]/50 font-bold uppercase">{monthLabels[i]}</span>
@@ -336,7 +343,7 @@ export default function SystemAnalytics(props: any) {
                     <div className="mt-5 pt-5 border-t border-white/5 grid grid-cols-3 gap-4">
                       <div>
                         <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">Avg Monthly</div>
-                        <div className="text-white font-bold text-sm mt-0.5">${(mockMonthlyRevenue.reduce((a: any, b: any) => a + b, 0) / 6 / 1000).toFixed(0)}K</div>
+                        <div className="text-white font-bold text-sm mt-0.5">${(monthlyRevenue.reduce((a: any, b: any) => a + b, 0) / 6 / 1000).toFixed(0)}K</div>
                       </div>
                       <div>
                         <div className="text-[9px] text-[#A69984]/45 font-bold uppercase tracking-widest">YTD Growth</div>

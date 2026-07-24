@@ -6,7 +6,7 @@ import TrialGate from '@/components/TrialGate';
 
 export default function KdsLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AuthGuard allowedRoles={['SUPER_ADMIN', 'MANAGER', 'KITCHEN']}>
+    <AuthGuard allowedRoles={['SUPER_ADMIN', 'OWNER', 'MANAGER', 'KITCHEN']}>
       <TrialGate>{children}</TrialGate>
     </AuthGuard>
   );

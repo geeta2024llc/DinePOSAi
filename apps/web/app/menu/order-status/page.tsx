@@ -306,33 +306,8 @@ export default function OrderStatusPage() {
   const tax = subtotal * taxRate;
   const total = subtotal + tax;
 
-  // Custom mock data for the order selections (matching screenshot)
-  const fallbackItems = [
-    {
-      id: 'item-1',
-      name: 'A5 Wagyu Striploin',
-      details: 'Medium Rare • Truffle Butter',
-      status: 'Cooking',
-      statusType: 'active',
-      icon: 'restaurant'
-    },
-    {
-      id: 'item-2',
-      name: 'Château Margaux 2015',
-      details: 'Glass • Decanted',
-      status: 'Prepared',
-      statusType: 'completed',
-      icon: 'wine_bar'
-    },
-    {
-      id: 'item-3',
-      name: 'Valrhona Chocolate Sphere',
-      details: 'Hold for dessert',
-      status: 'Pending',
-      statusType: 'pending',
-      icon: 'cookie'
-    }
-  ];
+  // Real order selections fallback array (empty by default)
+  const fallbackItems: any[] = [];
 
   const getItemIcon = (category: string) => {
     switch (category) {

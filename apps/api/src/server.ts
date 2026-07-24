@@ -17,6 +17,7 @@ import orderRouter from './routes/order.routes.js';
 import conciergeRouter from './routes/concierge.routes.js';
 import billingRouter from './routes/billing.routes.js';
 import auditRouter from './routes/audit.routes.js';
+import adminRouter from './routes/admin.routes.js';
 
 dotenv.config();
 
@@ -175,6 +176,7 @@ app.use('/api/orders', orderRouter);
 app.use('/api/concierge', conciergeLimiter, conciergeRouter);
 app.use('/api/billing', billingRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/admin', adminRouter);
 
 // Error Handling Middleware
 app.use((err: any, req: Request, res: Response<ApiResponse>, next: NextFunction) => {

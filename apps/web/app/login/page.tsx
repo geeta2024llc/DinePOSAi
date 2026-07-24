@@ -130,50 +130,6 @@ function LoginForm() {
         return;
       }
 
-      if (response.isOfflineFallback) {
-        console.log('[Auth] API is offline. Performing seamless local session authentication.');
-
-        const cred = OFFLINE_CREDENTIALS[emailLower];
-        const userRole = cred?.role || (
-          emailLower.includes('superadmin') ? 'SUPER_ADMIN' :
-          emailLower.includes('cashier') ? 'CASHIER' :
-          emailLower.includes('kds') ? 'KITCHEN' : 'MANAGER'
-        );
-
-        setTimeout(() => {
-          setIsLoading(false);
-
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('dinepos_logged_in_email', emailLower);
-            if (rememberMe) {
-              localStorage.setItem('dinepos_remembered_email', emailLower);
-            } else {
-              localStorage.removeItem('dinepos_remembered_email');
-            }
-          }
-
-          const mockUser = {
-            id: 'offline-' + Math.random().toString(36).substring(2, 9),
-            name: emailLower.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' '),
-            email: emailLower,
-            role: userRole as any,
-            permissions: [] as string[],
-          };
-          const mockTenant = {
-            id: 'tenant-local-1',
-            name: 'Aura Hospitality Group',
-            currency: 'USD',
-            taxType: 'NONE' as any,
-            taxRate: 0,
-            onboarded: true,
-          };
-
-          handleAuthSuccess('offline-mock-jwt-token', mockUser, mockTenant);
-          ctxLogin('offline-mock-jwt-token', mockUser, mockTenant);
-        }, 500);
-        return;
-      }
-
       // API returned success: false
       setIsLoading(false);
       setError(response.error || 'Authentication failed. Please verify your credentials.');

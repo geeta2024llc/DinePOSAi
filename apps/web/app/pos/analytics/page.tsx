@@ -98,21 +98,31 @@ export default function AnalyticsPage() {
     triggerToast('Analytics transactions exported successfully as CSV.');
   };
 
-  // Audit Trail & Payments mock data with YYYY-MM-DD dates:
-  const auditTransactions = [
-    { id: '#ORD-9021', date: '2026-06-11', time: 'Jun 11, 2026 21:45 PM', method: 'CARD', amount: 342.50, status: 'Success' },
-    { id: '#ORD-9020', date: '2026-06-11', time: 'Jun 11, 2026 21:12 PM', method: 'CASH', amount: 85.00, status: 'Success' },
-    { id: '#ORD-9019', date: '2026-06-11', time: 'Jun 11, 2026 20:45 PM', method: 'DIGITAL WALLET', amount: 510.25, status: 'Success' },
-    { id: '#ORD-9018', date: '2026-06-11', time: 'Jun 11, 2026 20:15 PM', method: 'SPLIT', amount: 124.00, status: 'Success' },
-    { id: '#ORD-9017', date: '2026-06-10', time: 'Jun 10, 2026 19:30 PM', method: 'CARD', amount: 215.40, status: 'Success' },
-    { id: '#ORD-9016', date: '2026-06-10', time: 'Jun 10, 2026 18:50 PM', method: 'CASH', amount: 45.00, status: 'Success' },
-    { id: '#ORD-9015', date: '2026-06-10', time: 'Jun 10, 2026 18:10 PM', method: 'CARD', amount: 189.50, status: 'Success' },
-    { id: '#ORD-9014', date: '2026-06-09', time: 'Jun 09, 2026 17:40 PM', method: 'SPLIT', amount: 295.00, status: 'Success' },
-    { id: '#ORD-9013', date: '2026-06-09', time: 'Jun 09, 2026 16:15 PM', method: 'DIGITAL WALLET', amount: 68.20, status: 'Success' },
-    { id: '#ORD-9012', date: '2026-06-08', time: 'Jun 08, 2026 15:30 PM', method: 'CARD', amount: 155.00, status: 'Success' },
-    { id: '#ORD-9011', date: '2026-06-07', time: 'Jun 07, 2026 14:45 PM', method: 'CASH', amount: 112.50, status: 'Success' },
-    { id: '#ORD-9010', date: '2026-06-06', time: 'Jun 06, 2026 13:20 PM', method: 'CARD', amount: 94.00, status: 'Success' },
-  ];
+  // Real POS Transactions Audit Trail state
+  const [auditTransactions, setAuditTransactions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const raw = localStorage.getItem('dinepos_pos_transactions');
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            setAuditTransactions(parsed.map((tx: any) => ({
+              id: tx.orderId || tx.id || '#ORD',
+              date: tx.rawDate || new Date().toISOString().split('T')[0],
+              time: tx.time || new Date().toLocaleTimeString(),
+              method: (tx.paymentMethod || tx.paymentType || 'CASH').toUpperCase(),
+              amount: tx.amount || 0,
+              status: 'Success'
+            })));
+          }
+        } catch (e) {
+          setAuditTransactions([]);
+        }
+      }
+    }
+  }, []);
 
   const [dateFilterType, setDateFilterType] = useState<'today' | 'yesterday' | '7days' | 'custom'>('today');
   const [customStart, setCustomStart] = useState('2026-06-05');
