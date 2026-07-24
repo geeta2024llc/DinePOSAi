@@ -322,7 +322,7 @@ const normalizeCategoriesList = (rawCats: any[]) => {
   return Array.from(map.values());
 };
 
-export function resolveMenuItemImage(imageUrl?: string | null, category?: string, name?: string): string {
+function resolveMenuItemImage(imageUrl?: string | null, category?: string, name?: string): string {
   if (imageUrl && imageUrl.trim() !== '' && !imageUrl.includes('wagyu_ribeye.png')) {
     return imageUrl;
   }
