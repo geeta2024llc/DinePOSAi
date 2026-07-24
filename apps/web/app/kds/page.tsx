@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, isDemoTenant } from '@/utils/api';
 import { kitchenChime } from '@/utils/kitchenChime';
 
 interface OrderItemOption {
