@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 interface ActivityLogTabProps {
   t: any;
@@ -14,6 +15,7 @@ export default function ActivityLogTab({ t, tr, triggerToast }: ActivityLogTabPr
   const [logsSearch, setLogsSearch] = useState('');
   const [logsFilter, setLogsFilter] = useState('All');
   const [logsPage, setLogsPage] = useState(1);
+  const [showConfirmClear, setShowConfirmClear] = useState(false);
 
   // Load activity logs on mount
   useEffect(() => {
@@ -23,12 +25,10 @@ export default function ActivityLogTab({ t, tr, triggerToast }: ActivityLogTabPr
   }, []);
 
   const handleClearLogs = async () => {
-    if (confirm('Are you sure you want to clear all activity logs? This action cannot be undone.')) {
-      await clearActivityLogs();
-      const updated = await getActivityLogs();
-      setLogsList(updated);
-      triggerToast('Activity logs cleared successfully.', 'success');
-    }
+    await clearActivityLogs();
+    const updated = await getActivityLogs();
+    setLogsList(updated);
+    triggerToast('Activity logs cleared successfully.', 'success');
   };
 
   const filtered = logsList.filter(log => {
@@ -60,7 +60,7 @@ export default function ActivityLogTab({ t, tr, triggerToast }: ActivityLogTabPr
 
         <button
           type="button"
-          onClick={handleClearLogs}
+          onClick={() => setShowConfirmClear(true)}
           className={`px-5 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2`}
         >
           <span className="material-symbols-outlined text-sm">delete_sweep</span>
@@ -191,6 +191,17 @@ export default function ActivityLogTab({ t, tr, triggerToast }: ActivityLogTabPr
           </div>
         </div>
       </div>
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={showConfirmClear}
+        onClose={() => setShowConfirmClear(false)}
+        onConfirm={async () => {
+          await handleClearLogs();
+          setShowConfirmClear(false);
+        }}
+        title="Clear Activity Logs"
+        description="Do you want to clear all activity logs? This action cannot be undone."
+      />
     </div>
   );
 }

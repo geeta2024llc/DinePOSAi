@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 interface Operator {
   name: string;
@@ -130,6 +131,7 @@ export default function DiscountsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; message: string }>({ show: false, message: '' });
+  const [deleteTarget, setDeleteTarget] = useState<DiscountCode | null>(null);
 
   // New / edit form fields
   const [formCode, setFormCode] = useState('');
@@ -466,7 +468,7 @@ export default function DiscountsPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDelete(d.id)}
+                          onClick={() => setDeleteTarget(d)}
                           className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A69984]/50 hover:text-rose-400 hover:bg-rose-500/5 transition-colors cursor-pointer"
                           title="Delete"
                         >
@@ -655,6 +657,19 @@ export default function DiscountsPage() {
         </div>
       )}
 
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (deleteTarget) {
+            handleDelete(deleteTarget.id);
+            setDeleteTarget(null);
+          }
+        }}
+        title="Delete Discount Code"
+        description={`Do you want to delete discount code "${deleteTarget?.code}"?`}
+      />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { recordActivity } from '@/utils/activityLogger';
 import { isDemoTenant, apiRequest } from '@/utils/api';
 import { PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, UserRole } from '@dineposai/shared-types';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 const FEATURE_GROUPS = [
   {
@@ -74,6 +75,7 @@ interface StaffTabProps {
 
 export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTabProps) {
   const [staffMembers, setStaffMembers] = useState<Array<{id: string; name: string; email?: string; role: string; status: string; performance: number; avatar: string; custom_permissions?: string[]}>>([]);
+  const [deleteMemberTarget, setDeleteMemberTarget] = useState<any | null>(null);
   
   const [newEmployee, setNewEmployee] = useState({
     name: '',
@@ -236,8 +238,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
 
   return (
     <>
-      {/* STAFF TAB JSX */}
-                  <div className="space-y-8 animate-fade-in duration-300">
+      <div className="space-y-8 animate-fade-in duration-300">
               
               {/* Action Row & Page Headers */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-6 gap-4">
@@ -522,38 +523,7 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={async () => {
-                                        if (confirm(`Are you sure you want to delete ${member.name}?`)) {
-                                          if (isDemoTenant()) {
-                                            const updated = staffMembers.filter(m => m.id !== member.id);
-                                            setStaffMembers(updated);
-                                            localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
-                                            triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
-                                          } else {
-                                            try {
-                                              const res = await apiRequest(`/api/tenant/users/${member.id}`, { method: 'DELETE' });
-                                              if (res.success) {
-                                                triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
-                                                await loadStaffMembers();
-                                              } else if (res.isOfflineFallback) {
-                                                const updated = staffMembers.filter(m => m.id !== member.id);
-                                                setStaffMembers(updated);
-                                                localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
-                                                triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
-                                              } else {
-                                                triggerToast(res.error || 'Failed to delete staff user.', 'info');
-                                              }
-                                            } catch (err) {
-                                              console.error('Delete error:', err);
-                                              const updated = staffMembers.filter(m => m.id !== member.id);
-                                              setStaffMembers(updated);
-                                              localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
-                                              triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
-                                            }
-                                          }
-                                          await recordActivity('staff_deleted', `Deleted employee ${member.name}`, 'Staff', { id: member.id, role: member.role });
-                                        }
-                                      }}
+                                      onClick={() => setDeleteMemberTarget(member)}
                                       className={`p-1.5 rounded-lg hover:${t.cardHover} ${t.textMuted} hover:text-red-400 transition-colors cursor-pointer flex items-center justify-center`}
                                       title="Delete Employee"
                                     >
@@ -1453,8 +1423,46 @@ export default function StaffTab({ t, tr, triggerToast, setAuditLogs }: StaffTab
         </div>
       )}
 
-      {/* SUBSCRIPTION PLAN UPGRADE / SWITCHER MODAL */}
-
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteMemberTarget}
+        onClose={() => setDeleteMemberTarget(null)}
+        onConfirm={async () => {
+          if (!deleteMemberTarget) return;
+          const member = deleteMemberTarget;
+          if (isDemoTenant()) {
+            const updated = staffMembers.filter(m => m.id !== member.id);
+            setStaffMembers(updated);
+            localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+            triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+          } else {
+            try {
+              const res = await apiRequest(`/api/tenant/users/${member.id}`, { method: 'DELETE' });
+              if (res.success) {
+                triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+                await loadStaffMembers();
+              } else if (res.isOfflineFallback) {
+                const updated = staffMembers.filter(m => m.id !== member.id);
+                setStaffMembers(updated);
+                localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+                triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+              } else {
+                triggerToast(res.error || 'Failed to delete staff user.', 'info');
+              }
+            } catch (err) {
+              console.error('Delete error:', err);
+              const updated = staffMembers.filter(m => m.id !== member.id);
+              setStaffMembers(updated);
+              localStorage.setItem('dinepos_staff_admin', JSON.stringify(updated));
+              triggerToast(`Successfully deleted employee ${member.name}!`, 'success');
+            }
+          }
+          await recordActivity('staff_deleted', `Deleted employee ${member.name}`, 'Staff', { id: member.id, role: member.role });
+          setDeleteMemberTarget(null);
+        }}
+        title="Delete Employee"
+        description={`Do you want to delete employee "${deleteMemberTarget?.name}"?`}
+      />
     </>
   );
 }

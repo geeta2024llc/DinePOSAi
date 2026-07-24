@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import {
   InventoryItem,
   MenuItemRecipe,
@@ -80,6 +81,8 @@ export default function InventoryTab({ t, tr, currency, triggerToast, menuItemsL
   const [wasteQty, setWasteQty] = useState(0);
   const [wasteReason, setWasteReason] = useState<WasteReason>('SPOILAGE');
   const [wasteNotes, setWasteNotes] = useState('');
+
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ type: 'ingredient' | 'supplier'; id: string; name: string } | null>(null);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -297,27 +300,23 @@ export default function InventoryTab({ t, tr, currency, triggerToast, menuItemsL
   };
 
   const handleDeleteIngredient = async (id: string) => {
-    if (confirm('Are you sure you want to delete this ingredient? This will also remove it from any recipe links.')) {
-      const success = await deleteIngredient(id);
-      if (success) {
-        triggerToast('Ingredient deleted successfully.', 'success');
-      } else {
-        triggerToast('Failed to delete ingredient.', 'info');
-      }
-      reloadInventory();
+    const success = await deleteIngredient(id);
+    if (success) {
+      triggerToast('Ingredient deleted successfully.', 'success');
+    } else {
+      triggerToast('Failed to delete ingredient.', 'info');
     }
+    reloadInventory();
   };
 
   const handleDeleteSupplier = async (id: string) => {
-    if (confirm('Are you sure you want to delete this supplier?')) {
-      const success = await deleteSupplierApi(id);
-      if (success) {
-        triggerToast('Supplier deleted.', 'success');
-      } else {
-        triggerToast('Failed to delete supplier.', 'info');
-      }
-      reloadInventory();
+    const success = await deleteSupplierApi(id);
+    if (success) {
+      triggerToast('Supplier deleted.', 'success');
+    } else {
+      triggerToast('Failed to delete supplier.', 'info');
     }
+    reloadInventory();
   };
 
   const addRecipeRow = () => {
@@ -539,7 +538,7 @@ export default function InventoryTab({ t, tr, currency, triggerToast, menuItemsL
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteIngredient(ing.id)}
+                                      onClick={() => setDeleteConfirmTarget({ type: 'ingredient', id: ing.id, name: ing.name })}
                                       className={`p-1.5 rounded-lg border ${t.border} text-rose-400 hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center`}
                                     >
                                       <span className="material-symbols-outlined text-sm">delete</span>
@@ -680,7 +679,7 @@ export default function InventoryTab({ t, tr, currency, triggerToast, menuItemsL
                                   </button>
                                   <button
                                     type="button"
-                                    onClick={() => handleDeleteSupplier(sup.id)}
+                                    onClick={() => setDeleteConfirmTarget({ type: 'supplier', id: sup.id, name: sup.name })}
                                     className={`p-1.5 rounded-lg border ${t.border} text-rose-400 hover:bg-white/5 transition-colors cursor-pointer flex items-center justify-center`}
                                   >
                                     <span className="material-symbols-outlined text-sm">delete</span>
@@ -1523,6 +1522,22 @@ export default function InventoryTab({ t, tr, currency, triggerToast, menuItemsL
 
       {/* SHIFT EDITING MODAL */}
 
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteConfirmTarget}
+        onClose={() => setDeleteConfirmTarget(null)}
+        onConfirm={async () => {
+          if (!deleteConfirmTarget) return;
+          if (deleteConfirmTarget.type === 'ingredient') {
+            await handleDeleteIngredient(deleteConfirmTarget.id);
+          } else if (deleteConfirmTarget.type === 'supplier') {
+            await handleDeleteSupplier(deleteConfirmTarget.id);
+          }
+          setDeleteConfirmTarget(null);
+        }}
+        title={`Delete ${deleteConfirmTarget?.type === 'ingredient' ? 'Ingredient' : 'Supplier'}`}
+        description={`Do you want to delete ${deleteConfirmTarget?.type === 'ingredient' ? 'ingredient' : 'supplier'} "${deleteConfirmTarget?.name}"?`}
+      />
     </>
   );
 }

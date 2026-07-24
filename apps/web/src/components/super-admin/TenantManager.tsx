@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function TenantManager(props: any) {
   const {
@@ -19,8 +19,77 @@ export default function TenantManager(props: any) {
     setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
     handleQuickRenew, handleRetryBilling, handleDeleteTenant,
     handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
-    globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs
+    globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs,
+    showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant
   } = props;
+
+  // ── Bulk selection state ──────────────────────────────────────────────────
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkExpiryModal, setShowBulkExpiryModal] = useState(false);
+  const [bulkExpiryDate, setBulkExpiryDate] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 10;
+
+  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / PAGE_SIZE));
+  const pagedTenants = filteredTenants.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const allPageSelected = pagedTenants.length > 0 && pagedTenants.every((t: any) => selectedIds.has(t.id));
+  const someSelected = selectedIds.size > 0;
+
+  const toggleOne = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const toggleAll = () => {
+    if (allPageSelected) {
+      setSelectedIds(prev => { const n = new Set(prev); pagedTenants.forEach((t: any) => n.delete(t.id)); return n; });
+    } else {
+      setSelectedIds(prev => { const n = new Set(prev); pagedTenants.forEach((t: any) => n.add(t.id)); return n; });
+    }
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkActivate = () => {
+    selectedIds.forEach(id => { const t = tenants.find((x: any) => x.id === id); if (t && t.status !== 'ACTIVE') toggleTenantStatus(id, t.name, t.status); });
+    triggerToast(`Activated ${selectedIds.size} tenant(s).`, 'success');
+    clearSelection();
+  };
+  const bulkSuspend = () => {
+    selectedIds.forEach(id => { const t = tenants.find((x: any) => x.id === id); if (t && t.status === 'ACTIVE') toggleTenantStatus(id, t.name, t.status); });
+    triggerToast(`Suspended ${selectedIds.size} tenant(s).`, 'success');
+    clearSelection();
+  };
+  const bulkExtend30 = () => {
+    selectedIds.forEach(id => handleQuickRenew(id, 30));
+    triggerToast(`Extended expiry (+30d) for ${selectedIds.size} tenant(s).`, 'success');
+    clearSelection();
+  };
+  const bulkExtend365 = () => {
+    selectedIds.forEach(id => handleQuickRenew(id, 365));
+    triggerToast(`Extended expiry (+1yr) for ${selectedIds.size} tenant(s).`, 'success');
+    clearSelection();
+  };
+  const bulkSetExpiry = () => {
+    if (!bulkExpiryDate) { triggerToast('Please pick a date.', 'info'); return; }
+    // Update each selected tenant expiry directly via setAuditLogs pattern
+    selectedIds.forEach(id => handleQuickRenew(id, 0, bulkExpiryDate));
+    triggerToast(`Custom expiry set for ${selectedIds.size} tenant(s).`, 'success');
+    setShowBulkExpiryModal(false);
+    setBulkExpiryDate('');
+    clearSelection();
+  };
+  const bulkDelete = () => {
+    selectedIds.forEach(id => { const t = tenants.find((x: any) => x.id === id); if (t) handleDeleteTenant(id, t.name); });
+    clearSelection();
+  };
+
+  // Initials avatar helper
+  const getInitials = (name: string) => name.split(' ').slice(0, 2).map((w: string) => w[0]).join('').toUpperCase();
+  const avatarColors = ['bg-violet-500/20 text-violet-300 border-violet-500/30', 'bg-sky-500/20 text-sky-300 border-sky-500/30', 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', 'bg-rose-500/20 text-rose-300 border-rose-500/30', 'bg-amber-500/20 text-amber-300 border-amber-500/30'];
+  const getAvatarColor = (name: string) => avatarColors[name.charCodeAt(0) % avatarColors.length];
 
   return (
     <>
@@ -370,38 +439,27 @@ export default function TenantManager(props: any) {
           )}
 
           {activeTab === 'locations' && (
-            <div className="space-y-8 animate-fade-in duration-300">
-              
-              {/* Tenant Management Banner */}
+            <div className="space-y-6 animate-fade-in duration-300">
+
+              {/* ── Page Header ─────────────────────────────────────────────── */}
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
-                  <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">
-                    Tenant Management
-                  </h1>
-                  <p className="font-sans text-[12.5px] text-[#A69984]/65 leading-relaxed font-semibold mt-2">
-                    Monitor and manage all global enterprise tenants across regions.
-                  </p>
+                  <h1 className="font-serif text-[42px] font-medium text-white tracking-wide leading-none">Tenant Management</h1>
+                  <p className="font-sans text-[12.5px] text-[#A69984]/65 font-semibold mt-2">Monitor, manage and bulk-operate all enterprise tenants across global regions.</p>
                 </div>
-                
                 <div className="flex items-center gap-3">
-                  <button type="button"
-                    onClick={() => handleExportTenants()}
-                    className="px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">download</span>
-                    Export
+                  <button type="button" onClick={() => handleExportTenants()}
+                    className="px-4 py-2.5 bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-1.5 cursor-pointer">
+                    <span className="material-symbols-outlined text-sm font-bold">download</span>Export
                   </button>
-                  <button type="button"
-                    onClick={() => setShowAddTenantModal(true)}
-                    className={`px-5 py-2.5 ${theme.accentBg} ${theme.accentHoverBg} ${theme.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all duration-300 shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}
-                  >
-                    <span className="material-symbols-outlined text-sm font-bold">add</span>
-                    Onboard Tenant
+                  <button type="button" onClick={() => setShowAddTenantModal(true)}
+                    className={`px-5 py-2.5 ${theme.accentBg} ${theme.accentHoverBg} ${theme.accentText} font-sans font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95`}>
+                    <span className="material-symbols-outlined text-sm font-bold">add_business</span>Onboard Tenant
                   </button>
                 </div>
               </div>
 
-              {/* KPI Cards Row */}
+              {/* ── KPI Cards ───────────────────────────────────────────────── */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 select-none">
                 
                 {/* Card 1: Total Active Tenants */}
@@ -489,12 +547,8 @@ export default function TenantManager(props: any) {
                 <div className="flex flex-wrap items-center gap-3">
                   {/* Status Dropdown */}
                   <div className="relative">
-                    <select
-                      aria-label="Status filter"
-                      value={statusFilter}
-                      onChange={(e) => setStatusFilter(e.target.value as any)}
-                      className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
-                    >
+                    <select aria-label="Status filter" value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value as any); setCurrentPage(1); }}
+                      className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors text-xs">
                       <option value="All">Status: All</option>
                       <option value="Active">Status: Active</option>
                       <option value="Suspended">Status: Suspended</option>
@@ -504,271 +558,329 @@ export default function TenantManager(props: any) {
 
                   {/* Tier Dropdown */}
                   <div className="relative">
-                    <select
-                      aria-label="Tier filter"
-                      value={tierFilter}
-                      onChange={(e) => setTierFilter(e.target.value as any)}
-                      className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
-                    >
-                      <option value="All">Tier: All</option>
-                      <option value="Business">Tier: Business</option>
-                      <option value="Growth">Tier: Growth</option>
-                      <option value="Starter">Tier: Starter</option>
+                    <select aria-label="Tier filter" value={tierFilter} onChange={(e) => { setTierFilter(e.target.value as any); setCurrentPage(1); }}
+                      className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors text-xs">
+                      <option value="All">Plan: All</option>
+                      <option value="Business">Plan: Business</option>
+                      <option value="Growth">Plan: Growth</option>
+                      <option value="Starter">Plan: Starter</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
                   </div>
 
                   {/* Region Dropdown */}
                   <div className="relative">
-                    <select
-                      aria-label="Region filter"
-                      value={regionFilter}
-                      onChange={(e) => setRegionFilter(e.target.value as any)}
-                      className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors"
-                    >
+                    <select aria-label="Region filter" value={regionFilter} onChange={(e) => { setRegionFilter(e.target.value as any); setCurrentPage(1); }}
+                      className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors text-xs">
                       <option value="All">Region: All</option>
-                      <option value="North America - East">Region: NA - East</option>
-                      <option value="Europe - West">Region: EU - West</option>
-                      <option value="Asia Pacific">Region: Asia Pacific</option>
+                      <option value="North America - East">NA - East</option>
+                      <option value="Europe - West">EU - West</option>
+                      <option value="Asia Pacific">Asia Pacific</option>
                     </select>
                     <span className="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
                   </div>
+
+                  {/* Attention Only Toggle */}
+                  <button type="button" onClick={() => { setAttentionOnlyFilter(!attentionOnlyFilter); setCurrentPage(1); }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs uppercase tracking-wider border transition-all cursor-pointer ${attentionOnlyFilter ? 'bg-rose-500/15 border-rose-500/40 text-rose-400' : 'bg-white/5 border-white/10 text-[#A69984] hover:border-white/20'}`}>
+                    <span className="material-symbols-outlined text-sm">warning</span>
+                    Issues Only
+                  </button>
+
+                  {/* Clear filters */}
+                  {(statusFilter !== 'All' || tierFilter !== 'All' || regionFilter !== 'All' || attentionOnlyFilter || searchQuery) && (
+                    <button type="button" onClick={() => { setStatusFilter('All'); setTierFilter('All'); setRegionFilter('All'); setAttentionOnlyFilter(false); setSearchQuery(''); setCurrentPage(1); }}
+                      className="flex items-center gap-1 px-3 py-2 rounded-xl font-bold text-xs text-[#A69984]/60 hover:text-white border border-white/5 hover:border-white/15 transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* Tenants Directory List */}
-              <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
+              {/* ── Bulk Action Toolbar (visible when items selected) ─────── */}
+              {someSelected && (
+                <div className="flex items-center gap-3 px-5 py-3 bg-[#ffc53d]/5 border border-[#ffc53d]/20 rounded-2xl font-sans animate-fade-in">
+                  <div className="flex items-center gap-2 mr-1">
+                    <div className="w-6 h-6 rounded-md bg-[#ffc53d] flex items-center justify-center">
+                      <span className="material-symbols-outlined text-[#1a1200] text-sm font-black">checklist</span>
+                    </div>
+                    <span className="text-[#ffc53d] font-bold text-sm">{selectedIds.size} selected</span>
+                    <button type="button" onClick={clearSelection} className="text-[#A69984]/50 hover:text-white ml-1 transition-colors cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">close</span>
+                    </button>
+                  </div>
+
+                  <div className="h-4 w-px bg-white/10" />
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button type="button" onClick={bulkActivate}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">check_circle</span>Activate
+                    </button>
+                    <button type="button" onClick={bulkSuspend}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">block</span>Suspend
+                    </button>
+                    <button type="button" onClick={bulkExtend30}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] font-bold text-xs rounded-lg transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">event_repeat</span>+30 Days
+                    </button>
+                    <button type="button" onClick={bulkExtend365}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-[#e5e2e1] font-bold text-xs rounded-lg transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">calendar_add_on</span>+1 Year
+                    </button>
+                    <button type="button" onClick={() => setShowBulkExpiryModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">edit_calendar</span>Set Expiry
+                    </button>
+                    <button type="button" onClick={bulkDelete}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-900/20 hover:bg-rose-900/40 border border-rose-700/30 text-rose-500 font-bold text-xs rounded-lg transition-all cursor-pointer">
+                      <span className="material-symbols-outlined text-sm">delete_forever</span>Delete All
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Main Table Card ────────────────────────────────────────── */}
+              <div className={`${theme.cardBg} border rounded-2xl shadow-xl overflow-hidden`}>
                 <div className="overflow-x-auto w-full">
                   <table className="w-full font-sans border-collapse text-left text-xs">
                     <thead>
-                      <tr className="border-b border-white/5 text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider">
-                        <th className="py-4 px-4">Establishment</th>
-                        <th className="py-4 px-4">Subscription Tier</th>
-                        <th className="py-4 px-4">Region</th>
-                        <th className="py-4 px-4">Expiry Date</th>
-                        <th className="py-4 px-4">Status</th>
-                        <th className="py-4 px-4 text-right">Actions</th>
+                      <tr className="border-b border-white/5 bg-white/[0.02]">
+                        {/* Select-all checkbox */}
+                        <th className="py-3.5 pl-5 pr-2 w-10">
+                          <button type="button" onClick={toggleAll}
+                            className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${allPageSelected ? 'bg-[#ffc53d] border-[#ffc53d]' : 'border-white/25 hover:border-white/50 bg-transparent'}`}>
+                            {allPageSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
+                          </button>
+                        </th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Establishment</th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Plan</th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Region</th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Expiry</th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Status</th>
+                        <th className="py-3.5 px-3 pr-5 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider text-right whitespace-nowrap">Actions</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5 font-semibold text-white/90">
-                      {filteredTenants.map((t: any) => (
-                        <tr key={t.id} className="hover:bg-white/[0.01] transition-colors">
-                          <td className="py-4 px-4 text-sm font-serif font-bold text-white flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-black/40 border border-white/5 flex items-center justify-center flex-shrink-0 select-none">
-                              {t.name === 'The Obsidian Room' ? (
-                                <div className="w-6 h-6 rounded bg-[#ffa133]/10 border border-[#ffa133]/25 flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-[#ffa133] text-sm font-bold">layers</span>
-                                </div>
-                              ) : t.name === 'Lumière Brasserie' ? (
-                                <div className="w-6 h-6 rounded bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-emerald-400 text-sm">restaurant</span>
-                                </div>
-                              ) : t.billingFailed ? (
-                                <div className="w-6 h-6 rounded bg-rose-500/10 border border-rose-500/25 flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-rose-400 text-sm">warning</span>
-                                </div>
-                              ) : (
-                                <div className="w-6 h-6 rounded bg-sky-500/10 border border-sky-500/25 flex items-center justify-center">
-                                  <span className="material-symbols-outlined text-sky-400 text-sm">storefront</span>
-                                </div>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-serif font-bold text-white text-[14.5px] tracking-wide leading-none">{t.name}</div>
-                              <div className="text-[10px] text-[#A69984]/50 font-bold tracking-wider mt-1.5 uppercase">
-                                ID: {t.id} {t.billingFailed && <span className="text-rose-400 font-semibold leading-none ml-1">(Billing Failed)</span>}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            {t.tier === 'Business' ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-[#ffc53d]/30 bg-[#ffc53d]/5 text-[#ffc53d] font-bold">
-                                <span className="material-symbols-outlined text-xs">star</span>
-                                Business
-                              </span>
-                            ) : t.tier === 'Growth' ? (
-                              <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/70 font-semibold">
-                                Growth
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-1 text-[10px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-semibold">
-                                Starter
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4 text-[#e5e2e1]/80 text-[12px]">{t.region || 'North America - East'}</td>
-                          <td className="py-4 px-4">
-                            {(() => {
-                              const expStatus = checkExpiryStatus(t.expiryDate);
-                              const countdownText = getExpiryCountdownText(t.expiryDate);
-                              if (expStatus === 'expired') {
-                                return (
-                                  <div className="flex flex-col gap-1 select-none">
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-rose-500/35 bg-rose-500/5 text-rose-400 font-bold font-mono w-fit">
-                                      <span className="material-symbols-outlined text-[12px] font-bold leading-none">error</span>
-                                      {t.expiryDate}
-                                    </span>
-                                    <span className="text-[10.5px] text-rose-400/60 font-semibold pl-1">{countdownText}</span>
-                                  </div>
-                                );
-                              } else if (expStatus === 'warning') {
-                                return (
-                                  <div className="flex flex-col gap-1 select-none animate-pulse">
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] rounded-lg border border-amber-500/35 bg-amber-500/5 text-amber-400 font-bold font-mono w-fit">
-                                      <span className="material-symbols-outlined text-[12px] font-bold leading-none">warning</span>
-                                      {t.expiryDate}
-                                    </span>
-                                    <span className="text-[10.5px] text-amber-400/60 font-semibold pl-1">{countdownText}</span>
-                                  </div>
-                                );
-                              } else {
-                                return (
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="text-[#e5e2e1]/85 font-mono text-[12px]">{t.expiryDate}</span>
-                                    <span className="text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider select-none">{countdownText}</span>
-                                  </div>
-                                );
-                              }
-                            })()}
-                          </td>
-                          <td className="py-4 px-4">
-                            {t.status === 'ACTIVE' ? (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-white/80 font-medium select-none">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                                Active
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 text-xs text-white/80 font-medium select-none">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
-                                Suspended
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4 text-right relative">
-                            <div className="flex items-center justify-end gap-2">
-                              <button type="button" 
-                                onClick={() => {
-                                  setSelectedTenant(t);
-                                  setEditingExpiryDate(t.expiryDate);
-                                  setShowTenantDetailsModal(true);
-                                }}
-                                className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] hover:text-white px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                              >
-                                Details
-                              </button>
-                              
-                              <div className="relative">
-                                <button type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setActiveActionMenuId(activeActionMenuId === t.id ? null : t.id);
-                                  }}
-                                  className="w-8 h-8 rounded-lg border border-white/10 hover:border-white/20 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer"
-                                >
-                                  <span className="material-symbols-outlined text-base">more_vert</span>
-                                </button>
-                                
-                                {activeActionMenuId === t.id && (
-                                  <div className="absolute right-0 mt-1.5 w-48 bg-[#161513] border border-white/10 rounded-xl shadow-2xl py-2 z-30 text-left font-sans animate-slide-in">
-                                    <button type="button"
-                                      onClick={() => handleQuickRenew(t.id, 30)}
-                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>
-                                      Extend Expiry (+30d)
-                                    </button>
-
-                                    <button type="button"
-                                      onClick={() => handleQuickRenew(t.id, 365)}
-                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>
-                                      Extend Expiry (+1 Year)
-                                    </button>
-
-                                    <button type="button"
-                                      onClick={() => {
-                                        setSelectedTenant(t);
-                                        setEditingExpiryDate(t.expiryDate || new Date().toISOString().split('T')[0]);
-                                        setShowTenantDetailsModal(true);
-                                      }}
-                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-amber-400 font-semibold flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <span className="material-symbols-outlined text-sm text-amber-400">edit_calendar</span>
-                                      Custom Expiry Date...
-                                    </button>
-
-                                    <button type="button"
-                                      onClick={() => toggleTenantStatus(t.id, t.name, t.status)}
-                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer border-t border-white/5 mt-1 pt-2"
-                                    >
-                                      <span className="material-symbols-outlined text-sm text-[#A69984]">
-                                        {t.status === 'ACTIVE' ? 'block' : 'check_circle'}
-                                      </span>
-                                      {t.status === 'ACTIVE' ? 'Suspend Tenant' : 'Activate Tenant'}
-                                    </button>
-                                    
-                                    <button type="button"
-                                      onClick={() => handleQuickRenew(t.id, 30)}
-                                      className="w-full px-4 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-semibold flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <span className="material-symbols-outlined text-sm text-[#A69984]">snooze</span>
-                                      Extend Expiry (+30d)
-                                    </button>
-
-                                    {t.billingFailed && (
-                                      <button type="button"
-                                        onClick={() => handleRetryBilling(t.id)}
-                                        className="w-full px-4 py-2 hover:bg-[#ffc53d]/10 text-xs text-[#ffc53d] font-semibold flex items-center gap-2 border-t border-white/5 mt-1 pt-2 cursor-pointer"
-                                      >
-                                        <span className="material-symbols-outlined text-sm">credit_card</span>
-                                        Retry Billing System
-                                      </button>
-                                    )}
-
-                                    <button type="button"
-                                      onClick={() => handleDeleteTenant(t.id, t.name)}
-                                      className="w-full px-4 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-semibold flex items-center gap-2 border-t border-white/5 mt-1 pt-2 cursor-pointer"
-                                    >
-                                      <span className="material-symbols-outlined text-sm">delete</span>
-                                      Delete Business
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                    <tbody className="divide-y divide-white/[0.04]">
+                      {pagedTenants.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-16 text-center">
+                            <span className="material-symbols-outlined text-4xl text-white/10 block mb-2">search_off</span>
+                            <p className="text-xs text-[#A69984]/40 font-bold uppercase tracking-wider">No tenants match your filters</p>
                           </td>
                         </tr>
-                      ))}
+                      )}
+                      {pagedTenants.map((ten: any) => {
+                        const isSelected = selectedIds.has(ten.id);
+                        const expStatus = checkExpiryStatus(ten.expiryDate);
+                        const countdownText = getExpiryCountdownText(ten.expiryDate);
+                        const initials = getInitials(ten.name);
+                        const avatarCls = getAvatarColor(ten.name);
+                        return (
+                          <tr key={ten.id}
+                            className={`group transition-colors ${isSelected ? 'bg-[#ffc53d]/[0.04] border-l-2 border-l-[#ffc53d]/50' : 'hover:bg-white/[0.015]'}`}>
+
+                            {/* Checkbox */}
+                            <td className="pl-5 pr-2 py-4">
+                              <button type="button" onClick={() => toggleOne(ten.id)}
+                                className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${isSelected ? 'bg-[#ffc53d] border-[#ffc53d]' : 'border-white/20 hover:border-white/50 bg-transparent'}`}>
+                                {isSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
+                              </button>
+                            </td>
+
+                            {/* Establishment */}
+                            <td className="py-4 px-3">
+                              <div className="flex items-center gap-3">
+                                {/* Initials Avatar */}
+                                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 font-bold text-xs select-none ${ten.billingFailed ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : avatarCls}`}>
+                                  {ten.billingFailed
+                                    ? <span className="material-symbols-outlined text-sm">warning</span>
+                                    : initials}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-serif font-bold text-white text-[13.5px] tracking-wide leading-tight truncate max-w-[180px]">{ten.name}</div>
+                                  <div className="flex items-center gap-1.5 mt-1">
+                                    <span className="text-[9.5px] text-[#A69984]/45 font-mono">{ten.id}</span>
+                                    {ten.billingFailed && (
+                                      <span className="text-[9px] text-rose-400 font-bold uppercase tracking-wider bg-rose-500/10 px-1.5 py-0.5 rounded">Billing Failed</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Plan Badge */}
+                            <td className="py-4 px-3">
+                              {ten.plan === 'BUSINESS' || ten.tier === 'Business' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-[#ffc53d]/35 bg-[#ffc53d]/8 text-[#ffc53d] font-bold whitespace-nowrap">
+                                  <span className="material-symbols-outlined text-[11px]">star</span>Business
+                                </span>
+                              ) : ten.plan === 'ENTERPRISE' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-violet-500/35 bg-violet-500/8 text-violet-400 font-bold whitespace-nowrap">
+                                  <span className="material-symbols-outlined text-[11px]">diamond</span>Enterprise
+                                </span>
+                              ) : ten.plan === 'GROWTH' || ten.tier === 'Growth' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-sky-500/35 bg-sky-500/8 text-sky-400 font-bold whitespace-nowrap">
+                                  <span className="material-symbols-outlined text-[11px]">trending_up</span>Growth
+                                </span>
+                              ) : ten.plan === 'TRIAL' ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-emerald-500/35 bg-emerald-500/8 text-emerald-400 font-bold whitespace-nowrap">
+                                  <span className="material-symbols-outlined text-[11px]">science</span>Trial
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-1 text-[9.5px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-bold whitespace-nowrap">
+                                  Starter
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Region */}
+                            <td className="py-4 px-3">
+                              <span className="text-[11.5px] text-[#e5e2e1]/75 font-medium whitespace-nowrap">{ten.location || ten.region || 'N/A'}</span>
+                            </td>
+
+                            {/* Expiry */}
+                            <td className="py-4 px-3">
+                              {expStatus === 'expired' ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border border-rose-500/40 bg-rose-500/8 text-rose-400 font-bold font-mono w-fit">
+                                    <span className="material-symbols-outlined text-[10px] leading-none">error</span>{ten.expiryDate}
+                                  </span>
+                                  <span className="text-[9.5px] text-rose-400/50 font-semibold pl-0.5">{countdownText}</span>
+                                </div>
+                              ) : expStatus === 'warning' ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border border-amber-500/40 bg-amber-500/8 text-amber-400 font-bold font-mono w-fit">
+                                    <span className="material-symbols-outlined text-[10px] leading-none">warning</span>{ten.expiryDate}
+                                  </span>
+                                  <span className="text-[9.5px] text-amber-400/50 font-semibold pl-0.5">{countdownText}</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-[11px] text-[#e5e2e1]/80 font-mono">{ten.expiryDate || '—'}</span>
+                                  <span className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">{countdownText}</span>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-4 px-3">
+                              {ten.status === 'ACTIVE' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold whitespace-nowrap">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Active
+                                </span>
+                              ) : ten.status === 'SUSPENDED' ? (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold whitespace-nowrap">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Suspended
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-white/5 border border-white/10 text-[#A69984] font-bold whitespace-nowrap">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#A69984]"></span>{ten.status}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="py-4 px-3 pr-5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button type="button"
+                                  onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate); setShowTenantDetailsModal(true); }}
+                                  className="text-[9.5px] border border-white/10 hover:border-[#ffc53d]/40 hover:text-[#ffc53d] text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap">
+                                  Details
+                                </button>
+                                <div className="relative">
+                                  <button type="button"
+                                    onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(activeActionMenuId === ten.id ? null : ten.id); }}
+                                    className="w-7 h-7 rounded-lg border border-white/10 hover:border-white/25 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer">
+                                    <span className="material-symbols-outlined text-sm">more_vert</span>
+                                  </button>
+                                  {activeActionMenuId === ten.id && (
+                                    <div className="absolute right-0 mt-1.5 w-52 bg-[#141311] border border-white/10 rounded-xl shadow-2xl shadow-black/50 py-1.5 z-40 text-left font-sans">
+                                      {/* Expiry group */}
+                                      <div className="px-3 py-1 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Expiry</div>
+                                      <button type="button" onClick={() => handleQuickRenew(ten.id, 30)}
+                                        className="w-full px-3 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
+                                        <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>Extend +30 Days
+                                      </button>
+                                      <button type="button" onClick={() => handleQuickRenew(ten.id, 365)}
+                                        className="w-full px-3 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
+                                        <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>Extend +1 Year
+                                      </button>
+                                      <button type="button" onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate || new Date().toISOString().split('T')[0]); setShowTenantDetailsModal(true); }}
+                                        className="w-full px-3 py-2 hover:bg-amber-500/5 text-xs text-amber-400 font-medium flex items-center gap-2.5 cursor-pointer">
+                                        <span className="material-symbols-outlined text-sm">edit_calendar</span>Custom Expiry...
+                                      </button>
+
+                                      {/* Status group */}
+                                      <div className="border-t border-white/5 mt-1 pt-1 px-3 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Status</div>
+                                      <button type="button" onClick={() => toggleTenantStatus(ten.id, ten.name, ten.status)}
+                                        className={`w-full px-3 py-2 hover:bg-white/5 text-xs font-medium flex items-center gap-2.5 cursor-pointer ${ten.status === 'ACTIVE' ? 'text-rose-400 hover:bg-rose-500/5' : 'text-emerald-400 hover:bg-emerald-500/5'}`}>
+                                        <span className="material-symbols-outlined text-sm">{ten.status === 'ACTIVE' ? 'block' : 'check_circle'}</span>
+                                        {ten.status === 'ACTIVE' ? 'Suspend Tenant' : 'Activate Tenant'}
+                                      </button>
+
+                                      {/* Billing */}
+                                      {ten.billingFailed && (
+                                        <>
+                                          <div className="border-t border-white/5 mt-1 pt-1 px-3 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Billing</div>
+                                          <button type="button" onClick={() => handleRetryBilling(ten.id)}
+                                            className="w-full px-3 py-2 hover:bg-[#ffc53d]/5 text-xs text-[#ffc53d] font-medium flex items-center gap-2.5 cursor-pointer">
+                                            <span className="material-symbols-outlined text-sm">credit_card</span>Retry Billing
+                                          </button>
+                                        </>
+                                      )}
+
+                                      {/* Danger */}
+                                      <div className="border-t border-white/5 mt-1 pt-1">
+                                        <button type="button" onClick={() => handleDeleteTenant(ten.id, ten.name)}
+                                          className="w-full px-3 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-medium flex items-center gap-2.5 cursor-pointer">
+                                          <span className="material-symbols-outlined text-sm">delete</span>Delete Business
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
 
-                {/* Pagination Controls */}
-                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-white/5 text-xs text-[#A69984]/50 select-none">
-                  <div className="font-bold">
-                    Showing 1 to {filteredTenants.length} of 142
+                {/* ── Pagination ────────────────────────────────────────────── */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-5 py-4 border-t border-white/5 font-sans">
+                  <div className="text-xs text-[#A69984]/50 font-bold">
+                    Showing <span className="text-white/70">{Math.min((currentPage - 1) * PAGE_SIZE + 1, filteredTenants.length)}</span>
+                    {' '}–{' '}
+                    <span className="text-white/70">{Math.min(currentPage * PAGE_SIZE, filteredTenants.length)}</span>
+                    {' '}of{' '}
+                    <span className="text-white/70">{filteredTenants.length}</span> tenants
+                    {someSelected && <span className="text-[#ffc53d] ml-2">· {selectedIds.size} selected</span>}
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer">
+                  <div className="flex items-center gap-1 select-none">
+                    <button type="button" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                       <span className="material-symbols-outlined text-sm">chevron_left</span>
                     </button>
-                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center bg-[#ffc53d] text-[#2c1a00] font-bold transition-colors cursor-pointer">
-                      1
-                    </button>
-                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
-                      2
-                    </button>
-                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 hover:text-white transition-colors cursor-pointer">
-                      3
-                    </button>
-                    <span className="px-2">...</span>
-                    <button type="button" className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1).map((p, idx, arr) => (
+                      <React.Fragment key={p}>
+                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="px-1 text-[#A69984]/30 text-xs">…</span>}
+                        <button type="button" onClick={() => setCurrentPage(p)}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold transition-colors cursor-pointer ${p === currentPage ? 'bg-[#ffc53d] text-[#1a1200]' : 'hover:bg-white/5 text-[#A69984] hover:text-white'}`}>
+                          {p}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                    <button type="button" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/5 text-[#e5e2e1] transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed">
                       <span className="material-symbols-outlined text-sm">chevron_right</span>
                     </button>
                   </div>
                 </div>
-
               </div>
 
             </div>
@@ -1097,6 +1209,127 @@ export default function TenantManager(props: any) {
                 >
                   <span className="material-symbols-outlined text-sm font-black">save</span>
                   Save Custom Expiry
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ONBOARD NEW TENANT MODAL */}
+      {showAddTenantModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center p-4 animate-fade-in">
+          <div className="w-full max-w-lg bg-[#141311] border border-[#ffc53d]/20 rounded-2xl shadow-2xl overflow-hidden font-sans">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-[#1a1814]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[#ffc53d] text-xl">add_business</span>
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-white leading-none">Onboard New Business Tenant</h3>
+                  <p className="text-[11px] text-[#A69984]/60 mt-0.5">Register a new restaurant to the DinePOS AI platform.</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddTenantModal(false)}
+                className="text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleAddTenant} className="p-6 space-y-5">
+
+              {/* Restaurant Name */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984] mb-2">
+                  Restaurant / Business Name <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. The Golden Fork Tokyo"
+                  value={newTenantData?.name || ''}
+                  onChange={(e) => setNewTenantData({ ...newTenantData, name: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#ffc53d]/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984] mb-2">
+                  City / Location <span className="text-rose-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Tokyo, Japan"
+                  value={newTenantData?.location || ''}
+                  onChange={(e) => setNewTenantData({ ...newTenantData, location: e.target.value })}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#ffc53d]/50 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/25 focus:outline-none transition-colors"
+                />
+              </div>
+
+              {/* Plan & Expiry row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984] mb-2">Subscription Plan</label>
+                  <select
+                    value={newTenantData?.plan || 'TRIAL'}
+                    onChange={(e) => setNewTenantData({ ...newTenantData, plan: e.target.value as any })}
+                    className="w-full bg-[#1e1c19] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-[#ffc53d]/50 transition-colors cursor-pointer"
+                  >
+                    <option value="TRIAL">Trial (14 days)</option>
+                    <option value="STARTER">Starter</option>
+                    <option value="GROWTH">Growth</option>
+                    <option value="BUSINESS">Business</option>
+                    <option value="ENTERPRISE">Enterprise</option>
+                    <option value="SUSPENDED">Suspended</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-[#A69984] mb-2">Custom Expiry Date</label>
+                  <input
+                    type="date"
+                    value={newTenantData?.expiryDate || ''}
+                    onChange={(e) => setNewTenantData({ ...newTenantData, expiryDate: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#ffc53d]/50 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none transition-colors font-mono"
+                  />
+                  <p className="text-[9.5px] text-[#A69984]/50 mt-1">Leave blank for plan default</p>
+                </div>
+              </div>
+
+              {/* Plan badge preview */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/5">
+                <span className="material-symbols-outlined text-[#ffc53d] text-base">info</span>
+                <p className="text-[11px] text-[#A69984]/70 leading-relaxed">
+                  {newTenantData?.plan === 'TRIAL'
+                    ? 'Trial accounts receive 14-day access with full feature visibility.'
+                    : newTenantData?.plan === 'SUSPENDED'
+                    ? 'Tenant will be registered in a suspended state — no access granted.'
+                    : `${newTenantData?.plan || 'STARTER'} plan — standard 12-month subscription. Custom expiry overrides this.`}
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddTenantModal(false)}
+                  className="flex-1 py-3 border border-white/10 hover:bg-white/5 text-[#A69984] hover:text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-[#ffc53d] hover:bg-[#ffb014] text-[#1a1200] font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-lg shadow-[#ffc53d]/20 active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-sm font-black">add_business</span>
+                  Onboard Tenant
                 </button>
               </div>
             </form>

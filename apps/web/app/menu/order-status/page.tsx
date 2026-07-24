@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { MenuSidebar } from '@/components/ui/MenuSidebar';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { migrateCart, CartItem } from '../cartUtils';
 
 const menuItemsRegistry: { [id: string]: { name: string; price: number; category: string; description: string } } = {
@@ -92,6 +93,7 @@ export default function OrderStatusPage() {
   const [activeTicket, setActiveTicket] = useState<any>(null);
   
   const [placedOrder, setPlacedOrder] = useState<{ [cartKey: string]: CartItem }>({});
+  const [deleteItemTarget, setDeleteItemTarget] = useState<{ id: string; name: string } | null>(null);
   const [tableNumber, setTableNumber] = useState(12);
   const [isLoaded, setIsLoaded] = useState(false);
   const [diningOption, setDiningOption] = useState<'dine-in' | 'takeaway' | 'delivery'>('dine-in');
@@ -723,7 +725,7 @@ export default function OrderStatusPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleDeletePendingItem(item.id)}
+                          onClick={() => setDeleteItemTarget({ id: item.id, name: item.name })}
                           className="w-8 h-8 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/30 text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
                           title="Cancel & Delete Order Item"
                         >
@@ -997,6 +999,19 @@ export default function OrderStatusPage() {
         </div>
       )}
 
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteItemTarget}
+        onClose={() => setDeleteItemTarget(null)}
+        onConfirm={() => {
+          if (deleteItemTarget) {
+            handleDeletePendingItem(deleteItemTarget.id);
+            setDeleteItemTarget(null);
+          }
+        }}
+        title="Cancel & Delete Order Item"
+        description={`Do you want to delete "${deleteItemTarget?.name}" from your pending order?`}
+      />
     </div>
   );
 }

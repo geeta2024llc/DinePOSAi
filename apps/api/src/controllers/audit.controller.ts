@@ -147,17 +147,25 @@ export const clearAuditLogs = async (req: AuthenticatedRequest, res: Response<Ap
     return res.status(401).json({ success: false, error: 'Authentication required.' });
   }
 
+  const { tenantId } = req.query;
+
   try {
     let query = supabase.from('audit_logs').delete();
 
     // Managers can only delete logs for their own tenant
     if (user.role !== 'SUPER_ADMIN') {
       query = query.eq('tenant_id', user.tenantId);
+    } else if (tenantId) {
+      query = query.eq('tenant_id', tenantId as string);
+    } else {
+      // PostgREST safety requirement: DELETE queries must specify a filter condition clause
+      query = query.not('id', 'is', null);
     }
 
     const { error } = await query;
 
     if (error) {
+      console.error('[clearAuditLogs] Supabase delete error:', error);
       return res.status(500).json({ success: false, error: `Failed to clear logs: ${error.message}` });
     }
 
@@ -167,6 +175,7 @@ export const clearAuditLogs = async (req: AuthenticatedRequest, res: Response<Ap
     });
 
   } catch (error: any) {
+    console.error('[clearAuditLogs] Unexpected error:', error);
     res.status(500).json({ success: false, error: error.message || 'Error clearing audit logs.' });
   }
 };

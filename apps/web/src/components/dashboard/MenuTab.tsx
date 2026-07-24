@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiRequest, isDemoTenant } from '@/utils/api';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 interface MenuTabProps {
   t: any;
@@ -20,6 +21,9 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
   const [menuSortOrder, setMenuSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const [isLoading, setIsLoading] = useState(false);
+
+  // Delete Confirmation State
+  const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<{ type: 'item' | 'category'; id: string; name: string } | null>(null);
 
   // Modals & Form states
   const [showMenuAddEditModal, setShowMenuAddEditModal] = useState(false);
@@ -772,7 +776,7 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
                           <span className="material-symbols-outlined text-[15px]">edit</span>
                         </button>
                         <button type="button"
-                          onClick={() => handleDeleteMenuItem(item.id)}
+                          onClick={() => setDeleteConfirmTarget({ type: 'item', id: item.id, name: item.name })}
                           className={`w-8 h-8 rounded-lg flex items-center justify-center bg-transparent border ${t.borderStrong} hover:border-red-500/20 text-[#A69984] hover:text-red-400 transition-colors cursor-pointer`}
                           title="Delete Item"
                         >
@@ -1109,7 +1113,7 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
                         <span className="material-symbols-outlined text-[13px]">edit</span>
                       </button>
                       <button type="button"
-                        onClick={() => handleDeleteCategory(cat.id)}
+                        onClick={() => setDeleteConfirmTarget({ type: 'category', id: cat.id, name: cat.name })}
                         className={`w-7 h-7 rounded-md flex items-center justify-center bg-transparent border ${t.borderStrong} hover:border-red-500/20 text-[#A69984] hover:text-red-400 transition-colors cursor-pointer`}
                         title="Delete Category"
                       >
@@ -1124,6 +1128,23 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
           </div>
         </div>
       )}
+
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={!!deleteConfirmTarget}
+        onClose={() => setDeleteConfirmTarget(null)}
+        onConfirm={async () => {
+          if (!deleteConfirmTarget) return;
+          if (deleteConfirmTarget.type === 'item') {
+            await handleDeleteMenuItem(deleteConfirmTarget.id);
+          } else if (deleteConfirmTarget.type === 'category') {
+            await handleDeleteCategory(deleteConfirmTarget.id);
+          }
+          setDeleteConfirmTarget(null);
+        }}
+        title={`Delete ${deleteConfirmTarget?.type === 'category' ? 'Category' : 'Menu Item'}`}
+        description={`Do you want to delete ${deleteConfirmTarget?.type === 'category' ? 'category' : 'menu item'} "${deleteConfirmTarget?.name}"?`}
+      />
     </div>
   );
 }

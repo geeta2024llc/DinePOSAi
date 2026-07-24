@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 export default function SystemAnalytics(props: any) {
   const {
@@ -12,6 +13,7 @@ export default function SystemAnalytics(props: any) {
   } = props;
 
   const [analyticsMetricTimeframe, setAnalyticsMetricTimeframe] = React.useState('30d');
+  const [showConfirmClearLogs, setShowConfirmClearLogs] = useState(false);
 
   return (
     <>
@@ -628,14 +630,7 @@ export default function SystemAnalytics(props: any) {
                 
                 <button
                   type="button"
-                  onClick={async () => {
-                    if (confirm('Are you sure you want to clear all system activity logs? This action cannot be undone.')) {
-                      await clearActivityLogs();
-                      const updated = await getActivityLogs();
-                      setLogsList(updated);
-                      triggerToast('System activity logs cleared successfully.', 'success');
-                    }
-                  }}
+                  onClick={() => setShowConfirmClearLogs(true)}
                   className="px-5 py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-400 rounded-xl font-bold text-[10px] uppercase tracking-wider transition-all cursor-pointer flex items-center gap-2"
                 >
                   <span className="material-symbols-outlined text-sm">delete_sweep</span>
@@ -816,6 +811,20 @@ export default function SystemAnalytics(props: any) {
             </div>
           )}
 
+      {/* Universal Delete Confirmation Popup */}
+      <ConfirmDeleteModal
+        isOpen={showConfirmClearLogs}
+        onClose={() => setShowConfirmClearLogs(false)}
+        onConfirm={async () => {
+          await clearActivityLogs();
+          const updated = await getActivityLogs();
+          setLogsList(updated);
+          triggerToast('System activity logs cleared successfully.', 'success');
+          setShowConfirmClearLogs(false);
+        }}
+        title="Clear System Logs"
+        description="Do you want to clear all system activity logs? This action cannot be undone."
+      />
     </>
   );
 }

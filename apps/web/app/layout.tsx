@@ -23,6 +23,7 @@ export default function RootLayout({
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0e0e0d" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -31,37 +32,29 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: `
           (function() {
             try {
-              let currentError = console.error;
-              Object.defineProperty(console, 'error', {
-                get() {
-                  return function(...args) {
-                    const message = args.map(arg => {
-                      try {
-                        return typeof arg === 'string' ? arg : JSON.stringify(arg);
-                      } catch (e) {
-                        return String(arg);
-                      }
-                    }).join(' ');
+              const originalError = console.error;
+              console.error = function(...args) {
+                const message = args.map(arg => {
+                  try {
+                    return typeof arg === 'string' ? arg : JSON.stringify(arg);
+                  } catch (e) {
+                    return String(arg);
+                  }
+                }).join(' ');
 
-                    if (
-                      message.includes('hydration') || 
-                      message.includes('Hydration') || 
-                      message.includes('bis_skin_checked') || 
-                      message.includes('notranslate') ||
-                      message.includes('translate="no"')
-                    ) {
-                      return; // Silently suppress browser extension hydration attribute warnings
-                    }
-                    if (currentError) {
-                      currentError.apply(console, args);
-                    }
-                  };
-                },
-                set(newVal) {
-                  currentError = newVal;
-                },
-                configurable: true
-              });
+                if (
+                  message.includes('hydration') || 
+                  message.includes('Hydration') || 
+                  message.includes('bis_skin_checked') || 
+                  message.includes('notranslate') ||
+                  message.includes('translate="no"')
+                ) {
+                  return; // Silently suppress browser extension hydration attribute warnings
+                }
+                if (originalError) {
+                  originalError.apply(console, args);
+                }
+              };
             } catch (e) {}
 
             try {
