@@ -17,6 +17,8 @@ interface GeneralTabProps {
   setContactEmail: (val: string) => void;
   taxId: string;
   setTaxId: (val: string) => void;
+  taxRegistrationType?: 'VAT' | 'PAN';
+  setTaxRegistrationType?: (val: 'VAT' | 'PAN') => void;
   restaurantLogo: string;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleLogoRemove: () => void;
@@ -52,6 +54,10 @@ interface GeneralTabProps {
     youtube: string;
   };
   setSocialLinks?: (links: { facebook: string; instagram: string; tiktok: string; youtube: string; }) => void;
+  autoSaveEnabled?: boolean;
+  setAutoSaveEnabled?: (val: boolean) => void;
+  autoSaveStatus?: 'idle' | 'saving' | 'saved';
+  lastSavedTime?: string;
   showServiceCharge: boolean;
   setShowServiceCharge: (val: boolean) => void;
   serviceChargeRate?: number;
@@ -124,6 +130,8 @@ export default function GeneralTab({
   setContactEmail,
   taxId,
   setTaxId,
+  taxRegistrationType = 'VAT',
+  setTaxRegistrationType,
   restaurantLogo,
   handleLogoUpload,
   handleLogoRemove,
@@ -148,6 +156,10 @@ export default function GeneralTab({
   setShowSocialMedia,
   socialLinks = { facebook: 'facebook.com/dineposai', instagram: 'instagram.com/dineposai', tiktok: 'tiktok.com/@dineposai', youtube: 'youtube.com/@dineposai' },
   setSocialLinks,
+  autoSaveEnabled = true,
+  setAutoSaveEnabled,
+  autoSaveStatus = 'idle',
+  lastSavedTime = '',
   showServiceCharge,
   setShowServiceCharge,
   serviceChargeRate = 10,
@@ -298,15 +310,36 @@ export default function GeneralTab({
                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
                              />
                            </div>
-                           <div>
-                             <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider mb-2 select-none`}>{tr.taxIdLabel}</label>
-                             <input 
-                               type="text" 
-                               value={taxId}
-                               onChange={(e) => setTaxId(e.target.value)}
-                               className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium`}
-                             />
-                           </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-2">
+                                <label className={`block ${t.textMuted} text-[9.5px] font-bold uppercase tracking-wider select-none`}>
+                                  {taxRegistrationType === 'VAT' ? 'VAT Registration No.' : 'PAN Registration No.'}
+                                </label>
+                                <div className="inline-flex rounded-lg overflow-hidden border border-white/10 p-0.5 bg-black/40">
+                                  <button
+                                    type="button"
+                                    onClick={() => setTaxRegistrationType && setTaxRegistrationType('VAT')}
+                                    className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${taxRegistrationType === 'VAT' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                                  >
+                                    VAT
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setTaxRegistrationType && setTaxRegistrationType('PAN')}
+                                    className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${taxRegistrationType === 'PAN' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                                  >
+                                    PAN
+                                  </button>
+                                </div>
+                              </div>
+                              <input 
+                                type="text" 
+                                value={taxId}
+                                onChange={(e) => setTaxId(e.target.value)}
+                                placeholder={taxRegistrationType === 'VAT' ? 'e.g. VAT No: 301234567' : 'e.g. PAN No: 601234567'}
+                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-4 py-3 text-xs ${t.text} focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium uppercase`}
+                              />
+                            </div>
                          </div>
 
                          <div>
@@ -563,6 +596,48 @@ export default function GeneralTab({
 
                   {/* Invoice & Receipt Configuration */}
                   <div className={`${t.cardBgOpaque} rounded-2xl p-7 shadow-xl space-y-5`}>
+                    
+                    {/* Auto-Save Engine Configuration Card */}
+                    <div className={`p-5 border border-white/10 rounded-2xl space-y-3 transition-all duration-300 ${autoSaveEnabled ? `${t.inputBg}/30 shadow-lg` : 'bg-black/30 border-white/5 opacity-50'}`}>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1">
+                          <h4 className={`text-xs font-extrabold uppercase tracking-wider ${t.text} flex items-center gap-1.5`}>
+                            <span className="material-symbols-outlined text-base text-[#ffe2ab]">bolt</span>
+                            Auto-Save Engine
+                          </h4>
+                          <p className={`text-[10.5px] ${t.textMutedDark} font-medium mt-1 leading-snug`}>
+                            Real-time automatic saving for all admin dashboard & POS configurations
+                          </p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setAutoSaveEnabled && setAutoSaveEnabled(!autoSaveEnabled)} 
+                          className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${autoSaveEnabled ? t.accentBg : 'bg-white/10'}`}
+                        >
+                          <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${autoSaveEnabled ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                        </button>
+                      </div>
+
+                      <div className="pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px]">
+                        <span className="text-white/60 font-medium">Auto-Save Status</span>
+                        <span className="font-mono font-bold flex items-center gap-1.5">
+                          {autoSaveEnabled ? (
+                            <>
+                              <span className={`w-2 h-2 rounded-full ${autoSaveStatus === 'saving' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'}`}></span>
+                              <span className="text-emerald-400">
+                                {autoSaveStatus === 'saving' ? 'SAVING CHANGES...' : `ACTIVE (${lastSavedTime || 'Ready'})`}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="w-2 h-2 rounded-full bg-rose-400"></span>
+                              <span className="text-rose-400">DISABLED</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
                     <h3 className={`${t.text} font-bold text-sm tracking-wide mb-5 select-none`}>{tr.receiptOptionsTitle}</h3>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
@@ -1383,6 +1458,11 @@ export default function GeneralTab({
                         <div className="text-[8.5px] text-white font-bold max-w-[180px] mx-auto break-words leading-tight">
                           {businessAddress || '72 Culinary Avenue, Gourmet District'}
                         </div>
+                        {showTaxId && (
+                          <div className="text-[8.5px] text-[#ffe2ab] font-extrabold uppercase mt-1 tracking-wider">
+                            {taxRegistrationType === 'PAN' ? 'PAN NO:' : 'VAT NO:'} {taxId || (taxRegistrationType === 'PAN' ? '601234567' : '301234567')}
+                          </div>
+                        )}
                       </div>
 
                       {/* Metadata dotted block */}

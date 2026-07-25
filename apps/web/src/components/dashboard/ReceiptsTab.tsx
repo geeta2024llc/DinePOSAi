@@ -41,6 +41,8 @@ interface ReceiptsTabProps {
     youtube: string;
   };
   setSocialLinks?: (links: { facebook: string; instagram: string; tiktok: string; youtube: string; }) => void;
+  taxRegistrationType?: 'VAT' | 'PAN';
+  setTaxRegistrationType?: (val: 'VAT' | 'PAN') => void;
 }
 
 export default function ReceiptsTab({
@@ -75,7 +77,9 @@ export default function ReceiptsTab({
   showSocialMedia: propShowSocialMedia,
   setShowSocialMedia: propSetShowSocialMedia,
   socialLinks: propSocialLinks,
-  setSocialLinks: propSetSocialLinks
+  setSocialLinks: propSetSocialLinks,
+  taxRegistrationType: propTaxRegistrationType,
+  setTaxRegistrationType: propSetTaxRegistrationType
 }: ReceiptsTabProps) {
   const [showLogo, setShowLogo] = useState(true);
   const [showTaxId, setShowTaxId] = useState(true);
@@ -112,6 +116,10 @@ export default function ReceiptsTab({
   const setShowSocialMedia = propSetShowSocialMedia || setInternalShowSocialMedia;
   const socialLinks = propSocialLinks !== undefined ? propSocialLinks : internalSocialLinks;
   const setSocialLinks = propSetSocialLinks || setInternalSocialLinks;
+
+  const [internalTaxRegType, setInternalTaxRegType] = useState<'VAT' | 'PAN'>('VAT');
+  const taxRegistrationType = propTaxRegistrationType !== undefined ? propTaxRegistrationType : internalTaxRegType;
+  const setTaxRegistrationType = propSetTaxRegistrationType || setInternalTaxRegType;
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -232,6 +240,11 @@ export default function ReceiptsTab({
                       <div className="text-[8.5px] text-white font-bold max-w-[180px] mx-auto break-words leading-tight">
                         {businessAddress || '72 Culinary Avenue, Gourmet District, Metropolis'}
                       </div>
+                      {showTaxId && (
+                        <div className="text-[8.5px] text-[#ffe2ab] font-extrabold uppercase mt-1 tracking-wider">
+                          {taxRegistrationType === 'PAN' ? 'PAN NO:' : 'VAT NO:'} {taxId || (taxRegistrationType === 'PAN' ? '601234567' : '301234567')}
+                        </div>
+                      )}
                     </div>
 
                     {/* Metadata dotted block */}
@@ -506,12 +519,32 @@ export default function ReceiptsTab({
                   <h3 className="font-serif text-lg text-white font-medium tracking-wide border-b border-white/5 pb-4 select-none">Billing & Tax</h3>
                   <div className="space-y-4 font-sans select-none">
                     <div>
-                      <label className="block text-[#A69984]/70 text-[9.5px] font-bold uppercase tracking-wider mb-2">Tax ID / VAT Number</label>
+                      <div className="flex justify-between items-center mb-2">
+                        <label className="block text-[#A69984]/70 text-[9.5px] font-bold uppercase tracking-wider">
+                          {taxRegistrationType === 'VAT' ? 'VAT Registration Number' : 'PAN Registration Number'}
+                        </label>
+                        <div className="inline-flex rounded-lg overflow-hidden border border-white/10 p-0.5 bg-[#0e0e0d]">
+                          <button
+                            type="button"
+                            onClick={() => setTaxRegistrationType && setTaxRegistrationType('VAT')}
+                            className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${taxRegistrationType === 'VAT' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                          >
+                            VAT
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setTaxRegistrationType && setTaxRegistrationType('PAN')}
+                            className={`px-2.5 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${taxRegistrationType === 'PAN' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                          >
+                            PAN
+                          </button>
+                        </div>
+                      </div>
                       <input 
                         type="text" 
                         value={taxId}
                         onChange={(e) => setTaxId(e.target.value)}
-                        placeholder="GB123456789"
+                        placeholder={taxRegistrationType === 'VAT' ? 'e.g. VAT No: 301234567' : 'e.g. PAN No: 601234567'}
                         className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono uppercase"
                       />
                     </div>

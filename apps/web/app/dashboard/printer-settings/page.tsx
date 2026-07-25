@@ -19,7 +19,8 @@ export default function PrinterSettingsPage() {
   const [hasWebBluetooth, setHasWebBluetooth] = useState(true);
 
   const [customHeader, setCustomHeader] = useState('DinePosAi');
-  const [customVat, setCustomVat] = useState('VAT ID: US-994827104');
+  const [taxRegType, setTaxRegType] = useState<'VAT' | 'PAN'>('VAT');
+  const [customVat, setCustomVat] = useState('301234567');
   const [customFooter, setCustomFooter] = useState('THANK YOU FOR DINING WITH US!');
   const [headerLogo, setHeaderLogo] = useState('');
   const [isSecure, setIsSecure] = useState(true);
@@ -559,15 +560,33 @@ export default function PrinterSettingsPage() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider mb-1">
-                    VAT / Tax Registration Number
-                  </label>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider">
+                      {taxRegType === 'VAT' ? 'VAT Registration Number' : 'PAN Registration Number'}
+                    </label>
+                    <div className="inline-flex rounded-lg overflow-hidden border border-white/10 p-0.5 bg-[#0e0e0d]">
+                      <button
+                        type="button"
+                        onClick={() => setTaxRegType('VAT')}
+                        className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${taxRegType === 'VAT' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                      >
+                        VAT
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTaxRegType('PAN')}
+                        className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${taxRegType === 'PAN' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                      >
+                        PAN
+                      </button>
+                    </div>
+                  </div>
                   <input
                     type="text"
                     value={customVat}
                     onChange={(e) => setCustomVat(e.target.value)}
-                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#ffe2ab]/40"
-                    placeholder="e.g. VAT ID: US-994827104"
+                    className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-white font-semibold focus:outline-none focus:border-[#ffe2ab]/40 uppercase"
+                    placeholder={taxRegType === 'VAT' ? 'e.g. VAT No: 301234567' : 'e.g. PAN No: 601234567'}
                   />
                 </div>
 
@@ -588,7 +607,9 @@ export default function PrinterSettingsPage() {
               {/* Live Receipt Preview */}
               <div className="mt-3 bg-white text-black p-4 rounded-xl font-mono text-[11px] space-y-1 shadow-inner border border-gray-300">
                 <div className="text-center font-black uppercase text-sm">{customHeader || 'DINEPOS AI'}</div>
-                <div className="text-center font-bold text-[10px] uppercase text-gray-600">{customVat || 'VAT ID: US-994827104'}</div>
+                <div className="text-center font-bold text-[10px] uppercase text-gray-700">
+                  {taxRegType === 'PAN' ? 'PAN NO:' : 'VAT NO:'} {customVat || (taxRegType === 'PAN' ? '601234567' : '301234567')}
+                </div>
                 <div className="border-b border-dashed border-black my-2"></div>
                 <div className="flex justify-between font-bold">
                   <span>Gold Leaf A5 Wagyu Ribeye x1</span>

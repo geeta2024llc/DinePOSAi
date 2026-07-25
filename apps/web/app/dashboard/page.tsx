@@ -84,7 +84,14 @@ export default function DashboardPage() {
   const [showCustomFooter, setShowCustomFooter] = useState(false);
   const [thankYouMessage, setThankYouMessage] = useState('Thank you for dining with us at DinePosAi! We hope to see you again soon.');
 
+  // Auto-Save Feature States
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(true);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const [lastSavedTime, setLastSavedTime] = useState<string>('');
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+
   // Taxes config states
+  const [taxRegistrationType, setTaxRegistrationType] = useState<'VAT' | 'PAN'>('VAT');
   const [taxType, setTaxType] = useState<'pre-tax' | 'post-tax'>('pre-tax');
   const [taxRateDineIn, setTaxRateDineIn] = useState(10);
   const [taxRateTakeaway, setTaxRateTakeaway] = useState(8);
@@ -193,8 +200,109 @@ export default function DashboardPage() {
       
       const savedTaxIdVal = localStorage.getItem('dinepos_tax_id');
       if (savedTaxIdVal) setTaxId(savedTaxIdVal);
+
+      const savedTaxRegType = localStorage.getItem('dinepos_tax_registration_type');
+      if (savedTaxRegType === 'VAT' || savedTaxRegType === 'PAN') {
+        setTaxRegistrationType(savedTaxRegType as 'VAT' | 'PAN');
+      }
+
+      // Load Service Charge settings
+      const savedServiceChargeEnabled = localStorage.getItem('dinepos_service_charge_enabled');
+      if (savedServiceChargeEnabled !== null) setShowServiceCharge(savedServiceChargeEnabled === 'true');
+
+      const savedServiceChargeRate = localStorage.getItem('dinepos_service_charge_rate');
+      if (savedServiceChargeRate) setServiceChargeRate(parseFloat(savedServiceChargeRate));
+
+      // Load Discount settings
+      const savedDiscountEnabled = localStorage.getItem('dinepos_discount_enabled');
+      if (savedDiscountEnabled !== null) setShowDiscount(savedDiscountEnabled === 'true');
+
+      const savedDiscountType = localStorage.getItem('dinepos_discount_type');
+      if (savedDiscountType === 'percent' || savedDiscountType === 'fixed') setDiscountType(savedDiscountType as 'percent' | 'fixed');
+
+      const savedDiscountVal = localStorage.getItem('dinepos_discount_value');
+      if (savedDiscountVal) setDiscountValue(parseFloat(savedDiscountVal));
+
+      // Load Social Media settings
+      const savedSocialEnabled = localStorage.getItem('dinepos_social_media_enabled');
+      if (savedSocialEnabled !== null) setShowSocialMedia(savedSocialEnabled === 'true');
+
+      const savedSocialLinks = localStorage.getItem('dinepos_social_links');
+      if (savedSocialLinks) {
+        try {
+          setSocialLinks(JSON.parse(savedSocialLinks));
+        } catch {}
+      }
+
+      const savedAutoSave = localStorage.getItem('dinepos_auto_save_enabled');
+      if (savedAutoSave !== null) {
+        setAutoSaveEnabled(savedAutoSave === 'true');
+      }
+      setIsInitialized(true);
     }
   }, []);
+
+  // Real-time Auto-Save Engine Effect
+  useEffect(() => {
+    if (!isInitialized || !autoSaveEnabled) return;
+
+    setAutoSaveStatus('saving');
+    const timer = setTimeout(() => {
+      localStorage.setItem('dinepos_establishment_name', establishmentName);
+      localStorage.setItem('dinepos_business_address', businessAddress);
+      localStorage.setItem('dinepos_contact_email', contactEmail);
+      localStorage.setItem('dinepos_tax_id', taxId);
+      localStorage.setItem('dinepos_tax_registration_type', taxRegistrationType);
+      localStorage.setItem('dinepos_tax_type', taxType);
+      localStorage.setItem('dinepos_tax_rate_dine_in', taxRateDineIn.toString());
+      localStorage.setItem('dinepos_tax_rate_takeaway', taxRateTakeaway.toString());
+      localStorage.setItem('dinepos_tax_rate_delivery', taxRateDelivery.toString());
+      localStorage.setItem('dinepos_service_charge_enabled', showServiceCharge.toString());
+      localStorage.setItem('dinepos_service_charge_rate', serviceChargeRate.toString());
+      localStorage.setItem('dinepos_discount_enabled', showDiscount.toString());
+      localStorage.setItem('dinepos_discount_type', discountType);
+      localStorage.setItem('dinepos_discount_value', discountValue.toString());
+      localStorage.setItem('dinepos_social_media_enabled', showSocialMedia.toString());
+      localStorage.setItem('dinepos_social_links', JSON.stringify(socialLinks));
+
+      setAutoSaveStatus('saved');
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setLastSavedTime(`Saved at ${timeStr}`);
+    }, 700);
+
+    return () => clearTimeout(timer);
+  }, [
+    isInitialized,
+    autoSaveEnabled,
+    establishmentName,
+    businessAddress,
+    contactEmail,
+    taxId,
+    taxRegistrationType,
+    taxType,
+    taxRateDineIn,
+    taxRateTakeaway,
+    taxRateDelivery,
+    showServiceCharge,
+    serviceChargeRate,
+    showDiscount,
+    discountType,
+    discountValue,
+    showSocialMedia,
+    socialLinks
+  ]);
+
+  const toggleAutoSave = () => {
+    const nextVal = !autoSaveEnabled;
+    setAutoSaveEnabled(nextVal);
+    localStorage.setItem('dinepos_auto_save_enabled', nextVal.toString());
+    if (nextVal) {
+      triggerToast('Auto-Save engine enabled. Changes will now auto-save in real time.', 'success');
+    } else {
+      triggerToast('Auto-Save disabled. Please save changes manually.', 'info');
+    }
+  };
 
   // Sync user profile
   useEffect(() => {
@@ -452,6 +560,27 @@ export default function DashboardPage() {
           </div>
           
           <div className="flex items-center gap-5">
+            {/* Auto-Save Engine Header Pill */}
+            <button
+              type="button"
+              onClick={toggleAutoSave}
+              className={`flex items-center gap-2 bg-[#0e0e0d] border border-white/10 hover:border-white/20 rounded-xl px-3 py-2 cursor-pointer transition-all ${autoSaveEnabled ? 'shadow-sm' : 'opacity-70'}`}
+              title={autoSaveEnabled ? "Auto-Save is active. Click to disable." : "Auto-Save is off. Click to enable."}
+            >
+              <div className={`w-2.5 h-2.5 rounded-full transition-all ${autoSaveEnabled ? (autoSaveStatus === 'saving' ? 'bg-amber-400 animate-ping' : 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]') : 'bg-rose-500'}`}></div>
+              <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-white flex items-center gap-1">
+                <span className="material-symbols-outlined text-sm text-[#ffe2ab]">bolt</span>
+                {autoSaveEnabled ? (
+                  autoSaveStatus === 'saving' ? 'Saving...' : 'Auto-Save ON'
+                ) : 'Auto-Save OFF'}
+              </span>
+              {autoSaveEnabled && lastSavedTime && (
+                <span className="text-[9.5px] text-white/40 font-mono font-semibold hidden md:inline border-l border-white/10 pl-2">
+                  {lastSavedTime}
+                </span>
+              )}
+            </button>
+
             <button type="button" onClick={() => triggerToast('No new notifications.', 'info')}
               className={`w-[42px] h-[42px] flex items-center justify-center bg-transparent border ${t.border} hover:border-[#ffe2ab]/20 rounded-xl text-white transition-colors cursor-pointer select-none relative`}
             >
@@ -498,6 +627,8 @@ export default function DashboardPage() {
               setContactEmail={setContactEmail}
               taxId={taxId}
               setTaxId={setTaxId}
+              taxRegistrationType={taxRegistrationType}
+              setTaxRegistrationType={setTaxRegistrationType}
               restaurantLogo={restaurantLogo}
               handleLogoUpload={handleLogoUpload}
               handleLogoRemove={handleLogoRemove}
@@ -522,6 +653,10 @@ export default function DashboardPage() {
               setShowSocialMedia={setShowSocialMedia}
               socialLinks={socialLinks}
               setSocialLinks={setSocialLinks}
+              autoSaveEnabled={autoSaveEnabled}
+              setAutoSaveEnabled={toggleAutoSave}
+              autoSaveStatus={autoSaveStatus}
+              lastSavedTime={lastSavedTime}
               showServiceCharge={showServiceCharge}
               setShowServiceCharge={setShowServiceCharge}
               serviceChargeRate={serviceChargeRate}
@@ -572,6 +707,8 @@ export default function DashboardPage() {
               contactEmail={contactEmail}
               taxId={taxId}
               setTaxId={setTaxId}
+              taxRegistrationType={taxRegistrationType}
+              setTaxRegistrationType={setTaxRegistrationType}
               restaurantLogo={restaurantLogo}
               showTableNumber={showTableNumber}
               setShowTableNumber={setShowTableNumber}
