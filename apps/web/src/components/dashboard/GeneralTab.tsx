@@ -2,6 +2,8 @@
 
 import React, { useRef } from 'react';
 import { recordActivity } from '@/utils/activityLogger';
+import { PrintableReceipt } from './PrintableReceipt';
+import { usePrinter } from '../../../app/printerContext';
 
 interface GeneralTabProps {
   t: any;
@@ -213,6 +215,40 @@ export default function GeneralTab({
   const totalVal = (taxType === 'pre-tax' ? subtotalVal + taxVal : subtotalVal) + serviceChargeVal - discountVal;
 
   const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const { config: printerConfig, status: printerStatus, printReceipt } = usePrinter();
+
+  const handleTestPrintFromPreview = async () => {
+    // Check printer connection status per printing architecture
+    const isPrinterAvailable = printerStatus === 'connected' || printerConfig?.type === 'browser';
+
+    if (!isPrinterAvailable) {
+      triggerToast('No receipt printer connected. Please connect your printer first.', 'info');
+      return;
+    }
+
+    try {
+      await printReceipt({
+        tableNumber: 'T-14',
+        orderId: '2345',
+        items: [
+          { name: 'Truffle Wagyu Sliders', quantity: 2, price: 24.00 },
+          { name: 'Lobster Bisque', quantity: 1, price: 18.00 },
+          { name: 'Vintage Cabernet (G)', quantity: 2, price: 17.00 }
+        ],
+        subtotal: 100.00,
+        taxRate: 0.08,
+        tax: taxVal,
+        taxType: taxType || 'pre-tax',
+        serviceCharge: serviceChargeVal,
+        total: totalVal,
+        isPaid: true,
+        paymentMethod: 'Credit Card'
+      });
+      triggerToast('Test receipt sent to printer!', 'success');
+    } catch (err: any) {
+      triggerToast('No receipt printer connected. Please connect your printer first.', 'info');
+    }
+  };
 
   return (
     <>
@@ -1422,134 +1458,54 @@ export default function GeneralTab({
                   
                   {/* Live Preview Bar */}
                   <div className="flex justify-between items-center px-1">
-                    <h3 className={`font-serif text-base font-bold ${t.accent} uppercase tracking-wider`}>{tr.livePreview}</h3>
-                    <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse"></span>
-                      {tr.realtimeSync}
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-serif text-base font-bold ${t.accent} uppercase tracking-wider`}>{tr.livePreview}</h3>
+                      <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 motion-safe:animate-pulse"></span>
+                        {tr.realtimeSync}
+                      </div>
                     </div>
+
+                    <button
+                      type="button"
+                      onClick={handleTestPrintFromPreview}
+                      className="px-3.5 py-1.5 rounded-xl bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab]/20 text-[#ffe2ab] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <span className="material-symbols-outlined text-sm">print</span>
+                      Test Print
+                    </button>
                   </div>
 
                   {/* Dark Simulated Receipt card wrapper */}
                   <div className={`${t.cardBg} rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center min-h-[480px]`}>
-                    <div className="w-full max-w-[280px] bg-[#1c1b1a] text-[#A69984] border border-white/5 rounded-xl p-5 shadow-lg flex flex-col justify-between font-mono text-[9.5px] leading-relaxed">
-                      
-                      {/* Brand & Logo Header */}
-                      <div className="text-center space-y-1.5 mb-3">
-                        {showLogo && (
-                          <div className="flex justify-center select-none mb-1">
-                            {restaurantLogo ? (
-                              <img
-                                src={restaurantLogo}
-                                alt="Restaurant logo"
-                                className="w-9 h-9 rounded-lg object-contain border border-white/10 bg-black/30 p-0.5"
-                              />
-                            ) : (
-                              <div className="w-7 h-7 rounded-lg bg-black border border-white/10 flex items-center justify-center text-[#ffe2ab]">
-                                <span className="material-symbols-outlined text-[13px] font-black">flatware</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                        
-                        <div className="text-white font-extrabold uppercase text-[11px] tracking-wider truncate">
-                          {establishmentName || 'DinePosAi'}
-                        </div>
-                        
-                        <div className="text-[8.5px] text-white font-bold max-w-[180px] mx-auto break-words leading-tight">
-                          {businessAddress || '72 Culinary Avenue, Gourmet District'}
-                        </div>
-                        {showTaxId && (
-                          <div className="text-[8.5px] text-[#ffe2ab] font-extrabold uppercase mt-1 tracking-wider">
-                            {taxRegistrationType === 'PAN' ? 'PAN NO:' : 'VAT NO:'} {taxId || (taxRegistrationType === 'PAN' ? '601234567' : '301234567')}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Metadata dotted block */}
-                      {(showTableNumber || showServerName || showOrderTimestamp) && (
-                        <div className="border-y border-dashed border-white/10 py-2.5 my-2.5 text-[8.5px] text-white font-bold">
-                          <div className="flex justify-between">
-                            <div>
-                              {showTableNumber && <div className="text-white font-extrabold">TABLE: T-14</div>}
-                              {showOrderTimestamp && <div className="text-[8.5px] text-white font-bold mt-0.5">06/04/2026 09:48</div>}
-                            </div>
-                            <div className="text-right">
-                              {showServerName && <div className="text-white font-extrabold">SERVER: JULIAN B.</div>}
-                              <div className="text-[8.5px] text-white font-bold mt-0.5">Order #2345</div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Items check list */}
-                      <div className="space-y-2 py-1 select-none">
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-white font-bold">2 Truffle Wagyu Sliders</span>
-                          <span className="text-white font-bold font-mono">{formatCurrency(48)}</span>
-                        </div>
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-white font-bold">1 Lobster Bisque</span>
-                          <span className="text-white font-bold font-mono">{formatCurrency(18)}</span>
-                        </div>
-                        <div className="flex justify-between items-baseline">
-                          <span className="text-white font-bold">2 Vintage Cabernet (G)</span>
-                          <span className="text-white font-bold font-mono">{formatCurrency(34)}</span>
-                        </div>
-                      </div>
-
-                      {/* Subtotal breakdowns */}
-                      <div className="border-t border-white/5 pt-2.5 mt-2.5 space-y-1 text-[8.5px] text-white font-bold">
-                        <div className="flex justify-between">
-                          <span>{taxType === 'post-tax' ? tr.subtotalInclusive : tr.subtotal}</span>
-                          <span>{formatCurrency(subtotalVal)}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>{taxType === 'post-tax' ? tr.includedTax : `${tr.tax} (8%)`}</span>
-                          <span>{formatCurrency(taxVal)}</span>
-                        </div>
-                        {showServiceCharge && (
-                          <div className="flex justify-between">
-                            <span>Service Charge ({serviceChargeRate}%)</span>
-                            <span>{formatCurrency(serviceChargeVal)}</span>
-                          </div>
-                        )}
-                        {showDiscount && (
-                          <div className="flex justify-between text-emerald-400 font-bold">
-                            <span>Discount ({discountType === 'percent' ? `${discountValue}%` : formatCurrency(discountValue)})</span>
-                            <span>-{formatCurrency(discountVal)}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Total */}
-                      <div className="border-t border-dashed border-white/10 pt-2.5 mt-2 flex justify-between items-baseline">
-                        <span className="text-white font-extrabold text-[9px]">{tr.grandTotal}</span>
-                        <span className="text-[#ffe2ab] text-[12px] font-extrabold font-mono">
-                          {formatCurrency(totalVal)}
-                        </span>
-                      </div>
-
-                      {/* Footer Text message */}
-                      <div className="border-t border-dashed border-white/10 pt-2.5 mt-3 text-center space-y-1.5 font-sans">
-                        <div className="text-[8.5px] font-extrabold text-white">
-                          Payment Method: <span className="text-white font-extrabold">Credit Card</span>
-                        </div>
-                        <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#ffe2ab] pt-0.5">
-                          {thankYouMessage || 'THANK YOU FOR DINING WITH US. WE HOPE TO SERVE YOU AGAIN.'}
-                        </div>
-                        {showSocialMedia && (
-                          <div className="pt-1.5 text-[8px] font-bold text-white/90 space-y-0.5 border-t border-dashed border-white/10 mt-1.5">
-                            {socialLinks.facebook && <div>FB: {socialLinks.facebook}</div>}
-                            {socialLinks.instagram && <div>IG: {socialLinks.instagram}</div>}
-                            {socialLinks.tiktok && <div>TT: {socialLinks.tiktok}</div>}
-                            {socialLinks.youtube && <div>YT: {socialLinks.youtube}</div>}
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
+                    <PrintableReceipt
+                      variant="dark-preview"
+                      establishmentName={establishmentName}
+                      businessAddress={businessAddress}
+                      contactEmail={contactEmail}
+                      restaurantLogo={restaurantLogo}
+                      showLogo={showLogo}
+                      taxId={taxId}
+                      taxRegistrationType={taxRegistrationType}
+                      showTaxId={showTaxId}
+                      showTableNumber={showTableNumber}
+                      showServerName={showServerName}
+                      showOrderTimestamp={showOrderTimestamp}
+                      showServiceCharge={showServiceCharge}
+                      serviceChargeRate={serviceChargeRate}
+                      showDiscount={showDiscount}
+                      discountType={discountType}
+                      discountValue={discountValue}
+                      taxType={taxType}
+                      taxRate={8}
+                      currency={currency}
+                      thankYouMessage={thankYouMessage}
+                      showCustomFooter={showCustomFooter}
+                      showQrCode={showQrCode}
+                      showSocialMedia={showSocialMedia}
+                      socialLinks={socialLinks}
+                    />
                   </div>
-
 
                 </div>
 

@@ -1,7 +1,10 @@
+import React from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { EscposEncoder } from './escposEncoder';
 import { BluetoothPrinter } from '../src/utils/bluetoothPrinter';
+import { PrintableReceipt } from '../src/components/dashboard/PrintableReceipt';
 
-export type PrinterType = 'bluetooth' | 'usb' | 'network' | 'browser';
+export type PrinterType = 'bluetooth' | 'usb' | 'serial' | 'network' | 'browser';
 
 export interface PrinterConfig {
   type: PrinterType;
@@ -16,7 +19,7 @@ export interface PrinterConfig {
 }
 
 export interface PrintReceiptData {
-  tableNumber: number;
+  tableNumber: number | string;
   orderId: string;
   items: Array<{
     name: string;
@@ -79,6 +82,8 @@ export class PrinterService {
       await this.printBluetooth(bytes, onLog);
     } else if (config.type === 'usb') {
       await this.printUsb(bytes, data, onLog);
+    } else if (config.type === 'serial') {
+      await this.printSerial(bytes, onLog);
     }
   }
 
@@ -108,35 +113,40 @@ export class PrinterService {
   }
 
   private encodeReceipt(data: PrintReceiptData): Uint8Array {
-    const encoder = new EscposEncoder();
-    encoder.init();
-    
-    if (data.kickDrawer) {
-      encoder.pulseDrawer(0, 48, 240);
+    let customHeader = 'DinePosAi';
+    let customVat = 'VAT ID: US-994827104';
+    let customFooter = 'THANK YOU FOR DINING WITH US!';
+
+    if (typeof window !== 'undefined') {
+      const storedConfigStr = localStorage.getItem('dinepos_printer_config');
+      if (storedConfigStr) {
+        try {
+          const storedConfig = JSON.parse(storedConfigStr);
+          if (storedConfig.customHeaderText) customHeader = storedConfig.customHeaderText;
+          if (storedConfig.customVatId) customVat = storedConfig.customVatId;
+          if (storedConfig.customFooterText) customFooter = storedConfig.customFooterText;
+        } catch (e) {}
+      }
     }
 
-    encoder.bold(true)
+    const encoder = new EscposEncoder();
+
+    encoder.init()
       .align('center')
       .size(true)
-      .line('DinePosAi')
+      .line(customHeader)
       .size(false)
-      .line('AURA HOSPITALITY GROUP')
-      .line('1200 Gastronomy Way, Suite 400')
-      .line('New York, NY 10001')
-      .line('+1 (212) 555-0198')
-      .line('================================================')
+      .line(customVat)
+      .line('------------------------------------------------')
       .align('left')
-      .line(`TABLE: ${data.tableNumber}    ORDER #${data.orderId}`)
+      .line(`TABLE: ${data.tableNumber}     ORDER #${data.orderId}`)
       .line(`DATE: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
-      .line('================================================');
+      .line('------------------------------------------------');
 
-    data.items.forEach(item => {
-      const itemPrice = item.price * item.quantity;
-      const leftCol = `${item.name.slice(0, 26)} x${item.quantity}`;
-      const rightCol = `$${itemPrice.toFixed(2)}`;
-      const spaces = ' '.repeat(Math.max(1, 44 - leftCol.length - rightCol.length));
-      encoder.line(`${leftCol}${spaces}${rightCol}`);
-      
+    data.items.forEach((item) => {
+      const priceStr = `$${(item.price * item.quantity).toFixed(2)}`;
+      const nameStr = `${item.quantity}x ${item.name}`;
+      encoder.line(`${nameStr.padEnd(36)}${priceStr.padStart(12)}`);
       if (item.modifiers && item.modifiers.length > 0) {
         encoder.line(`   + ${item.modifiers.join(', ')}`);
       }
@@ -149,10 +159,10 @@ export class PrinterService {
       .align('right')
       .line(`SUBTOTAL: $${data.subtotal.toFixed(2)}`)
       .line(`TAX (${(data.taxRate * 100).toFixed(1)}%): $${data.tax.toFixed(2)}`)
-      .line(`AUTO-GRATUITY (20%): $${data.serviceCharge.toFixed(2)}`)
+      .line(`SERVICE CHARGE: $${data.serviceCharge.toFixed(2)}`)
       .line('================================================')
       .size(true)
-      .line(`TOTAL: $${data.total.toFixed(2)}`)
+      .line(`GRAND TOTAL: $${data.total.toFixed(2)}`)
       .size(false)
       .line('================================================')
       .align('center')
@@ -160,14 +170,13 @@ export class PrinterService {
 
     if (data.isPaid) {
       encoder.line('*** PAYMENT CONFIRMED ***')
-        .line(`METHOD: ${data.paymentMethod || 'CREDIT CARD'}`)
-        .line(`AUTH: ${data.authCode || 'OK-200 / **** 4242'}`);
+        .line(`METHOD: ${data.paymentMethod || 'CREDIT CARD'}`);
     } else {
       encoder.line('*** BALANCE DUE ***');
     }
 
     encoder.feed(2)
-      .line('THANK YOU FOR DINING WITH US!')
+      .line(customFooter)
       .feed(2)
       .cut();
 
@@ -181,151 +190,86 @@ export class PrinterService {
     }
 
     let customHeader = 'DinePosAi';
-    let customSubHeader = 'AURA HOSPITALITY GROUP';
-    let customVat = 'VAT ID: US-994827104';
-    let customFooter = 'THANK YOU FOR DINING WITH US!';
+    let customVat = '301234567';
+    let customFooter = 'THANK YOU FOR DINING WITH US AT DINEPOSAI! WE HOPE TO SEE YOU AGAIN SOON.';
     let customLogo = '';
+    let taxRegType: 'VAT' | 'PAN' = 'VAT';
+    let socialEnabled = false;
+    let socialLinksObj: any = null;
 
     try {
+      const savedLogo = localStorage.getItem('dinepos_restaurant_logo');
+      if (savedLogo) customLogo = savedLogo;
+
       const storedConfigStr = localStorage.getItem('dinepos_printer_config');
       if (storedConfigStr) {
         const storedConfig = JSON.parse(storedConfigStr);
         if (storedConfig.customHeaderText) customHeader = storedConfig.customHeaderText;
         if (storedConfig.customVatId) customVat = storedConfig.customVatId;
         if (storedConfig.customFooterText) customFooter = storedConfig.customFooterText;
-        if (storedConfig.headerLogoUrl) customLogo = storedConfig.headerLogoUrl;
+        if (storedConfig.headerLogoUrl && !customLogo) customLogo = storedConfig.headerLogoUrl;
+      }
+      
+      const savedEstName = localStorage.getItem('dinepos_establishment_name');
+      if (savedEstName) customHeader = savedEstName;
+
+      const savedTaxId = localStorage.getItem('dinepos_tax_id');
+      if (savedTaxId) customVat = savedTaxId;
+
+      const savedRegType = localStorage.getItem('dinepos_tax_registration_type');
+      if (savedRegType === 'VAT' || savedRegType === 'PAN') taxRegType = savedRegType as 'VAT' | 'PAN';
+
+      const savedSocial = localStorage.getItem('dinepos_social_media_enabled');
+      if (savedSocial === 'true') socialEnabled = true;
+
+      const savedLinks = localStorage.getItem('dinepos_social_links');
+      if (savedLinks) {
+        try { socialLinksObj = JSON.parse(savedLinks); } catch(e){}
       }
     } catch (e) {}
 
-    const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-    const itemRowsHtml = data.items.map(item => {
-      const itemPrice = item.price * item.quantity;
-      const name = esc(item.name);
-      const qtyStr = `x${item.quantity}`;
-      let modHtml = '';
-      if (item.modifiers && item.modifiers.length > 0) {
-        modHtml = `<div class="item-details">+ ${item.modifiers.map(m => esc(m)).join(', ')}</div>`;
-      }
-      let noteHtml = '';
-      if (item.notes) {
-        noteHtml = `<div class="item-details">NOTE: "${esc(item.notes)}"</div>`;
-      }
-      return `
-        <tr>
-          <td class="item-name">
-            <strong>${name}</strong> <span style="font-weight:900;">[${qtyStr}]</span>
-            ${modHtml}
-            ${noteHtml}
-          </td>
-          <td class="item-price">
-            <strong>$${itemPrice.toFixed(2)}</strong>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    const taxPct = (data.taxRate * 100).toFixed(1);
-    const now = new Date();
-    const dateStr = `${now.toLocaleDateString()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    // Render single-source PrintableReceipt component to static HTML markup
+    const componentMarkup = renderToStaticMarkup(
+      React.createElement(PrintableReceipt, {
+        variant: 'light-print',
+        establishmentName: customHeader,
+        taxId: customVat,
+        taxRegistrationType: taxRegType,
+        tableNumber: data.tableNumber,
+        orderId: data.orderId,
+        items: data.items,
+        subtotal: data.subtotal,
+        taxRate: data.taxRate ? (data.taxRate < 1 ? data.taxRate * 100 : data.taxRate) : 8,
+        taxAmount: data.tax,
+        taxType: data.taxType,
+        serviceChargeAmount: data.serviceCharge,
+        grandTotal: data.total,
+        paymentMethod: data.paymentMethod || 'Credit Card',
+        thankYouMessage: customFooter,
+        restaurantLogo: customLogo,
+        showSocialMedia: socialEnabled,
+        socialLinks: socialLinksObj,
+        showQrCode: false
+      })
+    );
 
     const receiptHtml = `<!DOCTYPE html>
 <html>
 <head>
-<title>Receipt - ${esc(data.orderId)}</title>
+<title>Receipt - ${data.orderId}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; font-weight:900 !important; color:#000000 !important; }
-  html, body { width:100%; background:#fff; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size:12px; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  body { padding:8px 6px; }
-  .receipt { width:100%; max-width:275px; margin:0 auto; padding:4px 8px; }
-  .center { text-align:center; }
-  .header-title { font-size:20px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:2px; }
-  .header-sub { font-size:10.5px; font-weight:900; margin-bottom:2px; text-transform:uppercase; }
-  .meta-box { border:2px solid #000; padding:6px 8px; margin:8px 0; font-size:11px; font-weight:900; line-height:1.4; border-radius:4px; }
-  .sep-solid { border:none; border-top:2px solid #000; margin:8px 0; }
-  .sep-double { border:none; border-top:3px double #000; margin:8px 0; }
-  .item-table { width:100%; border-collapse:collapse; margin:6px 0; }
-  .item-table td { padding:4px 0; font-size:12px; font-weight:900; vertical-align:top; border-bottom:1px solid #eee; }
-  .item-table tr:last-child td { border-bottom:none; }
-  .item-name { font-weight:900; padding-right:10px; text-align:left; word-break:break-word; }
-  .item-price { text-align:right; font-weight:900; white-space:nowrap; width:65px; }
-  .item-details { padding-left:8px; font-size:10.5px; font-weight:900; margin-top:2px; }
-  .totals-table { width:100%; border-collapse:collapse; margin-top:6px; }
-  .totals-table td { padding:3px 0; font-size:12px; font-weight:900; }
-  .total-banner { border:3px solid #000; background:#000 !important; color:#fff !important; padding:6px 10px; margin:10px 0; font-size:16px; font-weight:900; display:flex; justify-content:space-between; align-items:center; border-radius:4px; }
-  .total-banner * { color:#fff !important; }
-  .payment-box { border:2px solid #000; padding:6px 8px; text-align:center; margin:10px 0; font-weight:900; font-size:12px; line-height:1.4; border-radius:4px; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
   @media print {
-    @page { margin: 3mm 4mm; size: 80mm auto; }
-    html, body { width:100%; background:#fff; margin:0; padding:0; }
-    .receipt { width:100% !important; max-width:270px !important; margin:0 auto !important; padding:4px 6px !important; }
-    * { color:#000000 !important; font-weight:900 !important; }
-    .total-banner { background:#000 !important; color:#fff !important; }
-    .total-banner * { color:#fff !important; }
+    @page { margin: 2mm 3mm; size: 80mm auto; }
+    html, body { width: 100%; background: #ffffff !important; margin: 0; padding: 0; }
+    * { color: #000000 !important; }
   }
 </style>
 </head>
-<body>
-<div class="receipt">
-  <div class="center">
-    ${customLogo ? `<img src="${esc(customLogo)}" style="max-width:120px; max-height:50px; margin-bottom:4px; display:inline-block;" alt="Logo" />` : ''}
-    <div class="header-title">${esc(customHeader)}</div>
-    <div class="header-sub">${esc(customSubHeader)}</div>
-    <div class="header-sub">${esc(customVat)}</div>
-  </div>
-
-  <div class="meta-box">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-      <span><strong>TABLE: ${data.tableNumber}</strong></span>
-      <span><strong>ORDER #${esc(data.orderId)}</strong></span>
-    </div>
-    <div style="margin-top:3px; font-size:10.5px;">
-      DATE: ${dateStr}
-    </div>
-  </div>
-
-  <hr class="sep-solid">
-
-  <table class="item-table">
-    ${itemRowsHtml}
-  </table>
-
-  <hr class="sep-double">
-
-  <table class="totals-table">
-    <tr>
-      <td>SUBTOTAL:</td>
-      <td style="text-align:right;">$${data.subtotal.toFixed(2)}</td>
-    </tr>
-    <tr>
-      <td>TAX (${taxPct}%):</td>
-      <td style="text-align:right;">$${data.tax.toFixed(2)}</td>
-    </tr>
-    <tr>
-      <td>AUTO-GRATUITY (20%):</td>
-      <td style="text-align:right;">$${data.serviceCharge.toFixed(2)}</td>
-    </tr>
-  </table>
-
-  <div class="total-banner">
-    <span>TOTAL:</span>
-    <span>$${data.total.toFixed(2)}</span>
-  </div>
-
-  <div class="payment-box">
-    ${data.isPaid ? `
-      <div>*** PAYMENT CONFIRMED ***</div>
-      <div style="font-size:11px; margin-top:2px;">METHOD: ${esc(data.paymentMethod || 'CREDIT CARD').toUpperCase()}</div>
-      <div style="font-size:10.5px; margin-top:2px;">AUTH: ${esc(data.authCode || 'OK-200 / **** 4242')}</div>
-    ` : `
-      <div>*** BALANCE DUE ***</div>
-    `}
-  </div>
-
-  <div class="center" style="font-size:11px; font-weight:900; margin-top:10px;">
-    THANK YOU FOR DINING WITH US!
-  </div>
-</div>
+<body class="bg-white text-black p-2 flex justify-center items-start">
+  ${componentMarkup}
 </body>
 </html>`;
 
@@ -543,12 +487,31 @@ export class PrinterService {
         return printerDevices[0].productName || 'USB Printer';
       }
 
-      // No paired devices — prompt user to select one
-      const dev = await nav.usb.requestDevice({
-        filters: [{ classCode: 7 }, { classCode: 0xff }]
-      });
+      // Prompt user with POS-8360-L & thermal printer vendor filters + fallback
+      let dev: any = null;
+      try {
+        dev = await nav.usb.requestDevice({
+          filters: [
+            { classCode: 7 }, // USB Printer Class
+            { classCode: 0xff }, // Vendor Specific Class (POS-8360-L / Xprinter)
+            { vendorId: 0x0483 }, // STMicroelectronics / POS-8360-L
+            { vendorId: 0x0fe6 }, // ZJiang / POS-8360
+            { vendorId: 0x04b8 }, // Epson ESC-POS Emulation
+            { vendorId: 0x1a86 }, // CH340 USB-Serial Bridge
+            { vendorId: 0x0403 }  // FTDI Serial Bridge
+          ]
+        });
+      } catch (err: any) {
+        if (err.name === 'NotFoundError' || err.message?.includes('cancelled')) throw err;
+        // Fallback to open filter selection if browser rejects classCode filter
+        dev = await nav.usb.requestDevice({ filters: [] });
+      }
+
       this.activeUsbDevice = dev;
-      return dev.productName || 'USB Printer';
+      const vId = dev.vendorId ? `0x${dev.vendorId.toString(16).padStart(4, '0')}` : 'Unknown';
+      const pId = dev.productId ? `0x${dev.productId.toString(16).padStart(4, '0')}` : 'Unknown';
+      onLog(`✓ Selected USB Printer: ${dev.productName || 'POS-8360-L'} (Vendor ID: ${vId}, Product ID: ${pId})`);
+      return dev.productName || `POS-8360-L (${vId}:${pId})`;
     }
   }
 
@@ -567,6 +530,29 @@ export class PrinterService {
         onLog('Warning: Could not close USB device cleanly.');
       }
       this.activeUsbDevice = null;
+    }
+  }
+
+  async printSerial(bytes: Uint8Array, onLog: (msg: string) => void): Promise<void> {
+    const nav = typeof navigator !== 'undefined' ? (navigator as any) : null;
+    if (!nav || !nav.serial) {
+      onLog('❌ WebSerial API is not supported in this browser.');
+      throw new Error('WebSerial is not supported in this browser environment. Use Chrome or Edge.');
+    }
+
+    onLog('Opening WebSerial COM Port interface...');
+    try {
+      const port = await nav.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      const writer = port.writable.getWriter();
+      onLog('Transmitting binary ESC/POS payload to Serial COM port...');
+      await writer.write(bytes);
+      writer.releaseLock();
+      await port.close();
+      onLog('✓ WebSerial ESC/POS print job transmitted successfully.');
+    } catch (err: any) {
+      onLog(`❌ WebSerial print failed: ${err.message || err}`);
+      throw err;
     }
   }
 

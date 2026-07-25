@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { isDemoTenant } from '@/utils/api';
+import { PrintableReceipt } from './PrintableReceipt';
+import { usePrinter } from '../../../app/printerContext';
 
 interface ReceiptsTabProps {
   t: any;
@@ -121,6 +123,41 @@ export default function ReceiptsTab({
   const taxRegistrationType = propTaxRegistrationType !== undefined ? propTaxRegistrationType : internalTaxRegType;
   const setTaxRegistrationType = propSetTaxRegistrationType || setInternalTaxRegType;
 
+  const { config: printerConfig, status: printerStatus, printReceipt } = usePrinter();
+
+  const handleTestPrintFromPreview = async () => {
+    // Check printer connection status per printing architecture
+    const isPrinterAvailable = printerStatus === 'connected' || printerConfig?.type === 'browser';
+
+    if (!isPrinterAvailable) {
+      triggerToast('No receipt printer connected. Please connect your printer first.', 'info');
+      return;
+    }
+
+    try {
+      await printReceipt({
+        tableNumber: 'T-14',
+        orderId: '2345',
+        items: [
+          { name: 'Truffle Wagyu Sliders', quantity: 2, price: 24.00 },
+          { name: 'Lobster Bisque', quantity: 1, price: 18.00 },
+          { name: 'Vintage Cabernet (G)', quantity: 2, price: 17.00 }
+        ],
+        subtotal: 100.00,
+        taxRate: 0.08,
+        tax: 8.00,
+        taxType: 'pre-tax',
+        serviceCharge: showServiceCharge ? (100.00 * (serviceChargeRate / 100)) : 0,
+        total: totalVal,
+        isPaid: true,
+        paymentMethod: 'Credit Card'
+      });
+      triggerToast('Test receipt sent to printer!', 'success');
+    } catch (err: any) {
+      triggerToast('No receipt printer connected. Please connect your printer first.', 'info');
+    }
+  };
+
   // Load from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -204,132 +241,50 @@ export default function ReceiptsTab({
               {/* Left Column: Live Preview Receipt simulation (Span 5) */}
               <div className="lg:col-span-5 space-y-6">
                 <div className="flex justify-between items-center select-none pl-1">
-                  <h3 className="font-serif text-base font-bold text-[#ffe2ab] uppercase tracking-wider">Live Preview</h3>
-                  <div className="flex items-center gap-1.5 text-[10.5px] text-[#ffe2ab] font-bold uppercase tracking-wider">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#ffe2ab] motion-safe:animate-pulse"></span>
-                    Sync Active
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif text-base font-bold text-[#ffe2ab] uppercase tracking-wider">Live Preview</h3>
+                    <div className="flex items-center gap-1.5 text-[10.5px] text-[#ffe2ab] font-bold uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ffe2ab] motion-safe:animate-pulse"></span>
+                      Sync Active
+                    </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={handleTestPrintFromPreview}
+                    className="px-3.5 py-1.5 rounded-xl bg-[#ffe2ab]/10 border border-[#ffe2ab]/30 hover:bg-[#ffe2ab]/20 text-[#ffe2ab] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                  >
+                    <span className="material-symbols-outlined text-sm">print</span>
+                    Test Print
+                  </button>
                 </div>
 
                 {/* Dark Simulated Receipt card wrapper */}
                 <div className="bg-[#161513]/90 border border-white/5 rounded-2xl p-6 shadow-xl flex justify-center items-center min-h-[500px]">
-                  <div className="w-full max-w-[280px] bg-[#1c1b1a] text-[#A69984] border border-white/5 rounded-xl p-6 shadow-lg flex flex-col justify-between font-mono text-[10px] leading-relaxed">
-                    
-                    {/* Brand & Logo Header */}
-                    <div className="text-center space-y-2 mb-4">
-                      {showLogo && (
-                        <div className="flex justify-center select-none">
-                          {restaurantLogo ? (
-                            <img
-                              src={restaurantLogo}
-                              alt="Restaurant logo"
-                              className="w-10 h-10 rounded-lg object-contain border border-white/10 bg-black/30 p-0.5"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-lg bg-black border border-white/10 flex items-center justify-center text-[#ffe2ab]">
-                              <span className="material-symbols-outlined text-sm font-black">flatware</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      
-                      <div className="text-white font-extrabold uppercase text-xs tracking-wider select-none">
-                        {establishmentName || 'DinePosAi'}
-                      </div>
-                      
-                      <div className="text-[8.5px] text-white font-bold max-w-[180px] mx-auto break-words leading-tight">
-                        {businessAddress || '72 Culinary Avenue, Gourmet District, Metropolis'}
-                      </div>
-                      {showTaxId && (
-                        <div className="text-[8.5px] text-[#ffe2ab] font-extrabold uppercase mt-1 tracking-wider">
-                          {taxRegistrationType === 'PAN' ? 'PAN NO:' : 'VAT NO:'} {taxId || (taxRegistrationType === 'PAN' ? '601234567' : '301234567')}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Metadata dotted block */}
-                    {(showTableNumber || showServerName || showOrderTimestamp) && (
-                      <div className="border-y border-dashed border-white/10 py-2.5 my-3 text-[9px] text-white font-bold select-none">
-                        <div className="flex justify-between">
-                          <div>
-                            {showTableNumber && <div className="text-white font-extrabold">TABLE: T-14</div>}
-                            {showOrderTimestamp && <div className="text-[8.5px] text-white font-bold mt-0.5">06/03/2026 15:32</div>}
-                          </div>
-                          <div className="text-right">
-                            {showServerName && <div className="text-white font-extrabold">SERVER: JULIAN B.</div>}
-                            <div className="text-[8.5px] text-white font-bold mt-0.5">Order #2345</div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Items check list */}
-                    <div className="space-y-2.5 py-1 select-none">
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-white font-bold">2 Truffle Wagyu Sliders</span>
-                        <span className="text-white font-bold">$48.00</span>
-                      </div>
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-white font-bold">1 Lobster Bisque</span>
-                        <span className="text-white font-bold">$18.00</span>
-                      </div>
-                      <div className="flex justify-between items-baseline">
-                        <span className="text-white font-bold">2 Vintage Cabernet (G)</span>
-                        <span className="text-white font-bold">$34.00</span>
-                      </div>
-                    </div>
-
-                    {/* Subtotal breakdowns */}
-                    <div className="border-t border-white/5 pt-3 mt-3 space-y-1.5 text-[9px] text-white font-bold select-none">
-                      <div className="flex justify-between">
-                        <span>Subtotal</span>
-                        <span>$100.00</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Tax (8%)</span>
-                        <span>$8.00</span>
-                      </div>
-                      {showServiceCharge && (
-                        <div className="flex justify-between">
-                          <span>Service Charge ({serviceChargeRate}%)</span>
-                          <span>{formatCurrency(serviceChargeVal)}</span>
-                        </div>
-                      )}
-                      {showDiscount && (
-                        <div className="flex justify-between text-emerald-400 font-bold">
-                          <span>Discount ({discountType === 'percent' ? `${discountValue}%` : formatCurrency(discountValue)})</span>
-                          <span>-{formatCurrency(discountVal)}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Total */}
-                    <div className="border-t border-dashed border-white/10 pt-3 mt-2 flex justify-between items-baseline select-none">
-                      <span className="text-white font-extrabold">TOTAL</span>
-                      <span className="text-[#ffe2ab] text-[13px] font-extrabold font-mono">
-                        ${totalVal.toFixed(2)}
-                      </span>
-                    </div>
-
-                    {/* Footer Text block */}
-                    <div className="border-t border-dashed border-white/10 pt-2.5 mt-3 text-center space-y-1.5 font-sans select-none">
-                      <div className="text-[8.5px] font-extrabold text-white">
-                        Payment Method: <span className="text-white font-extrabold">Credit Card</span>
-                      </div>
-                      <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#ffe2ab] pt-0.5">
-                        {receiptFooterText || 'THANK YOU FOR DINING WITH US. WE HOPE TO SERVE YOU AGAIN.'}
-                      </div>
-                      {showSocialMedia && (
-                        <div className="pt-1.5 text-[8px] font-bold text-white/90 space-y-0.5 border-t border-dashed border-white/10 mt-1.5">
-                          {socialLinks.facebook && <div>FB: {socialLinks.facebook}</div>}
-                          {socialLinks.instagram && <div>IG: {socialLinks.instagram}</div>}
-                          {socialLinks.tiktok && <div>TT: {socialLinks.tiktok}</div>}
-                          {socialLinks.youtube && <div>YT: {socialLinks.youtube}</div>}
-                        </div>
-                      )}
-                    </div>
-
-                  </div>
+                  <PrintableReceipt
+                    variant="dark-preview"
+                    establishmentName={establishmentName}
+                    businessAddress={businessAddress}
+                    contactEmail={contactEmail}
+                    restaurantLogo={restaurantLogo}
+                    showLogo={showLogo}
+                    taxId={taxId}
+                    taxRegistrationType={taxRegistrationType}
+                    showTaxId={showTaxId}
+                    showTableNumber={showTableNumber}
+                    showServerName={showServerName}
+                    showOrderTimestamp={showOrderTimestamp}
+                    showServiceCharge={showServiceCharge}
+                    serviceChargeRate={serviceChargeRate}
+                    showDiscount={showDiscount}
+                    discountType={discountType}
+                    discountValue={discountValue}
+                    currency={currency}
+                    thankYouMessage={receiptFooterText}
+                    showQrCode={showQrCode}
+                    showSocialMedia={showSocialMedia}
+                    socialLinks={socialLinks}
+                  />
                 </div>
               </div>
 

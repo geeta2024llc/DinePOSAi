@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { usePrinter } from '../../printerContext';
 import { PrinterType, PrinterConfig } from '../../printerService';
+import { PrintableReceipt } from '@/components/dashboard/PrintableReceipt';
 
 export default function PrinterSettingsPage() {
   const { config, status, logs, setConfig, scanAndPair, testPrint, clearLogs, forgetConfig } = usePrinter();
@@ -140,13 +141,19 @@ export default function PrinterSettingsPage() {
   };
 
   const handleTestPrint = async () => {
+    const isPrinterAvailable = status === 'connected' || config?.type === 'browser';
+
+    if (!isPrinterAvailable) {
+      triggerToast('No receipt printer connected. Please connect your printer first.', 'info');
+      return;
+    }
+
     setIsTestPrinting(true);
     try {
       await testPrint();
       triggerToast(config.type === 'browser' ? 'Browser print dialog opened!' : 'Test print receipt sent to printer!', 'success');
     } catch (err: any) {
-      const msg = err?.message || 'Printer hardware error or unreachable';
-      triggerToast(`Test print failed: ${msg}`, 'info');
+      triggerToast('No receipt printer connected. Please connect your printer first.', 'info');
     } finally {
       setIsTestPrinting(false);
     }
@@ -605,28 +612,15 @@ export default function PrinterSettingsPage() {
               </div>
 
               {/* Live Receipt Preview */}
-              <div className="mt-3 bg-white text-black p-4 rounded-xl font-mono text-[11px] space-y-1 shadow-inner border border-gray-300">
-                <div className="text-center font-black uppercase text-sm">{customHeader || 'DINEPOS AI'}</div>
-                <div className="text-center font-bold text-[10px] uppercase text-gray-700">
-                  {taxRegType === 'PAN' ? 'PAN NO:' : 'VAT NO:'} {customVat || (taxRegType === 'PAN' ? '601234567' : '301234567')}
-                </div>
-                <div className="border-b border-dashed border-black my-2"></div>
-                <div className="flex justify-between font-bold">
-                  <span>Gold Leaf A5 Wagyu Ribeye x1</span>
-                  <span>$185.00</span>
-                </div>
-                <div className="flex justify-between font-bold">
-                  <span>Royal Gold Old Fashioned x2</span>
-                  <span>$56.00</span>
-                </div>
-                <div className="border-b border-dashed border-black my-2"></div>
-                <div className="flex justify-between font-black text-xs">
-                  <span>TOTAL CHARGE:</span>
-                  <span>$265.10</span>
-                </div>
-                <div className="border-b border-dashed border-black my-2"></div>
-                <div className="text-center font-black text-[10px]">Payment Method: Credit Card</div>
-                <div className="text-center font-black text-[10px] mt-1 uppercase">{customFooter || 'THANK YOU FOR DINING WITH US. WE HOPE TO SERVE YOU AGAIN.'}</div>
+              <div className="mt-4 flex justify-center">
+                <PrintableReceipt
+                  variant="light-print"
+                  establishmentName={customHeader}
+                  taxId={customVat}
+                  taxRegistrationType={taxRegType}
+                  thankYouMessage={customFooter}
+                  restaurantLogo={headerLogo}
+                />
               </div>
             </div>
 
