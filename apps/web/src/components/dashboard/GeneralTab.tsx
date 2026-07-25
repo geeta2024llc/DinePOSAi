@@ -45,8 +45,23 @@ interface GeneralTabProps {
   setShowQrCode: (val: boolean) => void;
   showSocialMedia: boolean;
   setShowSocialMedia: (val: boolean) => void;
+  socialLinks?: {
+    facebook: string;
+    instagram: string;
+    tiktok: string;
+    youtube: string;
+  };
+  setSocialLinks?: (links: { facebook: string; instagram: string; tiktok: string; youtube: string; }) => void;
   showServiceCharge: boolean;
   setShowServiceCharge: (val: boolean) => void;
+  serviceChargeRate?: number;
+  setServiceChargeRate?: (val: number) => void;
+  showDiscount?: boolean;
+  setShowDiscount?: (val: boolean) => void;
+  discountType?: 'percent' | 'fixed';
+  setDiscountType?: (val: 'percent' | 'fixed') => void;
+  discountValue?: number;
+  setDiscountValue?: (val: number) => void;
   showCustomFooter: boolean;
   setShowCustomFooter: (val: boolean) => void;
   thankYouMessage: string;
@@ -131,8 +146,18 @@ export default function GeneralTab({
   setShowQrCode,
   showSocialMedia,
   setShowSocialMedia,
+  socialLinks = { facebook: 'facebook.com/dineposai', instagram: 'instagram.com/dineposai', tiktok: 'tiktok.com/@dineposai', youtube: 'youtube.com/@dineposai' },
+  setSocialLinks,
   showServiceCharge,
   setShowServiceCharge,
+  serviceChargeRate = 10,
+  setServiceChargeRate,
+  showDiscount = true,
+  setShowDiscount,
+  discountType = 'percent',
+  setDiscountType,
+  discountValue = 10,
+  setDiscountValue,
   showCustomFooter,
   setShowCustomFooter,
   thankYouMessage,
@@ -171,8 +196,9 @@ export default function GeneralTab({
 
   const subtotalVal = 100.00;
   const taxVal = taxType === 'pre-tax' ? subtotalVal * 0.08 : subtotalVal - (subtotalVal / 1.08);
-  const serviceChargeVal = showServiceCharge ? 10.00 : 0.00;
-  const totalVal = taxType === 'pre-tax' ? subtotalVal + taxVal + serviceChargeVal : subtotalVal + serviceChargeVal;
+  const serviceChargeVal = showServiceCharge ? (subtotalVal * (serviceChargeRate / 100)) : 0;
+  const discountVal = showDiscount ? (discountType === 'percent' ? (subtotalVal * (discountValue / 100)) : discountValue) : 0;
+  const totalVal = (taxType === 'pre-tax' ? subtotalVal + taxVal : subtotalVal) + serviceChargeVal - discountVal;
 
   const logoFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -606,26 +632,218 @@ export default function GeneralTab({
                         </button>
                       </div>
 
-                      {/* Show Social Media */}
-                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
-                        <div>
-                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.showSocial}</h4>
-                          <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.showSocialDesc}</span>
+                      {/* Social Media Handles & Links Configuration Card */}
+                      <div className={`p-5 border border-white/10 rounded-2xl space-y-4 transition-all duration-300 ${showSocialMedia ? `${t.inputBg}/30 shadow-lg` : 'bg-black/30 border-white/5 opacity-50'}`}>
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex-1">
+                            <h4 className={`text-xs font-extrabold uppercase tracking-wider ${t.text} flex items-center gap-1.5`}>
+                              <span className="material-symbols-outlined text-base text-[#ffe2ab]">share</span>
+                              Social Media Handles & Links
+                            </h4>
+                            <p className={`text-[10.5px] ${t.textMutedDark} font-medium mt-1 leading-snug`}>
+                              Display digital social links on receipts and online storefronts
+                            </p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setShowSocialMedia(!showSocialMedia)} 
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${showSocialMedia ? t.accentBg : 'bg-white/10'}`}
+                          >
+                            <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${showSocialMedia ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                          </button>
                         </div>
-                        <button type="button" onClick={() => setShowSocialMedia(!showSocialMedia)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showSocialMedia ? t.accentBg : 'bg-white/20'}`}>
-                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showSocialMedia ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                        </button>
+
+                        {/* Active / Dead-place Inputs Container */}
+                        <div className={`pt-3 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-3 transition-all ${!showSocialMedia ? 'opacity-40 pointer-events-none' : ''}`}>
+                          {/* Facebook */}
+                          <div className="space-y-1">
+                            <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                              Facebook Link / Handle
+                            </label>
+                            <input 
+                              type="text"
+                              value={socialLinks.facebook}
+                              onChange={(e) => setSocialLinks && setSocialLinks({ ...socialLinks, facebook: e.target.value })}
+                              disabled={!showSocialMedia}
+                              placeholder="facebook.com/yourpage"
+                              className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20`}
+                            />
+                          </div>
+
+                          {/* Instagram */}
+                          <div className="space-y-1">
+                            <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                              Instagram Link / Handle
+                            </label>
+                            <input 
+                              type="text"
+                              value={socialLinks.instagram}
+                              onChange={(e) => setSocialLinks && setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                              disabled={!showSocialMedia}
+                              placeholder="instagram.com/yourhandle"
+                              className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20`}
+                            />
+                          </div>
+
+                          {/* TikTok */}
+                          <div className="space-y-1">
+                            <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                              TikTok Link / Handle
+                            </label>
+                            <input 
+                              type="text"
+                              value={socialLinks.tiktok}
+                              onChange={(e) => setSocialLinks && setSocialLinks({ ...socialLinks, tiktok: e.target.value })}
+                              disabled={!showSocialMedia}
+                              placeholder="tiktok.com/@yourhandle"
+                              className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20`}
+                            />
+                          </div>
+
+                          {/* YouTube */}
+                          <div className="space-y-1">
+                            <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                              YouTube Link / Handle
+                            </label>
+                            <input 
+                              type="text"
+                              value={socialLinks.youtube}
+                              onChange={(e) => setSocialLinks && setSocialLinks({ ...socialLinks, youtube: e.target.value })}
+                              disabled={!showSocialMedia}
+                              placeholder="youtube.com/@yourchannel"
+                              className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20`}
+                            />
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Show Service Charge */}
-                      <div className={`flex justify-between items-center ${t.inputBg}/30 p-3.5 border ${t.border} rounded-xl`}>
-                        <div>
-                          <h4 className={`text-xs font-bold ${t.text} leading-none mb-1`}>{tr.includeServiceCharge}</h4>
-                          <span className={`text-[9.5px] ${t.textMutedDark} font-medium`}>{tr.includeServiceChargeDesc}</span>
+                      {/* Service Charge Configuration Card */}
+                      <div className={`p-5 border border-white/10 rounded-2xl space-y-4 transition-all duration-300 ${showServiceCharge ? `${t.inputBg}/30 shadow-lg` : 'bg-black/30 border-white/5 opacity-50'}`}>
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex-1">
+                            <h4 className={`text-xs font-extrabold uppercase tracking-wider ${t.text} flex items-center gap-1.5`}>
+                              <span className="material-symbols-outlined text-base text-[#ffe2ab]">percent</span>
+                              Service Charge (Gratuity)
+                            </h4>
+                            <p className={`text-[10.5px] ${t.textMutedDark} font-medium mt-1 leading-snug`}>
+                              Automatically calculate & add service charge to orders
+                            </p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setShowServiceCharge(!showServiceCharge)} 
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${showServiceCharge ? t.accentBg : 'bg-white/10'}`}
+                          >
+                            <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${showServiceCharge ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                          </button>
                         </div>
-                        <button type="button" onClick={() => setShowServiceCharge(!showServiceCharge)} className={`w-9 h-5 rounded-full p-0.5 transition-colors ${showServiceCharge ? t.accentBg : 'bg-white/20'}`}>
-                          <div className={`w-4 h-4 bg-white rounded-full transition-transform ${showServiceCharge ? 'translate-x-4' : 'translate-x-0'}`}></div>
-                        </button>
+
+                        {/* Service Charge Input Field (Disabled / Dead Place when OFF) */}
+                        <div className={`pt-3 border-t border-white/5 space-y-2 transition-all ${!showServiceCharge ? 'opacity-40 pointer-events-none' : ''}`}>
+                          <div className="flex justify-between items-baseline">
+                            <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                              Service Charge Rate
+                            </label>
+                            <span className="text-[10px] text-white/40 font-medium">Applied to subtotal</span>
+                          </div>
+                          <div className="relative flex items-center w-full">
+                            <span className="absolute left-3.5 text-xs font-bold text-[#ffe2ab] select-none pointer-events-none">%</span>
+                            <input 
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={serviceChargeRate}
+                              onChange={(e) => setServiceChargeRate && setServiceChargeRate(parseFloat(e.target.value) || 0)}
+                              disabled={!showServiceCharge}
+                              placeholder="10"
+                              className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-9 pr-4 py-2.5 text-xs font-mono font-bold text-white text-right focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Promotional Discount Configuration Card */}
+                      <div className={`p-5 border border-white/10 rounded-2xl space-y-4 transition-all duration-300 ${showDiscount ? `${t.inputBg}/30 shadow-lg` : 'bg-black/30 border-white/5 opacity-50'}`}>
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex-1">
+                            <h4 className={`text-xs font-extrabold uppercase tracking-wider ${t.text} flex items-center gap-1.5`}>
+                              <span className="material-symbols-outlined text-base text-emerald-400">local_offer</span>
+                              Promotional Discount
+                            </h4>
+                            <p className={`text-[10.5px] ${t.textMutedDark} font-medium mt-1 leading-snug`}>
+                              Enable promotional discount line on checkout & receipts
+                            </p>
+                          </div>
+                          <button 
+                            type="button" 
+                            onClick={() => setShowDiscount && setShowDiscount(!showDiscount)} 
+                            className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${showDiscount ? t.accentBg : 'bg-white/10'}`}
+                          >
+                            <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${showDiscount ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                          </button>
+                        </div>
+
+                        {/* Active / Dead-place Controls Container */}
+                        <div className={`pt-3 border-t border-white/5 space-y-4 transition-all ${!showDiscount ? 'opacity-40 pointer-events-none' : ''}`}>
+                          
+                          {/* Mode Segmented Control Grid */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-baseline">
+                              <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                                Calculation Mode
+                              </label>
+                              <span className="text-[10px] text-white/40 font-medium">Type</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#0e0e0d] border border-white/10 rounded-xl w-full">
+                              <button
+                                type="button"
+                                onClick={() => setDiscountType && setDiscountType('percent')}
+                                disabled={!showDiscount}
+                                className={`py-2 text-[10px] font-extrabold uppercase rounded-lg transition-all text-center cursor-pointer ${discountType === 'percent' && showDiscount ? 'bg-[#ffe2ab] text-[#402d00] shadow-sm' : 'text-white/60 hover:text-white disabled:cursor-not-allowed'}`}
+                              >
+                                % Percentage
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDiscountType && setDiscountType('fixed')}
+                                disabled={!showDiscount}
+                                className={`py-2 text-[10px] font-extrabold uppercase rounded-lg transition-all text-center cursor-pointer ${discountType === 'fixed' && showDiscount ? 'bg-[#ffe2ab] text-[#402d00] shadow-sm' : 'text-white/60 hover:text-white disabled:cursor-not-allowed'}`}
+                              >
+                                $ Fixed Amount
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Discount Value Input Block */}
+                          <div className="space-y-1.5">
+                            <div className="flex justify-between items-baseline">
+                              <label className={`block text-[9.5px] font-extrabold uppercase tracking-wider ${t.text}`}>
+                                Discount Value
+                              </label>
+                              <span className="text-[10px] text-white/40 font-medium">
+                                {discountType === 'percent' ? 'Deduct % from subtotal' : 'Fixed $ amount'}
+                              </span>
+                            </div>
+
+                            <div className="relative flex items-center w-full">
+                              <span className="absolute left-3.5 text-xs font-bold text-[#ffe2ab] select-none pointer-events-none">
+                                {discountType === 'percent' ? '%' : '$'}
+                              </span>
+                              <input 
+                                type="number"
+                                min="0"
+                                max={discountType === 'percent' ? "100" : "10000"}
+                                value={discountValue}
+                                onChange={(e) => setDiscountValue && setDiscountValue(parseFloat(e.target.value) || 0)}
+                                disabled={!showDiscount}
+                                placeholder="10"
+                                className={`w-full ${t.inputBg} border ${t.inputBorder} rounded-xl pl-9 pr-4 py-2.5 text-xs font-mono font-bold text-white text-right focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed`}
+                              />
+                            </div>
+                          </div>
+
+                        </div>
                       </div>
                     </div>
 
@@ -1162,22 +1380,22 @@ export default function GeneralTab({
                           {establishmentName || 'DinePosAi'}
                         </div>
                         
-                        <div className="text-[8px] text-[#A69984]/50 font-semibold max-w-[180px] mx-auto break-words leading-tight">
+                        <div className="text-[8.5px] text-white font-bold max-w-[180px] mx-auto break-words leading-tight">
                           {businessAddress || '72 Culinary Avenue, Gourmet District'}
                         </div>
                       </div>
 
                       {/* Metadata dotted block */}
                       {(showTableNumber || showServerName || showOrderTimestamp) && (
-                        <div className="border-y border-dashed border-white/10 py-2.5 my-2.5 text-[8.5px] text-[#A69984]/65">
+                        <div className="border-y border-dashed border-white/10 py-2.5 my-2.5 text-[8.5px] text-white font-bold">
                           <div className="flex justify-between">
                             <div>
-                              {showTableNumber && <div className="text-white font-bold">TABLE: T-14</div>}
-                              {showOrderTimestamp && <div className="text-[8px] mt-0.5">06/04/2026 09:48</div>}
+                              {showTableNumber && <div className="text-white font-extrabold">TABLE: T-14</div>}
+                              {showOrderTimestamp && <div className="text-[8.5px] text-white font-bold mt-0.5">06/04/2026 09:48</div>}
                             </div>
                             <div className="text-right">
-                              {showServerName && <div>SERVER: JULIAN B.</div>}
-                              <div className="text-[8px] text-white/45 mt-0.5">Order #2345</div>
+                              {showServerName && <div className="text-white font-extrabold">SERVER: JULIAN B.</div>}
+                              <div className="text-[8.5px] text-white font-bold mt-0.5">Order #2345</div>
                             </div>
                           </div>
                         </div>
@@ -1186,21 +1404,21 @@ export default function GeneralTab({
                       {/* Items check list */}
                       <div className="space-y-2 py-1 select-none">
                         <div className="flex justify-between items-baseline">
-                          <span className="text-white/80">2 Truffle Wagyu Sliders</span>
-                          <span className="text-white/95 font-bold font-mono">{formatCurrency(48)}</span>
+                          <span className="text-white font-bold">2 Truffle Wagyu Sliders</span>
+                          <span className="text-white font-bold font-mono">{formatCurrency(48)}</span>
                         </div>
                         <div className="flex justify-between items-baseline">
-                          <span className="text-white/80">1 Lobster Bisque</span>
-                          <span className="text-white/95 font-bold font-mono">{formatCurrency(18)}</span>
+                          <span className="text-white font-bold">1 Lobster Bisque</span>
+                          <span className="text-white font-bold font-mono">{formatCurrency(18)}</span>
                         </div>
                         <div className="flex justify-between items-baseline">
-                          <span className="text-white/80">2 Vintage Cabernet (G)</span>
-                          <span className="text-white/95 font-bold font-mono">{formatCurrency(34)}</span>
+                          <span className="text-white font-bold">2 Vintage Cabernet (G)</span>
+                          <span className="text-white font-bold font-mono">{formatCurrency(34)}</span>
                         </div>
                       </div>
 
                       {/* Subtotal breakdowns */}
-                      <div className="border-t border-white/5 pt-2.5 mt-2.5 space-y-1 text-[8.5px] text-[#A69984]/60">
+                      <div className="border-t border-white/5 pt-2.5 mt-2.5 space-y-1 text-[8.5px] text-white font-bold">
                         <div className="flex justify-between">
                           <span>{taxType === 'post-tax' ? tr.subtotalInclusive : tr.subtotal}</span>
                           <span>{formatCurrency(subtotalVal)}</span>
@@ -1211,8 +1429,14 @@ export default function GeneralTab({
                         </div>
                         {showServiceCharge && (
                           <div className="flex justify-between">
-                            <span>{tr.serviceCharge}</span>
-                            <span>{formatCurrency(10)}</span>
+                            <span>Service Charge ({serviceChargeRate}%)</span>
+                            <span>{formatCurrency(serviceChargeVal)}</span>
+                          </div>
+                        )}
+                        {showDiscount && (
+                          <div className="flex justify-between text-emerald-400 font-bold">
+                            <span>Discount ({discountType === 'percent' ? `${discountValue}%` : formatCurrency(discountValue)})</span>
+                            <span>-{formatCurrency(discountVal)}</span>
                           </div>
                         )}
                       </div>
@@ -1220,37 +1444,25 @@ export default function GeneralTab({
                       {/* Total */}
                       <div className="border-t border-dashed border-white/10 pt-2.5 mt-2 flex justify-between items-baseline">
                         <span className="text-white font-extrabold text-[9px]">{tr.grandTotal}</span>
-                        <span className="text-[#ffe2ab] text-[12px] font-bold font-mono">
+                        <span className="text-[#ffe2ab] text-[12px] font-extrabold font-mono">
                           {formatCurrency(totalVal)}
                         </span>
                       </div>
 
-                      {/* Footer QR/Text message */}
-                      <div className="text-center mt-5 space-y-3">
-                        {showCustomFooter && thankYouMessage && (
-                          <div className="text-[8px] italic text-[#A69984]/50 font-sans max-w-[200px] mx-auto">
-                            "{thankYouMessage}"
-                          </div>
-                        )}
-
-                        {showQrCode && (
-                          <div className="flex flex-col items-center gap-1 select-none pt-1">
-                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="text-[#A69984]/50">
-                              <rect x="1" y="1" width="6" height="6" stroke="currentColor" rx="0.5"/>
-                              <rect x="2.5" y="2.5" width="3" height="3" fill="currentColor"/>
-                              <rect x="17" y="1" width="6" height="6" stroke="currentColor" rx="0.5"/>
-                              <rect x="18.5" y="2.5" width="3" height="3" fill="currentColor"/>
-                              <rect x="1" y="17" width="6" height="6" stroke="currentColor" rx="0.5"/>
-                              <rect x="2.5" y="18.5" width="3" height="3" fill="currentColor"/>
-                              <rect x="9" y="1" width="2" height="2" fill="currentColor"/>
-                              <rect x="13" y="2" width="2" height="1" fill="currentColor"/>
-                              <rect x="9" y="9" width="3" height="3" fill="currentColor"/>
-                              <rect x="17" y="9" width="2" height="2" fill="currentColor"/>
-                              <rect x="9" y="17" width="2" height="2" fill="currentColor"/>
-                              <rect x="13" y="18" width="2" height="2" fill="currentColor"/>
-                              <rect x="18" y="17" width="4" height="4" fill="currentColor"/>
-                            </svg>
-                            <span className="text-[7px] font-bold text-[#ffe2ab]/60 uppercase tracking-widest font-sans">Scan for Survey</span>
+                      {/* Footer Text message */}
+                      <div className="border-t border-dashed border-white/10 pt-2.5 mt-3 text-center space-y-1.5 font-sans">
+                        <div className="text-[8.5px] font-extrabold text-white">
+                          Payment Method: <span className="text-white font-extrabold">Credit Card</span>
+                        </div>
+                        <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#ffe2ab] pt-0.5">
+                          {thankYouMessage || 'THANK YOU FOR DINING WITH US. WE HOPE TO SERVE YOU AGAIN.'}
+                        </div>
+                        {showSocialMedia && (
+                          <div className="pt-1.5 text-[8px] font-bold text-white/90 space-y-0.5 border-t border-dashed border-white/10 mt-1.5">
+                            {socialLinks.facebook && <div>FB: {socialLinks.facebook}</div>}
+                            {socialLinks.instagram && <div>IG: {socialLinks.instagram}</div>}
+                            {socialLinks.tiktok && <div>TT: {socialLinks.tiktok}</div>}
+                            {socialLinks.youtube && <div>YT: {socialLinks.youtube}</div>}
                           </div>
                         )}
                       </div>

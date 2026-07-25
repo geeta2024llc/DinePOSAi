@@ -22,6 +22,25 @@ interface ReceiptsTabProps {
   setShowServerName: (val: boolean) => void;
   showOrderTimestamp: boolean;
   setShowOrderTimestamp: (val: boolean) => void;
+  showServiceCharge?: boolean;
+  setShowServiceCharge?: (val: boolean) => void;
+  serviceChargeRate?: number;
+  setServiceChargeRate?: (val: number) => void;
+  showDiscount?: boolean;
+  setShowDiscount?: (val: boolean) => void;
+  discountType?: 'percent' | 'fixed';
+  setDiscountType?: (val: 'percent' | 'fixed') => void;
+  discountValue?: number;
+  setDiscountValue?: (val: number) => void;
+  showSocialMedia?: boolean;
+  setShowSocialMedia?: (val: boolean) => void;
+  socialLinks?: {
+    facebook: string;
+    instagram: string;
+    tiktok: string;
+    youtube: string;
+  };
+  setSocialLinks?: (links: { facebook: string; instagram: string; tiktok: string; youtube: string; }) => void;
 }
 
 export default function ReceiptsTab({
@@ -42,15 +61,57 @@ export default function ReceiptsTab({
   showServerName,
   setShowServerName,
   showOrderTimestamp,
-  setShowOrderTimestamp
+  setShowOrderTimestamp,
+  showServiceCharge: propShowServiceCharge,
+  setShowServiceCharge: propSetShowServiceCharge,
+  serviceChargeRate: propServiceChargeRate,
+  setServiceChargeRate: propSetServiceChargeRate,
+  showDiscount: propShowDiscount,
+  setShowDiscount: propSetShowDiscount,
+  discountType: propDiscountType,
+  setDiscountType: propSetDiscountType,
+  discountValue: propDiscountValue,
+  setDiscountValue: propSetDiscountValue,
+  showSocialMedia: propShowSocialMedia,
+  setShowSocialMedia: propSetShowSocialMedia,
+  socialLinks: propSocialLinks,
+  setSocialLinks: propSetSocialLinks
 }: ReceiptsTabProps) {
   const [showLogo, setShowLogo] = useState(true);
   const [showTaxId, setShowTaxId] = useState(true);
   const [receiptFooterText, setReceiptFooterText] = useState('Thank you for dining with us!');
   const [receiptHeaderMessage, setReceiptHeaderMessage] = useState('Welcome to our establishment');
   const [customReceiptWidth, setCustomReceiptWidth] = useState('80mm');
-  const [showServiceCharge, setShowServiceCharge] = useState(false);
+  const [internalShowServiceCharge, setInternalShowServiceCharge] = useState(true);
+  const [internalServiceChargeRate, setInternalServiceChargeRate] = useState(10);
+  const [internalShowDiscount, setInternalShowDiscount] = useState(true);
+  const [internalDiscountType, setInternalDiscountType] = useState<'percent' | 'fixed'>('percent');
+  const [internalDiscountValue, setInternalDiscountValue] = useState(10);
   const [showQrCode, setShowQrCode] = useState(true);
+
+  const showServiceCharge = propShowServiceCharge !== undefined ? propShowServiceCharge : internalShowServiceCharge;
+  const setShowServiceCharge = propSetShowServiceCharge || setInternalShowServiceCharge;
+  const serviceChargeRate = propServiceChargeRate !== undefined ? propServiceChargeRate : internalServiceChargeRate;
+  const setServiceChargeRate = propSetServiceChargeRate || setInternalServiceChargeRate;
+
+  const showDiscount = propShowDiscount !== undefined ? propShowDiscount : internalShowDiscount;
+  const setShowDiscount = propSetShowDiscount || setInternalShowDiscount;
+  const discountType = propDiscountType !== undefined ? propDiscountType : internalDiscountType;
+  const setDiscountType = propSetDiscountType || setInternalDiscountType;
+  const discountValue = propDiscountValue !== undefined ? propDiscountValue : internalDiscountValue;
+  const setDiscountValue = propSetDiscountValue || setInternalDiscountValue;
+
+  const [internalShowSocialMedia, setInternalShowSocialMedia] = useState(false);
+  const [internalSocialLinks, setInternalSocialLinks] = useState({
+    facebook: 'facebook.com/dineposai',
+    instagram: 'instagram.com/dineposai',
+    tiktok: 'tiktok.com/@dineposai',
+    youtube: 'youtube.com/@dineposai'
+  });
+  const showSocialMedia = propShowSocialMedia !== undefined ? propShowSocialMedia : internalShowSocialMedia;
+  const setShowSocialMedia = propSetShowSocialMedia || setInternalShowSocialMedia;
+  const socialLinks = propSocialLinks !== undefined ? propSocialLinks : internalSocialLinks;
+  const setSocialLinks = propSetSocialLinks || setInternalSocialLinks;
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -123,7 +184,9 @@ export default function ReceiptsTab({
   // Mock values for receipt preview
   const subtotalVal = 100.00;
   const taxVal = 8.00;
-  const totalVal = subtotalVal + taxVal + (showServiceCharge ? 10.00 : 0.00);
+  const serviceChargeVal = showServiceCharge ? (subtotalVal * (serviceChargeRate / 100)) : 0;
+  const discountVal = showDiscount ? (discountType === 'percent' ? (subtotalVal * (discountValue / 100)) : discountValue) : 0;
+  const totalVal = subtotalVal + taxVal + serviceChargeVal - discountVal;
 
   return (
     <>
@@ -166,22 +229,22 @@ export default function ReceiptsTab({
                         {establishmentName || 'DinePosAi'}
                       </div>
                       
-                      <div className="text-[8.5px] text-[#A69984]/60 font-semibold max-w-[180px] mx-auto break-words leading-tight">
+                      <div className="text-[8.5px] text-white font-bold max-w-[180px] mx-auto break-words leading-tight">
                         {businessAddress || '72 Culinary Avenue, Gourmet District, Metropolis'}
                       </div>
                     </div>
 
                     {/* Metadata dotted block */}
                     {(showTableNumber || showServerName || showOrderTimestamp) && (
-                      <div className="border-y border-dashed border-white/10 py-2.5 my-3 text-[9px] text-[#A69984]/70 select-none">
+                      <div className="border-y border-dashed border-white/10 py-2.5 my-3 text-[9px] text-white font-bold select-none">
                         <div className="flex justify-between">
                           <div>
-                            {showTableNumber && <div className="text-white font-bold">TABLE: T-14</div>}
-                            {showOrderTimestamp && <div className="text-[8.5px] mt-0.5">06/03/2026 15:32</div>}
+                            {showTableNumber && <div className="text-white font-extrabold">TABLE: T-14</div>}
+                            {showOrderTimestamp && <div className="text-[8.5px] text-white font-bold mt-0.5">06/03/2026 15:32</div>}
                           </div>
                           <div className="text-right">
-                            {showServerName && <div>SERVER: JULIAN B.</div>}
-                            <div className="text-[8.5px] text-white/55 mt-0.5">Order #2345</div>
+                            {showServerName && <div className="text-white font-extrabold">SERVER: JULIAN B.</div>}
+                            <div className="text-[8.5px] text-white font-bold mt-0.5">Order #2345</div>
                           </div>
                         </div>
                       </div>
@@ -190,21 +253,21 @@ export default function ReceiptsTab({
                     {/* Items check list */}
                     <div className="space-y-2.5 py-1 select-none">
                       <div className="flex justify-between items-baseline">
-                        <span className="text-white/90">2 Truffle Wagyu Sliders</span>
-                        <span className="text-white/95 font-bold">$48.00</span>
+                        <span className="text-white font-bold">2 Truffle Wagyu Sliders</span>
+                        <span className="text-white font-bold">$48.00</span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-white/90">1 Lobster Bisque</span>
-                        <span className="text-white/95 font-bold">$18.00</span>
+                        <span className="text-white font-bold">1 Lobster Bisque</span>
+                        <span className="text-white font-bold">$18.00</span>
                       </div>
                       <div className="flex justify-between items-baseline">
-                        <span className="text-white/90">2 Vintage Cabernet (G)</span>
-                        <span className="text-white/95 font-bold">$34.00</span>
+                        <span className="text-white font-bold">2 Vintage Cabernet (G)</span>
+                        <span className="text-white font-bold">$34.00</span>
                       </div>
                     </div>
 
                     {/* Subtotal breakdowns */}
-                    <div className="border-t border-white/5 pt-3 mt-3 space-y-1.5 text-[9px] text-[#A69984]/65 select-none">
+                    <div className="border-t border-white/5 pt-3 mt-3 space-y-1.5 text-[9px] text-white font-bold select-none">
                       <div className="flex justify-between">
                         <span>Subtotal</span>
                         <span>$100.00</span>
@@ -215,8 +278,14 @@ export default function ReceiptsTab({
                       </div>
                       {showServiceCharge && (
                         <div className="flex justify-between">
-                          <span>Service Charge (10%)</span>
-                          <span>$10.00</span>
+                          <span>Service Charge ({serviceChargeRate}%)</span>
+                          <span>{formatCurrency(serviceChargeVal)}</span>
+                        </div>
+                      )}
+                      {showDiscount && (
+                        <div className="flex justify-between text-emerald-400 font-bold">
+                          <span>Discount ({discountType === 'percent' ? `${discountValue}%` : formatCurrency(discountValue)})</span>
+                          <span>-{formatCurrency(discountVal)}</span>
                         </div>
                       )}
                     </div>
@@ -224,37 +293,25 @@ export default function ReceiptsTab({
                     {/* Total */}
                     <div className="border-t border-dashed border-white/10 pt-3 mt-2 flex justify-between items-baseline select-none">
                       <span className="text-white font-extrabold">TOTAL</span>
-                      <span className="text-[#ffe2ab] text-[13px] font-bold font-mono">
+                      <span className="text-[#ffe2ab] text-[13px] font-extrabold font-mono">
                         ${totalVal.toFixed(2)}
                       </span>
                     </div>
 
-                    {/* Footer barcode/QR/Text block */}
-                    <div className="text-center mt-6 space-y-4">
-                      {receiptFooterText && (
-                        <div className="text-[8.5px] italic text-[#A69984]/60 break-words font-sans max-w-[200px] mx-auto">
-                          "{receiptFooterText}"
-                        </div>
-                      )}
-
-                      {showQrCode && (
-                        <div className="flex flex-col items-center gap-1.5 select-none pt-1">
-                          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-[#A69984]/60">
-                            <rect x="1" y="1" width="6" height="6" stroke="currentColor" rx="0.5"/>
-                            <rect x="2.5" y="2.5" width="3" height="3" fill="currentColor"/>
-                            <rect x="17" y="1" width="6" height="6" stroke="currentColor" rx="0.5"/>
-                            <rect x="18.5" y="2.5" width="3" height="3" fill="currentColor"/>
-                            <rect x="1" y="17" width="6" height="6" stroke="currentColor" rx="0.5"/>
-                            <rect x="2.5" y="18.5" width="3" height="3" fill="currentColor"/>
-                            <rect x="9" y="1" width="2" height="2" fill="currentColor"/>
-                            <rect x="13" y="2" width="2" height="1" fill="currentColor"/>
-                            <rect x="9" y="9" width="3" height="3" fill="currentColor"/>
-                            <rect x="17" y="9" width="2" height="2" fill="currentColor"/>
-                            <rect x="9" y="17" width="2" height="2" fill="currentColor"/>
-                            <rect x="13" y="18" width="2" height="2" fill="currentColor"/>
-                            <rect x="18" y="17" width="4" height="4" fill="currentColor"/>
-                          </svg>
-                          <span className="text-[7.5px] font-bold text-[#ffe2ab]/70 uppercase tracking-widest font-sans">Scan for Feedback</span>
+                    {/* Footer Text block */}
+                    <div className="border-t border-dashed border-white/10 pt-2.5 mt-3 text-center space-y-1.5 font-sans select-none">
+                      <div className="text-[8.5px] font-extrabold text-white">
+                        Payment Method: <span className="text-white font-extrabold">Credit Card</span>
+                      </div>
+                      <div className="text-[9px] font-extrabold uppercase tracking-wider text-[#ffe2ab] pt-0.5">
+                        {receiptFooterText || 'THANK YOU FOR DINING WITH US. WE HOPE TO SERVE YOU AGAIN.'}
+                      </div>
+                      {showSocialMedia && (
+                        <div className="pt-1.5 text-[8px] font-bold text-white/90 space-y-0.5 border-t border-dashed border-white/10 mt-1.5">
+                          {socialLinks.facebook && <div>FB: {socialLinks.facebook}</div>}
+                          {socialLinks.instagram && <div>IG: {socialLinks.instagram}</div>}
+                          {socialLinks.tiktok && <div>TT: {socialLinks.tiktok}</div>}
+                          {socialLinks.youtube && <div>YT: {socialLinks.youtube}</div>}
                         </div>
                       )}
                     </div>
@@ -356,6 +413,91 @@ export default function ReceiptsTab({
                       </button>
                     </div>
 
+                    {/* Social Media Handles & Links Configuration Card */}
+                    <div className={`p-5 border border-white/10 rounded-2xl space-y-4 transition-all duration-300 ${showSocialMedia ? 'bg-[#0e0e0d]/50 shadow-lg' : 'bg-black/30 border-white/5 opacity-50'}`}>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1">
+                          <h4 className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-base text-[#ffe2ab]">share</span>
+                            Social Media Handles & Links
+                          </h4>
+                          <p className="text-[10.5px] text-[#A69984]/70 font-medium mt-1 leading-snug">
+                            Display digital social links on receipts and online storefronts
+                          </p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowSocialMedia(!showSocialMedia)} 
+                          className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${showSocialMedia ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
+                        >
+                          <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${showSocialMedia ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                        </button>
+                      </div>
+
+                      {/* Active / Dead-place Inputs Container */}
+                      <div className={`pt-3 border-t border-white/5 grid grid-cols-1 sm:grid-cols-2 gap-3 transition-all ${!showSocialMedia ? 'opacity-40 pointer-events-none' : ''}`}>
+                        {/* Facebook */}
+                        <div className="space-y-1">
+                          <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                            Facebook Link / Handle
+                          </label>
+                          <input 
+                            type="text"
+                            value={socialLinks.facebook}
+                            onChange={(e) => setSocialLinks({ ...socialLinks, facebook: e.target.value })}
+                            disabled={!showSocialMedia}
+                            placeholder="facebook.com/yourpage"
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20"
+                          />
+                        </div>
+
+                        {/* Instagram */}
+                        <div className="space-y-1">
+                          <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                            Instagram Link / Handle
+                          </label>
+                          <input 
+                            type="text"
+                            value={socialLinks.instagram}
+                            onChange={(e) => setSocialLinks({ ...socialLinks, instagram: e.target.value })}
+                            disabled={!showSocialMedia}
+                            placeholder="instagram.com/yourhandle"
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20"
+                          />
+                        </div>
+
+                        {/* TikTok */}
+                        <div className="space-y-1">
+                          <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                            TikTok Link / Handle
+                          </label>
+                          <input 
+                            type="text"
+                            value={socialLinks.tiktok}
+                            onChange={(e) => setSocialLinks({ ...socialLinks, tiktok: e.target.value })}
+                            disabled={!showSocialMedia}
+                            placeholder="tiktok.com/@yourhandle"
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20"
+                          />
+                        </div>
+
+                        {/* YouTube */}
+                        <div className="space-y-1">
+                          <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                            YouTube Link / Handle
+                          </label>
+                          <input 
+                            type="text"
+                            value={socialLinks.youtube}
+                            onChange={(e) => setSocialLinks({ ...socialLinks, youtube: e.target.value })}
+                            disabled={!showSocialMedia}
+                            placeholder="youtube.com/@yourchannel"
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-medium text-white focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed placeholder-white/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
@@ -373,20 +515,134 @@ export default function ReceiptsTab({
                         className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl px-4 py-3 text-xs text-white placeholder-white/20 focus:outline-none focus:border-[#ffe2ab]/40 transition-colors font-medium font-mono uppercase"
                       />
                     </div>
-
-                    <div className="flex justify-between items-center bg-[#0e0e0d]/50 p-4 border border-white/5 rounded-xl mt-2">
-                      <div className="max-w-[70%]">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-1">Show Service Charge</h4>
-                        <p className="text-[10.5px] text-[#A69984]/50 font-semibold leading-relaxed">
-                          Include gratuity line automatically
-                        </p>
+                    
+                    {/* Service Charge Configuration Card */}
+                    <div className={`p-5 border border-white/10 rounded-2xl space-y-4 transition-all duration-300 ${showServiceCharge ? 'bg-[#0e0e0d]/50 shadow-lg' : 'bg-black/30 border-white/5 opacity-50'}`}>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1">
+                          <h4 className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-base text-[#ffe2ab]">percent</span>
+                            Service Charge (Gratuity)
+                          </h4>
+                          <p className="text-[10.5px] text-[#A69984]/70 font-medium mt-1 leading-snug">
+                            Automatically calculate & print service charge on receipts
+                          </p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowServiceCharge(!showServiceCharge)} 
+                          className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${showServiceCharge ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
+                        >
+                          <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${showServiceCharge ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                        </button>
                       </div>
-                      <button type="button"
-                        onClick={() => setShowServiceCharge(!showServiceCharge)}
-                        className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showServiceCharge ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
-                      >
-                        <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 transform ${showServiceCharge ? 'translate-x-[22px]' : 'translate-x-0'}`}></div>
-                      </button>
+
+                      {/* Service Charge Input Field (Disabled / Dead Place when OFF) */}
+                      <div className={`pt-3 border-t border-white/5 space-y-2 transition-all ${!showServiceCharge ? 'opacity-40 pointer-events-none' : ''}`}>
+                        <div className="flex justify-between items-baseline">
+                          <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                            Service Charge Rate
+                          </label>
+                          <span className="text-[10px] text-white/40 font-medium">Applied to subtotal</span>
+                        </div>
+                        <div className="relative flex items-center w-full">
+                          <span className="absolute left-3.5 text-xs font-bold text-[#ffe2ab] select-none pointer-events-none">%</span>
+                          <input 
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={serviceChargeRate}
+                            onChange={(e) => setServiceChargeRate(parseFloat(e.target.value) || 0)}
+                            disabled={!showServiceCharge}
+                            placeholder="10"
+                            className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs font-mono font-bold text-white text-right focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Promotional Discount Configuration Card */}
+                    <div className={`p-5 border border-white/10 rounded-2xl space-y-4 transition-all duration-300 ${showDiscount ? 'bg-[#0e0e0d]/50 shadow-lg' : 'bg-black/30 border-white/5 opacity-50'}`}>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1">
+                          <h4 className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-base text-emerald-400">local_offer</span>
+                            Promotional Discount
+                          </h4>
+                          <p className="text-[10.5px] text-[#A69984]/70 font-medium mt-1 leading-snug">
+                            Enable promotional discount line on checkout & receipts
+                          </p>
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={() => setShowDiscount(!showDiscount)} 
+                          className={`w-11 h-6 rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center shrink-0 mt-0.5 ${showDiscount ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
+                        >
+                          <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 ${showDiscount ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                        </button>
+                      </div>
+
+                      {/* Active / Dead-place Controls Container */}
+                      <div className={`pt-3 border-t border-white/5 space-y-4 transition-all ${!showDiscount ? 'opacity-40 pointer-events-none' : ''}`}>
+                        
+                        {/* Mode Segmented Control Grid */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-baseline">
+                            <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                              Calculation Mode
+                            </label>
+                            <span className="text-[10px] text-white/40 font-medium">Type</span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#0e0e0d] border border-white/10 rounded-xl w-full">
+                            <button
+                              type="button"
+                              onClick={() => setDiscountType('percent')}
+                              disabled={!showDiscount}
+                              className={`py-2 text-[10px] font-extrabold uppercase rounded-lg transition-all text-center cursor-pointer ${discountType === 'percent' && showDiscount ? 'bg-[#ffe2ab] text-[#402d00] shadow-sm' : 'text-white/60 hover:text-white disabled:cursor-not-allowed'}`}
+                            >
+                              % Percentage
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDiscountType('fixed')}
+                              disabled={!showDiscount}
+                              className={`py-2 text-[10px] font-extrabold uppercase rounded-lg transition-all text-center cursor-pointer ${discountType === 'fixed' && showDiscount ? 'bg-[#ffe2ab] text-[#402d00] shadow-sm' : 'text-white/60 hover:text-white disabled:cursor-not-allowed'}`}
+                            >
+                              $ Fixed Amount
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Discount Value Input Block */}
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-baseline">
+                            <label className="block text-[9.5px] font-extrabold uppercase tracking-wider text-white">
+                              Discount Value
+                            </label>
+                            <span className="text-[10px] text-white/40 font-medium">
+                              {discountType === 'percent' ? 'Deduct % from subtotal' : 'Fixed $ amount'}
+                            </span>
+                          </div>
+
+                          <div className="relative flex items-center w-full">
+                            <span className="absolute left-3.5 text-xs font-bold text-[#ffe2ab] select-none pointer-events-none">
+                              {discountType === 'percent' ? '%' : '$'}
+                            </span>
+                            <input 
+                              type="number"
+                              min="0"
+                              max={discountType === 'percent' ? "100" : "10000"}
+                              value={discountValue}
+                              onChange={(e) => setDiscountValue(parseFloat(e.target.value) || 0)}
+                              disabled={!showDiscount}
+                              placeholder="10"
+                              className="w-full bg-[#0e0e0d] border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-xs font-mono font-bold text-white text-right focus:outline-none focus:border-[#ffe2ab]/40 disabled:cursor-not-allowed"
+                            />
+                          </div>
+                        </div>
+
+                      </div>
                     </div>
                   </div>
                 </div>

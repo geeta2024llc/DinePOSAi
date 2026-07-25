@@ -70,7 +70,17 @@ export default function DashboardPage() {
   const [showTaxId, setShowTaxId] = useState(true);
   const [showQrCode, setShowQrCode] = useState(true);
   const [showSocialMedia, setShowSocialMedia] = useState(false);
+  const [socialLinks, setSocialLinks] = useState({
+    facebook: 'facebook.com/dineposai',
+    instagram: 'instagram.com/dineposai',
+    tiktok: 'tiktok.com/@dineposai',
+    youtube: 'youtube.com/@dineposai'
+  });
   const [showServiceCharge, setShowServiceCharge] = useState(true);
+  const [serviceChargeRate, setServiceChargeRate] = useState(10);
+  const [showDiscount, setShowDiscount] = useState(true);
+  const [discountType, setDiscountType] = useState<'percent' | 'fixed'>('percent');
+  const [discountValue, setDiscountValue] = useState(10);
   const [showCustomFooter, setShowCustomFooter] = useState(false);
   const [thankYouMessage, setThankYouMessage] = useState('Thank you for dining with us at DinePosAi! We hope to see you again soon.');
 
@@ -510,8 +520,18 @@ export default function DashboardPage() {
               setShowQrCode={setShowQrCode}
               showSocialMedia={showSocialMedia}
               setShowSocialMedia={setShowSocialMedia}
+              socialLinks={socialLinks}
+              setSocialLinks={setSocialLinks}
               showServiceCharge={showServiceCharge}
               setShowServiceCharge={setShowServiceCharge}
+              serviceChargeRate={serviceChargeRate}
+              setServiceChargeRate={setServiceChargeRate}
+              showDiscount={showDiscount}
+              setShowDiscount={setShowDiscount}
+              discountType={discountType}
+              setDiscountType={setDiscountType}
+              discountValue={discountValue}
+              setDiscountValue={setDiscountValue}
               showCustomFooter={showCustomFooter}
               setShowCustomFooter={setShowCustomFooter}
               thankYouMessage={thankYouMessage}
@@ -558,7 +578,20 @@ export default function DashboardPage() {
               showServerName={showServerName}
               setShowServerName={setShowServerName}
               showOrderTimestamp={showOrderTimestamp}
-              setShowOrderTimestamp={setShowOrderTimestamp}
+              showSocialMedia={showSocialMedia}
+              setShowSocialMedia={setShowSocialMedia}
+              socialLinks={socialLinks}
+              setSocialLinks={setSocialLinks}
+              showServiceCharge={showServiceCharge}
+              setShowServiceCharge={setShowServiceCharge}
+              serviceChargeRate={serviceChargeRate}
+              setServiceChargeRate={setServiceChargeRate}
+              showDiscount={showDiscount}
+              setShowDiscount={setShowDiscount}
+              discountType={discountType}
+              setDiscountType={setDiscountType}
+              discountValue={discountValue}
+              setDiscountValue={setDiscountValue}
             />
           )}
 

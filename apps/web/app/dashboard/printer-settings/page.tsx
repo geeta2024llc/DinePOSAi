@@ -604,7 +604,8 @@ export default function PrinterSettingsPage() {
                   <span>$265.10</span>
                 </div>
                 <div className="border-b border-dashed border-black my-2"></div>
-                <div className="text-center font-black text-[10px] mt-2 uppercase">{customFooter}</div>
+                <div className="text-center font-black text-[10px]">Payment Method: Credit Card</div>
+                <div className="text-center font-black text-[10px] mt-1 uppercase">{customFooter || 'THANK YOU FOR DINING WITH US. WE HOPE TO SERVE YOU AGAIN.'}</div>
               </div>
             </div>
 
