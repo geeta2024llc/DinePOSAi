@@ -3,6 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { EscposEncoder } from './escposEncoder';
 import { BluetoothPrinter } from '../src/utils/bluetoothPrinter';
 import { PrintableReceipt } from '../src/components/dashboard/PrintableReceipt';
+import { getStoredInvoiceConfig } from '../src/utils/invoiceConfig';
+import { encodeInvoiceToEscPos } from '../src/utils/escposInvoiceEncoder';
 
 export type PrinterType = 'bluetooth' | 'usb' | 'serial' | 'network' | 'browser';
 
@@ -113,74 +115,7 @@ export class PrinterService {
   }
 
   private encodeReceipt(data: PrintReceiptData): Uint8Array {
-    let customHeader = 'DinePosAi';
-    let customVat = 'VAT ID: US-994827104';
-    let customFooter = 'THANK YOU FOR DINING WITH US!';
-
-    if (typeof window !== 'undefined') {
-      const storedConfigStr = localStorage.getItem('dinepos_printer_config');
-      if (storedConfigStr) {
-        try {
-          const storedConfig = JSON.parse(storedConfigStr);
-          if (storedConfig.customHeaderText) customHeader = storedConfig.customHeaderText;
-          if (storedConfig.customVatId) customVat = storedConfig.customVatId;
-          if (storedConfig.customFooterText) customFooter = storedConfig.customFooterText;
-        } catch (e) {}
-      }
-    }
-
-    const encoder = new EscposEncoder();
-
-    encoder.init()
-      .align('center')
-      .size(true)
-      .line(customHeader)
-      .size(false)
-      .line(customVat)
-      .line('------------------------------------------------')
-      .align('left')
-      .line(`TABLE: ${data.tableNumber}     ORDER #${data.orderId}`)
-      .line(`DATE: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`)
-      .line('------------------------------------------------');
-
-    data.items.forEach((item) => {
-      const priceStr = `$${(item.price * item.quantity).toFixed(2)}`;
-      const nameStr = `${item.quantity}x ${item.name}`;
-      encoder.line(`${nameStr.padEnd(36)}${priceStr.padStart(12)}`);
-      if (item.modifiers && item.modifiers.length > 0) {
-        encoder.line(`   + ${item.modifiers.join(', ')}`);
-      }
-      if (item.notes) {
-        encoder.line(`   NOTE: "${item.notes}"`);
-      }
-    });
-
-    encoder.line('------------------------------------------------')
-      .align('right')
-      .line(`SUBTOTAL: $${data.subtotal.toFixed(2)}`)
-      .line(`TAX (${(data.taxRate * 100).toFixed(1)}%): $${data.tax.toFixed(2)}`)
-      .line(`SERVICE CHARGE: $${data.serviceCharge.toFixed(2)}`)
-      .line('================================================')
-      .size(true)
-      .line(`GRAND TOTAL: $${data.total.toFixed(2)}`)
-      .size(false)
-      .line('================================================')
-      .align('center')
-      .feed(1);
-
-    if (data.isPaid) {
-      encoder.line('*** PAYMENT CONFIRMED ***')
-        .line(`METHOD: ${data.paymentMethod || 'CREDIT CARD'}`);
-    } else {
-      encoder.line('*** BALANCE DUE ***');
-    }
-
-    encoder.feed(2)
-      .line(customFooter)
-      .feed(2)
-      .cut();
-
-    return encoder.getBytes();
+    return encodeInvoiceToEscPos(data);
   }
 
   private printBrowserReceipt(data: PrintReceiptData, onLog: (msg: string) => void): void {
@@ -189,67 +124,21 @@ export class PrinterService {
       return;
     }
 
-    let customHeader = 'DinePosAi';
-    let customVat = '301234567';
-    let customFooter = 'THANK YOU FOR DINING WITH US AT DINEPOSAI! WE HOPE TO SEE YOU AGAIN SOON.';
-    let customLogo = '';
-    let taxRegType: 'VAT' | 'PAN' = 'VAT';
-    let socialEnabled = false;
-    let socialLinksObj: any = null;
+    const currentInvoiceConfig = getStoredInvoiceConfig();
 
-    try {
-      const savedLogo = localStorage.getItem('dinepos_restaurant_logo');
-      if (savedLogo) customLogo = savedLogo;
-
-      const storedConfigStr = localStorage.getItem('dinepos_printer_config');
-      if (storedConfigStr) {
-        const storedConfig = JSON.parse(storedConfigStr);
-        if (storedConfig.customHeaderText) customHeader = storedConfig.customHeaderText;
-        if (storedConfig.customVatId) customVat = storedConfig.customVatId;
-        if (storedConfig.customFooterText) customFooter = storedConfig.customFooterText;
-        if (storedConfig.headerLogoUrl && !customLogo) customLogo = storedConfig.headerLogoUrl;
-      }
-      
-      const savedEstName = localStorage.getItem('dinepos_establishment_name');
-      if (savedEstName) customHeader = savedEstName;
-
-      const savedTaxId = localStorage.getItem('dinepos_tax_id');
-      if (savedTaxId) customVat = savedTaxId;
-
-      const savedRegType = localStorage.getItem('dinepos_tax_registration_type');
-      if (savedRegType === 'VAT' || savedRegType === 'PAN') taxRegType = savedRegType as 'VAT' | 'PAN';
-
-      const savedSocial = localStorage.getItem('dinepos_social_media_enabled');
-      if (savedSocial === 'true') socialEnabled = true;
-
-      const savedLinks = localStorage.getItem('dinepos_social_links');
-      if (savedLinks) {
-        try { socialLinksObj = JSON.parse(savedLinks); } catch(e){}
-      }
-    } catch (e) {}
-
-    // Render single-source PrintableReceipt component to static HTML markup
+    // Render single-source PrintableReceipt component with unified invoice config
     const componentMarkup = renderToStaticMarkup(
       React.createElement(PrintableReceipt, {
-        variant: 'light-print',
-        establishmentName: customHeader,
-        taxId: customVat,
-        taxRegistrationType: taxRegType,
+        invoiceConfig: currentInvoiceConfig,
         tableNumber: data.tableNumber,
         orderId: data.orderId,
         items: data.items,
         subtotal: data.subtotal,
-        taxRate: data.taxRate ? (data.taxRate < 1 ? data.taxRate * 100 : data.taxRate) : 8,
         taxAmount: data.tax,
-        taxType: data.taxType,
         serviceChargeAmount: data.serviceCharge,
         grandTotal: data.total,
         paymentMethod: data.paymentMethod || 'Credit Card',
-        thankYouMessage: customFooter,
-        restaurantLogo: customLogo,
-        showSocialMedia: socialEnabled,
-        socialLinks: socialLinksObj,
-        showQrCode: false
+        variant: 'light-print'
       })
     );
 

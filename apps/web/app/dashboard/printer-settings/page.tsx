@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePrinter } from '../../printerContext';
 import { PrinterType, PrinterConfig } from '../../printerService';
 import { PrintableReceipt } from '@/components/dashboard/PrintableReceipt';
+import { getStoredInvoiceConfig, saveStoredInvoiceConfig } from '@/utils/invoiceConfig';
 
 export default function PrinterSettingsPage() {
   const { config, status, logs, setConfig, scanAndPair, testPrint, clearLogs, forgetConfig } = usePrinter();
@@ -24,6 +25,7 @@ export default function PrinterSettingsPage() {
   const [customVat, setCustomVat] = useState('301234567');
   const [customFooter, setCustomFooter] = useState('THANK YOU FOR DINING WITH US!');
   const [headerLogo, setHeaderLogo] = useState('');
+  const [paperWidth, setPaperWidth] = useState<'58mm' | '80mm'>('80mm');
   const [isSecure, setIsSecure] = useState(true);
 
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,14 +38,13 @@ export default function PrinterSettingsPage() {
       setIsSecure(window.isSecureContext || location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1');
 
       try {
-        const storedConfigStr = localStorage.getItem('dinepos_printer_config');
-        if (storedConfigStr) {
-          const cfg = JSON.parse(storedConfigStr);
-          if (cfg.customHeaderText) setCustomHeader(cfg.customHeaderText);
-          if (cfg.customVatId) setCustomVat(cfg.customVatId);
-          if (cfg.customFooterText) setCustomFooter(cfg.customFooterText);
-          if (cfg.headerLogoUrl) setHeaderLogo(cfg.headerLogoUrl);
-        }
+        const invConfig = getStoredInvoiceConfig();
+        if (invConfig.establishmentName) setCustomHeader(invConfig.establishmentName);
+        if (invConfig.taxId) setCustomVat(invConfig.taxId);
+        if (invConfig.taxRegistrationType) setTaxRegType(invConfig.taxRegistrationType);
+        if (invConfig.thankYouMessage) setCustomFooter(invConfig.thankYouMessage);
+        if (invConfig.restaurantLogo) setHeaderLogo(invConfig.restaurantLogo);
+        if (invConfig.paperWidth) setPaperWidth(invConfig.paperWidth);
       } catch (e) {}
     }
   }, []);
@@ -111,7 +112,15 @@ export default function PrinterSettingsPage() {
       headerLogoUrl: headerLogo
     };
     setConfig(updated);
-    triggerToast('Thermal receipt customization saved!', 'success');
+    saveStoredInvoiceConfig({
+      establishmentName: customHeader,
+      taxId: customVat,
+      taxRegistrationType: taxRegType,
+      thankYouMessage: customFooter,
+      restaurantLogo: headerLogo,
+      paperWidth: paperWidth
+    });
+    triggerToast('Thermal receipt customization saved to shared invoice config!', 'success');
   };
 
   const handleScanDevice = async (type: 'bluetooth' | 'usb') => {
@@ -598,6 +607,30 @@ export default function PrinterSettingsPage() {
                 </div>
 
                 <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider">
+                      Thermal Paper Roll Width
+                    </label>
+                    <div className="inline-flex rounded-lg overflow-hidden border border-white/10 p-0.5 bg-[#0e0e0d]">
+                      <button
+                        type="button"
+                        onClick={() => setPaperWidth('58mm')}
+                        className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${paperWidth === '58mm' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                      >
+                        58mm (Mobile)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaperWidth('80mm')}
+                        className={`px-2 py-0.5 text-[9px] font-extrabold uppercase rounded transition-all cursor-pointer ${paperWidth === '80mm' ? 'bg-[#ffe2ab] text-[#402d00]' : 'text-white/60 hover:text-white'}`}
+                      >
+                        80mm (Standard)
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider mb-1">
                     Receipt Footer Message
                   </label>
@@ -620,6 +653,7 @@ export default function PrinterSettingsPage() {
                   taxRegistrationType={taxRegType}
                   thankYouMessage={customFooter}
                   restaurantLogo={headerLogo}
+                  paperWidth={paperWidth}
                 />
               </div>
             </div>

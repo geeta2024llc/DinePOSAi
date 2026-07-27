@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useRef } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { recordActivity } from '@/utils/activityLogger';
 import { PrintableReceipt } from './PrintableReceipt';
 import { usePrinter } from '../../../app/printerContext';
+import { saveStoredInvoiceConfig } from '@/utils/invoiceConfig';
 
 interface GeneralTabProps {
   t: any;
@@ -216,6 +217,59 @@ export default function GeneralTab({
 
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const { config: printerConfig, status: printerStatus, printReceipt } = usePrinter();
+
+  // Sync General Settings configuration changes to single shared invoice config module
+  useEffect(() => {
+    saveStoredInvoiceConfig({
+      establishmentName,
+      businessAddress,
+      contactEmail,
+      restaurantLogo,
+      showLogo,
+      taxId,
+      taxRegistrationType,
+      showTaxId,
+      showTableNumber,
+      showServerName,
+      showOrderTimestamp,
+      showServiceCharge,
+      serviceChargeRate,
+      showDiscount,
+      discountType,
+      discountValue,
+      taxType,
+      thankYouMessage,
+      showCustomFooter,
+      showSocialMedia,
+      socialLinks,
+      showQrCode,
+      currency
+    });
+  }, [
+    establishmentName,
+    businessAddress,
+    contactEmail,
+    restaurantLogo,
+    showLogo,
+    taxId,
+    taxRegistrationType,
+    showTaxId,
+    showTableNumber,
+    showServerName,
+    showOrderTimestamp,
+    showServiceCharge,
+    serviceChargeRate,
+    showDiscount,
+    discountType,
+    discountValue,
+    taxType,
+    thankYouMessage,
+    showCustomFooter,
+    showSocialMedia,
+    socialLinks,
+    showQrCode,
+    currency
+  ]);
 
   const handleTestPrintFromPreview = async () => {
     // Check printer connection status per printing architecture

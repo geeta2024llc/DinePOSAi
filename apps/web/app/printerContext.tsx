@@ -137,24 +137,45 @@ export function PrinterProvider({ children }: { children: React.ReactNode }) {
   };
 
   const testPrint = async () => {
+    let subtotal = 100.00;
+    let taxRate = 0.08;
+    let taxVal = 8.00;
+    let serviceChargeVal = 10.00;
+    let discountVal = 10.00;
+    let totalVal = 108.00;
+
+    if (typeof window !== 'undefined') {
+      try {
+        const { getStoredInvoiceConfig } = await import('../src/utils/invoiceConfig');
+        const invConfig = getStoredInvoiceConfig();
+        subtotal = 100.00;
+        taxRate = invConfig.taxRate ? (invConfig.taxRate < 1 ? invConfig.taxRate : invConfig.taxRate / 100) : 0.08;
+        taxVal = invConfig.taxType === 'pre-tax' ? subtotal * taxRate : subtotal - (subtotal / (1 + taxRate));
+        serviceChargeVal = invConfig.showServiceCharge ? subtotal * ((invConfig.serviceChargeRate || 10) / 100) : 0;
+        discountVal = invConfig.showDiscount ? (invConfig.discountType === 'percent' ? subtotal * ((invConfig.discountValue || 10) / 100) : (invConfig.discountValue || 10)) : 0;
+        totalVal = (invConfig.taxType === 'pre-tax' ? subtotal + taxVal : subtotal) + serviceChargeVal - discountVal;
+      } catch (e) {}
+    }
+
     const testData: PrintReceiptData = {
-      tableNumber: 99,
-      orderId: 'TEST-12345',
+      tableNumber: 'T-14',
+      orderId: '2345',
       items: [
-        { name: 'System Diagnostic Test', quantity: 1, price: 0.00, course: 'system' },
-        { name: 'Paper Feed Validation', quantity: 2, price: 0.00, course: 'system' }
+        { name: 'Truffle Wagyu Sliders', quantity: 2, price: 24.00 },
+        { name: 'Lobster Bisque', quantity: 1, price: 18.00 },
+        { name: 'Vintage Cabernet (G)', quantity: 2, price: 17.00 }
       ],
-      subtotal: 0.00,
-      taxRate: 0.10,
-      tax: 0.00,
+      subtotal: subtotal,
+      taxRate: taxRate,
+      tax: taxVal,
       taxType: 'pre-tax',
-      serviceCharge: 0.00,
-      total: 0.00,
+      serviceCharge: serviceChargeVal,
+      total: totalVal,
       isPaid: true,
-      paymentMethod: 'Internal Loopback',
+      paymentMethod: 'Credit Card',
       authCode: 'OK-200'
     };
-    addLog('Initiating Self-Test Print...');
+    addLog('Initiating Self-Test Print (using Live Preview settings)...');
     await printReceipt(testData);
   };
 
