@@ -22,8 +22,8 @@ interface ReceiptsTabProps {
   setShowTableNumber: (val: boolean) => void;
   showServerName: boolean;
   setShowServerName: (val: boolean) => void;
-  showOrderTimestamp: boolean;
-  setShowOrderTimestamp: (val: boolean) => void;
+  showOrderTimestamp?: boolean;
+  setShowOrderTimestamp?: (val: boolean) => void;
   showServiceCharge?: boolean;
   setShowServiceCharge?: (val: boolean) => void;
   serviceChargeRate?: number;
@@ -196,7 +196,7 @@ export default function ReceiptsTab({
   };
 
   const updateShowTimestamp = (val: boolean) => {
-    setShowOrderTimestamp(val);
+    setShowOrderTimestamp?.(val);
     localStorage.setItem('dinepos_receipt_show_timestamp', String(val));
   };
 
@@ -374,7 +374,7 @@ export default function ReceiptsTab({
                         <h4 className="text-xs font-bold uppercase tracking-wider text-white mb-1">Order Timestamp</h4>
                       </div>
                       <button type="button"
-                        onClick={() => setShowOrderTimestamp(!showOrderTimestamp)}
+                        onClick={() => updateShowTimestamp(!showOrderTimestamp)}
                         className={`w-[48px] h-[26px] rounded-full p-1 cursor-pointer transition-colors duration-300 flex items-center ${showOrderTimestamp ? 'bg-[#ffe2ab]' : 'bg-white/10'}`}
                       >
                         <div className={`w-4 h-4 bg-[#0e0e0e] rounded-full shadow transition-transform duration-300 transform ${showOrderTimestamp ? 'translate-x-[22px]' : 'translate-x-0'}`}></div>

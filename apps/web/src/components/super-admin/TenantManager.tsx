@@ -20,7 +20,8 @@ export default function TenantManager(props: any) {
     handleQuickRenew, handleRetryBilling, handleDeleteTenant,
     handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
     globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs,
-    showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant
+    showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant,
+    isLoadingOverview, overviewError
   } = props;
 
   // ── Bulk selection state ──────────────────────────────────────────────────
@@ -480,7 +481,7 @@ export default function TenantManager(props: any) {
                   </div>
                   <div className="z-10 flex items-baseline gap-3">
                     <h3 className="font-serif text-5xl font-bold text-white tracking-wide">
-                      {138 + tenants.filter((t: any) => t.status === 'ACTIVE').length}
+                      {tenants.filter((t: any) => t.status === 'ACTIVE').length}
                     </h3>
                     <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 leading-none">
                       <span className="material-symbols-outlined text-sm font-bold leading-none">arrow_upward</span>
@@ -642,6 +643,24 @@ export default function TenantManager(props: any) {
                 </div>
               )}
 
+              {/* Authentication / Sync Error Banner */}
+              {overviewError && (
+                <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl flex items-center justify-between font-sans animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+                      <span className="material-symbols-outlined text-lg font-bold">shield_lock</span>
+                    </div>
+                    <div>
+                      <div className="text-white font-bold text-xs uppercase tracking-wider">Super Admin Authentication Alert</div>
+                      <div className="text-rose-300 text-xs font-medium mt-0.5">{overviewError}</div>
+                    </div>
+                  </div>
+                  <a href="/login" className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl transition-all shadow-md shrink-0">
+                    Sign In Again
+                  </a>
+                </div>
+              )}
+
               {/* ── Main Table Card ────────────────────────────────────────── */}
               <div className={`${theme.cardBg} border rounded-2xl shadow-xl overflow-hidden`}>
                 <div className="overflow-x-auto w-full">
@@ -664,14 +683,23 @@ export default function TenantManager(props: any) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/[0.04]">
-                      {pagedTenants.length === 0 && (
+                      {isLoadingOverview ? (
+                        <tr>
+                          <td colSpan={7} className="py-16 text-center">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                              <div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                              <p className="text-xs text-[#A69984]/60 font-bold uppercase tracking-wider">Verifying Super Admin Credentials & Loading Tenants...</p>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : pagedTenants.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="py-16 text-center">
                             <span className="material-symbols-outlined text-4xl text-white/10 block mb-2">search_off</span>
                             <p className="text-xs text-[#A69984]/40 font-bold uppercase tracking-wider">No tenants match your filters</p>
                           </td>
                         </tr>
-                      )}
+                      ) : null}
                       {pagedTenants.map((ten: any) => {
                         const isSelected = selectedIds.has(ten.id);
                         const expStatus = checkExpiryStatus(ten.expiryDate);

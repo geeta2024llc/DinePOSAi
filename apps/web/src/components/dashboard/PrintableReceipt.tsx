@@ -52,6 +52,8 @@ export interface PrintableReceiptProps {
   paymentMethod?: string;
   isPaid?: boolean;
   thankYouMessage?: string;
+  showCustomFooter?: boolean;
+  customFooterText?: string;
   showSocialMedia?: boolean;
   socialLinks?: {
     facebook?: string;
@@ -59,6 +61,8 @@ export interface PrintableReceiptProps {
     tiktok?: string;
     youtube?: string;
   };
+  showQrCode?: boolean;
+  qrCodeUrl?: string;
 
   // Rendering Options
   variant?: 'dark-preview' | 'light-print';

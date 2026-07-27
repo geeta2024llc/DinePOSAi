@@ -36,6 +36,18 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
       .order('created_at', { ascending: false })
       .limit(50);
 
+    const mapCountryToRegion = (country?: string) => {
+      if (!country) return 'North America - East';
+      const c = country.toLowerCase();
+      if (c.includes('japan') || c.includes('nepal') || c.includes('asia') || c.includes('china') || c.includes('india') || c.includes('singapore')) {
+        return 'Asia Pacific';
+      }
+      if (c.includes('europe') || c.includes('uk') || c.includes('france') || c.includes('germany') || c.includes('spain') || c.includes('italy')) {
+        return 'Europe - West';
+      }
+      return 'North America - East';
+    };
+
     const formattedTenants = (dbTenants || []).map((t: any) => ({
       id: t.id,
       name: t.name,
@@ -46,7 +58,7 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
       status: t.status ? t.status.toUpperCase() : 'ACTIVE',
       joined: t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
       tier: 'Business',
-      region: t.country || 'Global',
+      region: mapCountryToRegion(t.country),
       expiryDate: t.trial_ends_at ? t.trial_ends_at.split('T')[0] : (t.subscription_expires_at ? t.subscription_expires_at.split('T')[0] : ''),
     }));
 

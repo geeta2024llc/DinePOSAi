@@ -542,6 +542,8 @@ export default function SuperAdminPage() {
 
   // Real database tenants state
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(true);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
 
   const [showTenantDetailsModal, setShowTenantDetailsModal] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null);
@@ -669,18 +671,48 @@ export default function SuperAdminPage() {
   const [fleet, setFleet] = useState<FleetDevice[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  // Sync real system overview data from backend API
+  // Sync real system overview data from backend API with authentication guard
   useEffect(() => {
     const loadOverview = async () => {
+      setIsLoadingOverview(true);
+      setOverviewError(null);
+
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dinepos_jwt_token') : null;
+      const userStr = typeof window !== 'undefined' ? localStorage.getItem('dinepos_user_account') : null;
+      let userRole = '';
+      if (userStr) {
+        try {
+          const parsed = JSON.parse(userStr);
+          userRole = parsed?.role || '';
+        } catch { /* ignore parse error */ }
+      }
+
+      if (!token) {
+        setOverviewError('Authentication required: No active session token found. Please sign in as Super Admin.');
+        setIsLoadingOverview(false);
+        return;
+      }
+
+      if (userRole && userRole !== 'SUPER_ADMIN') {
+        setOverviewError(`Access Denied: Current account role (${userRole}) is not authorized. Super Admin privileges required.`);
+        setIsLoadingOverview(false);
+        return;
+      }
+
       try {
         const res = await apiRequest<any>('/api/admin/overview');
         if (res.success && res.data) {
           if (Array.isArray(res.data.tenants)) setTenants(res.data.tenants);
           if (Array.isArray(res.data.users)) setAdmins(res.data.users);
           if (Array.isArray(res.data.auditLogs)) setAuditLogs(res.data.auditLogs);
+        } else {
+          setOverviewError(res.error || 'Failed to load enterprise tenants. Please verify credentials or sign in again.');
         }
-      } catch (err) {
-        console.warn('[SuperAdmin] Backend sync note:', err);
+      } catch (err: any) {
+        console.warn('[SuperAdmin] Backend sync error:', err);
+        setOverviewError(err.message || 'Unable to connect to Super Admin administration server.');
+      } finally {
+        setIsLoadingOverview(false);
       }
     };
     loadOverview();
@@ -2204,9 +2236,9 @@ export default function SuperAdminPage() {
                 setSelectedTenant, setEditingExpiryDate, setShowTenantDetailsModal,
                 setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
                 handleQuickRenew, handleRetryBilling, handleDeleteTenant,
-                handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
                 globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs,
-                showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant
+                showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant,
+                isLoadingOverview, overviewError
               }}
             />
           )}
