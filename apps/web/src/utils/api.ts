@@ -4,8 +4,30 @@
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
+/**
+ * Safely constructs full backend API endpoint URLs, preventing doubled `/api/api/`
+ * or missing `/api` prefixes regardless of environment configuration.
+ */
+export function getApiUrl(path: string): string {
+  const rawBase = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000').trim().replace(/\/+$/, '');
+  
+  if (path === '/health' || path === 'health') {
+    const rootBase = rawBase.endsWith('/api') ? rawBase.slice(0, -4) : rawBase;
+    return `${rootBase}/health`;
+  }
+
+  const rootBase = rawBase.endsWith('/api') ? rawBase.slice(0, -4) : rawBase;
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const apiPath = (normalizedPath.startsWith('/api/') || normalizedPath === '/api') 
+    ? normalizedPath 
+    : `/api${normalizedPath}`;
+
+  return `${rootBase}${apiPath}`;
+}
+
 if (typeof window !== 'undefined') {
   console.log('[DinePosAI API Client] Target API Base URL:', API_BASE_URL);
+  console.log('[DinePosAI API Client] Sample Endpoint Route:', getApiUrl('/api/admin/overview'));
 }
 
 // ==========================================
@@ -88,7 +110,7 @@ let refreshPromise: Promise<string | null> | null = null;
 
 async function attemptTokenRefresh(): Promise<string | null> {
   try {
-    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    const refreshRes = await fetch(getApiUrl('/api/auth/refresh'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -126,7 +148,7 @@ export async function checkBackendOnline(): Promise<boolean> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort('Health check timeout'), 2000);
     
-    const response = await fetch(`${API_BASE_URL}/health`, {
+    const response = await fetch(getApiUrl('/health'), {
       method: 'GET',
       signal: controller.signal,
       cache: 'no-store',
@@ -151,7 +173,7 @@ export async function apiRequest<T = any>(
   options: ApiRequestOptions = {}
 ): Promise<ApiResponseEnvelope<T>> {
   const { useAuth = true, ...fetchOptions } = options;
-  const url = `${API_BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  const url = getApiUrl(path);
 
   // 1. Prepare headers
   const headers = new Headers(fetchOptions.headers || {});
