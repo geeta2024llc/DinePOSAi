@@ -2,7 +2,11 @@
 // DinePosAI - Central Frontend API Client
 // ==========================================
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+if (typeof window !== 'undefined') {
+  console.log('[DinePosAI API Client] Target API Base URL:', API_BASE_URL);
+}
 
 // ==========================================
 // TENANT IDENTITY HELPERS

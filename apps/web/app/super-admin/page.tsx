@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
@@ -262,6 +263,7 @@ interface AuditLog {
   type: 'info' | 'warning' | 'success' | 'security';
 }
 export default function SuperAdminPage() {
+  const router = useRouter();
   const { sidebarCollapsed, toggleSidebar } = useSidebarCollapse();
   // Dynamic aesthetic state loading
   const [globalAesthetic, setGlobalAesthetic] = useState('Midnight Black');
@@ -688,14 +690,20 @@ export default function SuperAdminPage() {
       }
 
       if (!token) {
-        setOverviewError('Authentication required: No active session token found. Please sign in as Super Admin.');
+        setOverviewError('Authentication required: No active session token found. Redirecting to login...');
         setIsLoadingOverview(false);
+        setTimeout(() => {
+          router.push('/login?redirect=/super-admin');
+        }, 1200);
         return;
       }
 
       if (userRole && userRole !== 'SUPER_ADMIN') {
-        setOverviewError(`Access Denied: Current account role (${userRole}) is not authorized. Super Admin privileges required.`);
+        setOverviewError(`Access Denied: Account role (${userRole}) is not authorized. Redirecting to login...`);
         setIsLoadingOverview(false);
+        setTimeout(() => {
+          router.push('/login?redirect=/super-admin');
+        }, 1200);
         return;
       }
 
