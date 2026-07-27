@@ -145,7 +145,7 @@ export const deleteTenant = async (req: AuthenticatedRequest, res: Response<ApiR
       return res.status(400).json({ success: false, error: error.message });
     }
 
-    res.json({ success: true, message: 'Tenant deleted successfully.' });
+    res.json({ success: true, data: { message: 'Tenant deleted successfully.' } });
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message });
   }
