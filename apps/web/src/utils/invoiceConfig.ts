@@ -64,8 +64,8 @@ export const defaultInvoiceConfig: InvoiceConfig = {
     tiktok: 'tiktok.com/@dineposai',
     youtube: 'youtube.com/@dineposai'
   },
-  showQrCode: true,
-  qrCodeUrl: 'https://dineposai.com/menu',
+  showQrCode: false,
+  qrCodeUrl: '',
   showBarcode: true,
   paperWidth: '80mm'
 };

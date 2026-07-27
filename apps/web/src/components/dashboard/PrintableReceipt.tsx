@@ -262,16 +262,6 @@ export const PrintableReceipt: React.FC<PrintableReceiptProps> = (props) => {
           </div>
         )}
 
-        {/* QR Code Indicator */}
-        {cfg.showQrCode && (
-          <div className="pt-2 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 bg-white p-1 border border-gray-400 rounded-md flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl text-black">qr_code_2</span>
-            </div>
-            <span className="text-[8px] font-bold mt-0.5 opacity-60">Scan Digital Menu</span>
-          </div>
-        )}
-
         {/* Barcode Indicator */}
         {cfg.showBarcode && (
           <div className="pt-2 flex flex-col items-center justify-center">

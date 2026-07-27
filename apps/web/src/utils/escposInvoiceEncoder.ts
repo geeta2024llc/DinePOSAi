@@ -149,12 +149,7 @@ export function encodeInvoiceToEscPos(
     if (config.socialLinks.youtube) encoder.line(`YT: ${config.socialLinks.youtube}`);
   }
 
-  // 7. QR Code / Barcode (If enabled)
-  if (config.showQrCode && config.qrCodeUrl) {
-    encoder.feed(1);
-    encoder.line(`[QR: ${config.qrCodeUrl}]`);
-  }
-
+  // 7. Barcode (If enabled)
   if (config.showBarcode && data.orderId) {
     encoder.feed(1);
     encoder.line(`[*ORD-${data.orderId}*]`);

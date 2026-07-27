@@ -50,13 +50,6 @@ export function generateReceiptHtml(receiptData: any, restaurantLogo: string | n
             text-align: center;
             margin-bottom: 20px;
           }
-          .logo-icon {
-            font-family: 'Material Symbols Outlined';
-            font-size: 28px;
-            color: #000 !important;
-            margin-bottom: 6px;
-            display: inline-block;
-          }
           .logo-img {
             max-height: 48px;
             max-width: 100px;
@@ -235,7 +228,7 @@ export function generateReceiptHtml(receiptData: any, restaurantLogo: string | n
       <body>
         <div class="receipt-container">
           <div class="header">
-            ${restaurantLogo ? `<img src="${restaurantLogo}" alt="Restaurant logo" class="logo-img" />` : `<span class="logo-icon">restaurant</span>`}
+            ${restaurantLogo ? `<img src="${restaurantLogo}" alt="Restaurant logo" class="logo-img" />` : ''}
             <h4 class="restaurant-name">${escapeHtml(receiptData.restaurantName)}</h4>
             <p class="subtitle">Official Transaction Receipt</p>
           </div>
