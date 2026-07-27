@@ -52,6 +52,8 @@ export default function PaymentsTab({ t, tr, currency, triggerToast, userAccount
     }
     // Fetch Stripe config and billing data from API
     (async () => {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dinepos_jwt_token') : null;
+      if (!token) return;
       try {
         const stripeRes = await apiRequest<{ isLinked: boolean }>('/api/billing/config');
         if (stripeRes.success && stripeRes.data?.isLinked) {
