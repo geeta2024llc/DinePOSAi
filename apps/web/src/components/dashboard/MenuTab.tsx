@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiRequest, isDemoTenant } from '@/utils/api';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
+import PublicMenuBrandingTab from './PublicMenuBrandingTab';
 
 interface MenuTabProps {
   t: any;
@@ -12,6 +13,7 @@ interface MenuTabProps {
 }
 
 export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps) {
+  const [activeSubTab, setActiveSubTab] = useState<'catalog' | 'public-branding'>('catalog');
   const [menuItemsList, setMenuItemsList] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -554,6 +556,46 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
   const startIdx = (menuPage - 1) * perPage;
   const paginatedItems = filteredItems.slice(startIdx, startIdx + perPage);
 
+  if (activeSubTab === 'public-branding') {
+    return (
+      <div className="space-y-8 animate-fade-in duration-300">
+        {/* Header section with Title and Buttons */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end border-b border-white/5 pb-6 gap-4">
+          <div>
+            <h2 className={`font-serif text-[38px] font-bold ${t.text} tracking-wide leading-none`}>
+              {tr.menuWelcome}
+            </h2>
+            <p className={`font-sans text-[12.5px] ${t.textMuted} mt-3 font-semibold`}>
+              {tr.menuDesc}
+            </p>
+          </div>
+        </div>
+
+        {/* Sub-tab Module Switcher */}
+        <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('catalog')}
+            className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer bg-white/5 text-[#A69984] hover:text-white border border-white/10"
+          >
+            <span className="material-symbols-outlined text-base">restaurant_menu</span>
+            Module 1: Catalog & Categories
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSubTab('public-branding')}
+            className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer bg-[#ffc53d] text-[#1a1200] shadow-md"
+          >
+            <span className="material-symbols-outlined text-base">qr_code_2</span>
+            Module 2: Public Menu & Branding
+          </button>
+        </div>
+
+        <PublicMenuBrandingTab t={t} triggerToast={triggerToast} />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-fade-in duration-300">
       {/* Header section with Title and Buttons */}
@@ -596,6 +638,26 @@ export default function MenuTab({ t, tr, currency, triggerToast }: MenuTabProps)
             {tr.addMenuItem}
           </button>
         </div>
+      </div>
+
+      {/* Sub-tab Module Switcher */}
+      <div className="flex items-center gap-3 border-b border-white/10 pb-4">
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('catalog')}
+          className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer bg-[#ffc53d] text-[#1a1200] shadow-md"
+        >
+          <span className="material-symbols-outlined text-base">restaurant_menu</span>
+          Module 1: Catalog & Categories
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveSubTab('public-branding')}
+          className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer bg-white/5 text-[#A69984] hover:text-white border border-white/10"
+        >
+          <span className="material-symbols-outlined text-base">qr_code_2</span>
+          Module 2: Public Menu & Branding
+        </button>
       </div>
 
       {/* Stats Cards */}

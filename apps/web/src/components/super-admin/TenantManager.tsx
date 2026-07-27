@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 
 export default function TenantManager(props: any) {
   const {
@@ -31,10 +31,23 @@ export default function TenantManager(props: any) {
   const [currentPage, setCurrentPage] = useState(1);
   const PAGE_SIZE = 10;
 
-  const totalPages = Math.max(1, Math.ceil(filteredTenants.length / PAGE_SIZE));
-  const pagedTenants = filteredTenants.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const activeTenantCount = useMemo(() => {
+    return Array.isArray(tenants) ? tenants.filter((t: any) => t.status === 'ACTIVE').length : 0;
+  }, [tenants]);
 
-  const allPageSelected = pagedTenants.length > 0 && pagedTenants.every((t: any) => selectedIds.has(t.id));
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil((filteredTenants?.length || 0) / PAGE_SIZE));
+  }, [filteredTenants]);
+
+  const pagedTenants = useMemo(() => {
+    if (!Array.isArray(filteredTenants)) return [];
+    return filteredTenants.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  }, [filteredTenants, currentPage]);
+
+  const allPageSelected = useMemo(() => {
+    return pagedTenants.length > 0 && pagedTenants.every((t: any) => selectedIds.has(t.id));
+  }, [pagedTenants, selectedIds]);
+
   const someSelected = selectedIds.size > 0;
 
   const toggleOne = (id: string) => {
@@ -481,7 +494,7 @@ export default function TenantManager(props: any) {
                   </div>
                   <div className="z-10 flex items-baseline gap-3">
                     <h3 className="font-serif text-5xl font-bold text-white tracking-wide">
-                      {tenants.filter((t: any) => t.status === 'ACTIVE').length}
+                      {activeTenantCount}
                     </h3>
                     <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 leading-none">
                       <span className="material-symbols-outlined text-sm font-bold leading-none">arrow_upward</span>

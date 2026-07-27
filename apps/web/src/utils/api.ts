@@ -31,6 +31,41 @@ if (typeof window !== 'undefined') {
 }
 
 // ==========================================
+// SESSION & AUTHENTICATION HELPERS
+// ==========================================
+
+/**
+ * Safely retrieves the stored JWT token from localStorage in browser context.
+ */
+export function getAuthToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('dinepos_jwt_token');
+}
+
+/**
+ * Safely retrieves and parses the stored user account object from localStorage.
+ */
+export function getAuthUser(): any | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const userStr = localStorage.getItem('dinepos_user_account');
+    return userStr ? JSON.parse(userStr) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Returns true if the user is authenticated and possesses one of the allowed roles.
+ */
+export function hasValidRole(allowedRoles: string[]): boolean {
+  const user = getAuthUser();
+  const token = getAuthToken();
+  if (!token || !user?.role) return false;
+  return allowedRoles.includes(user.role);
+}
+
+// ==========================================
 // TENANT IDENTITY HELPERS
 // ==========================================
 
@@ -42,11 +77,9 @@ if (typeof window !== 'undefined') {
 export function isDemoTenant(): boolean {
   if (typeof window === 'undefined') return true; // SSR: assume demo
   try {
-    const userStr = localStorage.getItem('dinepos_user_account');
-    if (!userStr) return true; // Not logged in — show demo
-    const user = JSON.parse(userStr);
+    const user = getAuthUser();
+    if (!user) return true; // Not logged in — show demo
     const tenantId: string | undefined = user?.tenantId;
-    // If no tenantId or it is the hardcoded demo sentinel, it's a demo session
     if (!tenantId || tenantId === 'tenant-demo' || tenantId === 'demo') {
       return true;
     }

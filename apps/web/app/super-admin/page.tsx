@@ -8,7 +8,7 @@ import { useSidebarCollapse } from '@/hooks/useSidebarCollapse';
 import { SidebarToggleButton } from '@/components/ui/SidebarToggleButton';
 import { CmsConfig, getCmsConfig, saveCmsConfig, defaultCmsConfig } from '@/components/cms/CmsHelper';
 import { recordActivity, getActivityLogs, clearActivityLogs } from '@/utils/activityLogger';
-import { apiRequest } from '@/utils/api';
+import { apiRequest, getAuthToken, getAuthUser } from '@/utils/api';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 const TenantManager = dynamic(() => import('@/components/super-admin/TenantManager'), { ssr: false });
@@ -679,15 +679,9 @@ export default function SuperAdminPage() {
       setIsLoadingOverview(true);
       setOverviewError(null);
 
-      const token = typeof window !== 'undefined' ? localStorage.getItem('dinepos_jwt_token') : null;
-      const userStr = typeof window !== 'undefined' ? localStorage.getItem('dinepos_user_account') : null;
-      let userRole = '';
-      if (userStr) {
-        try {
-          const parsed = JSON.parse(userStr);
-          userRole = parsed?.role || '';
-        } catch { /* ignore parse error */ }
-      }
+      const token = getAuthToken();
+      const user = getAuthUser();
+      const userRole = user?.role || '';
 
       if (!token) {
         setOverviewError('Authentication required: No active session token found. Redirecting to login...');
