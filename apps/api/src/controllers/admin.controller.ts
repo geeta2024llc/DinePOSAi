@@ -56,6 +56,7 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
         id: t.id,
         name: t.name,
         email: t.email || tenantUser?.email || '',
+        phone: t.phone || t.contact_number || t.phone_number || (tenantUser as any)?.phone || (tenantUser as any)?.contact_number || '',
         ownerName: tenantUser?.name || 'Restaurant Owner',
         location: t.country || 'Global',
         terminals: 1,
@@ -195,11 +196,13 @@ export const getTenantDetails = async (req: AuthenticatedRequest, res: Response<
     ]);
 
     const owner = (users || []).find((u: any) => u.role === 'TENANT_ADMIN' || u.role === 'OWNER') || users?.[0];
+    const phone = tenant.phone || tenant.contact_number || tenant.phone_number || (owner as any)?.phone || (owner as any)?.contact_number || 'N/A';
 
     const details = {
       id: tenant.id,
       name: tenant.name,
       email: tenant.email || owner?.email || '',
+      phone,
       ownerName: owner?.name || 'Restaurant Owner',
       ownerRole: owner?.role || 'TENANT_ADMIN',
       status: tenant.status ? tenant.status.toUpperCase() : 'ACTIVE',
@@ -241,13 +244,25 @@ export const updateTenantStatus = async (req: AuthenticatedRequest, res: Respons
   }
 
   const { id } = req.params;
-  const { status, plan, trial_ends_at } = req.body;
+  const { status, plan, trial_ends_at, expiryDate, subscription_expires_at, billingFailed } = req.body;
 
   try {
     const updateData: any = {};
     if (status) updateData.status = status.toLowerCase();
     if (plan) updateData.plan = plan.toLowerCase();
-    if (trial_ends_at) updateData.trial_ends_at = trial_ends_at;
+
+    const targetDate = expiryDate || trial_ends_at || subscription_expires_at;
+    if (targetDate) {
+      const parsedDate = targetDate.includes('T') ? targetDate : `${targetDate}T23:59:59.000Z`;
+      updateData.trial_ends_at = parsedDate;
+      updateData.subscription_expires_at = parsedDate;
+    }
+
+    if (typeof billingFailed === 'boolean') {
+      updateData.billing_failed = billingFailed;
+    }
+
+    console.log(`[SuperAdmin API Update Tenant] Patching tenant ID ${id} with:`, updateData);
 
     const { data, error } = await supabase
       .from('tenants')
@@ -257,11 +272,14 @@ export const updateTenantStatus = async (req: AuthenticatedRequest, res: Respons
       .single();
 
     if (error) {
+      console.error(`[SuperAdmin API Update Tenant] Supabase update failed for ${id}:`, error.message);
       return res.status(400).json({ success: false, error: error.message });
     }
 
+    console.log(`[SuperAdmin API Update Tenant] SUCCESS: Tenant ${id} updated in Supabase database:`, data);
     res.json({ success: true, data });
   } catch (error: any) {
+    console.error(`[SuperAdmin API Update Tenant] Server error updating tenant ${id}:`, error);
     res.status(500).json({ success: false, error: error.message });
   }
 };

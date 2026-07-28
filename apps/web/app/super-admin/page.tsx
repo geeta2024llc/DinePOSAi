@@ -235,6 +235,7 @@ interface Tenant {
   region?: string;
   billingFailed?: boolean;
   expiryDate: string;
+  phone?: string;
 }
 
 interface AdminUser {
@@ -599,56 +600,109 @@ export default function SuperAdminPage() {
     }
   };
 
-  const handleQuickRenew = (tenantId: string, days: number) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id !== tenantId) return t;
+  const handleQuickRenew = async (tenantId: string, days: number, customDateStr?: string) => {
+    const target = tenants.find(t => t.id === tenantId);
+    if (!target) return;
+
+    let newExpiryStr = '';
+    if (customDateStr) {
+      newExpiryStr = customDateStr;
+    } else {
       const today = new Date();
-      const baseDate = (t.expiryDate && !isNaN(new Date(t.expiryDate).getTime())) ? new Date(t.expiryDate) : today;
+      const baseDate = (target.expiryDate && !isNaN(new Date(target.expiryDate).getTime())) ? new Date(target.expiryDate) : today;
       const startDate = baseDate < today ? today : baseDate;
       startDate.setDate(startDate.getDate() + days);
-      const newExpiryStr = startDate.toISOString().split('T')[0];
-      
-      const label = days === 365 ? '1 year' : `${days} days`;
-      triggerToast(`Subscription for ${t.name} extended by ${label}!`, 'success');
-      
-      setAuditLogs(logs => [
-        {
-          id: Date.now(),
-          time: 'Just now',
-          actor: 'Super Admin',
-          action: `Extended subscription expiry for "${t.name}" by ${label} to ${newExpiryStr}`,
-          tenant: t.name,
-          type: 'success'
-        },
-        ...logs
-      ]);
-      return { 
-        ...t, 
-        expiryDate: newExpiryStr, 
-        status: 'ACTIVE'
-      };
-    }));
+      newExpiryStr = startDate.toISOString().split('T')[0];
+    }
+
+    // 1. Optimistic UI Update
+    setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, expiryDate: newExpiryStr, status: 'ACTIVE' } : t));
+
+    const label = customDateStr ? newExpiryStr : (days === 365 ? '1 year' : `${days} days`);
+    triggerToast(`Extending ${target.name}'s subscription to ${newExpiryStr}...`, 'info');
+
+    // 2. Persistent Database API Call
+    try {
+      console.log(`[SuperAdmin UI] Dispatching PATCH to update tenant ${tenantId} expiry to ${newExpiryStr}`);
+      const res = await apiRequest<any>(`/api/admin/tenants/${tenantId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          expiryDate: newExpiryStr,
+          trial_ends_at: newExpiryStr,
+          subscription_expires_at: newExpiryStr,
+          status: 'active'
+        })
+      });
+
+      if (res.success) {
+        console.log(`[SuperAdmin UI] Expiry date permanently saved to Supabase DB for tenant ${tenantId}:`, res.data);
+        triggerToast(`Subscription for ${target.name} saved permanently to database! Expiry: ${newExpiryStr}`, 'success');
+
+        setAuditLogs(logs => [
+          {
+            id: Date.now(),
+            time: 'Just now',
+            actor: 'Super Admin',
+            action: `Permanently updated subscription expiry for "${target.name}" (${tenantId}) to ${newExpiryStr} in database`,
+            tenant: target.name,
+            type: 'success'
+          },
+          ...logs
+        ]);
+
+        // Background re-fetch to guarantee 100% sync
+        try {
+          const overviewRes = await apiRequest<any>('/api/admin/overview');
+          if (overviewRes.success && Array.isArray(overviewRes.data?.tenants)) {
+            setTenants(overviewRes.data.tenants);
+          }
+        } catch { /* ignore sync error */ }
+      } else {
+        console.error(`[SuperAdmin UI] Failed to save expiry to database:`, res.error);
+        triggerToast(`Failed to save expiry to database: ${res.error || 'Server error'}`, 'info');
+      }
+    } catch (err: any) {
+      console.error(`[SuperAdmin UI] Network error updating tenant expiry:`, err);
+      triggerToast(`Network error saving expiry date: ${err.message || 'Error'}`, 'info');
+    }
   };
 
-  const handleRetryBilling = (tenantId: string) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id !== tenantId) return t;
-      
-      triggerToast(`Re-ran card billing for ${t.name}. Payment processed successfully!`, 'success');
-      
-      setAuditLogs(logs => [
-        {
-          id: Date.now(),
-          time: 'Just now',
-          actor: 'Super Admin',
-          action: `Cleared billing failed status for "${t.name}" via manual settlement`,
-          tenant: t.name,
-          type: 'success'
-        },
-        ...logs
-      ]);
-      return { ...t, billingFailed: false, status: 'ACTIVE', plan: 'ACTIVE' };
-    }));
+  const handleRetryBilling = async (tenantId: string) => {
+    const target = tenants.find(t => t.id === tenantId);
+    if (!target) return;
+
+    // Optimistic UI Update
+    setTenants(prev => prev.map(t => t.id === tenantId ? { ...t, billingFailed: false, status: 'ACTIVE' } : t));
+
+    try {
+      const res = await apiRequest<any>(`/api/admin/tenants/${tenantId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'active', billingFailed: false })
+      });
+
+      if (res.success) {
+        triggerToast(`Re-ran card billing for ${target.name}. Payment saved to database!`, 'success');
+        setAuditLogs(logs => [
+          {
+            id: Date.now(),
+            time: 'Just now',
+            actor: 'Super Admin',
+            action: `Cleared billing failed status for "${target.name}" in system registry`,
+            tenant: target.name,
+            type: 'success'
+          },
+          ...logs
+        ]);
+        try {
+          const overviewRes = await apiRequest<any>('/api/admin/overview');
+          if (overviewRes.success && Array.isArray(overviewRes.data?.tenants)) {
+            setTenants(overviewRes.data.tenants);
+          }
+        } catch { /* ignore sync error */ }
+      }
+    } catch (err: any) {
+      console.error(`[SuperAdmin UI] Error retrying billing:`, err);
+    }
   };
 
   const handleDeleteTenant = (tenantId: string, name: string) => {
@@ -1594,7 +1648,7 @@ export default function SuperAdminPage() {
   };
 
   // Save tenant expiry date and configuration modifications
-  const handleSaveTenantExpiry = (e: React.FormEvent) => {
+  const handleSaveTenantExpiry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTenant) return;
     
@@ -1610,11 +1664,41 @@ export default function SuperAdminPage() {
       expiryDate: editingExpiryDate 
     };
 
-    setTenants(prev => prev.map(t => 
-      t.id === selectedTenant.id 
-        ? updatedTenant
-        : t
-    ));
+    // 1. Optimistic UI Update
+    setTenants(prev => prev.map(t => t.id === selectedTenant.id ? updatedTenant : t));
+
+    // 2. Persistent Database API Call
+    try {
+      console.log(`[SuperAdmin UI] Dispatching PATCH to save custom expiry date for ${selectedTenant.id} to ${editingExpiryDate}`);
+      const res = await apiRequest<any>(`/api/admin/tenants/${selectedTenant.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          expiryDate: editingExpiryDate,
+          trial_ends_at: editingExpiryDate,
+          subscription_expires_at: editingExpiryDate,
+          status: alignedStatus.toLowerCase(),
+          plan: selectedTenant.plan.toLowerCase()
+        })
+      });
+
+      if (res.success) {
+        console.log(`[SuperAdmin UI] Custom expiry date permanently saved to Supabase DB:`, res.data);
+        triggerToast(`Expiry date for ${selectedTenant.name} updated to ${editingExpiryDate} in database.`, 'success');
+        
+        // Background re-fetch to guarantee 100% sync
+        try {
+          const overviewRes = await apiRequest<any>('/api/admin/overview');
+          if (overviewRes.success && Array.isArray(overviewRes.data?.tenants)) {
+            setTenants(overviewRes.data.tenants);
+          }
+        } catch { /* ignore sync error */ }
+      } else {
+        triggerToast(`Failed to update expiry in database: ${res.error}`, 'info');
+      }
+    } catch (err: any) {
+      console.error(`[SuperAdmin UI] Network error saving tenant expiry:`, err);
+      triggerToast(`Network error saving expiry date: ${err.message || 'Error'}`, 'info');
+    }
     
     // Sync with currently logged-in user if it is the same tenant
     if (typeof window !== 'undefined') {
@@ -1647,7 +1731,6 @@ export default function SuperAdminPage() {
     }
 
     setShowTenantDetailsModal(false);
-    triggerToast(`Tenant subscription settings for ${selectedTenant.name} updated successfully.`, 'success');
     
     setAuditLogs(prev => [
       {
@@ -1705,8 +1788,36 @@ export default function SuperAdminPage() {
   // Tenant suspension/activation
   const toggleTenantStatus = async (id: string, name: string, currentStatus: Tenant['status']) => {
     const nextStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+
+    // 1. Optimistic UI Update
     setTenants(prev => prev.map(t => t.id === id ? { ...t, status: nextStatus, plan: nextStatus === 'SUSPENDED' ? 'SUSPENDED' : 'ACTIVE' } : t));
-    triggerToast(`Tenant "${name}" is now ${nextStatus.toLowerCase()}`, 'success');
+
+    // 2. Persistent Database API Call
+    try {
+      console.log(`[SuperAdmin UI] Dispatching PATCH to update tenant ${id} status to ${nextStatus}`);
+      const res = await apiRequest<any>(`/api/admin/tenants/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: nextStatus.toLowerCase() })
+      });
+
+      if (res.success) {
+        console.log(`[SuperAdmin UI] Tenant ${id} status updated in database:`, res.data);
+        triggerToast(`Tenant "${name}" is now ${nextStatus.toLowerCase()} (Saved to DB)`, 'success');
+
+        // Background re-fetch to guarantee 100% sync
+        try {
+          const overviewRes = await apiRequest<any>('/api/admin/overview');
+          if (overviewRes.success && Array.isArray(overviewRes.data?.tenants)) {
+            setTenants(overviewRes.data.tenants);
+          }
+        } catch { /* ignore sync error */ }
+      } else {
+        triggerToast(`Failed to update tenant status in database: ${res.error}`, 'info');
+      }
+    } catch (err: any) {
+      console.error(`[SuperAdmin UI] Error toggling tenant status:`, err);
+      triggerToast(`Network error updating tenant status: ${err.message || 'Error'}`, 'info');
+    }
     
     await recordActivity(
       'Toggle Tenant Status',

@@ -832,7 +832,7 @@ export default function TenantManager(props: any) {
                         const avatarCls = getAvatarColor(ten.name);
                         return (
                           <tr key={ten.id}
-                            className={`group transition-colors ${isSelected ? 'bg-[#ffc53d]/[0.04] border-l-2 border-l-[#ffc53d]/50' : 'hover:bg-white/[0.015]'}`}>
+                            className={`group transition-colors ${isSelected ? 'bg-[#ffc53d]/[0.04] border-l-2 border-l-[#ffc53d]/50' : 'hover:bg-white/[0.015]'} ${activeActionMenuId === ten.id ? 'relative z-30 bg-white/[0.03]' : ''}`}>
 
                             {/* Checkbox */}
                             <td className="pl-5 pr-2 py-4">
@@ -983,7 +983,7 @@ export default function TenantManager(props: any) {
                                         tabIndex={0}
                                         onKeyDown={(e) => { if (e.key === 'Escape') setActiveActionMenuId(null); }}
                                         className={`absolute right-0 w-52 max-w-[calc(100vw-2.5rem)] bg-[#141311] border border-white/15 rounded-xl shadow-2xl shadow-black/80 py-1.5 z-[70] text-left font-sans animate-fade-in select-none ${
-                                          idx >= pagedTenants.length - 3 && pagedTenants.length > 3
+                                          idx >= Math.max(1, pagedTenants.length - 3)
                                             ? 'bottom-full mb-2 origin-bottom-right' 
                                             : 'top-full mt-2 origin-top-right'
                                         }`}
@@ -1379,6 +1379,16 @@ export default function TenantManager(props: any) {
                           {richDetailsData.email ? (
                             <a href={`mailto:${richDetailsData.email}`} className="text-[#ffc53d] font-mono hover:underline truncate max-w-[170px]">
                               {richDetailsData.email}
+                            </a>
+                          ) : (
+                            <span className="text-white/40 font-mono italic">N/A</span>
+                          )}
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#A69984]/60">Contact Phone:</span>
+                          {richDetailsData.phone && richDetailsData.phone !== 'N/A' ? (
+                            <a href={`tel:${richDetailsData.phone}`} className="text-emerald-400 font-mono hover:underline truncate max-w-[170px]">
+                              {richDetailsData.phone}
                             </a>
                           ) : (
                             <span className="text-white/40 font-mono italic">N/A</span>
