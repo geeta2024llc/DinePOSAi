@@ -242,6 +242,8 @@ interface AdminUser {
   name: string;
   email: string;
   tenant: string;
+  assignedTo?: string;
+  role?: string;
   status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
   lastActive: string;
 }
@@ -2001,7 +2003,9 @@ export default function SuperAdminPage() {
   const filteredAdmins = admins.filter(a => 
     a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     a.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    a.tenant.toLowerCase().includes(searchQuery.toLowerCase())
+    (a.assignedTo || a.tenant || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (a.role || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    a.status.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredFleet = fleet.filter(f => 

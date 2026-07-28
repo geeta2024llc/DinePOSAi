@@ -71,11 +71,19 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
 
     const formattedUsers = (dbUsers || []).map((u: any) => {
       const matchedTenant = (dbTenants || []).find((t: any) => t.id === u.tenant_id);
+      const role = u.role ? u.role.toUpperCase() : 'STAFF';
+      const assignedTo = matchedTenant 
+        ? matchedTenant.name 
+        : (role === 'SUPER_ADMIN' ? 'System Platform' : 'Not Assigned');
+
       return {
         id: u.id,
         name: u.name,
         email: u.email,
         tenant: matchedTenant ? matchedTenant.name : 'System Platform',
+        assignedTo,
+        tenantId: u.tenant_id || '',
+        role,
         status: u.is_active !== false ? 'ACTIVE' : 'INACTIVE',
         lastActive: u.last_login ? new Date(u.last_login).toLocaleTimeString() : 'Recently'
       };

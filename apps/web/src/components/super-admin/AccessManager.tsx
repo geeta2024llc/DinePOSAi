@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 
 export default function AccessManager(props: any) {
   const {
@@ -23,6 +23,71 @@ export default function AccessManager(props: any) {
     toggleTenantStatus,
     filteredAdmins
   } = props;
+
+  // ── Access Manager Search, Filtering, Sorting & Pagination State ─────────
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminStatusFilter, setAdminStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'INACTIVE'>('ALL');
+  const [adminRoleFilter, setAdminRoleFilter] = useState<'ALL' | 'SUPER_ADMIN' | 'TENANT_ADMIN' | 'MANAGER' | 'STAFF'>('ALL');
+  const [adminSortField, setAdminSortField] = useState<'name' | 'email' | 'assignedTo' | 'role' | 'status'>('name');
+  const [adminSortOrder, setAdminSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [adminCurrentPage, setAdminCurrentPage] = useState(1);
+  const ADMIN_PAGE_SIZE = 10;
+
+  const handleSort = (field: 'name' | 'email' | 'assignedTo' | 'role' | 'status') => {
+    if (adminSortField === field) {
+      setAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setAdminSortField(field);
+      setAdminSortOrder('asc');
+    }
+  };
+
+  const processedAdmins = useMemo(() => {
+    const rawList = Array.isArray(filteredAdmins) ? filteredAdmins : [];
+    
+    // 1. Filter
+    const filtered = rawList.filter((a: any) => {
+      const q = adminSearch.toLowerCase().trim();
+      const nameMatch = (a.name || '').toLowerCase().includes(q);
+      const emailMatch = (a.email || '').toLowerCase().includes(q);
+      const tenantMatch = (a.assignedTo || a.tenant || '').toLowerCase().includes(q);
+      const roleMatch = (a.role || '').toLowerCase().includes(q);
+      const statusMatch = (a.status || '').toLowerCase().includes(q);
+      const matchesSearch = !q || nameMatch || emailMatch || tenantMatch || roleMatch || statusMatch;
+
+      const matchesStatus = adminStatusFilter === 'ALL' || (a.status || 'ACTIVE').toUpperCase() === adminStatusFilter;
+
+      const uRole = (a.role || 'STAFF').toUpperCase();
+      const matchesRole = adminRoleFilter === 'ALL' || 
+        (adminRoleFilter === 'TENANT_ADMIN' ? (uRole === 'TENANT_ADMIN' || uRole === 'OWNER') : uRole === adminRoleFilter);
+
+      return matchesSearch && matchesStatus && matchesRole;
+    });
+
+    // 2. Sort
+    filtered.sort((a: any, b: any) => {
+      let valA = '';
+      let valB = '';
+      if (adminSortField === 'name') { valA = a.name || ''; valB = b.name || ''; }
+      else if (adminSortField === 'email') { valA = a.email || ''; valB = b.email || ''; }
+      else if (adminSortField === 'assignedTo') { valA = a.assignedTo || a.tenant || ''; valB = b.assignedTo || b.tenant || ''; }
+      else if (adminSortField === 'role') { valA = a.role || ''; valB = b.role || ''; }
+      else if (adminSortField === 'status') { valA = a.status || ''; valB = b.status || ''; }
+
+      const comp = valA.localeCompare(valB);
+      return adminSortOrder === 'asc' ? comp : -comp;
+    });
+
+    return filtered;
+  }, [filteredAdmins, adminSearch, adminStatusFilter, adminRoleFilter, adminSortField, adminSortOrder]);
+
+  const totalAdminPages = useMemo(() => {
+    return Math.max(1, Math.ceil(processedAdmins.length / ADMIN_PAGE_SIZE));
+  }, [processedAdmins]);
+
+  const pagedAdmins = useMemo(() => {
+    return processedAdmins.slice((adminCurrentPage - 1) * ADMIN_PAGE_SIZE, adminCurrentPage * ADMIN_PAGE_SIZE);
+  }, [processedAdmins, adminCurrentPage]);
 
   return (
     <>
@@ -62,92 +127,340 @@ export default function AccessManager(props: any) {
 
               {/* Admin Directory Table */}
               <div className={`${theme.cardBg} border rounded-2xl p-8 shadow-xl space-y-6`}>
-                <div className="flex justify-between items-center select-none border-b border-white/5 pb-4">
-                  <h3 className="font-serif text-base text-white font-bold tracking-wide">Admin Owners Registry</h3>
-                  <span className="text-xs text-[#A69984]/50 font-semibold">{filteredAdmins.length} Admins registered</span>
+                
+                {/* Section Title & Metrics */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none border-b border-white/5 pb-4">
+                  <div>
+                    <h3 className="font-serif text-base text-white font-bold tracking-wide">Admin Owners Registry</h3>
+                    <p className="text-[10.5px] text-[#A69984]/60 font-semibold mt-0.5">Real-time system privileges and assigned tenant workspaces</p>
+                  </div>
+                  <span className="px-3 py-1 bg-white/5 border border-white/10 text-xs text-[#A69984] font-bold rounded-lg w-fit">
+                    {processedAdmins.length} Admins registered
+                  </span>
                 </div>
 
+                {/* Filter Toolbar & Search Bar */}
+                <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 font-sans text-xs select-none">
+                  {/* Search Input */}
+                  <div className="relative flex-grow max-w-md">
+                    <span className="material-symbols-outlined absolute left-4 top-3 text-[#A69984]/50 text-sm">search</span>
+                    <input
+                      type="text"
+                      placeholder="Search owner name, email, assigned business, role..."
+                      value={adminSearch}
+                      onChange={(e) => { setAdminSearch(e.target.value); setAdminCurrentPage(1); }}
+                      className={`w-full bg-black/20 border ${theme.border} rounded-xl pl-11 pr-4 py-2.5 text-xs ${theme.text} placeholder-white/20 focus:outline-none focus:border-white/20 transition-colors font-medium`}
+                    />
+                  </div>
+
+                  {/* Filter Dropdowns */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Status Dropdown */}
+                    <div className="relative">
+                      <select
+                        aria-label="Status filter"
+                        value={adminStatusFilter}
+                        onChange={(e) => { setAdminStatusFilter(e.target.value as any); setAdminCurrentPage(1); }}
+                        className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors text-xs"
+                      >
+                        <option value="ALL">Status: All</option>
+                        <option value="ACTIVE">Status: Active</option>
+                        <option value="SUSPENDED">Status: Suspended</option>
+                        <option value="INACTIVE">Status: Inactive</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
+                    </div>
+
+                    {/* Role Dropdown */}
+                    <div className="relative">
+                      <select
+                        aria-label="Role filter"
+                        value={adminRoleFilter}
+                        onChange={(e) => { setAdminRoleFilter(e.target.value as any); setAdminCurrentPage(1); }}
+                        className="appearance-none bg-white/5 border border-white/10 hover:border-white/20 text-[#e5e2e1] font-bold py-2 px-4 pr-8 rounded-xl cursor-pointer focus:outline-none transition-colors text-xs"
+                      >
+                        <option value="ALL">Role: All</option>
+                        <option value="SUPER_ADMIN">Super Admin</option>
+                        <option value="TENANT_ADMIN">Owner / Tenant Admin</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="STAFF">Staff</option>
+                      </select>
+                      <span className="material-symbols-outlined absolute right-2.5 top-2 pointer-events-none text-xs text-[#A69984]/65">keyboard_arrow_down</span>
+                    </div>
+
+                    {/* Clear Filters */}
+                    {(adminSearch || adminStatusFilter !== 'ALL' || adminRoleFilter !== 'ALL') && (
+                      <button
+                        type="button"
+                        onClick={() => { setAdminSearch(''); setAdminStatusFilter('ALL'); setAdminRoleFilter('ALL'); setAdminCurrentPage(1); }}
+                        className="flex items-center gap-1 px-3 py-2 rounded-xl font-bold text-xs text-[#A69984]/60 hover:text-white border border-white/5 hover:border-white/15 transition-all cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-sm">filter_alt_off</span>
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Table */}
                 <div className="overflow-x-auto w-full">
                   <table className="w-full font-sans border-collapse text-left text-xs">
                     <thead>
-                      <tr className="border-b border-white/5 text-[9.5px] text-[#A69984]/50 font-bold uppercase tracking-wider">
-                        <th className="py-4 px-4">Owner Name</th>
-                        <th className="py-4 px-4">Work Email</th>
-                        <th className="py-4 px-4">Owned Business (Tenant)</th>
-                        <th className="py-4 px-4">Last Activity</th>
-                        <th className="py-4 px-4 text-center">Account Status</th>
-                        <th className="py-4 px-4 text-right">Access Controls</th>
+                      <tr className="border-b border-white/5 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider bg-white/[0.01]">
+                        <th className="py-3.5 px-3 text-center w-12">S.N.</th>
+                        <th 
+                          onClick={() => handleSort('name')}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors select-none"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Owner Name</span>
+                            {adminSortField === 'name' && (
+                              <span className="material-symbols-outlined text-xs">{adminSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort('email')}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors select-none"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Work Email</span>
+                            {adminSortField === 'email' && (
+                              <span className="material-symbols-outlined text-xs">{adminSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort('assignedTo')}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors select-none"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Assigned To (Tenant)</span>
+                            {adminSortField === 'assignedTo' && (
+                              <span className="material-symbols-outlined text-xs">{adminSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                            )}
+                          </div>
+                        </th>
+                        <th 
+                          onClick={() => handleSort('role')}
+                          className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors select-none"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Role</span>
+                            {adminSortField === 'role' && (
+                              <span className="material-symbols-outlined text-xs">{adminSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                            )}
+                          </div>
+                        </th>
+                        <th className="py-3.5 px-4">Last Activity</th>
+                        <th 
+                          onClick={() => handleSort('status')}
+                          className="py-3.5 px-4 text-center cursor-pointer hover:text-white transition-colors select-none"
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            <span>Account Status</span>
+                            {adminSortField === 'status' && (
+                              <span className="material-symbols-outlined text-xs">{adminSortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}</span>
+                            )}
+                          </div>
+                        </th>
+                        <th className="py-3.5 px-4 text-right">Access Controls</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5 font-semibold text-white/90">
-                      {filteredAdmins.map((a: any) => (
-                        <tr key={a.id} className="hover:bg-white/[0.01] transition-colors">
-                          <td className="py-4 px-4 text-sm font-serif font-bold text-white flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[10px] text-white/60 font-bold uppercase">
-                              {a.name.slice(0, 2)}
-                            </span>
-                            {a.name}
-                          </td>
-                          <td className="py-4 px-4 text-[#A69984]">{a.email}</td>
-                          <td className="py-4 px-4 text-white/80">{a.tenant}</td>
-                          <td className="py-4 px-4 text-[#A69984]/70">{a.lastActive}</td>
-                          <td className="py-4 px-4 text-center">
-                            <span className={`px-2 py-0.5 text-[9px] rounded font-bold uppercase tracking-wider ${
-                              a.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400' :
-                              a.status === 'SUSPENDED' ? 'bg-rose-500/10 text-rose-400' : 'bg-white/5 text-[#A69984]/40'
-                            }`}>
-                              {a.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4 text-right space-x-2">
-                            <button type="button" 
-                              onClick={() => {
-                                setSelectedAdminToEdit(a);
-                                setEditAdminData({
-                                  name: a.name,
-                                  email: a.email,
-                                  tenant: a.tenant,
-                                  status: a.status
-                                });
-                                setShowEditAdminModal(true);
-                              }}
-                              className="text-[10px] border border-white/10 hover:border-white/20 text-[#ffe2ab] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                            <button type="button" 
-                              onClick={() => handleResetPasswordClick(a)}
-                              className="text-[10px] border border-white/10 hover:border-white/20 text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Password
-                            </button>
-                            <button type="button" 
-                              onClick={() => toggleAdminStatus(a.id, a.name, a.status)}
-                              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                                a.status === 'ACTIVE' 
-                                  ? 'border-rose-500/10 text-rose-400 hover:bg-rose-500/10' 
-                                  : 'border-emerald-500/10 text-emerald-400 hover:bg-emerald-500/10'
-                              }`}
-                            >
-                              {a.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
-                            </button>
-                            <button type="button" 
-                              onClick={() => {
-                                if (confirm(`Are you sure you want to delete admin ${a.name}?`)) {
-                                  handleDeleteAdmin(a.id);
-                                  triggerToast(`Admin "${a.name}" deleted!`, 'success');
-                                }
-                              }}
-                              className="text-[10px] border border-red-500/25 hover:border-red-500/40 text-red-400 px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Delete
-                            </button>
+                      {pagedAdmins.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-12 text-center text-xs text-[#A69984]/40 uppercase tracking-wider font-bold">
+                            No admin users found matching your filters.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        pagedAdmins.map((a: any, idx: number) => {
+                          const snNumber = (adminCurrentPage - 1) * ADMIN_PAGE_SIZE + idx + 1;
+                          const assignedText = a.assignedTo || a.tenant || '';
+                          const userRole = (a.role || 'STAFF').toUpperCase();
+
+                          return (
+                            <tr key={a.id} className="hover:bg-white/[0.015] transition-colors">
+                              {/* S.N. */}
+                              <td className="py-4 px-3 text-center text-[11.5px] text-[#A69984]/75 font-mono font-bold">
+                                {snNumber}
+                              </td>
+
+                              {/* Owner Name */}
+                              <td className="py-4 px-4 text-sm font-serif font-bold text-white flex items-center gap-2.5">
+                                <span className="w-7 h-7 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-[11px] text-amber-400 font-bold uppercase shrink-0">
+                                  {a.name ? a.name.slice(0, 2) : 'AD'}
+                                </span>
+                                <span className="truncate max-w-[160px]">{a.name}</span>
+                              </td>
+
+                              {/* Work Email */}
+                              <td className="py-4 px-4 max-w-[180px]">
+                                {a.email ? (
+                                  <a
+                                    href={`mailto:${a.email}`}
+                                    title={a.email}
+                                    className="text-xs text-[#A69984] hover:text-[#ffc53d] font-mono truncate block transition-colors underline-offset-2 hover:underline"
+                                  >
+                                    {a.email}
+                                  </a>
+                                ) : (
+                                  <span className="text-white/30 italic font-mono text-xs">N/A</span>
+                                )}
+                              </td>
+
+                              {/* Assigned To */}
+                              <td className="py-4 px-4 max-w-[200px]">
+                                {assignedText && assignedText !== 'Not Assigned' && assignedText !== 'System Platform' ? (
+                                  <div className="flex items-center gap-1.5 text-xs text-white font-medium truncate" title={assignedText}>
+                                    <span className="material-symbols-outlined text-xs text-[#ffc53d]">storefront</span>
+                                    <span className="truncate">{assignedText}</span>
+                                  </div>
+                                ) : assignedText === 'System Platform' || userRole === 'SUPER_ADMIN' ? (
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-300 text-[9.5px] font-bold uppercase">
+                                    <span className="material-symbols-outlined text-[10px]">dns</span>System Platform
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-white/30 font-mono italic">Not Assigned</span>
+                                )}
+                              </td>
+
+                              {/* Role */}
+                              <td className="py-4 px-4 whitespace-nowrap">
+                                {userRole === 'SUPER_ADMIN' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-violet-500/35 bg-violet-500/10 text-violet-300 font-bold uppercase">
+                                    <span className="material-symbols-outlined text-[11px]">star</span>Super Admin
+                                  </span>
+                                ) : userRole === 'TENANT_ADMIN' || userRole === 'OWNER' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-amber-500/35 bg-amber-500/10 text-amber-300 font-bold uppercase">
+                                    <span className="material-symbols-outlined text-[11px]">crown</span>Owner / Admin
+                                  </span>
+                                ) : userRole === 'MANAGER' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-sky-500/35 bg-sky-500/10 text-sky-300 font-bold uppercase">
+                                    <span className="material-symbols-outlined text-[11px]">badge</span>Manager
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-slate-500/35 bg-slate-500/10 text-slate-300 font-bold uppercase">
+                                    <span className="material-symbols-outlined text-[11px]">person</span>Staff
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Last Activity */}
+                              <td className="py-4 px-4 text-[#A69984]/70 font-mono text-[11px] whitespace-nowrap">
+                                {a.lastActive || 'Recently'}
+                              </td>
+
+                              {/* Account Status */}
+                              <td className="py-4 px-4 text-center whitespace-nowrap">
+                                <span className={`px-2.5 py-1 text-[9.5px] rounded-lg font-bold uppercase tracking-wider border ${
+                                  a.status === 'ACTIVE' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' :
+                                  a.status === 'SUSPENDED' ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' : 'bg-white/5 border-white/10 text-white/40'
+                                }`}>
+                                  {a.status}
+                                </span>
+                              </td>
+
+                              {/* Access Controls */}
+                              <td className="py-4 px-4 text-right space-x-1.5 whitespace-nowrap">
+                                <button type="button" 
+                                  onClick={() => {
+                                    setSelectedAdminToEdit(a);
+                                    setEditAdminData({
+                                      name: a.name,
+                                      email: a.email,
+                                      tenant: a.tenant,
+                                      status: a.status
+                                    });
+                                    setShowEditAdminModal(true);
+                                  }}
+                                  className="text-[9.5px] border border-white/10 hover:border-white/25 text-[#ffe2ab] px-2.5 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                                <button type="button" 
+                                  onClick={() => handleResetPasswordClick(a)}
+                                  className="text-[9.5px] border border-white/10 hover:border-white/25 text-[#A69984] px-2.5 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                  Password
+                                </button>
+                                <button type="button" 
+                                  onClick={() => toggleAdminStatus(a.id, a.name, a.status)}
+                                  className={`text-[9.5px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                                    a.status === 'ACTIVE' 
+                                      ? 'border-rose-500/20 text-rose-400 hover:bg-rose-500/10' 
+                                      : 'border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10'
+                                  }`}
+                                >
+                                  {a.status === 'ACTIVE' ? 'Suspend' : 'Activate'}
+                                </button>
+                                <button type="button" 
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to delete admin ${a.name}?`)) {
+                                      handleDeleteAdmin(a.id);
+                                      triggerToast(`Admin "${a.name}" deleted!`, 'success');
+                                    }
+                                  }}
+                                  className="text-[9.5px] border border-red-500/25 hover:border-red-500/40 text-red-400 px-2.5 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
+
+                {/* Pagination Controls */}
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-4 border-t border-white/5 font-sans select-none">
+                  <div className="text-xs text-[#A69984]/50 font-bold">
+                    Showing <span className="text-white/70">{processedAdmins.length === 0 ? 0 : (adminCurrentPage - 1) * ADMIN_PAGE_SIZE + 1}</span>
+                    {' '}–{' '}
+                    <span className="text-white/70">{Math.min(adminCurrentPage * ADMIN_PAGE_SIZE, processedAdmins.length)}</span>
+                    {' '}of{' '}
+                    <span className="text-white/70">{processedAdmins.length}</span> admins
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={adminCurrentPage === 1}
+                      onClick={() => setAdminCurrentPage(prev => Math.max(1, prev - 1))}
+                      className="px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 text-xs font-bold text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      Previous
+                    </button>
+
+                    {Array.from({ length: totalAdminPages }, (_, i) => i + 1).map(page => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setAdminCurrentPage(page)}
+                        className={`w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                          adminCurrentPage === page
+                            ? `${theme.accentBg} ${theme.accentText}`
+                            : 'bg-white/5 text-[#A69984] hover:text-white hover:bg-white/10'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      disabled={adminCurrentPage === totalAdminPages || totalAdminPages === 0}
+                      onClick={() => setAdminCurrentPage(prev => Math.min(totalAdminPages, prev + 1))}
+                      className="px-3 py-1.5 rounded-lg border border-white/10 hover:border-white/20 text-xs font-bold text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+
               </div>
 
             </div>
