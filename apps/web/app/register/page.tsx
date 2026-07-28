@@ -34,6 +34,7 @@ function RegisterForm() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [restaurantName, setRestaurantName] = useState('');
   const [password, setPassword] = useState('');
   const [agreeToTerms, setAgreeToTerms] = useState(false);
@@ -84,6 +85,7 @@ function RegisterForm() {
           businessName: restaurantName,
           name: fullName,
           email: emailLower,
+          phone: phone.trim(),
           password: password,
           country: country,
         }),
@@ -385,6 +387,24 @@ function RegisterForm() {
                   <option value="Nepal" className="bg-[#121211] text-white">Nepal</option>
                 </select>
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-white/20 pointer-events-none">expand_more</span>
+              </div>
+            </div>
+
+            {/* Contact Number */}
+            <div className="space-y-2">
+              <label className="block text-[#d4c5ab]/80 text-xs font-bold uppercase tracking-widest font-label-sm flex items-center justify-between">
+                <span>Contact Number</span>
+                <span className="text-[#d4c5ab]/40 text-[10px] normal-case font-medium tracking-normal">(optional)</span>
+              </label>
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-[20px] text-white/20 leading-none pointer-events-none group-focus-within:text-[#ffe2ab]/60 transition-colors">call</span>
+                <input
+                  type="tel"
+                  placeholder="+1 (555) 000-0000"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  className={inputClass()}
+                />
               </div>
             </div>
 

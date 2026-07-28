@@ -15,6 +15,7 @@ import {
   changePassword,
   changeEmail,
   getMe,
+  updateProfile,
   getSessions,
   revokeSession,
   getLoginHistory,
@@ -44,6 +45,7 @@ router.post('/logout-all', requireAuth, logoutAll);
 router.post('/change-password', requireAuth, validateSchema(changePasswordSchema), changePassword);
 router.post('/change-email', requireAuth, validateSchema(changeEmailSchema), changeEmail);
 router.get('/me', requireAuth, getMe);
+router.put('/profile', requireAuth, updateProfile);
 router.get('/sessions', requireAuth, getSessions);
 router.delete('/sessions/:id', requireAuth, revokeSession);
 router.get('/login-history', requireAuth, getLoginHistory);

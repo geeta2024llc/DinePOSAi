@@ -8,7 +8,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../authContext';
-import { ArrowLeft, Shield, Building, User, Calendar, MapPin } from 'lucide-react';
+import { ArrowLeft, Shield, Building, User, Calendar, MapPin, Phone } from 'lucide-react';
 
 export default function ProfilePage() {
   const { user, tenant, logout } = useAuth();
@@ -90,18 +90,25 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 pt-6 border-t border-white/5 text-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-6 border-t border-white/5 text-sm">
+            <div className="flex items-center space-x-3 text-zinc-400">
+              <Phone className="w-5 h-5 text-amber-400/80 flex-shrink-0" />
+              <div>
+                <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Contact Number</p>
+                <p className="text-zinc-200 font-medium mt-0.5">{user.phone || 'Not Provided'}</p>
+              </div>
+            </div>
             <div className="flex items-center space-x-3 text-zinc-400">
               <Calendar className="w-5 h-5 text-zinc-500 flex-shrink-0" />
               <div>
-                <p className="text-xs text-zinc-600 uppercase font-bold tracking-wider">Registered Since</p>
+                <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Registered Since</p>
                 <p className="text-zinc-300 mt-0.5">{formatDate(user.createdAt)}</p>
               </div>
             </div>
             <div className="flex items-center space-x-3 text-zinc-400">
               <User className="w-5 h-5 text-zinc-500 flex-shrink-0" />
               <div>
-                <p className="text-xs text-zinc-600 uppercase font-bold tracking-wider">Last Activity Time</p>
+                <p className="text-xs text-zinc-500 uppercase font-bold tracking-wider">Last Activity Time</p>
                 <p className="text-zinc-300 mt-0.5">{formatDate(user.lastLogin)}</p>
               </div>
             </div>

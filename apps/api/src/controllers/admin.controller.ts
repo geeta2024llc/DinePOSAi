@@ -22,7 +22,7 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
     // 2. Fetch real registered users — include branch_id for accurate roster
     const { data: dbUsers, error: userErr } = await supabase
       .from('users')
-      .select('id, tenant_id, branch_id, name, email, role, is_active, last_login, created_at')
+      .select('id, tenant_id, branch_id, name, email, phone, role, is_active, last_login, created_at')
       .order('created_at', { ascending: false });
 
     if (userErr) {
@@ -91,7 +91,7 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
           id: u.id,
           name: u.name,
           email: u.email,
-          phone: '',
+          phone: u.phone || '',
           role: (u.role || 'STAFF').toUpperCase(),
           status: u.is_active !== false ? 'ACTIVE' : 'INACTIVE',
           lastLogin: u.last_login ? new Date(u.last_login).toLocaleString() : 'Never',
@@ -114,7 +114,7 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
         id: t.id,
         name: t.name,
         email: contactEmail,
-        phone: '',
+        phone: ownerUser?.phone || '',
         ownerName: ownerUser?.name || 'Restaurant Owner',
         location: t.country || 'Global',
         terminals: 1,
@@ -163,7 +163,7 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
         id: u.id,
         name: u.name,
         email: u.email,
-        phone: '',
+        phone: u.phone || '',
         tenant: isSuperAdmin ? 'System Platform' : (matchedTenant ? matchedTenant.name : 'System Platform'),
         assignedTo,
         tenantId: isSuperAdmin ? '' : (u.tenant_id || ''),
@@ -343,10 +343,6 @@ export const updateTenantStatus = async (req: AuthenticatedRequest, res: Respons
     if (targetDate) {
       const parsedDate = targetDate.includes('T') ? targetDate : `${targetDate}T23:59:59.000Z`;
       updateData.trial_ends_at = parsedDate;
-    }
-
-    if (typeof billingFailed === 'boolean') {
-      updateData.billing_failed = billingFailed;
     }
 
     updateData.updated_at = new Date().toISOString();

@@ -127,14 +127,45 @@ export default function TenantManager(props: any) {
     return tenants.filter((t: any) => checkExpiryStatus && checkExpiryStatus(t.expiryDate) === 'warning').length;
   }, [tenants, checkExpiryStatus]);
 
+  const activeFilteredTenants = useMemo(() => {
+    if (Array.isArray(filteredTenants) && filteredTenants.length > 0) return filteredTenants;
+    if (!Array.isArray(tenants)) return [];
+    return tenants.filter((ten: any) => {
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const matchName = ten.name?.toLowerCase().includes(q);
+        const matchId = ten.id?.toLowerCase().includes(q);
+        const matchLocation = (ten.location || ten.region || '')?.toLowerCase().includes(q);
+        const matchEmail = ten.email?.toLowerCase().includes(q);
+        if (!matchName && !matchId && !matchLocation && !matchEmail) return false;
+      }
+      if (statusFilter && statusFilter !== 'All') {
+        if (statusFilter.toUpperCase() !== (ten.status || '').toUpperCase()) return false;
+      }
+      if (tierFilter && tierFilter !== 'All') {
+        if (tierFilter.toUpperCase() !== (ten.plan || ten.tier || '').toUpperCase()) return false;
+      }
+      if (regionFilter && regionFilter !== 'All') {
+        if (regionFilter !== (ten.region || ten.location)) return false;
+      }
+      if (attentionOnlyFilter) {
+        const isExp = checkExpiryStatus && checkExpiryStatus(ten.expiryDate) === 'expired';
+        const isSusp = ten.status === 'SUSPENDED';
+        const isFail = ten.billingFailed;
+        if (!isExp && !isSusp && !isFail) return false;
+      }
+      return true;
+    });
+  }, [filteredTenants, tenants, searchQuery, statusFilter, tierFilter, regionFilter, attentionOnlyFilter, checkExpiryStatus]);
+
   const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil((filteredTenants?.length || 0) / PAGE_SIZE));
-  }, [filteredTenants]);
+    return Math.max(1, Math.ceil((activeFilteredTenants?.length || 0) / PAGE_SIZE));
+  }, [activeFilteredTenants]);
 
   const pagedTenants = useMemo(() => {
-    if (!Array.isArray(filteredTenants)) return [];
-    return filteredTenants.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
-  }, [filteredTenants, currentPage]);
+    if (!Array.isArray(activeFilteredTenants)) return [];
+    return activeFilteredTenants.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  }, [activeFilteredTenants, currentPage]);
 
   const allPageSelected = useMemo(() => {
     return pagedTenants.length > 0 && pagedTenants.every((t: any) => selectedIds.has(t.id));
@@ -1883,6 +1914,7 @@ export default function TenantManager(props: any) {
                             <tr className="border-b border-white/5 bg-white/[0.02] text-[9px] text-[#A69984]/50 uppercase tracking-wider">
                               <th className="py-2.5 px-3">User Name</th>
                               <th className="py-2.5 px-3">Email</th>
+                              <th className="py-2.5 px-3">Contact Number</th>
                               <th className="py-2.5 px-3">Role</th>
                               <th className="py-2.5 px-3">Status</th>
                             </tr>
@@ -1892,6 +1924,7 @@ export default function TenantManager(props: any) {
                               <tr key={u.id} className="hover:bg-white/[0.015]">
                                 <td className="py-2.5 px-3 text-white font-medium">{u.name}</td>
                                 <td className="py-2.5 px-3 text-[#A69984] font-mono text-[11px]">{u.email}</td>
+                                <td className="py-2.5 px-3 text-amber-200/80 font-mono text-[11px]">{u.phone || u.contactNumber || 'N/A'}</td>
                                 <td className="py-2.5 px-3 text-[10px] text-amber-300 font-bold uppercase">{u.role}</td>
                                 <td className="py-2.5 px-3">
                                   <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${
@@ -1949,7 +1982,15 @@ export default function TenantManager(props: any) {
               </button>
             </div>
 
-            <form onSubmit={handleSaveTenantExpiry} className="p-6 space-y-6">
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (typeof handleSaveTenantExpiry === 'function') {
+                handleSaveTenantExpiry(e);
+              } else if (selectedTenant && editingExpiryDate) {
+                handleQuickRenew(selectedTenant.id, 0, editingExpiryDate);
+                setShowTenantDetailsModal(false);
+              }
+            }} className="p-6 space-y-6">
               {/* Current Expiry Display */}
               <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl flex items-center justify-between">
                 <div>

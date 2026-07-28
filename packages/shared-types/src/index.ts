@@ -49,6 +49,7 @@ export interface User {
   branchId: string | null;
   name: string;
   email: string;
+  phone?: string | null;
   role: UserRole;
   isActive: boolean;
   lastLogin: string | null;

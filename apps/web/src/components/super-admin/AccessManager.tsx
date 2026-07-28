@@ -335,7 +335,7 @@ export default function AccessManager(props: any) {
                                 <span className="truncate max-w-[160px]">{a.name}</span>
                               </td>
 
-                              {/* Work Email */}
+                              {/* Work Email & Phone */}
                               <td className="py-4 px-4 max-w-[180px]">
                                 {a.email ? (
                                   <a
@@ -347,6 +347,12 @@ export default function AccessManager(props: any) {
                                   </a>
                                 ) : (
                                   <span className="text-white/30 italic font-mono text-xs">N/A</span>
+                                )}
+                                {a.phone && (
+                                  <div className="text-[10.5px] text-amber-300/90 font-mono mt-0.5 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[11px] text-amber-400">call</span>
+                                    <span>{a.phone}</span>
+                                  </div>
                                 )}
                               </td>
 

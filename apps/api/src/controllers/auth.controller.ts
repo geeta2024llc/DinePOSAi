@@ -45,6 +45,8 @@ export const signupSchema = z.object({
   businessName: z.string().min(2, 'Business name must be at least 2 characters'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
+  contactNumber: z.string().optional(),
   password: z.string()
     .min(8, 'Password must be at least 8 characters')
     .refine(
@@ -90,7 +92,8 @@ const hashToken = (token: string) =>
 
 // 1. SIGNUP CONTROLLER (Tenant/Organization Creator)
 export const signup = async (req: Request, res: Response<ApiResponse>) => {
-  const { businessName, name, email, password, country } = req.body;
+  const { businessName, name, email, password, country, phone, contactNumber } = req.body;
+  const userPhone = (phone || contactNumber || '').trim() || null;
   const emailLower = email.toLowerCase().trim();
   let createdAuthUserId: string | null = null;
 
@@ -195,6 +198,7 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
         branch_id: defaultBranch.id,
         name,
         email: emailLower,
+        phone: userPhone,
         password_hash: passwordHash,
         role: 'OWNER',
         is_active: true
@@ -223,6 +227,7 @@ export const signup = async (req: Request, res: Response<ApiResponse>) => {
           id: user.id,
           name: user.name,
           email: user.email,
+          phone: user.phone || null,
           role: user.role as UserRole,
         }
       }
@@ -401,6 +406,7 @@ export const login = async (req: Request, res: Response<ApiResponse>) => {
           id: user.id,
           name: user.name,
           email: user.email,
+          phone: user.phone || null,
           role: user.role as UserRole,
         },
         tenant: {
@@ -506,6 +512,7 @@ export const refresh = async (req: Request, res: Response<ApiResponse>) => {
           id: user.id,
           name: user.name,
           email: user.email,
+          phone: user.phone || null,
           role: user.role as UserRole,
         },
         tenant: {
@@ -716,7 +723,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response<ApiResponse
   try {
     const { data: user, error } = await supabase
       .from('users')
-      .select('id, name, email, role, is_active, last_login, created_at, tenants!inner(id, name, currency, tax_type, tax_rate, plan, status, onboarded)')
+      .select('id, name, email, phone, role, is_active, last_login, created_at, tenants!inner(id, name, currency, tax_type, tax_rate, plan, status, onboarded)')
       .eq('id', req.user.id)
       .single();
 
@@ -731,6 +738,7 @@ export const getMe = async (req: AuthenticatedRequest, res: Response<ApiResponse
           id: user.id,
           name: user.name,
           email: user.email,
+          phone: user.phone || null,
           role: user.role as UserRole,
           isActive: user.is_active,
           lastLogin: user.last_login,
@@ -742,6 +750,51 @@ export const getMe = async (req: AuthenticatedRequest, res: Response<ApiResponse
     });
   } catch (err: any) {
     res.status(500).json({ success: false, error: 'Failed to fetch profile.' });
+  }
+};
+
+// UPDATE PROFILE CONTROLLER
+export const updateProfile = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  if (!req.user) {
+    return res.status(401).json({ success: false, error: 'Authentication required.' });
+  }
+
+  const { name, phone, contactNumber } = req.body;
+  const userPhone = phone !== undefined ? phone : (contactNumber !== undefined ? contactNumber : undefined);
+
+  try {
+    const updateData: any = {};
+    if (typeof name === 'string' && name.trim()) updateData.name = name.trim();
+    if (userPhone !== undefined) updateData.phone = userPhone ? String(userPhone).trim() : null;
+
+    updateData.updated_at = new Date().toISOString();
+
+    const { data: user, error } = await supabase
+      .from('users')
+      .update(updateData)
+      .eq('id', req.user.id)
+      .select()
+      .single();
+
+    if (error || !user) {
+      return res.status(400).json({ success: false, error: error?.message || 'Failed to update profile.' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        message: 'Profile updated successfully.',
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || null,
+          role: user.role as UserRole,
+        }
+      }
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message || 'Failed to update profile.' });
   }
 };
 

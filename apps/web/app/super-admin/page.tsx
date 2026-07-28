@@ -2445,6 +2445,7 @@ export default function SuperAdminPage() {
                 setSelectedTenant, setEditingExpiryDate, setShowTenantDetailsModal,
                 setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
                 handleQuickRenew, handleRetryBilling, handleDeleteTenant, handleBulkDeleteTenants,
+                handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
                 globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs,
                 showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant,
                 isLoadingOverview, overviewError
