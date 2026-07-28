@@ -236,6 +236,12 @@ interface Tenant {
   billingFailed?: boolean;
   expiryDate: string;
   phone?: string;
+  branchesCount?: number;
+  branches?: Array<{ id: string; name: string; city?: string; isActive?: boolean }>;
+  totalStaffCount?: number;
+  activeStaffCount?: number;
+  inactiveStaffCount?: number;
+  staffRoster?: Array<{ id: string; name: string; email: string; phone?: string; role: string; status: 'ACTIVE' | 'INACTIVE'; lastLogin: string }>;
 }
 
 interface AdminUser {
@@ -629,8 +635,7 @@ export default function SuperAdminPage() {
         body: JSON.stringify({
           expiryDate: newExpiryStr,
           trial_ends_at: newExpiryStr,
-          subscription_expires_at: newExpiryStr,
-          status: 'active'
+          status: 'ACTIVE'
         })
       });
 
@@ -1651,6 +1656,11 @@ export default function SuperAdminPage() {
   const handleSaveTenantExpiry = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTenant) return;
+
+    if (!editingExpiryDate || isNaN(new Date(editingExpiryDate).getTime())) {
+      triggerToast('Please select a valid custom expiry date.', 'info');
+      return;
+    }
     
     // Auto status alignment based on selected plan
     let alignedStatus = selectedTenant.status;
@@ -1665,6 +1675,7 @@ export default function SuperAdminPage() {
     };
 
     // 1. Optimistic UI Update
+    setSelectedTenant(updatedTenant);
     setTenants(prev => prev.map(t => t.id === selectedTenant.id ? updatedTenant : t));
 
     // 2. Persistent Database API Call
@@ -1675,9 +1686,8 @@ export default function SuperAdminPage() {
         body: JSON.stringify({
           expiryDate: editingExpiryDate,
           trial_ends_at: editingExpiryDate,
-          subscription_expires_at: editingExpiryDate,
-          status: alignedStatus.toLowerCase(),
-          plan: selectedTenant.plan.toLowerCase()
+          status: alignedStatus.toUpperCase(),
+          plan: selectedTenant.plan.toUpperCase()
         })
       });
 

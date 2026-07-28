@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { apiRequest } from '@/utils/api';
 
 export default function TenantManager(props: any) {
@@ -24,6 +24,44 @@ export default function TenantManager(props: any) {
     showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant,
     isLoadingOverview, overviewError
   } = props;
+
+  // ── Viewport Fixed Action Menu Position State ──────────────────────────────
+  const [menuPosition, setMenuPosition] = useState<{ top?: number; bottom?: number; right: number; isFlipUp: boolean } | null>(null);
+
+  // ── Expandable Tenant Rows & Role Filter States ────────────────────────────
+  const [expandedTenantIds, setExpandedTenantIds] = useState<Set<string>>(new Set());
+  const [activeStaffRoleFilterMap, setActiveStaffRoleFilterMap] = useState<Record<string, string>>({});
+  const [activeDrawerTabMap, setActiveDrawerTabMap] = useState<Record<string, 'ROSTER' | 'BRANCHES' | 'CONTROLS'>>({});
+
+  const toggleExpandTenant = (id: string, defaultTab?: 'ROSTER' | 'BRANCHES' | 'CONTROLS') => {
+    setExpandedTenantIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id) && !defaultTab) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+    if (defaultTab) {
+      setActiveDrawerTabMap(prev => ({ ...prev, [id]: defaultTab }));
+    }
+  };
+
+  useEffect(() => {
+    const handleCloseOnScrollOrResize = () => {
+      if (activeActionMenuId) {
+        setActiveActionMenuId(null);
+        setMenuPosition(null);
+      }
+    };
+    window.addEventListener('scroll', handleCloseOnScrollOrResize, true);
+    window.addEventListener('resize', handleCloseOnScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleCloseOnScrollOrResize, true);
+      window.removeEventListener('resize', handleCloseOnScrollOrResize);
+    };
+  }, [activeActionMenuId, setActiveActionMenuId]);
 
   // ── Rich Tenant Details Modal State ───────────────────────────────────────
   const [showRichDetailsModal, setShowRichDetailsModal] = useState(false);
@@ -788,8 +826,9 @@ export default function TenantManager(props: any) {
                   <table className="w-full font-sans border-collapse text-left text-xs">
                     <thead>
                       <tr className="border-b border-white/5 bg-white/[0.02]">
+                        <th className="py-3.5 pl-3 pr-1 w-8 text-center text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider"></th>
                         {/* Select-all checkbox */}
-                        <th className="py-3.5 pl-5 pr-2 w-10">
+                        <th className="py-3.5 px-2 w-10">
                           <button type="button" onClick={toggleAll}
                             className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${allPageSelected ? 'bg-[#ffc53d] border-[#ffc53d]' : 'border-white/25 hover:border-white/50 bg-transparent'}`}>
                             {allPageSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
@@ -800,6 +839,7 @@ export default function TenantManager(props: any) {
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Email</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Plan</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Region</th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Staff &amp; Branches</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Expiry</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Status</th>
                         <th className="py-3.5 px-3 pr-5 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider text-right whitespace-nowrap">Actions</th>
@@ -808,7 +848,7 @@ export default function TenantManager(props: any) {
                     <tbody className="divide-y divide-white/[0.04]">
                       {isLoadingOverview ? (
                         <tr>
-                          <td colSpan={9} className="py-16 text-center">
+                          <td colSpan={11} className="py-16 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
                               <p className="text-xs text-[#A69984]/60 font-bold uppercase tracking-wider">Verifying Super Admin Credentials & Loading Tenants...</p>
@@ -817,7 +857,7 @@ export default function TenantManager(props: any) {
                         </tr>
                       ) : pagedTenants.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="py-16 text-center">
+                          <td colSpan={11} className="py-16 text-center">
                             <span className="material-symbols-outlined text-4xl text-white/10 block mb-2">search_off</span>
                             <p className="text-xs text-[#A69984]/40 font-bold uppercase tracking-wider">No tenants match your filters</p>
                           </td>
@@ -826,222 +866,556 @@ export default function TenantManager(props: any) {
                       {pagedTenants.map((ten: any, idx: number) => {
                         const snNumber = (currentPage - 1) * PAGE_SIZE + idx + 1;
                         const isSelected = selectedIds.has(ten.id);
+                        const isExpanded = expandedTenantIds.has(ten.id);
                         const expStatus = checkExpiryStatus(ten.expiryDate);
                         const countdownText = getExpiryCountdownText(ten.expiryDate);
                         const initials = getInitials(ten.name);
                         const avatarCls = getAvatarColor(ten.name);
+
+                        // ── UI safety net: filter SUPER_ADMIN from roster ─────────────────
+                        // Backend already excludes SUPER_ADMIN, but this double-check ensures
+                        // no platform-level admin leaks into any business's staff roster.
+                        const rawRoster = (ten.staffRoster || []).filter((u: any) => u.role !== 'SUPER_ADMIN');
+                        const staffRoster = rawRoster.length > 0
+                          ? rawRoster
+                          : [];
+
+                        const selectedRoleFilter = activeStaffRoleFilterMap[ten.id] || 'ALL';
+                        const currentTab = activeDrawerTabMap[ten.id] || 'ROSTER';
+
+                        const ownersList = staffRoster.filter((u: any) => u.role === 'OWNER' || u.role === 'TENANT_ADMIN');
+                        const managersList = staffRoster.filter((u: any) => u.role === 'MANAGER');
+                        const cashiersList = staffRoster.filter((u: any) => u.role === 'CASHIER' || u.role === 'POS_STAFF');
+                        const waitersList = staffRoster.filter((u: any) => u.role === 'WAITER' || u.role === 'STAFF');
+                        const kitchenList = staffRoster.filter((u: any) => u.role === 'KITCHEN' || u.role === 'CHEF');
+
+                        const filteredStaffList = selectedRoleFilter === 'OWNERS' ? ownersList
+                          : selectedRoleFilter === 'MANAGERS' ? managersList
+                          : selectedRoleFilter === 'CASHIER' ? cashiersList
+                          : selectedRoleFilter === 'WAITER' ? waitersList
+                          : selectedRoleFilter === 'KITCHEN' ? kitchenList
+                          : staffRoster;
+
                         return (
-                          <tr key={ten.id}
-                            className={`group transition-colors ${isSelected ? 'bg-[#ffc53d]/[0.04] border-l-2 border-l-[#ffc53d]/50' : 'hover:bg-white/[0.015]'} ${activeActionMenuId === ten.id ? 'relative z-30 bg-white/[0.03]' : ''}`}>
+                          <React.Fragment key={ten.id}>
+                            <tr
+                              className={`group transition-colors ${isSelected ? 'bg-[#ffc53d]/[0.04] border-l-2 border-l-[#ffc53d]/50' : 'hover:bg-white/[0.015]'} ${isExpanded ? 'bg-white/[0.03]' : ''} ${activeActionMenuId === ten.id ? 'relative z-30 bg-white/[0.03]' : ''}`}>
 
-                            {/* Checkbox */}
-                            <td className="pl-5 pr-2 py-4">
-                              <button type="button" onClick={() => toggleOne(ten.id)}
-                                className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${isSelected ? 'bg-[#ffc53d] border-[#ffc53d]' : 'border-white/20 hover:border-white/50 bg-transparent'}`}>
-                                {isSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
-                              </button>
-                            </td>
+                              {/* Expand Arrow Button */}
+                              <td className="py-4 pl-3 pr-1 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpandTenant(ten.id)}
+                                  title={isExpanded ? "Collapse tenant details" : "Expand tenant details & staff roster"}
+                                  className={`w-7 h-7 rounded-lg border border-white/10 hover:border-white/30 flex items-center justify-center text-[#A69984] hover:text-white transition-all cursor-pointer ${isExpanded ? 'bg-[#ffc53d]/15 text-[#ffc53d] border-[#ffc53d]/40' : 'bg-white/[0.02]'}`}
+                                >
+                                  <span className={`material-symbols-outlined text-base transition-transform duration-200 ${isExpanded ? 'rotate-90 text-[#ffc53d]' : ''}`}>
+                                    chevron_right
+                                  </span>
+                                </button>
+                              </td>
 
-                            {/* S.N. Column */}
-                            <td className="py-4 px-3 text-center text-[11.5px] text-[#A69984]/75 font-mono font-bold whitespace-nowrap">
-                              {snNumber}
-                            </td>
+                              {/* Checkbox */}
+                              <td className="px-2 py-4">
+                                <button type="button" onClick={() => toggleOne(ten.id)}
+                                  className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${isSelected ? 'bg-[#ffc53d] border-[#ffc53d]' : 'border-white/20 hover:border-white/50 bg-transparent'}`}>
+                                  {isSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
+                                </button>
+                              </td>
 
-                            {/* Establishment */}
-                            <td className="py-4 px-3">
-                              <div className="flex items-center gap-3">
-                                {/* Initials Avatar */}
-                                <div className={`w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 font-bold text-xs select-none ${ten.billingFailed ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : avatarCls}`}>
-                                  {ten.billingFailed
-                                    ? <span className="material-symbols-outlined text-sm">warning</span>
-                                    : initials}
+                              {/* S.N. Column */}
+                              <td className="py-4 px-3 text-center text-[11.5px] text-[#A69984]/75 font-mono font-bold whitespace-nowrap">
+                                {snNumber}
+                              </td>
+
+                              {/* Establishment */}
+                              <td className="py-4 px-3">
+                                <div className="flex items-center gap-3">
+                                  {/* Initials Avatar */}
+                                  <div className={`w-9 h-9 rounded-xl border flex items-center justify-center flex-shrink-0 font-bold text-xs select-none ${ten.billingFailed ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : avatarCls}`}>
+                                    {ten.billingFailed
+                                      ? <span className="material-symbols-outlined text-sm">warning</span>
+                                      : initials}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-serif font-bold text-white text-[13.5px] tracking-wide leading-tight truncate max-w-[180px]">{ten.name}</div>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                      <span className="text-[9.5px] text-[#A69984]/45 font-mono">{ten.id}</span>
+                                      {ten.billingFailed && (
+                                        <span className="text-[9px] text-rose-400 font-bold uppercase tracking-wider bg-rose-500/10 px-1.5 py-0.5 rounded">Billing Failed</span>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="min-w-0">
-                                  <div className="font-serif font-bold text-white text-[13.5px] tracking-wide leading-tight truncate max-w-[180px]">{ten.name}</div>
-                                  <div className="flex items-center gap-1.5 mt-1">
-                                    <span className="text-[9.5px] text-[#A69984]/45 font-mono">{ten.id}</span>
-                                    {ten.billingFailed && (
-                                      <span className="text-[9px] text-rose-400 font-bold uppercase tracking-wider bg-rose-500/10 px-1.5 py-0.5 rounded">Billing Failed</span>
+                              </td>
+
+                              {/* Email Column */}
+                              <td className="py-4 px-3 max-w-[180px]">
+                                {ten.email ? (
+                                  <a
+                                    href={`mailto:${ten.email}`}
+                                    title={ten.email}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-xs text-[#A69984] hover:text-[#ffc53d] font-medium font-mono truncate block transition-colors underline-offset-2 hover:underline"
+                                  >
+                                    {ten.email}
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-white/30 font-mono italic">N/A</span>
+                                )}
+                              </td>
+
+                              {/* Plan Badge */}
+                              <td className="py-4 px-3">
+                                {ten.plan === 'BUSINESS' || ten.tier === 'Business' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-[#ffc53d]/35 bg-[#ffc53d]/8 text-[#ffc53d] font-bold whitespace-nowrap">
+                                    <span className="material-symbols-outlined text-[11px]">star</span>Business
+                                  </span>
+                                ) : ten.plan === 'ENTERPRISE' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-violet-500/35 bg-violet-500/8 text-violet-400 font-bold whitespace-nowrap">
+                                    <span className="material-symbols-outlined text-[11px]">diamond</span>Enterprise
+                                  </span>
+                                ) : ten.plan === 'GROWTH' || ten.tier === 'Growth' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-sky-500/35 bg-sky-500/8 text-sky-400 font-bold whitespace-nowrap">
+                                    <span className="material-symbols-outlined text-[11px]">trending_up</span>Growth
+                                  </span>
+                                ) : ten.plan === 'TRIAL' ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-emerald-500/35 bg-emerald-500/8 text-emerald-400 font-bold whitespace-nowrap">
+                                    <span className="material-symbols-outlined text-[11px]">science</span>Trial
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-1 text-[9.5px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-bold whitespace-nowrap">
+                                    Starter
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Region */}
+                              <td className="py-4 px-3">
+                                <span className="text-[11.5px] text-[#e5e2e1]/75 font-medium whitespace-nowrap">{ten.location || ten.region || 'N/A'}</span>
+                              </td>
+
+                              {/* Staff & Branches Summary Pills */}
+                              <td className="py-4 px-3">
+                                <div className="flex flex-col gap-1 min-w-[130px]">
+                                  <button 
+                                    type="button" 
+                                    onClick={(e) => { e.stopPropagation(); toggleExpandTenant(ten.id, 'ROSTER'); }}
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/80 hover:text-white font-medium text-[10.5px] transition-all cursor-pointer w-fit"
+                                  >
+                                    <span className="material-symbols-outlined text-[12px] text-[#ffc53d]">group</span>
+                                    <span>{ten.totalStaffCount ?? staffRoster.length} Staff</span>
+                                    <span className="text-[9px] text-emerald-400 font-bold">({ten.activeStaffCount ?? staffRoster.length} act)</span>
+                                  </button>
+                                  <button 
+                                    type="button" 
+                                    onClick={(e) => { e.stopPropagation(); toggleExpandTenant(ten.id, 'BRANCHES'); }}
+                                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-white/70 hover:text-white font-medium text-[10.5px] transition-all cursor-pointer w-fit"
+                                  >
+                                    <span className="material-symbols-outlined text-[12px] text-sky-400">storefront</span>
+                                    <span>{ten.branchesCount ?? (ten.branches?.length || 1)} {ten.branchesCount === 1 ? 'Branch' : 'Branches'}</span>
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Expiry */}
+                              <td className="py-4 px-3">
+                                {expStatus === 'expired' ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border border-rose-500/40 bg-rose-500/8 text-rose-400 font-bold font-mono w-fit">
+                                      <span className="material-symbols-outlined text-[10px] leading-none">error</span>{ten.expiryDate}
+                                    </span>
+                                    <span className="text-[9.5px] text-rose-400/50 font-semibold pl-0.5">{countdownText}</span>
+                                  </div>
+                                ) : expStatus === 'warning' ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border border-amber-500/40 bg-amber-500/8 text-amber-400 font-bold font-mono w-fit">
+                                      <span className="material-symbols-outlined text-[10px] leading-none">warning</span>{ten.expiryDate}
+                                    </span>
+                                    <span className="text-[9.5px] text-amber-400/50 font-semibold pl-0.5">{countdownText}</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="text-[11px] text-[#e5e2e1]/80 font-mono">{ten.expiryDate || '—'}</span>
+                                    <span className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">{countdownText}</span>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Status */}
+                              <td className="py-4 px-3">
+                                {ten.status === 'ACTIVE' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Active
+                                  </span>
+                                ) : ten.status === 'SUSPENDED' ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Suspended
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-white/5 border border-white/10 text-[#A69984] font-bold whitespace-nowrap">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#A69984]"></span>{ten.status}
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Actions */}
+                              <td className="py-4 px-3 pr-5 text-right relative">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button type="button"
+                                    onClick={() => handleOpenDetails(ten)}
+                                    className="text-[9.5px] border border-white/10 hover:border-[#ffc53d]/40 hover:text-[#ffc53d] text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap">
+                                    Details
+                                  </button>
+
+                                  <div className="relative">
+                                    <button type="button"
+                                      aria-label="Open business actions menu"
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        if (activeActionMenuId === ten.id) {
+                                          setActiveActionMenuId(null);
+                                          setMenuPosition(null);
+                                        } else {
+                                          const rect = e.currentTarget.getBoundingClientRect();
+                                          const spaceBelow = window.innerHeight - rect.bottom;
+                                          const isFlipUp = spaceBelow < 280;
+                                          setMenuPosition({
+                                            top: isFlipUp ? undefined : rect.bottom + 6,
+                                            bottom: isFlipUp ? window.innerHeight - rect.top + 6 : undefined,
+                                            right: Math.max(12, window.innerWidth - rect.right),
+                                            isFlipUp
+                                          });
+                                          setActiveActionMenuId(ten.id);
+                                        }
+                                      }}
+                                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-white/10 hover:border-white/30 hover:bg-white/5 flex items-center justify-center text-[#A69984] hover:text-white transition-all cursor-pointer select-none">
+                                      <span className="material-symbols-outlined text-base">more_vert</span>
+                                    </button>
+
+                                    {activeActionMenuId === ten.id && menuPosition && (
+                                      <>
+                                        {/* Click-away backdrop */}
+                                        <div 
+                                          className="fixed inset-0 z-[998] bg-transparent"
+                                          onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            setActiveActionMenuId(null); 
+                                            setMenuPosition(null);
+                                          }}
+                                        />
+                                        <div 
+                                          tabIndex={0}
+                                          onKeyDown={(e) => { 
+                                            if (e.key === 'Escape') {
+                                              setActiveActionMenuId(null); 
+                                              setMenuPosition(null);
+                                            }
+                                          }}
+                                          style={{
+                                            position: 'fixed',
+                                            top: menuPosition.top !== undefined ? `${menuPosition.top}px` : 'auto',
+                                            bottom: menuPosition.bottom !== undefined ? `${menuPosition.bottom}px` : 'auto',
+                                            right: `${menuPosition.right}px`,
+                                            zIndex: 999
+                                          }}
+                                          className={`w-52 max-w-[calc(100vw-2.5rem)] bg-[#141311] border border-white/15 rounded-xl shadow-2xl shadow-black/90 py-1.5 text-left font-sans animate-fade-in select-none ${
+                                            menuPosition.isFlipUp ? 'origin-bottom-right' : 'origin-top-right'
+                                          }`}
+                                        >
+                                          {/* General info */}
+                                          <button type="button" onClick={() => { handleOpenDetails(ten); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                            className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white font-medium flex items-center gap-2.5 cursor-pointer border-b border-white/5">
+                                            <span className="material-symbols-outlined text-sm text-[#ffc53d]">info</span>View Full Details
+                                          </button>
+
+                                          {/* Expiry group */}
+                                          <div className="px-3.5 pt-2 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Subscription & Expiry</div>
+                                          <button type="button" onClick={() => { handleQuickRenew(ten.id, 30); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                            className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
+                                            <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>Extend +30 Days
+                                          </button>
+                                          <button type="button" onClick={() => { handleQuickRenew(ten.id, 365); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                            className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
+                                            <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>Extend +1 Year
+                                          </button>
+                                          <button type="button" onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate || new Date().toISOString().split('T')[0]); setShowTenantDetailsModal(true); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                            className="w-full px-3.5 py-2 hover:bg-amber-500/5 text-xs text-amber-400 font-medium flex items-center gap-2.5 cursor-pointer">
+                                            <span className="material-symbols-outlined text-sm">edit_calendar</span>Custom Expiry Date...
+                                          </button>
+
+                                          {/* Status group */}
+                                          <div className="border-t border-white/5 mt-1 pt-1.5 px-3.5 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Tenant Access</div>
+                                          <button type="button" onClick={() => { toggleTenantStatus(ten.id, ten.name, ten.status); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                            className={`w-full px-3.5 py-2 hover:bg-white/5 text-xs font-medium flex items-center gap-2.5 cursor-pointer ${ten.status === 'ACTIVE' ? 'text-rose-400 hover:bg-rose-500/5' : 'text-emerald-400 hover:bg-emerald-500/5'}`}>
+                                            <span className="material-symbols-outlined text-sm">{ten.status === 'ACTIVE' ? 'block' : 'check_circle'}</span>
+                                            {ten.status === 'ACTIVE' ? 'Suspend Business' : 'Activate Business'}
+                                          </button>
+
+                                          {/* Billing */}
+                                          {ten.billingFailed && (
+                                            <>
+                                              <div className="border-t border-white/5 mt-1 pt-1.5 px-3.5 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Billing</div>
+                                              <button type="button" onClick={() => { handleRetryBilling(ten.id); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                                className="w-full px-3.5 py-2 hover:bg-[#ffc53d]/5 text-xs text-[#ffc53d] font-medium flex items-center gap-2.5 cursor-pointer">
+                                                <span className="material-symbols-outlined text-sm">credit_card</span>Retry Card Billing
+                                              </button>
+                                            </>
+                                          )}
+
+                                          {/* Danger */}
+                                          <div className="border-t border-white/5 mt-1 pt-1">
+                                            <button type="button" onClick={() => { handleDeleteTenant(ten.id, ten.name); setActiveActionMenuId(null); setMenuPosition(null); }}
+                                              className="w-full px-3.5 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-medium flex items-center gap-2.5 cursor-pointer">
+                                              <span className="material-symbols-outlined text-sm">delete</span>Delete Permanently
+                                            </button>
+                                          </div>
+                                        </div>
+                                      </>
                                     )}
                                   </div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
+                            </tr>
 
-                            {/* Email Column */}
-                            <td className="py-4 px-3 max-w-[180px]">
-                              {ten.email ? (
-                                <a
-                                  href={`mailto:${ten.email}`}
-                                  title={ten.email}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-xs text-[#A69984] hover:text-[#ffc53d] font-medium font-mono truncate block transition-colors underline-offset-2 hover:underline"
-                                >
-                                  {ten.email}
-                                </a>
-                              ) : (
-                                <span className="text-xs text-white/30 font-mono italic">N/A</span>
-                              )}
-                            </td>
-
-                            {/* Plan Badge */}
-                            <td className="py-4 px-3">
-                              {ten.plan === 'BUSINESS' || ten.tier === 'Business' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-[#ffc53d]/35 bg-[#ffc53d]/8 text-[#ffc53d] font-bold whitespace-nowrap">
-                                  <span className="material-symbols-outlined text-[11px]">star</span>Business
-                                </span>
-                              ) : ten.plan === 'ENTERPRISE' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-violet-500/35 bg-violet-500/8 text-violet-400 font-bold whitespace-nowrap">
-                                  <span className="material-symbols-outlined text-[11px]">diamond</span>Enterprise
-                                </span>
-                              ) : ten.plan === 'GROWTH' || ten.tier === 'Growth' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-sky-500/35 bg-sky-500/8 text-sky-400 font-bold whitespace-nowrap">
-                                  <span className="material-symbols-outlined text-[11px]">trending_up</span>Growth
-                                </span>
-                              ) : ten.plan === 'TRIAL' ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[9.5px] rounded-lg border border-emerald-500/35 bg-emerald-500/8 text-emerald-400 font-bold whitespace-nowrap">
-                                  <span className="material-symbols-outlined text-[11px]">science</span>Trial
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center px-2.5 py-1 text-[9.5px] rounded-lg bg-white/5 border border-white/10 text-white/50 font-bold whitespace-nowrap">
-                                  Starter
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Region */}
-                            <td className="py-4 px-3">
-                              <span className="text-[11.5px] text-[#e5e2e1]/75 font-medium whitespace-nowrap">{ten.location || ten.region || 'N/A'}</span>
-                            </td>
-
-                            {/* Expiry */}
-                            <td className="py-4 px-3">
-                              {expStatus === 'expired' ? (
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border border-rose-500/40 bg-rose-500/8 text-rose-400 font-bold font-mono w-fit">
-                                    <span className="material-symbols-outlined text-[10px] leading-none">error</span>{ten.expiryDate}
-                                  </span>
-                                  <span className="text-[9.5px] text-rose-400/50 font-semibold pl-0.5">{countdownText}</span>
-                                </div>
-                              ) : expStatus === 'warning' ? (
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border border-amber-500/40 bg-amber-500/8 text-amber-400 font-bold font-mono w-fit">
-                                    <span className="material-symbols-outlined text-[10px] leading-none">warning</span>{ten.expiryDate}
-                                  </span>
-                                  <span className="text-[9.5px] text-amber-400/50 font-semibold pl-0.5">{countdownText}</span>
-                                </div>
-                              ) : (
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-[11px] text-[#e5e2e1]/80 font-mono">{ten.expiryDate || '—'}</span>
-                                  <span className="text-[9px] text-[#A69984]/40 font-bold uppercase tracking-wider">{countdownText}</span>
-                                </div>
-                              )}
-                            </td>
-
-                            {/* Status */}
-                            <td className="py-4 px-3">
-                              {ten.status === 'ACTIVE' ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold whitespace-nowrap">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>Active
-                                </span>
-                              ) : ten.status === 'SUSPENDED' ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold whitespace-nowrap">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>Suspended
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[9.5px] rounded-lg bg-white/5 border border-white/10 text-[#A69984] font-bold whitespace-nowrap">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#A69984]"></span>{ten.status}
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Actions */}
-                            <td className="py-4 px-3 pr-5 text-right relative">
-                              <div className="flex items-center justify-end gap-2">
-                                <button type="button"
-                                  onClick={() => handleOpenDetails(ten)}
-                                  className="text-[9.5px] border border-white/10 hover:border-[#ffc53d]/40 hover:text-[#ffc53d] text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap">
-                                  Details
-                                </button>
-
-                                <div className="relative">
-                                  <button type="button"
-                                    aria-label="Open business actions menu"
-                                    onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(activeActionMenuId === ten.id ? null : ten.id); }}
-                                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-white/10 hover:border-white/30 hover:bg-white/5 flex items-center justify-center text-[#A69984] hover:text-white transition-all cursor-pointer select-none">
-                                    <span className="material-symbols-outlined text-base">more_vert</span>
-                                  </button>
-
-                                  {activeActionMenuId === ten.id && (
-                                    <>
-                                      {/* Click-away backdrop */}
-                                      <div 
-                                        className="fixed inset-0 z-40 bg-transparent"
-                                        onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(null); }}
-                                      />
-                                      <div 
-                                        tabIndex={0}
-                                        onKeyDown={(e) => { if (e.key === 'Escape') setActiveActionMenuId(null); }}
-                                        className={`absolute right-0 w-52 max-w-[calc(100vw-2.5rem)] bg-[#141311] border border-white/15 rounded-xl shadow-2xl shadow-black/80 py-1.5 z-[70] text-left font-sans animate-fade-in select-none ${
-                                          idx >= Math.max(1, pagedTenants.length - 3)
-                                            ? 'bottom-full mb-2 origin-bottom-right' 
-                                            : 'top-full mt-2 origin-top-right'
-                                        }`}
-                                      >
-                                        {/* General info */}
-                                        <button type="button" onClick={() => { handleOpenDetails(ten); setActiveActionMenuId(null); }}
-                                          className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white font-medium flex items-center gap-2.5 cursor-pointer border-b border-white/5">
-                                          <span className="material-symbols-outlined text-sm text-[#ffc53d]">info</span>View Full Details
-                                        </button>
-
-                                        {/* Expiry group */}
-                                        <div className="px-3.5 pt-2 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Subscription & Expiry</div>
-                                        <button type="button" onClick={() => { handleQuickRenew(ten.id, 30); setActiveActionMenuId(null); }}
-                                          className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
-                                          <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>Extend +30 Days
-                                        </button>
-                                        <button type="button" onClick={() => { handleQuickRenew(ten.id, 365); setActiveActionMenuId(null); }}
-                                          className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
-                                          <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>Extend +1 Year
-                                        </button>
-                                        <button type="button" onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate || new Date().toISOString().split('T')[0]); setShowTenantDetailsModal(true); setActiveActionMenuId(null); }}
-                                          className="w-full px-3.5 py-2 hover:bg-amber-500/5 text-xs text-amber-400 font-medium flex items-center gap-2.5 cursor-pointer">
-                                          <span className="material-symbols-outlined text-sm">edit_calendar</span>Custom Expiry Date...
-                                        </button>
-
-                                        {/* Status group */}
-                                        <div className="border-t border-white/5 mt-1 pt-1.5 px-3.5 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Tenant Access</div>
-                                        <button type="button" onClick={() => { toggleTenantStatus(ten.id, ten.name, ten.status); setActiveActionMenuId(null); }}
-                                          className={`w-full px-3.5 py-2 hover:bg-white/5 text-xs font-medium flex items-center gap-2.5 cursor-pointer ${ten.status === 'ACTIVE' ? 'text-rose-400 hover:bg-rose-500/5' : 'text-emerald-400 hover:bg-emerald-500/5'}`}>
-                                          <span className="material-symbols-outlined text-sm">{ten.status === 'ACTIVE' ? 'block' : 'check_circle'}</span>
-                                          {ten.status === 'ACTIVE' ? 'Suspend Business' : 'Activate Business'}
-                                        </button>
-
-                                        {/* Billing */}
-                                        {ten.billingFailed && (
-                                          <>
-                                            <div className="border-t border-white/5 mt-1 pt-1.5 px-3.5 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Billing</div>
-                                            <button type="button" onClick={() => { handleRetryBilling(ten.id); setActiveActionMenuId(null); }}
-                                              className="w-full px-3.5 py-2 hover:bg-[#ffc53d]/5 text-xs text-[#ffc53d] font-medium flex items-center gap-2.5 cursor-pointer">
-                                              <span className="material-symbols-outlined text-sm">credit_card</span>Retry Card Billing
-                                            </button>
-                                          </>
-                                        )}
-
-                                        {/* Danger */}
-                                        <div className="border-t border-white/5 mt-1 pt-1">
-                                          <button type="button" onClick={() => { handleDeleteTenant(ten.id, ten.name); setActiveActionMenuId(null); }}
-                                            className="w-full px-3.5 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-medium flex items-center gap-2.5 cursor-pointer">
-                                            <span className="material-symbols-outlined text-sm">delete</span>Delete Permanently
-                                          </button>
+                            {/* ── EXPANDABLE NESTED BUSINESS DRAWER ────────────────────── */}
+                            {isExpanded && (
+                              <tr className="bg-[#0f0e0c] border-b-2 border-b-[#ffc53d]/30">
+                                <td colSpan={11} className="p-4 sm:p-5">
+                                  <div className="bg-[#181613] border border-white/10 rounded-xl p-4 space-y-4 shadow-inner">
+                                    {/* Drawer Header & Tabs */}
+                                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-3">
+                                      <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-lg bg-[#ffc53d]/10 border border-[#ffc53d]/30 flex items-center justify-center text-[#ffc53d]">
+                                          <span className="material-symbols-outlined text-sm">storefront</span>
+                                        </div>
+                                        <div>
+                                          <h4 className="text-white font-bold text-sm tracking-wide flex items-center gap-2">
+                                            {ten.name}
+                                            <span className="text-[10px] font-mono text-[#A69984]/50 bg-white/5 px-2 py-0.5 rounded border border-white/5">{ten.id}</span>
+                                          </h4>
+                                          <p className="text-[11px] text-[#A69984]/70">Parent Business &gt; Branches ({ten.branchesCount || 1}) &gt; Staff Accounts ({staffRoster.length})</p>
                                         </div>
                                       </div>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </td>
-                          </tr>
+
+                                      {/* Tab Buttons */}
+                                      <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5 text-xs">
+                                        <button 
+                                          type="button" 
+                                          onClick={() => setActiveDrawerTabMap(prev => ({ ...prev, [ten.id]: 'ROSTER' }))}
+                                          className={`px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer ${currentTab === 'ROSTER' ? 'bg-[#ffc53d] text-[#1a1200] shadow-md' : 'text-[#A69984] hover:text-white'}`}
+                                        >
+                                          <span className="material-symbols-outlined text-xs">group</span>
+                                          <span>Staff Roster ({staffRoster.length})</span>
+                                        </button>
+                                        <button 
+                                          type="button" 
+                                          onClick={() => setActiveDrawerTabMap(prev => ({ ...prev, [ten.id]: 'BRANCHES' }))}
+                                          className={`px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer ${currentTab === 'BRANCHES' ? 'bg-[#ffc53d] text-[#1a1200] shadow-md' : 'text-[#A69984] hover:text-white'}`}
+                                        >
+                                          <span className="material-symbols-outlined text-xs">storefront</span>
+                                          <span>Branches ({ten.branchesCount || 1})</span>
+                                        </button>
+                                        <button 
+                                          type="button" 
+                                          onClick={() => setActiveDrawerTabMap(prev => ({ ...prev, [ten.id]: 'CONTROLS' }))}
+                                          className={`px-3 py-1.5 rounded-md font-bold transition-all flex items-center gap-1.5 cursor-pointer ${currentTab === 'CONTROLS' ? 'bg-[#ffc53d] text-[#1a1200] shadow-md' : 'text-[#A69984] hover:text-white'}`}
+                                        >
+                                          <span className="material-symbols-outlined text-xs">tune</span>
+                                          <span>Business Details</span>
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* Tab 1: Staff Roster Grouped by Role */}
+                                    {currentTab === 'ROSTER' && (
+                                      <div className="space-y-3">
+                                        {/* Role Filter Chips */}
+                                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                                          <span className="text-[10px] text-[#A69984]/60 font-bold uppercase tracking-wider mr-1">Role Filter:</span>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setActiveStaffRoleFilterMap(prev => ({ ...prev, [ten.id]: 'ALL' }))}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${selectedRoleFilter === 'ALL' ? 'bg-white/15 border-white/40 text-white' : 'bg-white/5 border-white/5 text-[#A69984] hover:text-white'}`}
+                                          >
+                                            All Staff ({staffRoster.length})
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setActiveStaffRoleFilterMap(prev => ({ ...prev, [ten.id]: 'OWNERS' }))}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${selectedRoleFilter === 'OWNERS' ? 'bg-amber-500/20 border-amber-500/50 text-amber-400' : 'bg-white/5 border-white/5 text-[#A69984] hover:text-amber-400'}`}
+                                          >
+                                            👑 Owners ({ownersList.length})
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setActiveStaffRoleFilterMap(prev => ({ ...prev, [ten.id]: 'MANAGERS' }))}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${selectedRoleFilter === 'MANAGERS' ? 'bg-violet-500/20 border-violet-500/50 text-violet-400' : 'bg-white/5 border-white/5 text-[#A69984] hover:text-violet-400'}`}
+                                          >
+                                            💼 Managers ({managersList.length})
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setActiveStaffRoleFilterMap(prev => ({ ...prev, [ten.id]: 'CASHIER' }))}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${selectedRoleFilter === 'CASHIER' ? 'bg-sky-500/20 border-sky-500/50 text-sky-400' : 'bg-white/5 border-white/5 text-[#A69984] hover:text-sky-400'}`}
+                                          >
+                                            💳 Cashiers ({cashiersList.length})
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setActiveStaffRoleFilterMap(prev => ({ ...prev, [ten.id]: 'WAITER' }))}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${selectedRoleFilter === 'WAITER' ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400' : 'bg-white/5 border-white/5 text-[#A69984] hover:text-emerald-400'}`}
+                                          >
+                                            🍽️ Waiters ({waitersList.length})
+                                          </button>
+                                          <button 
+                                            type="button"
+                                            onClick={() => setActiveStaffRoleFilterMap(prev => ({ ...prev, [ten.id]: 'KITCHEN' }))}
+                                            className={`px-2.5 py-1 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${selectedRoleFilter === 'KITCHEN' ? 'bg-rose-500/20 border-rose-500/50 text-rose-400' : 'bg-white/5 border-white/5 text-[#A69984] hover:text-rose-400'}`}
+                                          >
+                                            🍳 Kitchen ({kitchenList.length})
+                                          </button>
+                                        </div>
+
+                                        {/* Filtered Staff List Table */}
+                                        <div className="bg-black/30 border border-white/5 rounded-lg overflow-hidden">
+                                          <table className="w-full text-xs text-left">
+                                            <thead>
+                                              <tr className="bg-white/[0.02] border-b border-white/5 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider">
+                                                <th className="py-2.5 px-3">Staff Member</th>
+                                                <th className="py-2.5 px-3">Branch Outlet</th>
+                                                <th className="py-2.5 px-3">Role Badge</th>
+                                                <th className="py-2.5 px-3">Account Status</th>
+                                                <th className="py-2.5 px-3">Last Login</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/5">
+                                              {filteredStaffList.length === 0 ? (
+                                                <tr>
+                                                  <td colSpan={5} className="py-6 text-center text-[#A69984]/40 italic">
+                                                    No staff users found under this role filter.
+                                                  </td>
+                                                </tr>
+                                              ) : (
+                                                 filteredStaffList.map((u: any) => {
+                                                  const roleBadge = u.role === 'OWNER' || u.role === 'TENANT_ADMIN'
+                                                    ? { label: 'Owner / Admin', cls: 'bg-amber-500/15 border-amber-500/30 text-amber-400' }
+                                                    : u.role === 'MANAGER'
+                                                    ? { label: 'Branch Manager', cls: 'bg-violet-500/15 border-violet-500/30 text-violet-400' }
+                                                    : u.role === 'CASHIER' || u.role === 'POS_STAFF'
+                                                    ? { label: 'Cashier / POS', cls: 'bg-sky-500/15 border-sky-500/30 text-sky-400' }
+                                                    : u.role === 'KITCHEN' || u.role === 'CHEF'
+                                                    ? { label: 'Kitchen / KDS', cls: 'bg-rose-500/15 border-rose-500/30 text-rose-400' }
+                                                    : { label: 'Waiter / Floor', cls: 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400' };
+
+                                                  return (
+                                                    <tr key={u.id} className="hover:bg-white/[0.02]">
+                                                      <td className="py-2.5 px-3">
+                                                        <div className="flex items-center gap-2.5">
+                                                          <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white font-bold text-[10px]">
+                                                            {u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                                                          </div>
+                                                          <div>
+                                                            <span className="font-bold text-white block">{u.name}</span>
+                                                            <span className="text-[10px] text-[#A69984]/60 font-mono">{u.email}</span>
+                                                          </div>
+                                                        </div>
+                                                      </td>
+                                                      {/* Branch Outlet — resolved from backend branchName */}
+                                                      <td className="py-2.5 px-3">
+                                                        <span className="text-[10.5px] text-[#A69984]/70 font-mono">
+                                                          {u.branchName || 'Main Outlet (Headquarters)'}
+                                                        </span>
+                                                      </td>
+                                                      <td className="py-2.5 px-3">
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] rounded border font-bold ${roleBadge.cls}`}>
+                                                          {roleBadge.label}
+                                                        </span>
+                                                      </td>
+                                                      <td className="py-2.5 px-3">
+                                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[9px] rounded font-bold ${u.status === 'ACTIVE' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}`}>
+                                                          {u.status}
+                                                        </span>
+                                                      </td>
+                                                      <td className="py-2.5 px-3 text-[#A69984]/60 font-mono text-[10.5px]">
+                                                        {u.lastLogin || 'Recently'}
+                                                      </td>
+                                                    </tr>
+                                                  );
+                                                })
+                                              )}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Tab 2: Physical Branches */}
+                                    {currentTab === 'BRANCHES' && (
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                                        {(ten.branches && ten.branches.length > 0 ? ten.branches : [{ id: 'main-branch', name: `${ten.name} (Main Outlet)`, city: ten.location || 'Headquarters', isActive: true }]).map((b: any) => (
+                                          <div key={b.id} className="p-3 bg-black/30 border border-white/5 rounded-lg flex items-center justify-between">
+                                            <div className="flex items-center gap-2.5">
+                                              <span className="material-symbols-outlined text-sky-400 text-lg">storefront</span>
+                                              <div>
+                                                <span className="font-bold text-white block">{b.name}</span>
+                                                <span className="text-[10px] text-[#A69984]/60 font-mono">{b.city}</span>
+                                              </div>
+                                            </div>
+                                            <span className="px-2 py-0.5 text-[9px] rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold uppercase">
+                                              Active
+                                            </span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Tab 3: Business Details & Controls */}
+                                    {currentTab === 'CONTROLS' && (
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                        <div className="p-3.5 bg-black/30 border border-white/5 rounded-lg space-y-2">
+                                          <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-[#A69984]/60">Owner Name:</span>
+                                            <span className="text-white font-bold">{ten.ownerName}</span>
+                                          </div>
+                                          <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-[#A69984]/60">Contact Email:</span>
+                                            <span className="text-[#ffc53d] font-mono">{ten.email || 'N/A'}</span>
+                                          </div>
+                                          <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-[#A69984]/60">Contact Phone:</span>
+                                            <span className="text-emerald-400 font-mono">{ten.phone || 'N/A'}</span>
+                                          </div>
+                                          <div className="flex justify-between">
+                                            <span className="text-[#A69984]/60">Region / Location:</span>
+                                            <span className="text-white font-medium">{ten.location || ten.region}</span>
+                                          </div>
+                                        </div>
+                                        <div className="p-3.5 bg-black/30 border border-white/5 rounded-lg space-y-2">
+                                          <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-[#A69984]/60">Subscription Plan:</span>
+                                            <span className="text-amber-400 font-bold uppercase">{ten.plan}</span>
+                                          </div>
+                                          <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-[#A69984]/60">Expiry Date:</span>
+                                            <span className="text-white font-mono">{ten.expiryDate || 'No Expiry'}</span>
+                                          </div>
+                                          <div className="flex justify-between border-b border-white/5 pb-1">
+                                            <span className="text-[#A69984]/60">Account Status:</span>
+                                            <span className={ten.status === 'ACTIVE' ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>{ten.status}</span>
+                                          </div>
+                                          <div className="flex justify-between">
+                                            <span className="text-[#A69984]/60">Registered Date:</span>
+                                            <span className="text-white/70 font-mono">{ten.joined}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         );
                       })}
                     </tbody>

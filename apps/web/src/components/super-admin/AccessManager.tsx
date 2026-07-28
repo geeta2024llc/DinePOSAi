@@ -33,6 +33,35 @@ export default function AccessManager(props: any) {
   const [adminCurrentPage, setAdminCurrentPage] = useState(1);
   const ADMIN_PAGE_SIZE = 10;
 
+  // ── RBAC Hierarchy Audit System State ─────────────────────────────────────
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditResult, setAuditResult] = useState<any>(null);
+
+  const runHierarchyAudit = async () => {
+    setAuditLoading(true);
+    setShowAuditModal(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('dinepos_auth_token') : '';
+      const res = await fetch('/api/admin/audit-hierarchy', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }).then(r => r.json());
+
+      if (res.success) {
+        setAuditResult(res.data);
+        triggerToast?.('RBAC Hierarchy Audit completed successfully!', 'success');
+      } else {
+        triggerToast?.(`Audit failed: ${res.error}`, 'info');
+      }
+    } catch (err: any) {
+      triggerToast?.(`Network error running audit: ${err.message}`, 'info');
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
   const handleSort = (field: 'name' | 'email' | 'assignedTo' | 'role' | 'status') => {
     if (adminSortField === field) {
       setAdminSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -134,9 +163,19 @@ export default function AccessManager(props: any) {
                     <h3 className="font-serif text-base text-white font-bold tracking-wide">Admin Owners Registry</h3>
                     <p className="text-[10.5px] text-[#A69984]/60 font-semibold mt-0.5">Real-time system privileges and assigned tenant workspaces</p>
                   </div>
-                  <span className="px-3 py-1 bg-white/5 border border-white/10 text-xs text-[#A69984] font-bold rounded-lg w-fit">
-                    {processedAdmins.length} Admins registered
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={runHierarchyAudit}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 font-bold text-xs rounded-xl transition-all cursor-pointer shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-sm text-amber-400">account_tree</span>
+                      Run RBAC Audit
+                    </button>
+                    <span className="px-3 py-1.5 bg-white/5 border border-white/10 text-xs text-[#A69984] font-bold rounded-xl">
+                      {processedAdmins.length} Admins registered
+                    </span>
+                  </div>
                 </div>
 
                 {/* Filter Toolbar & Search Bar */}
@@ -241,6 +280,7 @@ export default function AccessManager(props: any) {
                             )}
                           </div>
                         </th>
+                        <th className="py-3.5 px-4">Hierarchy Breadcrumb (Tenant &gt; Branch &gt; Role)</th>
                         <th 
                           onClick={() => handleSort('role')}
                           className="py-3.5 px-4 cursor-pointer hover:text-white transition-colors select-none"
@@ -324,6 +364,14 @@ export default function AccessManager(props: any) {
                                 ) : (
                                   <span className="text-xs text-white/30 font-mono italic">Not Assigned</span>
                                 )}
+                              </td>
+
+                              {/* Hierarchy Breadcrumb */}
+                              <td className="py-4 px-4 max-w-[280px]">
+                                <div className="flex items-center gap-1.5 text-[10px] text-amber-200/90 font-mono bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 rounded-lg truncate" title={a.hierarchyBreadcrumb || `${assignedText || 'System Platform'} > ${a.branchName || 'Main Outlet'} > ${userRole}`}>
+                                  <span className="material-symbols-outlined text-xs text-amber-400 shrink-0">account_tree</span>
+                                  <span className="truncate">{a.hierarchyBreadcrumb || `${assignedText || 'System Platform'} > ${a.branchName || 'Main Outlet'} > ${userRole}`}</span>
+                                </div>
                               </td>
 
                               {/* Role */}
@@ -864,6 +912,101 @@ export default function AccessManager(props: any) {
               </div>
             );
           })()}
+
+      {/* ── RBAC System Hierarchy Audit Modal ────────────────────────────────────── */}
+      {showAuditModal && (
+        <div className="fixed inset-0 z-[1000] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-[#141414] border border-amber-500/30 rounded-2xl p-6 w-full max-w-2xl shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center border-b border-white/10 pb-4">
+              <div className="flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-amber-400 text-2xl">account_tree</span>
+                <div>
+                  <h3 className="font-serif text-lg font-bold text-white">RBAC Hierarchy & Multi-Tenant Audit</h3>
+                  <p className="text-xs text-[#A69984]/70 font-mono">Authoritative automated validation across Supabase users, tenants & branches</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAuditModal(false)}
+                className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 text-white/60 hover:text-white flex items-center justify-center text-sm transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {auditLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center space-y-3">
+                <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs font-mono text-amber-200/80 animate-pulse">Running authoritative RBAC hierarchy verification scan...</p>
+              </div>
+            ) : auditResult ? (
+              <div className="space-y-4 font-sans">
+                {/* Health Score Summary Banner */}
+                <div className={`p-4 rounded-xl border flex items-center justify-between ${auditResult.isHealthy ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-3xl">{auditResult.isHealthy ? 'verified' : 'warning'}</span>
+                    <div>
+                      <h4 className="font-bold text-sm font-serif">{auditResult.isHealthy ? 'RBAC Architecture Fully Synchronized' : 'Hierarchy Discrepancies Flagged'}</h4>
+                      <p className="text-xs opacity-80 font-mono">Verified {auditResult.totalUsers} users across {auditResult.totalTenants} tenants & {auditResult.totalBranches} branches</p>
+                    </div>
+                  </div>
+                  <div className="text-right font-mono">
+                    <span className="text-2xl font-bold">{auditResult.healthScore}%</span>
+                    <span className="block text-[10px] uppercase opacity-70">Health Score</span>
+                  </div>
+                </div>
+
+                {/* Audit Metrics Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono text-xs">
+                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                    <span className="text-[#A69984]/60 text-[10px] uppercase block">Total Tenants</span>
+                    <span className="text-white font-bold text-base">{auditResult.totalTenants}</span>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                    <span className="text-[#A69984]/60 text-[10px] uppercase block">Active Users</span>
+                    <span className="text-white font-bold text-base">{auditResult.totalActiveUsers}</span>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                    <span className="text-[#A69984]/60 text-[10px] uppercase block">Orphan Users</span>
+                    <span className={`font-bold text-base ${auditResult.orphanedUsersCount > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>{auditResult.orphanedUsersCount}</span>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                    <span className="text-[#A69984]/60 text-[10px] uppercase block">Unassigned Owners</span>
+                    <span className={`font-bold text-base ${auditResult.missingOwnerTenantsCount > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{auditResult.missingOwnerTenantsCount}</span>
+                  </div>
+                </div>
+
+                {/* Detailed Audit Findings Log */}
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  <span className="text-xs font-bold text-white/80 uppercase font-mono tracking-wider">Audit Findings Log</span>
+                  {auditResult.auditDetails && auditResult.auditDetails.length > 0 ? (
+                    auditResult.auditDetails.map((item: any, idx: number) => (
+                      <div key={idx} className="p-2.5 bg-black/40 border border-white/5 rounded-lg flex items-center gap-2.5 text-xs">
+                        <span className={`material-symbols-outlined text-sm ${item.severity === 'HIGH' ? 'text-rose-400' : 'text-amber-400'}`}>error</span>
+                        <span className="text-white/90 font-sans">{item.message}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/15 rounded-lg text-emerald-300 text-xs text-center font-mono">
+                      ✓ 100% of user accounts are assigned to valid tenants, branches, and authorized system roles.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end pt-2 border-t border-white/10">
+              <button
+                type="button"
+                onClick={() => setShowAuditModal(false)}
+                className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-all"
+              >
+                Close Report
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   );
