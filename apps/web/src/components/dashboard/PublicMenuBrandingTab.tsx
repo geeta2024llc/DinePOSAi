@@ -16,6 +16,7 @@ export default function PublicMenuBrandingTab({ t, triggerToast }: PublicMenuBra
   const [instagramUrl, setInstagramUrl] = useState('https://instagram.com');
   const [facebookUrl, setFacebookUrl] = useState('https://facebook.com');
   const [tenantId, setTenantId] = useState('tenant-primary');
+  const [selectedTable, setSelectedTable] = useState('Standalone');
 
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -46,11 +47,15 @@ export default function PublicMenuBrandingTab({ t, triggerToast }: PublicMenuBra
     }
   }, [tenantId]);
 
-  const publicMenuUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/menu/public?tenant=${tenantId}`
-    : `https://www.dineposai.com/menu/public?tenant=${tenantId}`;
+  const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.dineposai.com';
+  
+  const publicMenuUrl = `${originUrl}/menu/public?tenant=${tenantId}`;
+  
+  const targetUrl = selectedTable !== 'Standalone'
+    ? `${originUrl}/menu?tenant=${tenantId}&table=${encodeURIComponent(selectedTable.replace('Table ', ''))}`
+    : publicMenuUrl;
 
-  const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(publicMenuUrl)}&color=1a1200&bgcolor=ffc53d`;
+  const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}&color=1a1200&bgcolor=ffc53d`;
 
   const handleSaveBranding = () => {
     if (typeof window !== 'undefined') {
@@ -70,9 +75,9 @@ export default function PublicMenuBrandingTab({ t, triggerToast }: PublicMenuBra
 
   const handleCopyLink = () => {
     if (typeof window !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(publicMenuUrl);
+      navigator.clipboard.writeText(targetUrl);
       setCopiedLink(true);
-      triggerToast('Public Menu URL copied to clipboard!', 'info');
+      triggerToast('QR Menu URL copied to clipboard!', 'info');
       setTimeout(() => setCopiedLink(false), 2500);
     }
   };
@@ -83,25 +88,25 @@ export default function PublicMenuBrandingTab({ t, triggerToast }: PublicMenuBra
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
         <div>
           <span className="px-2.5 py-1 bg-[#ffc53d]/15 border border-[#ffc53d]/30 text-[#ffc53d] text-[10px] font-extrabold uppercase tracking-widest rounded-lg">
-            Module 2: Standalone Public Menu
+            Module 2: Digital Menu & QR Management
           </span>
           <h2 className="font-serif text-2xl md:text-3xl font-bold text-white tracking-wide mt-1.5">
-            Public Digital Menu & Branding Controls
+            Public Digital Menu & QR Code Generator
           </h2>
           <p className="text-[#A69984]/70 text-xs mt-1">
-            Customize your restaurant's web menu page for social media, website, Google Maps, and standalone QR displays.
+            Configure your restaurant's digital menu branding and generate table-specific or standalone QR codes.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <a
-            href={publicMenuUrl}
+            href={targetUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/15 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm text-[#ffc53d]">open_in_new</span>
-            Preview Public Menu
+            Preview Target Menu
           </a>
           <button
             type="button"
@@ -189,20 +194,47 @@ export default function PublicMenuBrandingTab({ t, triggerToast }: PublicMenuBra
           </div>
         </div>
 
-        {/* Right Column: Shareable Link & Standalone QR Generator */}
+        {/* Right Column: QR Generator & Link Controls */}
         <div className="space-y-6">
+          {/* Target Table Selector */}
+          <div className="bg-[#161513] border border-white/5 rounded-2xl p-6 space-y-4 shadow-lg">
+            <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#ffc53d]">qr_code_scanner</span>
+              Select QR Code Context
+            </h3>
+            <p className="text-[11px] text-[#A69984]/70">
+              Generate QR codes for general takeaway browsing or for specific dine-in tables.
+            </p>
+
+            <div>
+              <label className="text-[10px] font-bold text-[#A69984]/70 uppercase tracking-wider block mb-1.5">
+                Target Location / Table
+              </label>
+              <select
+                value={selectedTable}
+                onChange={(e) => setSelectedTable(e.target.value)}
+                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-[#ffc53d]/40"
+              >
+                <option value="Standalone">Standalone Public Menu (Takeaway / Web)</option>
+                <option value="Table T-01">Table T-01 (Dine-In Table 1)</option>
+                <option value="Table T-02">Table T-02 (Dine-In Table 2)</option>
+                <option value="Table T-03">Table T-03 (Dine-In Table 3)</option>
+                <option value="Table T-04">Table T-04 (Dine-In Table 4)</option>
+                <option value="Table T-05">Table T-05 (VIP Table 5)</option>
+                <option value="Table T-10">Table T-10 (Patio Table 10)</option>
+              </select>
+            </div>
+          </div>
+
           {/* Shareable Link Card */}
           <div className="bg-[#161513] border border-white/5 rounded-2xl p-6 space-y-4 shadow-lg">
             <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
               <span className="material-symbols-outlined text-[#ffc53d]">link</span>
-              Shareable Web Menu Link
+              Target QR URL
             </h3>
-            <p className="text-[11px] text-[#A69984]/70 leading-relaxed">
-              Share this direct public URL on your Instagram bio, Facebook page, or Google Business profile.
-            </p>
-
+            
             <div className="p-3 bg-black/40 border border-white/10 rounded-xl break-all font-mono text-[11px] text-amber-300">
-              {publicMenuUrl}
+              {targetUrl}
             </div>
 
             <button
@@ -217,33 +249,33 @@ export default function PublicMenuBrandingTab({ t, triggerToast }: PublicMenuBra
               <span className="material-symbols-outlined text-sm">
                 {copiedLink ? 'check' : 'content_copy'}
               </span>
-              {copiedLink ? 'Link Copied!' : 'Copy Shareable Link'}
+              {copiedLink ? 'Link Copied!' : 'Copy Target Link'}
             </button>
           </div>
 
-          {/* Standalone QR Code Generator Card */}
+          {/* Printable QR Code Card */}
           <div className="bg-[#161513] border border-white/5 rounded-2xl p-6 space-y-4 shadow-lg flex flex-col items-center text-center">
             <h3 className="font-serif text-base font-bold text-white flex items-center gap-2">
               <span className="material-symbols-outlined text-[#ffc53d]">qr_code_2</span>
-              Standalone Printable QR Code
+              Printable QR Display
             </h3>
             <p className="text-[11px] text-[#A69984]/70">
-              Print this QR code on posters, brochures, or takeaway bags for table-free menu browsing.
+              Context: <strong className="text-white">{selectedTable}</strong>
             </p>
 
             <div className="p-4 bg-[#ffc53d] rounded-2xl border-4 border-white/10 shadow-xl">
-              <img src={qrCodeImageUrl} alt="Public Menu QR Code" className="w-44 h-44 rounded-lg" />
+              <img src={qrCodeImageUrl} alt="Digital Menu QR Code" className="w-44 h-44 rounded-lg" />
             </div>
 
             <a
               href={qrCodeImageUrl}
-              download={`DinePOS_Public_Menu_QR_${tenantId}.png`}
+              download={`DinePOS_QR_${tenantId}_${selectedTable.replace(/\s+/g, '_')}.png`}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full py-2.5 bg-[#ffc53d] hover:bg-[#ffb014] text-[#1a1200] font-bold text-xs uppercase tracking-wider rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm font-bold">download</span>
-              Download QR Code
+              Download High-Res QR Code
             </a>
           </div>
         </div>

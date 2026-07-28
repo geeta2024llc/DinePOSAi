@@ -12,6 +12,7 @@ import {
   createMenuItem, 
   updateMenuItem,
   deleteMenuItem,
+  getPublicMenu,
   createCategorySchema, 
   createMenuItemSchema,
   updateMenuItemSchema
@@ -24,6 +25,10 @@ import { auditLogger } from '../middleware/audit.middleware.js';
 
 const router = Router();
 
+// Public Unauthenticated Menu Endpoint for QR code scanning
+router.get('/public', getPublicMenu);
+
+// Authenticated tenant management routes
 router.use(requireAuth);
 router.use(validateOrganizationActive);
 router.use(requireOrganizationMatch);

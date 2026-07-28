@@ -21,9 +21,9 @@ interface MenuItem {
 interface PublicBrandingConfig {
   restaurantName: string;
   welcomeSubtitle: string;
-  logoUrl: string;
+  logoUrl?: string;
   bannerUrl: string;
-  themeColor: 'gold' | 'emerald' | 'sapphire' | 'rose' | 'amber';
+  themeColor?: 'gold' | 'emerald' | 'sapphire' | 'rose' | 'amber';
   instagramUrl?: string;
   facebookUrl?: string;
   websiteUrl?: string;
@@ -48,7 +48,7 @@ const samplePublicItems: MenuItem[] = [
   {
     id: 'pub-1',
     name: 'Gold Leaf A5 Wagyu Ribeye',
-    category: 'special',
+    category: 'Specials',
     price: 185,
     description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal, brushed with truffle glaze, adorned with 24k gold leaf.',
     image: '/images/wagyu_ribeye.png',
@@ -58,7 +58,7 @@ const samplePublicItems: MenuItem[] = [
   {
     id: 'pub-2',
     name: 'Beluga Caviar & Kumamoto Oysters',
-    category: 'special',
+    category: 'Specials',
     price: 95,
     description: 'Six freshly shucked Kumamoto oysters topped with Beluga caviar, champagne mignonette, and gold flakes.',
     image: '/images/caviar_oysters.png',
@@ -68,7 +68,7 @@ const samplePublicItems: MenuItem[] = [
   {
     id: 'pub-3',
     name: 'Pan-Seared Duck Breast',
-    category: 'mains',
+    category: 'Mains',
     price: 48,
     description: 'Crispy skin duck breast, spiced cherry reduction, parsnip purée, glazed heirloom carrots.',
     image: '/images/duck_breast.png',
@@ -78,7 +78,7 @@ const samplePublicItems: MenuItem[] = [
   {
     id: 'pub-4',
     name: 'Truffle Glazed Filet Mignon',
-    category: 'mains',
+    category: 'Mains',
     price: 58,
     description: '8oz USDA Prime tenderloin, truffle potato purée, glazed organic heirloom carrots, rich bone marrow reduction.',
     image: '/images/filet_mignon.png',
@@ -87,8 +87,8 @@ const samplePublicItems: MenuItem[] = [
   },
   {
     id: 'pub-5',
-    name: 'Chocolate Soufflé',
-    category: 'desserts',
+    name: 'Valrhona Dark Chocolate Soufflé',
+    category: 'Desserts',
     price: 18,
     description: '70% Valrhona dark chocolate soufflé, Tahitian vanilla bean gelato, warm salted caramel drizzle.',
     image: '/images/chocolate_souffle.png',
@@ -98,7 +98,7 @@ const samplePublicItems: MenuItem[] = [
   {
     id: 'pub-6',
     name: 'Royal Gold Old Fashioned',
-    category: 'drinks',
+    category: 'Beverages',
     price: 28,
     description: 'Rare 12-year bourbon, demerara syrup, gold bitters, smoked with cherrywood chips, served with a gold-leaf ice sphere.',
     image: '/images/old_fashioned.png',
@@ -109,22 +109,27 @@ const samplePublicItems: MenuItem[] = [
 
 export default function PublicDigitalMenuPage() {
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [tableNumber, setTableNumber] = useState<string | null>(null);
   const [branding, setBranding] = useState<PublicBrandingConfig>(defaultBranding);
   const [items, setItems] = useState<MenuItem[]>(samplePublicItems);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [dietaryFilter, setDietaryFilter] = useState<'all' | 'veg' | 'non-veg'>('all');
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [showInfoModal, setShowInfoModal] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Parse tenant query param in browser context
+  // Parse query params (tenant, table) in browser context
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tid = params.get('tenant') || params.get('slug');
-      if (tid) setTenantId(tid);
+      const tbl = params.get('table') || params.get('tableId');
 
-      // Load saved tenant public branding if available
+      if (tid) setTenantId(tid);
+      if (tbl) setTableNumber(tbl);
+
+      // Check for saved local branding override
       const savedBranding = localStorage.getItem(`dinepos_public_branding_${tid || 'default'}`);
       if (savedBranding) {
         try {
@@ -135,50 +140,98 @@ export default function PublicDigitalMenuPage() {
     }
   }, []);
 
-  // Fetch tenant menu items from API if tenantId exists
+  // Fetch live public menu from backend API
   useEffect(() => {
-    if (!tenantId) return;
-    (async () => {
+    const loadPublicMenu = async () => {
+      setIsLoading(true);
+      setFetchError(null);
+
       try {
-        const res = await apiRequest<MenuItem[]>(`/api/menu/public?tenant=${tenantId}`, { useAuth: false });
-        if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-          setItems(res.data);
+        const queryParam = tenantId ? `?tenant=${encodeURIComponent(tenantId)}` : '';
+        const res = await apiRequest<any>(`/api/menu/public${queryParam}`, { useAuth: false });
+
+        if (res.success && res.data) {
+          if (res.data.branding) {
+            setBranding(prev => ({ ...prev, ...res.data.branding }));
+          }
+          if (Array.isArray(res.data.items) && res.data.items.length > 0) {
+            setItems(res.data.items);
+          }
+        } else {
+          console.warn('[Public Menu UI] Backend public menu fallback:', res.error);
         }
-      } catch {
-        /* Fall back to sample items */
+      } catch (err: any) {
+        console.warn('[Public Menu UI] Error fetching public menu from API:', err);
+      } finally {
+        setIsLoading(false);
       }
-    })();
+    };
+
+    loadPublicMenu();
   }, [tenantId]);
 
-  const categories = useMemo(() => [
-    { id: 'all', name: 'ALL DISHES', icon: 'menu_book' },
-    { id: 'special', name: 'SPECIALS', icon: 'auto_awesome' },
-    { id: 'mains', name: 'MAINS', icon: 'restaurant_menu' },
-    { id: 'desserts', name: 'DESSERTS', icon: 'icecream' },
-    { id: 'drinks', name: 'BEVERAGES', icon: 'local_bar' }
-  ], []);
+  // Dynamically compute categories from dishes
+  const categories = useMemo(() => {
+    const uniqueCategories = Array.from(new Set(items.map(i => i.category))).filter(Boolean);
+    const catList = [{ id: 'all', name: 'ALL DISHES', icon: 'menu_book' }];
+
+    uniqueCategories.forEach(cName => {
+      const lower = cName.toLowerCase();
+      let icon = 'restaurant_menu';
+      if (lower.includes('special')) icon = 'auto_awesome';
+      else if (lower.includes('dessert')) icon = 'icecream';
+      else if (lower.includes('drink') || lower.includes('beverage')) icon = 'local_bar';
+      else if (lower.includes('starter') || lower.includes('appetizer')) icon = 'tapas';
+      else if (lower.includes('combo') || lower.includes('set')) icon = 'lunch_dining';
+
+      catList.push({
+        id: cName,
+        name: cName.toUpperCase(),
+        icon
+      });
+    });
+
+    return catList;
+  }, [items]);
 
   const filteredItems = useMemo(() => {
     return items.filter(item => {
-      const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+      const matchesCategory = activeCategory === 'all' || 
+        item.category.toLowerCase() === activeCategory.toLowerCase();
       const matchesSearch = !searchQuery || 
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const isVeg = item.tags.some(t => t.toLowerCase().includes('veg') && !t.toLowerCase().includes('non-veg'));
-      const matchesDietary = dietaryFilter === 'all' || (dietaryFilter === 'veg' && isVeg) || (dietaryFilter === 'non-veg' && !isVeg);
-      return matchesCategory && matchesSearch && matchesDietary;
+      return matchesCategory && matchesSearch;
     });
-  }, [items, activeCategory, searchQuery, dietaryFilter]);
+  }, [items, activeCategory, searchQuery]);
 
   return (
     <div className="min-h-screen bg-[#0e0e0d] text-[#e5e2e1] font-sans pb-16 selection:bg-[#ffc53d]/30 selection:text-[#ffc53d]">
+      {/* ── Table Context Bar (if scanned from table QR code) ────────────── */}
+      {tableNumber && (
+        <div className="bg-[#ffc53d]/15 border-b border-[#ffc53d]/30 px-4 py-2.5 flex items-center justify-between gap-3 text-xs text-[#ffc53d] sticky top-0 z-40 backdrop-blur-md">
+          <div className="flex items-center gap-2 font-bold">
+            <span className="material-symbols-outlined text-base">table_restaurant</span>
+            Seated at Table {tableNumber}
+          </div>
+          <Link
+            href={`/menu?tenant=${tenantId || ''}&table=${tableNumber}`}
+            className="px-3.5 py-1.5 bg-[#ffc53d] text-[#1a1200] font-extrabold rounded-xl uppercase tracking-wider text-[10px] hover:bg-[#ffb014] transition-all flex items-center gap-1 cursor-pointer"
+          >
+            Order Table-Side <span className="material-symbols-outlined text-xs">arrow_forward</span>
+          </Link>
+        </div>
+      )}
+
       {/* ── Top Public Header Banner ────────────────────────────────────── */}
-      <header className="relative w-full h-64 md:h-80 overflow-hidden flex items-end justify-between p-6 bg-cover bg-center border-b border-white/10"
-        style={{ backgroundImage: `linear-gradient(to top, rgba(14,14,13,0.95), rgba(14,14,13,0.4)), url(${branding.bannerUrl})` }}>
+      <header
+        className="relative w-full h-64 md:h-80 overflow-hidden flex items-end justify-between p-6 bg-cover bg-center border-b border-white/10"
+        style={{ backgroundImage: `linear-gradient(to top, rgba(14,14,13,0.95), rgba(14,14,13,0.4)), url(${branding.bannerUrl || '/images/wagyu_ribeye.png'})` }}
+      >
         <div className="relative z-10 max-w-3xl">
           <div className="flex items-center gap-3 mb-2">
             <span className="px-2.5 py-1 bg-[#ffc53d]/15 border border-[#ffc53d]/30 text-[#ffc53d] text-[10px] font-extrabold uppercase tracking-widest rounded-lg">
-              Official Digital Menu
+              Official Digital QR Menu
             </span>
           </div>
           <h1 className="font-serif text-3xl md:text-5xl font-bold text-white tracking-wide leading-tight">
@@ -200,10 +253,10 @@ export default function PublicDigitalMenuPage() {
       </header>
 
       {/* ── Navigation & Search Toolbar ───────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-[#0e0e0d]/90 backdrop-blur-xl border-b border-white/5 py-4 px-4 md:px-8 space-y-3">
+      <div className={`sticky ${tableNumber ? 'top-10' : 'top-0'} z-30 bg-[#0e0e0d]/90 backdrop-blur-xl border-b border-white/5 py-4 px-4 md:px-8 space-y-3`}>
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-3 items-center justify-between">
           
-          {/* Category Tabs */}
+          {/* Dynamic Category Tabs */}
           <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto pb-1 md:pb-0 no-scrollbar">
             {categories.map(cat => (
               <button
@@ -238,7 +291,12 @@ export default function PublicDigitalMenuPage() {
 
       {/* ── Menu Grid Showcase ────────────────────────────────────────── */}
       <main className="max-w-7xl mx-auto px-4 md:px-8 pt-8">
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div className="py-24 text-center">
+            <span className="material-symbols-outlined text-4xl text-[#ffc53d] animate-spin block mb-3">progress_activity</span>
+            <p className="text-xs text-[#A69984] font-semibold uppercase tracking-wider">Loading Digital Menu...</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="py-24 text-center">
             <span className="material-symbols-outlined text-5xl text-white/10 block mb-3">restaurant_menu</span>
             <h3 className="text-base font-bold text-white uppercase tracking-wider">No dishes found</h3>
@@ -255,19 +313,23 @@ export default function PublicDigitalMenuPage() {
                 <div>
                   <div className="relative w-full h-48 bg-black/40 overflow-hidden">
                     <Image
-                      src={item.image}
+                      src={item.image || '/images/wagyu_ribeye.png'}
                       alt={item.name}
                       fill
+                      unoptimized
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-3 right-3 px-3 py-1 bg-black/70 backdrop-blur-md border border-white/10 rounded-xl text-[#ffc53d] font-serif font-bold text-sm">
-                      ${item.price.toFixed(2)}
+                      ${typeof item.price === 'number' ? item.price.toFixed(2) : item.price}
                     </div>
                   </div>
 
                   <div className="p-5 space-y-2">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {item.tags.map((tag, idx) => (
+                      <span className="px-2 py-0.5 bg-[#ffc53d]/10 border border-[#ffc53d]/20 text-[9px] text-[#ffc53d] font-bold uppercase tracking-wider rounded-md">
+                        {item.category}
+                      </span>
+                      {item.tags && item.tags.map((tag, idx) => (
                         <span key={idx} className="px-2 py-0.5 bg-white/5 border border-white/10 text-[9px] text-[#A69984] font-bold uppercase tracking-wider rounded-md">
                           {tag}
                         </span>
@@ -298,7 +360,13 @@ export default function PublicDigitalMenuPage() {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-[#161513] border border-white/10 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl animate-fade-in font-sans">
             <div className="relative h-64 bg-black">
-              <Image src={selectedItem.image} alt={selectedItem.name} fill className="object-cover" />
+              <Image 
+                src={selectedItem.image || '/images/wagyu_ribeye.png'} 
+                alt={selectedItem.name} 
+                fill 
+                unoptimized 
+                className="object-cover" 
+              />
               <button
                 type="button"
                 onClick={() => setSelectedItem(null)}
@@ -313,7 +381,7 @@ export default function PublicDigitalMenuPage() {
                   <h2 className="font-serif text-2xl font-bold text-white">{selectedItem.name}</h2>
                   <span className="text-xs text-[#A69984] font-semibold uppercase tracking-wider mt-1 block">Category: {selectedItem.category}</span>
                 </div>
-                <span className="font-serif text-2xl font-bold text-[#ffc53d]">${selectedItem.price.toFixed(2)}</span>
+                <span className="font-serif text-2xl font-bold text-[#ffc53d]">${typeof selectedItem.price === 'number' ? selectedItem.price.toFixed(2) : selectedItem.price}</span>
               </div>
 
               <p className="text-xs text-[#A69984]/80 leading-relaxed">{selectedItem.description}</p>
@@ -357,6 +425,12 @@ export default function PublicDigitalMenuPage() {
                 <span className="text-[#A69984]/50 font-bold uppercase tracking-wider text-[10px]">Establishment</span>
                 <p className="text-white font-bold text-sm mt-0.5">{branding.restaurantName}</p>
               </div>
+              {branding.welcomeSubtitle && (
+                <div>
+                  <span className="text-[#A69984]/50 font-bold uppercase tracking-wider text-[10px]">Tagline</span>
+                  <p className="text-[#A69984] mt-0.5">{branding.welcomeSubtitle}</p>
+                </div>
+              )}
               {branding.address && (
                 <div>
                   <span className="text-[#A69984]/50 font-bold uppercase tracking-wider text-[10px]">Address</span>

@@ -365,3 +365,180 @@ export const deleteMenuItem = async (req: AuthenticatedRequest, res: Response<Ap
   }
 };
 
+// 9. PUBLIC UNAUTHENTICATED MENU FETCH
+export const getPublicMenu = async (req: any, res: Response<ApiResponse>) => {
+  const tenantQuery = (req.query.tenant || req.query.tenantId || req.query.slug || '').toString();
+
+  try {
+    let tenantId = tenantQuery;
+    let tenantInfo: any = null;
+
+    if (tenantId) {
+      // 1. Fetch tenant metadata by ID or name search
+      const { data: tenant } = await supabase
+        .from('tenants')
+        .select('id, name, country, currency, timezone')
+        .or(`id.eq.${tenantId},name.ilike.%${tenantId}%`)
+        .maybeSingle();
+
+      if (tenant) {
+        tenantId = tenant.id;
+        tenantInfo = tenant;
+      }
+    }
+
+    // Fallback to first active tenant if not specified or not found
+    if (!tenantInfo) {
+      const { data: firstTenant } = await supabase
+        .from('tenants')
+        .select('id, name, country, currency, timezone')
+        .limit(1)
+        .maybeSingle();
+
+      if (firstTenant) {
+        tenantId = firstTenant.id;
+        tenantInfo = firstTenant;
+      }
+    }
+
+    // 2. Fetch public branding from settings table if present
+    let brandingConfig: any = {
+      restaurantName: tenantInfo?.name || 'DinePOS AI Fine Dining',
+      welcomeSubtitle: 'Exquisite Culinary Offerings & Signature Dishes',
+      bannerUrl: '/images/wagyu_ribeye.png',
+      currency: tenantInfo?.currency || 'USD',
+    };
+
+    if (tenantId) {
+      const { data: setting } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('tenant_id', tenantId)
+        .eq('key', 'public_branding')
+        .maybeSingle();
+
+      if (setting?.value) {
+        brandingConfig = { ...brandingConfig, ...setting.value };
+      }
+    }
+
+    // 3. Fetch categories & menu items from DB if tenantId exists
+    let categories: any[] = [];
+    let menuItems: any[] = [];
+
+    if (tenantId) {
+      const { data: catData } = await supabase
+        .from('categories')
+        .select('id, name, is_active')
+        .eq('tenant_id', tenantId)
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+
+      if (catData) categories = catData;
+
+      const { data: itemData } = await supabase
+        .from('menu_items')
+        .select('*, categories(name)')
+        .eq('tenant_id', tenantId)
+        .eq('is_available', true)
+        .order('name', { ascending: true });
+
+      if (itemData) {
+        menuItems = itemData.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          category: item.categories?.name || 'Main Course',
+          categoryId: item.category_id,
+          price: parseFloat(item.price || '0'),
+          description: item.description || '',
+          image: item.image_url || '/images/wagyu_ribeye.png',
+          tags: ['Available'],
+          allergens: []
+        }));
+      }
+    }
+
+    // 4. Guaranteed Fallback if database has no items for this tenant yet
+    if (menuItems.length === 0) {
+      menuItems = [
+        {
+          id: 'spec-1',
+          name: 'Gold Leaf A5 Wagyu Ribeye',
+          category: 'Specials',
+          price: 185,
+          description: '300g Japanese A5 Miyazaki Wagyu, seared over binchotan charcoal, brushed with truffle glaze, adorned with 24k gold leaf.',
+          image: '/images/wagyu_ribeye.png',
+          tags: ['Chef Special', 'GF'],
+          allergens: []
+        },
+        {
+          id: 'spec-2',
+          name: 'Beluga Caviar & Kumamoto Oysters',
+          category: 'Specials',
+          price: 95,
+          description: 'Six freshly shucked Kumamoto oysters topped with Beluga caviar, champagne mignonette, and gold flakes.',
+          image: '/images/caviar_oysters.png',
+          tags: ['Seafood', 'Fresh'],
+          allergens: ['Shellfish']
+        },
+        {
+          id: 'main-1',
+          name: 'Pan-Seared Duck Breast',
+          category: 'Mains',
+          price: 48,
+          description: 'Crispy skin duck breast, spiced cherry reduction, parsnip purée, glazed heirloom carrots.',
+          image: '/images/duck_breast.png',
+          tags: ['Non-Veg', 'GF'],
+          allergens: []
+        },
+        {
+          id: 'main-2',
+          name: 'Truffle Glazed Filet Mignon',
+          category: 'Mains',
+          price: 58,
+          description: '8oz USDA Prime tenderloin, truffle potato purée, glazed organic heirloom carrots, rich bone marrow reduction.',
+          image: '/images/filet_mignon.png',
+          tags: ['Non-Veg', 'GF'],
+          allergens: []
+        },
+        {
+          id: 'des-1',
+          name: 'Valrhona Dark Chocolate Soufflé',
+          category: 'Desserts',
+          price: 18,
+          description: '70% Valrhona dark chocolate soufflé, Tahitian vanilla bean gelato, warm salted caramel drizzle.',
+          image: '/images/chocolate_souffle.png',
+          tags: ['Veg'],
+          allergens: ['Dairy', 'Gluten']
+        },
+        {
+          id: 'drk-1',
+          name: 'Royal Gold Old Fashioned',
+          category: 'Beverages',
+          price: 28,
+          description: 'Rare 12-year bourbon, demerara syrup, gold bitters, smoked with cherrywood chips, served with a gold-leaf ice sphere.',
+          image: '/images/old_fashioned.png',
+          tags: ['Signature'],
+          allergens: []
+        }
+      ];
+    }
+
+    res.json({
+      success: true,
+      data: {
+        tenantId: tenantId || 'tenant-primary',
+        tenantInfo,
+        branding: brandingConfig,
+        categories,
+        items: menuItems
+      }
+    });
+
+  } catch (error: any) {
+    console.error('[Public Menu API Error]:', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to load public menu.' });
+  }
+};
+
+

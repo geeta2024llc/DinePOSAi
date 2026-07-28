@@ -658,8 +658,16 @@ export default function DigitalMenuPage() {
     } else {
       setDiningOption(initialDiningOption as any);
     }
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+    const tenantFromUrl = params.get('tenant') || params.get('slug');
+    const tableFromUrl = params.get('table') || params.get('tableId');
+    if (tableFromUrl) {
+      const parsedTbl = parseInt(tableFromUrl.replace(/\D/g, ''), 10);
+      if (parsedTbl) setTableNumber(parsedTbl);
+    }
+
     const savedTable = localStorage.getItem('dinepos_table_number');
-    if (savedTable) {
+    if (savedTable && !tableFromUrl) {
       setTableNumber(parseInt(savedTable, 10) || 12);
     }
     const savedExclusions = localStorage.getItem('dinepos_exclusions_config');
@@ -699,7 +707,7 @@ export default function DigitalMenuPage() {
             it.id?.startsWith('main-') || it.id?.startsWith('spec-') || it.id?.startsWith('combo-') ||
             it.id?.startsWith('start-') || it.id?.startsWith('dess-') || it.id?.startsWith('drink-')
           );
-          if (!isDemoTenant() && containsDemoItems) {
+          if (!isDemoTenant() && containsDemoItems && !tenantFromUrl) {
             loadedItems = [];
             localStorage.setItem('dinepos_menu_items', JSON.stringify([]));
           } else {
@@ -714,7 +722,7 @@ export default function DigitalMenuPage() {
           console.error('Failed to parse saved menu:', e);
         }
       } else {
-        if (isDemoTenant()) {
+        if (isDemoTenant() || tenantFromUrl) {
           const normalizedDemo = menuItems.map(item => ({
             ...item,
             category: getCanonicalCategoryId(item.category || '') || 'mains',
@@ -747,46 +755,68 @@ export default function DigitalMenuPage() {
 
       // Step 2: REVALIDATE - Fetch fresh data from API server concurrently in background
       try {
-        const [catRes, itemRes] = await Promise.all([
-          apiRequest<any[]>('/api/menu/categories'),
-          apiRequest<any[]>('/api/menu/items')
-        ]);
+        if (tenantFromUrl) {
+          const pubRes = await apiRequest<any>(`/api/menu/public?tenant=${tenantFromUrl}`, { useAuth: false });
+          if (pubRes.success && pubRes.data && Array.isArray(pubRes.data.items) && pubRes.data.items.length > 0) {
+            const mappedItems = pubRes.data.items.map((item: any) => {
+              const canonicalCat = getCanonicalCategoryId(item.category || '');
+              return {
+                id: item.id,
+                name: item.name,
+                category: canonicalCat || 'mains',
+                price: item.price,
+                description: item.description || '',
+                image: resolveMenuItemImage(item.image, canonicalCat, item.name),
+                tags: item.tags || [],
+                allergens: item.allergens || [],
+                active: true
+              };
+            });
+            setItems(mappedItems);
+            localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+          }
+        } else {
+          const [catRes, itemRes] = await Promise.all([
+            apiRequest<any[]>('/api/menu/categories'),
+            apiRequest<any[]>('/api/menu/items')
+          ]);
 
-        if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
-          const dbCategoryToCanonicalMap: Record<string, string> = {};
-          catRes.data.forEach((c: any) => {
-            if (c.id) {
-              dbCategoryToCanonicalMap[c.id] = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
-            }
-          });
+          if (catRes.success && itemRes.success && catRes.data && itemRes.data) {
+            const dbCategoryToCanonicalMap: Record<string, string> = {};
+            catRes.data.forEach((c: any) => {
+              if (c.id) {
+                dbCategoryToCanonicalMap[c.id] = getCanonicalCategoryId(c.name || '') || getCanonicalCategoryId(c.id || '');
+              }
+            });
 
-          const rawFromCat = catRes.data.map((c: any) => ({
-            id: getCanonicalCategoryId(c.name || '') || c.id,
-            name: c.name,
-            icon: c.icon || 'restaurant'
-          }));
-          const mappedCategories = normalizeCategoriesList(rawFromCat);
-          
-          const mappedItems = itemRes.data.map((item: any) => {
-            const canonicalCat = dbCategoryToCanonicalMap[item.categoryId] || getCanonicalCategoryId(item.category || item.categoryId || '');
-            return {
-              id: item.id,
-              name: item.name,
-              category: canonicalCat || 'mains',
-              price: item.price,
-              description: item.description || '',
-              image: resolveMenuItemImage(item.imageUrl || item.image, canonicalCat, item.name),
-              tags: item.tags || [],
-              allergens: item.allergens || [],
-              active: item.isAvailable !== false
-            };
-          });
+            const rawFromCat = catRes.data.map((c: any) => ({
+              id: getCanonicalCategoryId(c.name || '') || c.id,
+              name: c.name,
+              icon: c.icon || 'restaurant'
+            }));
+            const mappedCategories = normalizeCategoriesList(rawFromCat);
+            
+            const mappedItems = itemRes.data.map((item: any) => {
+              const canonicalCat = dbCategoryToCanonicalMap[item.categoryId] || getCanonicalCategoryId(item.category || item.categoryId || '');
+              return {
+                id: item.id,
+                name: item.name,
+                category: canonicalCat || 'mains',
+                price: item.price,
+                description: item.description || '',
+                image: resolveMenuItemImage(item.imageUrl || item.image, canonicalCat, item.name),
+                tags: item.tags || [],
+                allergens: item.allergens || [],
+                active: item.isAvailable !== false
+              };
+            });
 
-          setCategories(mappedCategories);
-          setItems(mappedItems);
-          
-          localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
-          localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+            setCategories(mappedCategories);
+            setItems(mappedItems);
+            
+            localStorage.setItem('dinepos_menu_categories', JSON.stringify(mappedCategories));
+            localStorage.setItem('dinepos_menu_items', JSON.stringify(mappedItems));
+          }
         }
       } catch (err) {
         console.warn('[SWR] Background menu revalidation failed, retaining stale cache:', err);

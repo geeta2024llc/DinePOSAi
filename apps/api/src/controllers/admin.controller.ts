@@ -128,25 +128,159 @@ export const updateTenantStatus = async (req: AuthenticatedRequest, res: Respons
   }
 };
 
-export const deleteTenant = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
-  if (req.user?.role !== 'SUPER_ADMIN') {
-    return res.status(403).json({ success: false, error: 'Super Admin privileges required.' });
-  }
-
-  const { id } = req.params;
-
+export const performCascadingTenantDeletion = async (id: string): Promise<{ success: boolean; name?: string; error?: string }> => {
   try {
-    const { error } = await supabase
+    // 1. Verify tenant exists first
+    const { data: existingTenant, error: fetchErr } = await supabase
+      .from('tenants')
+      .select('id, name')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (fetchErr) {
+      return { success: false, error: fetchErr.message };
+    }
+
+    if (!existingTenant) {
+      return { success: false, error: 'Tenant not found in system.' };
+    }
+
+    // 2. Cascading deletion of dependent table records
+    const tablesToClean = [
+      'user_sessions',
+      'login_history',
+      'audit_logs',
+      'kitchen_logs',
+      'cash_transactions',
+      'cash_drawers',
+      'purchase_order_items',
+      'purchase_orders',
+      'inventory_logs',
+      'recipe_ingredients',
+      'inventory_items',
+      'suppliers',
+      'payment_splits',
+      'refunds',
+      'invoices',
+      'payments',
+      'order_item_addons',
+      'order_items',
+      'orders',
+      'item_addons',
+      'item_variants',
+      'menu_items',
+      'categories',
+      'tables',
+      'devices',
+      'settings',
+      'tenant_billing',
+      'subscription_invoices',
+      'daily_sales',
+      'users',
+      'branches'
+    ];
+
+    for (const tableName of tablesToClean) {
+      try {
+        const { error: cleanErr } = await supabase
+          .from(tableName)
+          .delete()
+          .eq('tenant_id', id);
+        
+        if (cleanErr && cleanErr.code !== '42P01') {
+          console.warn(`[SuperAdmin API Cascading Cleanup] Notice on ${tableName}: ${cleanErr.message}`);
+        }
+      } catch (err: any) {
+        console.warn(`[SuperAdmin API Cascading Cleanup] Exception on ${tableName}:`, err.message || err);
+      }
+    }
+
+    // 3. Delete root tenant record
+    const { error: deleteErr } = await supabase
       .from('tenants')
       .delete()
       .eq('id', id);
 
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message });
+    if (deleteErr) {
+      return { success: false, error: deleteErr.message };
     }
 
-    res.json({ success: true, data: { message: 'Tenant deleted successfully.' } });
-  } catch (error: any) {
-    res.status(500).json({ success: false, error: error.message });
+    // 4. Verification Step
+    const { data: verifyData } = await supabase
+      .from('tenants')
+      .select('id')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (verifyData) {
+      return { success: false, error: 'Database deletion verification failed.' };
+    }
+
+    return { success: true, name: existingTenant.name };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Unknown error during cascading deletion.' };
   }
+};
+
+export const deleteTenant = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  if (req.user?.role !== 'SUPER_ADMIN') {
+    console.warn(`[SuperAdmin API Delete Tenant] Unauthorized attempt by user ${req.user?.id || 'anonymous'} with role ${req.user?.role}`);
+    return res.status(403).json({ success: false, error: 'Super Admin privileges required.' });
+  }
+
+  const { id } = req.params;
+  console.log(`[SuperAdmin API Delete Tenant] Initiating permanent deletion for tenant ID: ${id}`);
+  
+  const outcome = await performCascadingTenantDeletion(id);
+
+  if (!outcome.success) {
+    console.error(`[SuperAdmin API Delete Tenant] Deletion failed for ID ${id}: ${outcome.error}`);
+    return res.status(400).json({ success: false, error: outcome.error || 'Failed to delete tenant.' });
+  }
+
+  console.log(`[SuperAdmin API Delete Tenant] VERIFICATION SUCCESSFUL: Tenant "${outcome.name}" (${id}) permanently deleted.`);
+  res.json({ success: true, data: { message: `Tenant "${outcome.name}" deleted successfully.` } });
+};
+
+export const bulkDeleteTenants = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  if (req.user?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, error: 'Super Admin privileges required.' });
+  }
+
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.status(400).json({ success: false, error: 'Please provide an array of tenant IDs to delete.' });
+  }
+
+  console.log(`[SuperAdmin API Bulk Delete Tenants] Initiating batch deletion for ${ids.length} tenants:`, ids);
+
+  const results: { id: string; success: boolean; name?: string; error?: string }[] = [];
+
+  for (const tenantId of ids) {
+    const outcome = await performCascadingTenantDeletion(tenantId);
+    results.push({ id: tenantId, success: outcome.success, name: outcome.name, error: outcome.error });
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  const failedCount = results.filter(r => !r.success).length;
+
+  console.log(`[SuperAdmin API Bulk Delete Tenants] Batch completed. Successful: ${successCount}, Failed: ${failedCount}`);
+
+  if (failedCount > 0 && successCount === 0) {
+    return res.status(400).json({
+      success: false,
+      error: `Failed to delete selected tenants: ${results[0]?.error || 'Unknown error'}`,
+      data: { results }
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      message: `Successfully deleted ${successCount} tenant(s).${failedCount > 0 ? ` (${failedCount} failed)` : ''}`,
+      deletedCount: successCount,
+      failedCount,
+      results
+    }
+  });
 };

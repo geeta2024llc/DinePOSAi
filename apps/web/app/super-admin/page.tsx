@@ -311,6 +311,7 @@ export default function SuperAdminPage() {
   const handleSuspendTenant = (id: string) => {};
   const handleUnsuspendTenant = (id: string) => {};
   const [saDeleteTarget, setSaDeleteTarget] = useState<{ type: string; title: string; description: string; onConfirm: () => void | Promise<void> } | null>(null);
+  const [isSaDeleting, setIsSaDeleting] = useState<boolean>(false);
   const handleDeleteAdmin = (id: string, email?: string) => {
     setSaDeleteTarget({
       type: 'admin',
@@ -651,20 +652,98 @@ export default function SuperAdminPage() {
       type: 'tenant',
       title: 'Delete Business Tenant',
       description: `Do you want to permanently delete business tenant "${name}"? This action cannot be undone.`,
-      onConfirm: () => {
-        setTenants(prev => prev.filter(t => t.id !== tenantId));
-        triggerToast(`Business tenant "${name}" has been deleted.`, 'success');
-        setAuditLogs(logs => [
-          {
-            id: Date.now(),
-            time: 'Just now',
-            actor: 'Super Admin',
-            action: `Permanently removed business tenant "${name}" from the system registry`,
-            tenant: name,
-            type: 'warning'
-          },
-          ...logs
-        ]);
+      onConfirm: async () => {
+        setIsSaDeleting(true);
+        console.log(`[SuperAdmin UI] Requesting deletion for tenant "${name}" (${tenantId})`);
+        try {
+          const res = await apiRequest<any>(`/api/admin/tenants/${tenantId}`, { method: 'DELETE' });
+          if (res.success) {
+            console.log(`[SuperAdmin UI] Tenant "${name}" (${tenantId}) deleted successfully from Supabase DB.`);
+            setTenants(prev => prev.filter(t => t.id !== tenantId));
+            triggerToast(`Business tenant "${name}" has been permanently deleted from database.`, 'success');
+            setAuditLogs(logs => [
+              {
+                id: Date.now(),
+                time: 'Just now',
+                actor: 'Super Admin',
+                action: `Permanently removed business tenant "${name}" from system registry and database`,
+                tenant: name,
+                type: 'warning'
+              },
+              ...logs
+            ]);
+            // Background re-fetch to ensure 100% sync
+            try {
+              const overviewRes = await apiRequest<any>('/api/admin/overview');
+              if (overviewRes.success && Array.isArray(overviewRes.data?.tenants)) {
+                setTenants(overviewRes.data.tenants);
+              }
+            } catch { /* ignore sync error */ }
+            setSaDeleteTarget(null);
+          } else {
+            console.error(`[SuperAdmin UI] Failed to delete tenant "${name}":`, res.error);
+            triggerToast(`Failed to delete tenant: ${res.error || 'Server error'}`, 'info');
+          }
+        } catch (err: any) {
+          console.error(`[SuperAdmin UI] Deletion network error for tenant "${name}":`, err);
+          triggerToast(`Deletion request failed: ${err.message || 'Network error'}`, 'info');
+        } finally {
+          setIsSaDeleting(false);
+        }
+      }
+    });
+  };
+
+  const handleBulkDeleteTenants = (tenantIds: string[], onSuccessCallback?: () => void) => {
+    const count = tenantIds.length;
+    if (count === 0) return;
+
+    setSaDeleteTarget({
+      type: 'bulk_tenants',
+      title: 'Delete Selected Business Tenants',
+      description: `Are you sure you want to permanently delete ${count} selected business tenant${count > 1 ? 's' : ''}? All associated user accounts, menus, orders, and database records will be permanently removed. This action cannot be undone.`,
+      onConfirm: async () => {
+        setIsSaDeleting(true);
+        console.log(`[SuperAdmin UI] Requesting batch deletion for ${count} tenants:`, tenantIds);
+        try {
+          const res = await apiRequest<any>('/api/admin/tenants/bulk-delete', {
+            method: 'POST',
+            body: JSON.stringify({ ids: tenantIds })
+          });
+          if (res.success) {
+            console.log(`[SuperAdmin UI] Bulk tenant deletion succeeded:`, res.data);
+            setTenants(prev => prev.filter(t => !tenantIds.includes(t.id)));
+            triggerToast(`Successfully deleted ${res.data?.deletedCount || count} business tenant${count > 1 ? 's' : ''} from database.`, 'success');
+            setAuditLogs(logs => [
+              {
+                id: Date.now(),
+                time: 'Just now',
+                actor: 'Super Admin',
+                action: `Batch removed ${count} business tenant(s) from system registry and database`,
+                tenant: `${count} Selected Tenants`,
+                type: 'warning'
+              },
+              ...logs
+            ]);
+            if (onSuccessCallback) onSuccessCallback();
+            // Background re-fetch to ensure 100% sync
+            try {
+              const overviewRes = await apiRequest<any>('/api/admin/overview');
+              if (overviewRes.success && Array.isArray(overviewRes.data?.tenants)) {
+                setTenants(overviewRes.data.tenants);
+              }
+            } catch { /* ignore sync error */ }
+            setSaDeleteTarget(null);
+          } else {
+            console.error(`[SuperAdmin UI] Failed bulk tenant deletion:`, res.error);
+            triggerToast(`Failed to delete selected tenants: ${res.error || 'Server error'}`, 'info');
+          }
+        } catch (err: any) {
+          console.error(`[SuperAdmin UI] Bulk deletion network error:`, err);
+          triggerToast(`Bulk deletion request failed: ${err.message || 'Network error'}`, 'info');
+        } finally {
+          setIsSaDeleting(false);
+        }
       }
     });
   };
@@ -2237,7 +2316,7 @@ export default function SuperAdminPage() {
                 attentionOnlyFilter, checkExpiryStatus, getExpiryCountdownText,
                 setSelectedTenant, setEditingExpiryDate, setShowTenantDetailsModal,
                 setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
-                handleQuickRenew, handleRetryBilling, handleDeleteTenant,
+                handleQuickRenew, handleRetryBilling, handleDeleteTenant, handleBulkDeleteTenants,
                 globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs,
                 showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant,
                 isLoadingOverview, overviewError
@@ -2407,12 +2486,21 @@ export default function SuperAdminPage() {
       {/* Universal Delete Confirmation Popup */}
       <ConfirmDeleteModal
         isOpen={!!saDeleteTarget}
-        onClose={() => setSaDeleteTarget(null)}
+        isLoading={isSaDeleting}
+        loadingText={
+          saDeleteTarget?.type === 'bulk_tenants'
+            ? 'Deleting selected business tenants & cleaning database records, please wait...'
+            : saDeleteTarget?.type === 'tenant'
+            ? 'Deleting business tenant & cleaning database records, please wait...'
+            : 'Deleting item, please wait...'
+        }
+        onClose={() => {
+          if (!isSaDeleting) setSaDeleteTarget(null);
+        }}
         onConfirm={async () => {
-          if (saDeleteTarget) {
+          if (saDeleteTarget && !isSaDeleting) {
             await saDeleteTarget.onConfirm();
           }
-          setSaDeleteTarget(null);
         }}
         title={saDeleteTarget?.title || 'Do you want to delete?'}
         description={saDeleteTarget?.description}

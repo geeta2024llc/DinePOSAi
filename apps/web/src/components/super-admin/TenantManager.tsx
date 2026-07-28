@@ -17,7 +17,7 @@ export default function TenantManager(props: any) {
     attentionOnlyFilter, checkExpiryStatus, getExpiryCountdownText,
     setSelectedTenant, setEditingExpiryDate, setShowTenantDetailsModal,
     setActiveActionMenuId, activeActionMenuId, toggleTenantStatus,
-    handleQuickRenew, handleRetryBilling, handleDeleteTenant,
+    handleQuickRenew, handleRetryBilling, handleDeleteTenant, handleBulkDeleteTenants,
     handleSaveTenantExpiry, editingExpiryDate, selectedTenant, showTenantDetailsModal,
     globalFeatures, setGlobalFeatures, setAuditLogs, filteredLogs,
     showAddTenantModal, newTenantData, setNewTenantData, handleAddTenant,
@@ -96,8 +96,17 @@ export default function TenantManager(props: any) {
     clearSelection();
   };
   const bulkDelete = () => {
-    selectedIds.forEach(id => { const t = tenants.find((x: any) => x.id === id); if (t) handleDeleteTenant(id, t.name); });
-    clearSelection();
+    if (selectedIds.size === 0) return;
+    const idsArray = Array.from(selectedIds);
+    if (typeof handleBulkDeleteTenants === 'function') {
+      handleBulkDeleteTenants(idsArray, clearSelection);
+    } else {
+      idsArray.forEach(id => {
+        const t = tenants.find((x: any) => x.id === id);
+        if (t) handleDeleteTenant(id, t.name);
+      });
+      clearSelection();
+    }
   };
 
   // Initials avatar helper
@@ -650,7 +659,7 @@ export default function TenantManager(props: any) {
                     </button>
                     <button type="button" onClick={bulkDelete}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-900/20 hover:bg-rose-900/40 border border-rose-700/30 text-rose-500 font-bold text-xs rounded-lg transition-all cursor-pointer">
-                      <span className="material-symbols-outlined text-sm">delete_forever</span>Delete All
+                      <span className="material-symbols-outlined text-sm">delete_forever</span>Delete Selected
                     </button>
                   </div>
                 </div>
@@ -687,6 +696,7 @@ export default function TenantManager(props: any) {
                             {allPageSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
                           </button>
                         </th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap text-center w-12">S.N.</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Establishment</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Plan</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Region</th>
@@ -698,7 +708,7 @@ export default function TenantManager(props: any) {
                     <tbody className="divide-y divide-white/[0.04]">
                       {isLoadingOverview ? (
                         <tr>
-                          <td colSpan={7} className="py-16 text-center">
+                          <td colSpan={8} className="py-16 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
                               <p className="text-xs text-[#A69984]/60 font-bold uppercase tracking-wider">Verifying Super Admin Credentials & Loading Tenants...</p>
@@ -707,13 +717,14 @@ export default function TenantManager(props: any) {
                         </tr>
                       ) : pagedTenants.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="py-16 text-center">
+                          <td colSpan={8} className="py-16 text-center">
                             <span className="material-symbols-outlined text-4xl text-white/10 block mb-2">search_off</span>
                             <p className="text-xs text-[#A69984]/40 font-bold uppercase tracking-wider">No tenants match your filters</p>
                           </td>
                         </tr>
                       ) : null}
-                      {pagedTenants.map((ten: any) => {
+                      {pagedTenants.map((ten: any, idx: number) => {
+                        const snNumber = (currentPage - 1) * PAGE_SIZE + idx + 1;
                         const isSelected = selectedIds.has(ten.id);
                         const expStatus = checkExpiryStatus(ten.expiryDate);
                         const countdownText = getExpiryCountdownText(ten.expiryDate);
@@ -729,6 +740,11 @@ export default function TenantManager(props: any) {
                                 className={`w-4 h-4 rounded border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${isSelected ? 'bg-[#ffc53d] border-[#ffc53d]' : 'border-white/20 hover:border-white/50 bg-transparent'}`}>
                                 {isSelected && <span className="material-symbols-outlined text-[10px] text-[#1a1200] font-black">check</span>}
                               </button>
+                            </td>
+
+                            {/* S.N. Column */}
+                            <td className="py-4 px-3 text-center text-[11.5px] text-[#A69984]/75 font-mono font-bold whitespace-nowrap">
+                              {snNumber}
                             </td>
 
                             {/* Establishment */}
