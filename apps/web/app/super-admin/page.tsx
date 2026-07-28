@@ -223,6 +223,8 @@ const themes = {
 interface Tenant {
   id: string;
   name: string;
+  email?: string;
+  ownerName?: string;
   location: string;
   terminals: number;
   plan: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'EXPIRED' | 'SUSPENDED';
@@ -1977,6 +1979,7 @@ export default function SuperAdminPage() {
       t.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
       t.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
       t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (t.region || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesStatus = statusFilter === 'All' || 

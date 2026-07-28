@@ -48,19 +48,26 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
       return 'North America - East';
     };
 
-    const formattedTenants = (dbTenants || []).map((t: any) => ({
-      id: t.id,
-      name: t.name,
-      location: t.country || 'Global',
-      terminals: 1,
-      plan: (t.plan || 'TRIAL').toUpperCase(),
-      revenue: t.currency === 'NPR' ? 'Rs. 0' : '$0.00',
-      status: t.status ? t.status.toUpperCase() : 'ACTIVE',
-      joined: t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      tier: 'Business',
-      region: mapCountryToRegion(t.country),
-      expiryDate: t.trial_ends_at ? t.trial_ends_at.split('T')[0] : (t.subscription_expires_at ? t.subscription_expires_at.split('T')[0] : ''),
-    }));
+    const formattedTenants = (dbTenants || []).map((t: any) => {
+      const tenantUser = (dbUsers || []).find((u: any) => u.tenant_id === t.id && (u.role === 'TENANT_ADMIN' || u.role === 'OWNER'))
+        || (dbUsers || []).find((u: any) => u.tenant_id === t.id);
+
+      return {
+        id: t.id,
+        name: t.name,
+        email: t.email || tenantUser?.email || '',
+        ownerName: tenantUser?.name || 'Restaurant Owner',
+        location: t.country || 'Global',
+        terminals: 1,
+        plan: (t.plan || 'TRIAL').toUpperCase(),
+        revenue: t.currency === 'NPR' ? 'Rs. 0' : '$0.00',
+        status: t.status ? t.status.toUpperCase() : 'ACTIVE',
+        joined: t.created_at ? t.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+        tier: 'Business',
+        region: mapCountryToRegion(t.country),
+        expiryDate: t.trial_ends_at ? t.trial_ends_at.split('T')[0] : (t.subscription_expires_at ? t.subscription_expires_at.split('T')[0] : ''),
+      };
+    });
 
     const formattedUsers = (dbUsers || []).map((u: any) => {
       const matchedTenant = (dbTenants || []).find((t: any) => t.id === u.tenant_id);
@@ -83,17 +90,140 @@ export const getSuperAdminOverview = async (req: AuthenticatedRequest, res: Resp
       type: a.status === 'ERROR' ? 'warning' : 'info'
     }));
 
+    // Calculate live aggregated tenant metrics
+    const totalTenants = formattedTenants.length;
+    const activeTenants = formattedTenants.filter((t: any) => t.status === 'ACTIVE').length;
+    const suspendedTenants = formattedTenants.filter((t: any) => t.status === 'SUSPENDED').length;
+
+    const uniqueRegionsSet = new Set(formattedTenants.map((t: any) => t.region || 'North America - East'));
+    const uniqueRegionsList = Array.from(uniqueRegionsSet);
+    const uniqueRegionsCount = uniqueRegionsList.length;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiringSoonCount = formattedTenants.filter((t: any) => {
+      if (!t.expiryDate) return false;
+      const exp = new Date(t.expiryDate);
+      exp.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 30;
+    }).length;
+
+    const attentionRequiredCount = formattedTenants.filter((t: any) => {
+      if (t.status === 'SUSPENDED') return true;
+      if (!t.expiryDate) return false;
+      const exp = new Date(t.expiryDate);
+      exp.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((exp.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays <= 30;
+    }).length;
+
+    const stats = {
+      totalTenants,
+      activeTenants,
+      suspendedTenants,
+      uniqueRegionsCount,
+      uniqueRegionsList,
+      expiringSoonCount,
+      attentionRequiredCount
+    };
+
     res.json({
       success: true,
       data: {
         tenants: formattedTenants,
         users: formattedUsers,
-        auditLogs: formattedAudit
+        auditLogs: formattedAudit,
+        stats
       }
     });
 
   } catch (error: any) {
     res.status(500).json({ success: false, error: error.message || 'Error loading Super Admin data.' });
+  }
+};
+
+export const getTenantDetails = async (req: AuthenticatedRequest, res: Response<ApiResponse>) => {
+  if (req.user?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, error: 'Super Admin privileges required.' });
+  }
+
+  const { id } = req.params;
+
+  try {
+    // 1. Fetch root tenant record
+    const { data: tenant, error: tenantErr } = await supabase
+      .from('tenants')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (tenantErr || !tenant) {
+      return res.status(404).json({ success: false, error: tenantErr?.message || 'Tenant not found.' });
+    }
+
+    // 2. Fetch users for this tenant
+    const { data: users } = await supabase
+      .from('users')
+      .select('id, name, email, role, is_active, created_at, last_login')
+      .eq('tenant_id', id);
+
+    // 3. Count categories, menu items, orders, tables, devices, branches
+    const [
+      { count: categoryCount },
+      { count: menuItemCount },
+      { count: orderCount },
+      { count: tableCount },
+      { count: deviceCount },
+      { count: branchCount }
+    ] = await Promise.all([
+      supabase.from('categories').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
+      supabase.from('menu_items').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
+      supabase.from('orders').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
+      supabase.from('tables').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
+      supabase.from('devices').select('id', { count: 'exact', head: true }).eq('tenant_id', id),
+      supabase.from('branches').select('id', { count: 'exact', head: true }).eq('tenant_id', id)
+    ]);
+
+    const owner = (users || []).find((u: any) => u.role === 'TENANT_ADMIN' || u.role === 'OWNER') || users?.[0];
+
+    const details = {
+      id: tenant.id,
+      name: tenant.name,
+      email: tenant.email || owner?.email || '',
+      ownerName: owner?.name || 'Restaurant Owner',
+      ownerRole: owner?.role || 'TENANT_ADMIN',
+      status: tenant.status ? tenant.status.toUpperCase() : 'ACTIVE',
+      plan: (tenant.plan || 'TRIAL').toUpperCase(),
+      country: tenant.country || 'United States',
+      currency: tenant.currency || 'USD',
+      timezone: tenant.timezone || 'UTC',
+      createdAt: tenant.created_at ? new Date(tenant.created_at).toLocaleString() : 'N/A',
+      trialEndsAt: tenant.trial_ends_at ? tenant.trial_ends_at.split('T')[0] : '',
+      subscriptionExpiresAt: tenant.subscription_expires_at ? tenant.subscription_expires_at.split('T')[0] : '',
+      metrics: {
+        totalUsers: users?.length || 0,
+        totalCategories: categoryCount || 0,
+        totalMenuItems: menuItemCount || 0,
+        totalOrders: orderCount || 0,
+        totalTables: tableCount || 0,
+        totalDevices: deviceCount || 0,
+        totalBranches: branchCount || 0
+      },
+      users: (users || []).map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        status: u.is_active !== false ? 'ACTIVE' : 'INACTIVE',
+        lastLogin: u.last_login ? new Date(u.last_login).toLocaleString() : 'Never'
+      }))
+    };
+
+    res.json({ success: true, data: details });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message || 'Failed to fetch tenant details.' });
   }
 };
 

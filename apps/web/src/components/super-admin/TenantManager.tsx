@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useCallback } from 'react';
+import { apiRequest } from '@/utils/api';
 
 export default function TenantManager(props: any) {
   const {
@@ -24,6 +25,43 @@ export default function TenantManager(props: any) {
     isLoadingOverview, overviewError
   } = props;
 
+  // ── Rich Tenant Details Modal State ───────────────────────────────────────
+  const [showRichDetailsModal, setShowRichDetailsModal] = useState(false);
+  const [richDetailsData, setRichDetailsData] = useState<any>(null);
+  const [isLoadingRichDetails, setIsLoadingRichDetails] = useState(false);
+  const [richDetailsError, setRichDetailsError] = useState<string | null>(null);
+
+  const handleOpenDetails = async (ten: any) => {
+    setRichDetailsData({
+      id: ten.id,
+      name: ten.name,
+      email: ten.email || '',
+      ownerName: ten.ownerName || 'Restaurant Owner',
+      status: ten.status,
+      plan: ten.plan,
+      country: ten.location || 'United States',
+      createdAt: ten.joined || 'N/A',
+      expiryDate: ten.expiryDate || 'N/A',
+    });
+    setShowRichDetailsModal(true);
+    setIsLoadingRichDetails(true);
+    setRichDetailsError(null);
+
+    try {
+      const res = await apiRequest<any>(`/api/admin/tenants/${ten.id}/details`);
+      if (res.success && res.data) {
+        setRichDetailsData(res.data);
+      } else {
+        setRichDetailsError(res.error || 'Failed to fetch detailed records.');
+      }
+    } catch (err: any) {
+      console.error('Error fetching tenant details:', err);
+      setRichDetailsError(err.message || 'Network error fetching tenant details.');
+    } finally {
+      setIsLoadingRichDetails(false);
+    }
+  };
+
   // ── Bulk selection state ──────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showBulkExpiryModal, setShowBulkExpiryModal] = useState(false);
@@ -34,6 +72,22 @@ export default function TenantManager(props: any) {
   const activeTenantCount = useMemo(() => {
     return Array.isArray(tenants) ? tenants.filter((t: any) => t.status === 'ACTIVE').length : 0;
   }, [tenants]);
+
+  const dynamicRegions = useMemo(() => {
+    if (!Array.isArray(tenants)) return [];
+    const set = new Set(tenants.map((t: any) => t.region || t.location || 'North America - East'));
+    return Array.from(set);
+  }, [tenants]);
+
+  const attentionRequiredCount = useMemo(() => {
+    if (!Array.isArray(tenants)) return 0;
+    return tenants.filter((t: any) => t.status === 'SUSPENDED' || (checkExpiryStatus && checkExpiryStatus(t.expiryDate) === 'expired') || t.billingFailed).length;
+  }, [tenants, checkExpiryStatus]);
+
+  const expiringSoonCount = useMemo(() => {
+    if (!Array.isArray(tenants)) return 0;
+    return tenants.filter((t: any) => checkExpiryStatus && checkExpiryStatus(t.expiryDate) === 'warning').length;
+  }, [tenants, checkExpiryStatus]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil((filteredTenants?.length || 0) / PAGE_SIZE));
@@ -482,75 +536,120 @@ export default function TenantManager(props: any) {
                 </div>
               </div>
 
-              {/* ── KPI Cards ───────────────────────────────────────────────── */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 select-none">
-                
-                {/* Card 1: Total Active Tenants */}
-                <div 
-                  onClick={() => { 
-                    setStatusFilter(statusFilter === 'Active' ? 'All' : 'Active'); 
-                    setAttentionOnlyFilter(false); 
-                  }}
-                  className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-primary/20 ${
-                    statusFilter === 'Active' ? 'border-[#ffc53d]/50 shadow-[0_0_25px_rgba(255,197,61,0.08)] bg-white/[0.01]' : ''
-                  }`}
-                >
-                  <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
-                    <span className="material-symbols-outlined text-[90px] leading-none">corporate_fare</span>
-                  </div>
-                  <div className="flex justify-between items-start z-10">
-                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Total Active Tenants</span>
-                  </div>
-                  <div className="z-10 flex items-baseline gap-3">
-                    <h3 className="font-serif text-5xl font-bold text-white tracking-wide">
-                      {activeTenantCount}
-                    </h3>
-                    <span className="text-xs text-amber-400 font-bold flex items-center gap-0.5 leading-none">
-                      <span className="material-symbols-outlined text-sm font-bold leading-none">arrow_upward</span>
-                      12%
-                    </span>
-                  </div>
+              {/* ── KPI Summary Cards (4 Dynamic Live Cards) ─────────────────── */}
+              {isLoadingOverview ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 select-none">
+                  {[1, 2, 3, 4].map(i => (
+                    <div key={i} className={`${theme.cardBg} border rounded-2xl p-6 h-[135px] animate-pulse flex flex-col justify-between shadow-lg`}>
+                      <div className="h-3 w-28 bg-white/10 rounded"></div>
+                      <div className="h-9 w-16 bg-white/15 rounded"></div>
+                      <div className="h-2 w-32 bg-white/5 rounded"></div>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 select-none">
+                  
+                  {/* Card 1: Total Tenants */}
+                  <div 
+                    onClick={() => { 
+                      setStatusFilter('All'); 
+                      setAttentionOnlyFilter(false); 
+                    }}
+                    className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-amber-400/30 ${
+                      statusFilter === 'All' && !attentionOnlyFilter ? 'border-[#ffc53d]/50 shadow-[0_0_25px_rgba(255,197,61,0.08)] bg-white/[0.01]' : ''
+                    }`}
+                  >
+                    <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
+                      <span className="material-symbols-outlined text-[90px] leading-none">corporate_fare</span>
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                      <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Total Tenants</span>
+                      <span className="material-symbols-outlined text-[#ffc53d] text-lg font-bold">storefront</span>
+                    </div>
+                    <div className="z-10 flex flex-col">
+                      <h3 className="font-serif text-4xl font-bold text-white tracking-wide">
+                        {tenants.length}
+                      </h3>
+                      <p className="text-[10.5px] text-[#A69984]/60 font-semibold mt-1">
+                        <span className="text-emerald-400 font-bold">{activeTenantCount} Active</span> · {tenants.length - activeTenantCount} Suspended
+                      </p>
+                    </div>
+                  </div>
 
-                {/* Card 2: Regions Deployed */}
-                <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
-                  <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
-                    <span className="material-symbols-outlined text-[90px] leading-none">public</span>
+                  {/* Card 2: Regions Deployed (Calculated Dynamically!) */}
+                  <div className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg`}>
+                    <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
+                      <span className="material-symbols-outlined text-[90px] leading-none">public</span>
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                      <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Regions Deployed</span>
+                      <span className="material-symbols-outlined text-sky-400 text-lg font-bold">public</span>
+                    </div>
+                    <div className="z-10 flex flex-col">
+                      <h3 className="font-serif text-4xl font-bold text-white tracking-wide">
+                        {dynamicRegions.length}
+                      </h3>
+                      <p className="text-[10.5px] text-[#A69984]/60 font-semibold mt-1 uppercase tracking-wider truncate max-w-[200px]" title={dynamicRegions.join(', ')}>
+                        {dynamicRegions.length > 0 ? dynamicRegions.join(', ') : 'Global Zones'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex justify-between items-start z-10">
-                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Regions Deployed</span>
+
+                  {/* Card 3: Attention Required */}
+                  <div 
+                    onClick={() => { 
+                      setAttentionOnlyFilter(!attentionOnlyFilter); 
+                      setStatusFilter('All'); 
+                    }}
+                    className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-rose-500/30 ${
+                      attentionOnlyFilter ? 'border-rose-500/50 shadow-[0_0_25px_rgba(239,68,68,0.08)] bg-white/[0.01]' : ''
+                    }`}
+                  >
+                    <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
+                      <span className="material-symbols-outlined text-[90px] leading-none">warning</span>
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                      <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Attention Required</span>
+                      <span className="material-symbols-outlined text-rose-500 text-lg font-bold">error</span>
+                    </div>
+                    <div className="z-10 flex flex-col">
+                      <h3 className="font-serif text-4xl font-bold text-rose-500 tracking-wide">
+                        {attentionRequiredCount}
+                      </h3>
+                      <p className="text-[10.5px] text-rose-400/70 font-semibold mt-1 uppercase tracking-wider">
+                        {attentionOnlyFilter ? 'Filtering Active Issues' : 'Suspended / Expired / Billing'}
+                      </p>
+                    </div>
                   </div>
-                  <div className="z-10">
-                    <h3 className="font-serif text-5xl font-bold text-white tracking-wide">8</h3>
-                    <p className="text-[10px] text-[#A69984]/50 font-bold mt-1 uppercase tracking-wider">Global Zones</p>
+
+                  {/* Card 4: Expiring Soon */}
+                  <div 
+                    onClick={() => {
+                      setAttentionOnlyFilter(false);
+                      setStatusFilter('All');
+                    }}
+                    className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-amber-500/30`}
+                  >
+                    <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
+                      <span className="material-symbols-outlined text-[90px] leading-none">hourglass_bottom</span>
+                    </div>
+                    <div className="flex justify-between items-start z-10">
+                      <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Expiring Soon (30d)</span>
+                      <span className="material-symbols-outlined text-amber-400 text-lg font-bold">pending_actions</span>
+                    </div>
+                    <div className="z-10 flex flex-col">
+                      <h3 className="font-serif text-4xl font-bold text-amber-400 tracking-wide">
+                        {expiringSoonCount}
+                      </h3>
+                      <p className="text-[10.5px] text-amber-400/70 font-semibold mt-1 uppercase tracking-wider">
+                        Renewal Warning Window
+                      </p>
+                    </div>
                   </div>
+
                 </div>
-
-                {/* Card 3: Attention Required */}
-                <div 
-                  onClick={() => { 
-                    setAttentionOnlyFilter(!attentionOnlyFilter); 
-                    setStatusFilter('All'); 
-                  }}
-                  className={`${theme.cardBg} border rounded-2xl p-6 relative overflow-hidden flex flex-col justify-between h-[135px] shadow-lg cursor-pointer transition-all hover:scale-[1.01] hover:border-rose-500/20 ${
-                    attentionOnlyFilter ? 'border-rose-500/50 shadow-[0_0_25px_rgba(239,68,68,0.08)] bg-white/[0.01]' : ''
-                  }`}
-                >
-                  <div className="absolute right-4 bottom-2 text-white/[0.02] select-none pointer-events-none">
-                    <span className="material-symbols-outlined text-[90px] leading-none">warning</span>
-                  </div>
-                  <div className="flex justify-between items-start z-10">
-                    <span className="font-sans font-bold text-[10px] text-[#A69984]/70 uppercase tracking-widest">Attention Required</span>
-                  </div>
-                  <div className="z-10">
-                    <h3 className="font-serif text-5xl font-bold text-rose-500 tracking-wide">
-                      {tenants.filter((t: any) => t.status === 'SUSPENDED' || checkExpiryStatus(t.expiryDate) === 'expired' || t.billingFailed).length}
-                    </h3>
-                    <p className="text-[10px] text-rose-400/70 font-semibold mt-1 uppercase tracking-wider">Suspended/Issue</p>
-                  </div>
-                </div>
-
-              </div>
+              )}
 
               {/* Filters & Search Row */}
               <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 font-sans text-xs">
@@ -698,6 +797,7 @@ export default function TenantManager(props: any) {
                         </th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap text-center w-12">S.N.</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Establishment</th>
+                        <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Email</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Plan</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Region</th>
                         <th className="py-3.5 px-3 text-[9px] text-[#A69984]/50 font-bold uppercase tracking-wider whitespace-nowrap">Expiry</th>
@@ -708,7 +808,7 @@ export default function TenantManager(props: any) {
                     <tbody className="divide-y divide-white/[0.04]">
                       {isLoadingOverview ? (
                         <tr>
-                          <td colSpan={8} className="py-16 text-center">
+                          <td colSpan={9} className="py-16 text-center">
                             <div className="flex flex-col items-center justify-center gap-2">
                               <div className="w-7 h-7 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
                               <p className="text-xs text-[#A69984]/60 font-bold uppercase tracking-wider">Verifying Super Admin Credentials & Loading Tenants...</p>
@@ -717,7 +817,7 @@ export default function TenantManager(props: any) {
                         </tr>
                       ) : pagedTenants.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-16 text-center">
+                          <td colSpan={9} className="py-16 text-center">
                             <span className="material-symbols-outlined text-4xl text-white/10 block mb-2">search_off</span>
                             <p className="text-xs text-[#A69984]/40 font-bold uppercase tracking-wider">No tenants match your filters</p>
                           </td>
@@ -766,6 +866,22 @@ export default function TenantManager(props: any) {
                                   </div>
                                 </div>
                               </div>
+                            </td>
+
+                            {/* Email Column */}
+                            <td className="py-4 px-3 max-w-[180px]">
+                              {ten.email ? (
+                                <a
+                                  href={`mailto:${ten.email}`}
+                                  title={ten.email}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-xs text-[#A69984] hover:text-[#ffc53d] font-medium font-mono truncate block transition-colors underline-offset-2 hover:underline"
+                                >
+                                  {ten.email}
+                                </a>
+                              ) : (
+                                <span className="text-xs text-white/30 font-mono italic">N/A</span>
+                              )}
                             </td>
 
                             {/* Plan Badge */}
@@ -840,63 +956,87 @@ export default function TenantManager(props: any) {
                             </td>
 
                             {/* Actions */}
-                            <td className="py-4 px-3 pr-5 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
+                            <td className="py-4 px-3 pr-5 text-right relative">
+                              <div className="flex items-center justify-end gap-2">
                                 <button type="button"
-                                  onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate); setShowTenantDetailsModal(true); }}
+                                  onClick={() => handleOpenDetails(ten)}
                                   className="text-[9.5px] border border-white/10 hover:border-[#ffc53d]/40 hover:text-[#ffc53d] text-[#A69984] px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap">
                                   Details
                                 </button>
+
                                 <div className="relative">
                                   <button type="button"
+                                    aria-label="Open business actions menu"
                                     onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(activeActionMenuId === ten.id ? null : ten.id); }}
-                                    className="w-7 h-7 rounded-lg border border-white/10 hover:border-white/25 flex items-center justify-center text-[#A69984] hover:text-white transition-colors cursor-pointer">
-                                    <span className="material-symbols-outlined text-sm">more_vert</span>
+                                    className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg border border-white/10 hover:border-white/30 hover:bg-white/5 flex items-center justify-center text-[#A69984] hover:text-white transition-all cursor-pointer select-none">
+                                    <span className="material-symbols-outlined text-base">more_vert</span>
                                   </button>
+
                                   {activeActionMenuId === ten.id && (
-                                    <div className="absolute right-0 mt-1.5 w-52 bg-[#141311] border border-white/10 rounded-xl shadow-2xl shadow-black/50 py-1.5 z-40 text-left font-sans">
-                                      {/* Expiry group */}
-                                      <div className="px-3 py-1 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Expiry</div>
-                                      <button type="button" onClick={() => handleQuickRenew(ten.id, 30)}
-                                        className="w-full px-3 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
-                                        <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>Extend +30 Days
-                                      </button>
-                                      <button type="button" onClick={() => handleQuickRenew(ten.id, 365)}
-                                        className="w-full px-3 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
-                                        <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>Extend +1 Year
-                                      </button>
-                                      <button type="button" onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate || new Date().toISOString().split('T')[0]); setShowTenantDetailsModal(true); }}
-                                        className="w-full px-3 py-2 hover:bg-amber-500/5 text-xs text-amber-400 font-medium flex items-center gap-2.5 cursor-pointer">
-                                        <span className="material-symbols-outlined text-sm">edit_calendar</span>Custom Expiry...
-                                      </button>
-
-                                      {/* Status group */}
-                                      <div className="border-t border-white/5 mt-1 pt-1 px-3 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Status</div>
-                                      <button type="button" onClick={() => toggleTenantStatus(ten.id, ten.name, ten.status)}
-                                        className={`w-full px-3 py-2 hover:bg-white/5 text-xs font-medium flex items-center gap-2.5 cursor-pointer ${ten.status === 'ACTIVE' ? 'text-rose-400 hover:bg-rose-500/5' : 'text-emerald-400 hover:bg-emerald-500/5'}`}>
-                                        <span className="material-symbols-outlined text-sm">{ten.status === 'ACTIVE' ? 'block' : 'check_circle'}</span>
-                                        {ten.status === 'ACTIVE' ? 'Suspend Tenant' : 'Activate Tenant'}
-                                      </button>
-
-                                      {/* Billing */}
-                                      {ten.billingFailed && (
-                                        <>
-                                          <div className="border-t border-white/5 mt-1 pt-1 px-3 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Billing</div>
-                                          <button type="button" onClick={() => handleRetryBilling(ten.id)}
-                                            className="w-full px-3 py-2 hover:bg-[#ffc53d]/5 text-xs text-[#ffc53d] font-medium flex items-center gap-2.5 cursor-pointer">
-                                            <span className="material-symbols-outlined text-sm">credit_card</span>Retry Billing
-                                          </button>
-                                        </>
-                                      )}
-
-                                      {/* Danger */}
-                                      <div className="border-t border-white/5 mt-1 pt-1">
-                                        <button type="button" onClick={() => handleDeleteTenant(ten.id, ten.name)}
-                                          className="w-full px-3 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-medium flex items-center gap-2.5 cursor-pointer">
-                                          <span className="material-symbols-outlined text-sm">delete</span>Delete Business
+                                    <>
+                                      {/* Click-away backdrop */}
+                                      <div 
+                                        className="fixed inset-0 z-40 bg-transparent"
+                                        onClick={(e) => { e.stopPropagation(); setActiveActionMenuId(null); }}
+                                      />
+                                      <div 
+                                        tabIndex={0}
+                                        onKeyDown={(e) => { if (e.key === 'Escape') setActiveActionMenuId(null); }}
+                                        className={`absolute right-0 w-52 max-w-[calc(100vw-2.5rem)] bg-[#141311] border border-white/15 rounded-xl shadow-2xl shadow-black/80 py-1.5 z-[70] text-left font-sans animate-fade-in select-none ${
+                                          idx >= pagedTenants.length - 3 && pagedTenants.length > 3
+                                            ? 'bottom-full mb-2 origin-bottom-right' 
+                                            : 'top-full mt-2 origin-top-right'
+                                        }`}
+                                      >
+                                        {/* General info */}
+                                        <button type="button" onClick={() => { handleOpenDetails(ten); setActiveActionMenuId(null); }}
+                                          className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white font-medium flex items-center gap-2.5 cursor-pointer border-b border-white/5">
+                                          <span className="material-symbols-outlined text-sm text-[#ffc53d]">info</span>View Full Details
                                         </button>
+
+                                        {/* Expiry group */}
+                                        <div className="px-3.5 pt-2 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Subscription & Expiry</div>
+                                        <button type="button" onClick={() => { handleQuickRenew(ten.id, 30); setActiveActionMenuId(null); }}
+                                          className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
+                                          <span className="material-symbols-outlined text-sm text-[#A69984]">event_repeat</span>Extend +30 Days
+                                        </button>
+                                        <button type="button" onClick={() => { handleQuickRenew(ten.id, 365); setActiveActionMenuId(null); }}
+                                          className="w-full px-3.5 py-2 hover:bg-white/5 text-xs text-white/80 hover:text-white font-medium flex items-center gap-2.5 cursor-pointer">
+                                          <span className="material-symbols-outlined text-sm text-[#A69984]">calendar_add_on</span>Extend +1 Year
+                                        </button>
+                                        <button type="button" onClick={() => { setSelectedTenant(ten); setEditingExpiryDate(ten.expiryDate || new Date().toISOString().split('T')[0]); setShowTenantDetailsModal(true); setActiveActionMenuId(null); }}
+                                          className="w-full px-3.5 py-2 hover:bg-amber-500/5 text-xs text-amber-400 font-medium flex items-center gap-2.5 cursor-pointer">
+                                          <span className="material-symbols-outlined text-sm">edit_calendar</span>Custom Expiry Date...
+                                        </button>
+
+                                        {/* Status group */}
+                                        <div className="border-t border-white/5 mt-1 pt-1.5 px-3.5 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Tenant Access</div>
+                                        <button type="button" onClick={() => { toggleTenantStatus(ten.id, ten.name, ten.status); setActiveActionMenuId(null); }}
+                                          className={`w-full px-3.5 py-2 hover:bg-white/5 text-xs font-medium flex items-center gap-2.5 cursor-pointer ${ten.status === 'ACTIVE' ? 'text-rose-400 hover:bg-rose-500/5' : 'text-emerald-400 hover:bg-emerald-500/5'}`}>
+                                          <span className="material-symbols-outlined text-sm">{ten.status === 'ACTIVE' ? 'block' : 'check_circle'}</span>
+                                          {ten.status === 'ACTIVE' ? 'Suspend Business' : 'Activate Business'}
+                                        </button>
+
+                                        {/* Billing */}
+                                        {ten.billingFailed && (
+                                          <>
+                                            <div className="border-t border-white/5 mt-1 pt-1.5 px-3.5 pb-0.5 text-[8.5px] text-[#A69984]/40 font-bold uppercase tracking-wider">Billing</div>
+                                            <button type="button" onClick={() => { handleRetryBilling(ten.id); setActiveActionMenuId(null); }}
+                                              className="w-full px-3.5 py-2 hover:bg-[#ffc53d]/5 text-xs text-[#ffc53d] font-medium flex items-center gap-2.5 cursor-pointer">
+                                              <span className="material-symbols-outlined text-sm">credit_card</span>Retry Card Billing
+                                            </button>
+                                          </>
+                                        )}
+
+                                        {/* Danger */}
+                                        <div className="border-t border-white/5 mt-1 pt-1">
+                                          <button type="button" onClick={() => { handleDeleteTenant(ten.id, ten.name); setActiveActionMenuId(null); }}
+                                            className="w-full px-3.5 py-2 hover:bg-rose-500/10 text-xs text-rose-400 font-medium flex items-center gap-2.5 cursor-pointer">
+                                            <span className="material-symbols-outlined text-sm">delete</span>Delete Permanently
+                                          </button>
+                                        </div>
                                       </div>
-                                    </div>
+                                    </>
                                   )}
                                 </div>
                               </div>
@@ -1170,6 +1310,240 @@ export default function TenantManager(props: any) {
 
             </div>
           )}
+
+      {/* RICH REAL-TIME TENANT DETAILS MODAL */}
+      {showRichDetailsModal && richDetailsData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in select-none">
+          <div className="bg-[#141413] border border-white/10 w-full max-w-[740px] rounded-2xl shadow-2xl overflow-hidden font-sans flex flex-col max-h-[90vh]">
+            {/* Modal Header */}
+            <div className="bg-[#1b1a18] px-6 py-4 border-b border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#ffc53d]/10 border border-[#ffc53d]/30 flex items-center justify-center text-[#ffc53d] shrink-0 font-serif font-bold text-sm">
+                  {richDetailsData.name ? richDetailsData.name.charAt(0).toUpperCase() : 'T'}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-serif text-base text-white font-bold tracking-wide">{richDetailsData.name}</h3>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                      richDetailsData.status === 'ACTIVE'
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                        : 'bg-rose-500/10 border-rose-500/20 text-rose-400'
+                    }`}>
+                      {richDetailsData.status}
+                    </span>
+                  </div>
+                  <p className="text-[10.5px] text-[#A69984]/65 font-mono mt-0.5">ID: {richDetailsData.id}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowRichDetailsModal(false)}
+                className="text-[#A69984]/50 hover:text-white transition-colors cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-xl">close</span>
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-6 overflow-y-auto space-y-6 flex-1">
+              {isLoadingRichDetails ? (
+                <div className="py-16 text-center space-y-3">
+                  <span className="material-symbols-outlined text-3xl text-[#ffc53d] animate-spin">progress_activity</span>
+                  <p className="text-xs text-[#A69984]/70 font-bold uppercase tracking-wider">
+                    Fetching Real Database Metrics & User Roster from Supabase...
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {richDetailsError && (
+                    <div className="p-3.5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-300 text-xs font-semibold">
+                      ⚠️ Notice: {richDetailsError} (Showing cached overview data)
+                    </div>
+                  )}
+
+                  {/* Top Cards: Contact & Subscription */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Business & Owner Info */}
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">Business & Contact</span>
+                        <span className="material-symbols-outlined text-sm text-[#A69984]">storefront</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between">
+                          <span className="text-[#A69984]/60">Owner Name:</span>
+                          <span className="text-white font-bold">{richDetailsData.ownerName || 'Restaurant Owner'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#A69984]/60">Contact Email:</span>
+                          {richDetailsData.email ? (
+                            <a href={`mailto:${richDetailsData.email}`} className="text-[#ffc53d] font-mono hover:underline truncate max-w-[170px]">
+                              {richDetailsData.email}
+                            </a>
+                          ) : (
+                            <span className="text-white/40 font-mono italic">N/A</span>
+                          )}
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#A69984]/60">Country / Region:</span>
+                          <span className="text-white font-medium">{richDetailsData.country || 'Global'}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#A69984]/60">Currency / Timezone:</span>
+                          <span className="text-white font-mono">{richDetailsData.currency || 'USD'} ({richDetailsData.timezone || 'UTC'})</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-[#A69984]/60">Registered Date:</span>
+                          <span className="text-white/80 font-mono text-[11px]">{richDetailsData.createdAt || 'N/A'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Plan & Subscription Expiry */}
+                    <div className="p-4 bg-white/[0.02] border border-white/5 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                        <span className="text-[10px] text-[#A69984]/70 font-bold uppercase tracking-wider">Plan & Subscription</span>
+                        <span className="material-symbols-outlined text-sm text-[#ffc53d]">verified</span>
+                      </div>
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#A69984]/60">Active Plan:</span>
+                          <span className="px-2 py-0.5 rounded bg-[#ffc53d]/10 border border-[#ffc53d]/25 text-[#ffc53d] font-bold uppercase text-[10px]">
+                            {richDetailsData.plan || 'BUSINESS'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#A69984]/60">Expiry Date:</span>
+                          <span className="text-white font-mono font-bold">{richDetailsData.expiryDate || richDetailsData.trialEndsAt || 'No Expiry'}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-[#A69984]/60">Status Tag:</span>
+                          <span className="text-amber-400 font-bold text-[10.5px]">
+                            {getExpiryCountdownText ? getExpiryCountdownText(richDetailsData.expiryDate || richDetailsData.trialEndsAt) : 'Active'}
+                          </span>
+                        </div>
+                        <div className="pt-2 border-t border-white/5 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleQuickRenew(richDetailsData.id, 30);
+                              setShowRichDetailsModal(false);
+                            }}
+                            className="flex-1 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-[10px] uppercase rounded-lg transition-all"
+                          >
+                            + 30 Days
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleQuickRenew(richDetailsData.id, 365);
+                              setShowRichDetailsModal(false);
+                            }}
+                            className="flex-1 py-1.5 bg-[#ffc53d]/10 hover:bg-[#ffc53d]/20 border border-[#ffc53d]/30 text-[#ffc53d] font-bold text-[10px] uppercase rounded-lg transition-all"
+                          >
+                            + 1 Year
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Live Operational Metrics (6 cards) */}
+                  <div>
+                    <h4 className="text-[10.5px] text-[#A69984]/70 font-bold uppercase tracking-wider mb-2.5">
+                      Real-Time Operational Metrics
+                    </h4>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                      <div className="p-3 bg-black/20 border border-white/5 rounded-xl text-center">
+                        <span className="material-symbols-outlined text-lg text-sky-400 block mb-0.5">group</span>
+                        <span className="font-serif text-lg font-bold text-white block">{richDetailsData.metrics?.totalUsers ?? 0}</span>
+                        <span className="text-[9px] text-[#A69984]/50 font-bold uppercase">Users</span>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded-xl text-center">
+                        <span className="material-symbols-outlined text-lg text-amber-400 block mb-0.5">category</span>
+                        <span className="font-serif text-lg font-bold text-white block">{richDetailsData.metrics?.totalCategories ?? 0}</span>
+                        <span className="text-[9px] text-[#A69984]/50 font-bold uppercase">Categories</span>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded-xl text-center">
+                        <span className="material-symbols-outlined text-lg text-emerald-400 block mb-0.5">restaurant_menu</span>
+                        <span className="font-serif text-lg font-bold text-white block">{richDetailsData.metrics?.totalMenuItems ?? 0}</span>
+                        <span className="text-[9px] text-[#A69984]/50 font-bold uppercase">Menu Items</span>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded-xl text-center">
+                        <span className="material-symbols-outlined text-lg text-purple-400 block mb-0.5">receipt_long</span>
+                        <span className="font-serif text-lg font-bold text-white block">{richDetailsData.metrics?.totalOrders ?? 0}</span>
+                        <span className="text-[9px] text-[#A69984]/50 font-bold uppercase">Orders</span>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded-xl text-center">
+                        <span className="material-symbols-outlined text-lg text-indigo-400 block mb-0.5">table_restaurant</span>
+                        <span className="font-serif text-lg font-bold text-white block">{richDetailsData.metrics?.totalTables ?? 0}</span>
+                        <span className="text-[9px] text-[#A69984]/50 font-bold uppercase">Tables</span>
+                      </div>
+                      <div className="p-3 bg-black/20 border border-white/5 rounded-xl text-center">
+                        <span className="material-symbols-outlined text-lg text-rose-400 block mb-0.5">devices</span>
+                        <span className="font-serif text-lg font-bold text-white block">{richDetailsData.metrics?.totalDevices ?? 0}</span>
+                        <span className="text-[9px] text-[#A69984]/50 font-bold uppercase">Devices</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Registered User Accounts Table */}
+                  <div>
+                    <h4 className="text-[10.5px] text-[#A69984]/70 font-bold uppercase tracking-wider mb-2 flex items-center justify-between">
+                      <span>Tenant User Accounts ({richDetailsData.users?.length || 0})</span>
+                    </h4>
+                    <div className="bg-black/20 border border-white/5 rounded-xl overflow-hidden">
+                      {richDetailsData.users && richDetailsData.users.length > 0 ? (
+                        <table className="w-full text-left text-xs font-sans">
+                          <thead>
+                            <tr className="border-b border-white/5 bg-white/[0.02] text-[9px] text-[#A69984]/50 uppercase tracking-wider">
+                              <th className="py-2.5 px-3">User Name</th>
+                              <th className="py-2.5 px-3">Email</th>
+                              <th className="py-2.5 px-3">Role</th>
+                              <th className="py-2.5 px-3">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/[0.03]">
+                            {richDetailsData.users.map((u: any) => (
+                              <tr key={u.id} className="hover:bg-white/[0.015]">
+                                <td className="py-2.5 px-3 text-white font-medium">{u.name}</td>
+                                <td className="py-2.5 px-3 text-[#A69984] font-mono text-[11px]">{u.email}</td>
+                                <td className="py-2.5 px-3 text-[10px] text-amber-300 font-bold uppercase">{u.role}</td>
+                                <td className="py-2.5 px-3">
+                                  <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded border ${
+                                    u.status === 'ACTIVE' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/10 text-white/40'
+                                  }`}>
+                                    {u.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      ) : (
+                        <div className="py-8 text-center text-xs text-[#A69984]/50 font-bold uppercase tracking-wider">
+                          No individual user accounts registered for this tenant yet.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-[#1b1a18] px-6 py-3 border-t border-white/5 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowRichDetailsModal(false)}
+                className="px-5 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* EXTEND EXPIRY & SUBSCRIPTION MODAL */}
       {showTenantDetailsModal && selectedTenant && (
