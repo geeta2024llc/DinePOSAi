@@ -202,31 +202,67 @@ Incoming Request -> CORS Matching -> JSON Body (rawBody capture for webhooks) ->
 
 ---
 
-## 15. Required Workflow Before Making Code Changes
+## 15. Mandatory 7-Phase AI Development Workflow
 
-Before proposing or executing any code edits, an AI coding agent MUST perform the following steps:
+All development tasks in this project MUST strictly follow this sequence:
 
-1. **Read AGENTS.md & Target Documentation**: Review this file and the corresponding subsystem guide in `docs/`.
-2. **Inspect Existing Implementation**: Use `view_file` to read target source files and verify existing patterns. Do not guess file locations or signature types.
-3. **Check Security & Multi-Tenancy**: Confirm whether the proposed change affects `tenant_id` filtering, authentication headers, or role permissions.
-4. **Identify Established Pattern**: Ensure your solution follows established project conventions (e.g. Zod validation, `ApiResponse<T>`, HSL glassmorphism tokens). Do not invent new architectural patterns when one already exists.
-5. **Formulate & Present Plan**: Present a clear execution plan to the user detailing target files and verification steps.
+`UNDERSTAND` -> `PLAN` -> `IMPLEMENT` -> `TEST` -> `REVIEW` -> `DOCUMENT` -> `REPORT`
 
----
+### Phase 1 — UNDERSTAND
+Before writing any code:
+1. Read [AGENTS.md](file:///h:/Antigravity/DinePosAi/AGENTS.md).
+2. Read the relevant documentation inside [docs/](file:///h:/Antigravity/DinePosAi/docs/README.md).
+3. Inspect existing implementations related to the task.
+4. Identify existing patterns, components, services, APIs, database models, and utilities to reuse.
+5. Check whether the requested functionality already partially exists.
+*Do not start coding immediately.*
 
-## 16. Required Workflow After Making Code Changes
+### Phase 2 — PLAN
+Before implementation, present a practical plan detailing:
+- What needs to change
+- Which files will likely change
+- Which existing components/functions will be reused
+- Database changes, if any
+- API changes, if any
+- Potential risks
+- Testing approach
+*If the requirement conflicts with architecture or is ambiguous, stop and ask the user before coding.*
 
-After performing any code edits, an AI coding agent MUST follow this completion checklist:
+### Phase 3 — IMPLEMENT
+After plan approval:
+- Implement the smallest safe change.
+- Follow existing project patterns and conventions.
+- Reuse existing code whenever appropriate.
+- Do not introduce unnecessary dependencies or redesign unrelated components.
+- Preserve existing functionality and strictly abide by security rules.
 
-1. **Make Smallest Safe Change**: Keep modifications focused strictly on the requested task. Do not touch unrelated files or refactor surrounding code.
-2. **Run Verification Commands**: Execute TypeScript build checks and unit/integration tests:
-   ```bash
-   pnpm build
-   pnpm test
-   ```
-3. **Verify API & Contract Consistency**: Ensure modified API endpoints conform to `ApiResponse<T>` and match `@dineposai/shared-types`.
-4. **Update Markdown Documentation**: If architecture, route signatures, or database behavior changed, update the relevant file inside `docs/`.
-5. **Provide Completion Report**: Present a concise report summarizing:
-   - Modified files and specific changes.
-   - Verification tests executed and results.
-   - Any remaining risks, open questions, or manual verification steps.
+### Phase 4 — TEST
+After implementation:
+1. Run relevant unit / integration test suites (`pnpm test`, standalone API scripts).
+2. Run type checks and build compilation (`pnpm build`).
+3. Verify the affected functionality and check for regressions.
+4. Fix any failures found during verification.
+*Do not claim something works unless empirically checked.*
+
+### Phase 5 — REVIEW
+Self-review checklist:
+- Does the implementation match the exact requirement?
+- Is existing architecture followed without unnecessary complexity?
+- Were unrelated behaviors preserved?
+- Are error cases and security isolation guards in place?
+- Are test cases sufficient?
+
+### Phase 6 — DOCUMENT
+If the change alters architecture, database schema, API signatures, auth rules, major features, or development conventions:
+- Update relevant Markdown files in [docs/](file:///h:/Antigravity/DinePosAi/docs/README.md).
+*(Skip documentation updates for trivial, non-knowledge-altering code tweaks).*
+
+### Phase 7 — FINAL REPORT
+Conclude every development task with this structured report:
+- **Changed**: List key files modified and summary of changes.
+- **Why**: Brief explanation of implementation rationale.
+- **Tests**: Commands/checks executed and results.
+- **Documentation**: Document files updated (if any).
+- **Risks**: Open questions, limitations, or manual checks needed.
+- **Git**: Suggested concise commit message.
+
