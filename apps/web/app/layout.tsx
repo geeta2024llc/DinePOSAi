@@ -19,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`dark scroll-smooth ${playfair.variable} ${inter.variable}`} suppressHydrationWarning data-gramm="false" data-grammarly-disable="true">
+    <html lang="en" data-scroll-behavior="smooth" className={`dark scroll-smooth ${playfair.variable} ${inter.variable}`} suppressHydrationWarning data-gramm="false" data-grammarly-disable="true">
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0e0e0d" />
