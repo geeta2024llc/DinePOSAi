@@ -23,3 +23,13 @@ The **Super Admin Console** ([apps/web/app/super-admin/page.tsx](file:///h:/Anti
 3. **Tenant Action Overrides**: Suspend or activate tenant accounts (`PATCH /api/admin/tenants/:id`).
 4. **Support Ticket Helpdesk** (`SupportManager.tsx`): Manage and resolve merchant support helpdesk tickets.
 5. **Platform Access & Audit Hierarchy** (`AccessManager.tsx`): Inspect global cross-tenant activity logs for security monitoring (`GET /api/admin/audit-hierarchy`).
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo system architecture and Super Admin security bypass rules.
+- [[database]] — Database schema for `super_admins`, `tenants`, and `audit_logs`.
+- [[authorization]] — `SUPER_ADMIN` role permissions and elevation policies.
+- [[api]] — Super Admin REST API endpoints reference (`/api/admin/*`).
+

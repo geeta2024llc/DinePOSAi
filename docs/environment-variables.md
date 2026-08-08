@@ -36,3 +36,13 @@
 | `NEXT_PUBLIC_POSTHOG_KEY` | No | `phc_...` | Client-side PostHog product analytics tracking key. |
 | `NEXT_PUBLIC_POSTHOG_HOST` | No | `https://us.i.posthog.com` | Client-side PostHog ingestion host. |
 | `NEXT_PUBLIC_SENTRY_DSN` | No | `https://xxxx@sentry.io/xxxx` | Client-side Next.js Sentry error tracking endpoint. |
+
+---
+
+## 🔗 Related Documentation
+
+- [[deployment]] — Deployment steps for configuring variables on Railway and Vercel.
+- [[backend]] — Express backend engine configuration and startup environment checks.
+- [[frontend]] — Web frontend Next.js environment configuration.
+- [[integrations]] — Third-party service credentials (Stripe, Gemini AI, Resend, Sentry).
+

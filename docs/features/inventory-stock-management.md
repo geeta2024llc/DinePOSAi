@@ -22,3 +22,13 @@ The **Inventory & Stock Management Module** ([inventory.controller.ts](file:///h
 3. **Low Stock Alerts**: Identifies ingredients falling below `min_stock_level`.
 4. **Waste & Spoilage Logging**: Records spoiled or expired inventory in `waste_logs` with specific reason classifications (`SPOILAGE`, `ACCIDENT`, `EXPIRED`, `QUALITY_CONTROL`).
 5. **Purchase Order Restocking**: Generates purchase orders for suppliers (`purchase_orders`), automatically incrementing stock levels upon marking PO status `RECEIVED`.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Overall system architecture and RPC function execution pipeline.
+- [[database]] — Database schema for `inventory_items`, `menu_item_recipes`, `waste_logs`, and `inventory_transactions`.
+- [[api]] — Inventory management API endpoints reference (`/api/inventory/*`).
+- [[authorization]] — Permissions matrix for `inventory.view` and `inventory.manage`.
+

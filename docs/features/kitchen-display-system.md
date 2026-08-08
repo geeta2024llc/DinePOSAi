@@ -24,3 +24,14 @@ The **Kitchen Display System (KDS)** ([apps/web/app/kds/page.tsx](file:///h:/Ant
    - **COOKING -> READY**: Ticket turns green indicating food is prepared and ready for pick-up.
    - **READY -> SERVED**: FOH staff mark order served, removing it from active KDS view.
 4. **Item-Level Tracking**: Line cooks can mark individual items within a large order as `READY` independently.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo system architecture and KDS component hierarchy.
+- [[database]] — Database schema for `orders` and `order_items` tables.
+- [[api]] — Order status update API endpoints reference (`PATCH /api/orders/:id/status`).
+- [[authorization]] — Permissions matrix for `kds.view` and `kds.update`.
+- [[features/pos-cashier-checkout]] — POS cashier order creation workflow.
+

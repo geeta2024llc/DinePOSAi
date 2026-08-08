@@ -13,3 +13,12 @@ Adopt a **pnpm monorepo workspace structure** with shared packages (`packages/sh
 - **Positive**: Single repository source of truth. TypeScript type definitions and permissions are declared once in `@dineposai/shared-types` and shared across frontend and backend.
 - **Positive**: Atomic multi-package builds using `pnpm --filter "*" build`.
 - **Negative**: Requires pnpm package manager (`npm` or `yarn` must not be used).
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo package architecture overview and system diagram.
+- [[folder-structure]] — Monorepo workspace directory map (`apps/`, `packages/`, `supabase/`).
+- [[tech-stack]] — Monorepo package manager (`pnpm`) and TypeScript versions.
+

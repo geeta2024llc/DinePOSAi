@@ -64,3 +64,13 @@
 | **Vercel** | Edge network hosting platform for Next.js Web application. | Configured via Vercel dashboard. |
 | **Railway / Render** | Container runtime hosting for Express API backend. | Configured via Dockerfile root directory. |
 | **Supabase CLI / Scripts** | Automated SQL database migration deployer script. | [deploy-migrations.js](file:///h:/Antigravity/DinePosAi/scripts/deploy-migrations.js) |
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo system architecture and multi-tier diagram.
+- [[folder-structure]] — Workspace file layout for packages and apps.
+- [[deployment]] — Deployment architecture, Docker build files, and hosting steps.
+- [[integrations]] — Integrations overview for Stripe, Gemini AI, Resend, and Sentry.
+

@@ -19,3 +19,13 @@ The **Digital Guest Menu** ([apps/web/app/menu/page.tsx](file:///h:/Antigravity/
 1. **Menu Contextual Awareness**: Aura is initialized with the venue's active categories, menu items, prices, and descriptions.
 2. **Food & Wine Pairing**: Answers guest queries such as *"Which dessert pairs best with an espresso?"* or *"Are there any gluten-free appetizers?"*.
 3. **No Authentication Required**: Guests can use the AI assistant and browse menus without logging in.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo system architecture and public API pipeline.
+- [[api]] — Public digital menu and concierge endpoints reference (`/api/concierge/*`).
+- [[integrations]] — Google Gemini AI API integration details.
+- [[decisions/0004-ai-concierge-gemini]] — Architectural Decision Record on Google Gemini Sommelier integration.
+

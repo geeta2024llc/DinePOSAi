@@ -73,3 +73,13 @@ router.use(requireOrganizationMatch);
 ### 3. Tenant Status Guard (`validateOrganizationActive`)
 - Queries `tenants` table to verify `status === 'ACTIVE'`.
 - Returns HTTP 403 if tenant status is `SUSPENDED` or `EXPIRED`.
+
+---
+
+## 🔗 Related Documentation
+
+- [[authentication]] — JWT token authentication, session memory cache, and login flows.
+- [[database]] — Table schema for `users`, `user_permissions`, and `tenants`.
+- [[architecture]] — Express backend security pipeline and middleware chain.
+- [[api]] — Complete API route permission requirements map.
+

@@ -63,3 +63,14 @@
 - **Cause**: Exceeded IP rate limit on `/api/auth` or `/api/concierge`.
 - **Resolution**:
   - In development mode (`NODE_ENV=development`), rate limiters permit higher request caps (e.g. 10,000 global requests). Ensure `NODE_ENV` is set to `development` during local testing.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Express server pipeline and CORS matching logic.
+- [[database]] — Supabase PostgreSQL connection pool settings and table RLS.
+- [[authentication]] — Login brute-force rate limiter (`authLimiter`) and JWT session validation.
+- [[integrations]] — Stripe webhooks and ESC/POS thermal printer direct TCP socket setup.
+- [[deployment]] — Multi-environment host deployment guides and domain configurations.
+

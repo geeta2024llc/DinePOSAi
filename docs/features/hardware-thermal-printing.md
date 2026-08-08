@@ -23,3 +23,12 @@ Receipts are encoded as ESC/POS byte sequences:
 - `0x1B, 0x70, 0x00, 0x19, 0xFA`: Pulse pin 2 cash drawer kick-out command.
 
 If direct TCP network socket stream creation fails or browser environment blocks socket initialization, system gracefully degrades to standard HTML `window.print()` rendering.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Direct hardware network printing topology and printer context layout.
+- [[integrations]] — Technical reference for raw TCP byte streaming on port 9100.
+- [[features/pos-cashier-checkout]] — POS Cashier terminal checkout and receipt printing workflow.
+- [[decisions/0003-thermal-printer-integration]] — Architectural Decision Record on ESC/POS binary encoding.

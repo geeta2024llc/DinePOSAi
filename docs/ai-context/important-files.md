@@ -28,3 +28,13 @@
 - [supabase/migrations/20260602000000_init.sql](file:///h:/Antigravity/DinePosAi/supabase/migrations/20260602000000_init.sql): Initial table schemas.
 - [supabase/migrations/20260602000001_rls_policies.sql](file:///h:/Antigravity/DinePosAi/supabase/migrations/20260602000001_rls_policies.sql): Row-Level Security policies.
 - [supabase/migrations/20260612000002_inventory.sql](file:///h:/Antigravity/DinePosAi/supabase/migrations/20260612000002_inventory.sql): Inventory & stock management tables.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Overall system architecture and monorepo component layout.
+- [[folder-structure]] — Monorepo file tree reference.
+- [[frontend]] — Web frontend Next.js App Router design.
+- [[backend]] — Express REST API engine and controller architecture.
+

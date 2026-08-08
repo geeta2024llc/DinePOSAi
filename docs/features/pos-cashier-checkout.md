@@ -35,3 +35,14 @@ The **Cashier Point-of-Sale (POS)** terminal ([apps/web/app/pos/page.tsx](file:/
 6. **Receipt Generation**:
    - Triggers `printReceipt()` via `PrinterContext`.
    - Encodes ESC/POS byte commands and dispatches raw TCP packet to thermal printer or opens browser print dialog.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Overall monorepo architecture and POS component hierarchy.
+- [[database]] — Database schema for `orders`, `order_items`, `payments`, and `cash_drawers`.
+- [[api]] — Order management and checkout API endpoints reference (`/api/orders/*`).
+- [[authorization]] — Permissions matrix for `pos.access`, `orders.create`, and `payments.manage`.
+- [[features/hardware-thermal-printing]] — Thermal printer hardware integration details.
+- [[decisions/0003-thermal-printer-integration]] — Architectural Decision Record on ESC/POS binary encoding.

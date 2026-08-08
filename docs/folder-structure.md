@@ -133,3 +133,13 @@ apps/api/
 ├── Dockerfile                   # API production container build script
 └── package.json                 # Backend package manifest
 ```
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — System architecture overview and monorepo workspace design.
+- [[tech-stack]] — Technology stack components and framework dependencies.
+- [[frontend]] — Web frontend Next.js App Router layout and pages map.
+- [[backend]] — Express backend server pipeline and controllers layout.
+

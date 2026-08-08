@@ -77,5 +77,15 @@ dineposai-monorepo/
 │   └── shared-types/ # Shared TypeScript interface declarations & permission constants
 ├── supabase/       # PostgreSQL migrations, schema DDL, RLS policies & RPC scripts
 ├── scripts/        # Database migration execution scripts
-└── package.json    # Monorepo pnpm workspace configuration
 ```
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — System component diagrams, monorepo breakdown, and request pipeline.
+- [[database]] — Relational tables, foreign key constraints, and RLS policies.
+- [[authentication]] — JWT authentication, session memory cache, and login flows.
+- [[authorization]] — Granular role-based access control and permissions matrix.
+- [[api]] — Complete REST API reference and payload envelope standards.
+

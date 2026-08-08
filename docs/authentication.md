@@ -100,3 +100,13 @@ const CACHE_TTL_MS = 5000; // 5-second TTL
 - **Login Brute-Force Defense**: `authLimiter` restricts login attempts per IP.
 - **Sensitive Data Masking**: Automated audit logger ([audit.middleware.ts](file:///h:/Antigravity/DinePosAi/apps/api/src/middleware/audit.middleware.ts)) redacts `password`, `token`, `refreshToken`, and `currentPassword` fields before persisting audit logs.
 - **Session Telemetry**: Records client IP address, device type, browser engine, operating system, and geolocation city/country for security auditing.
+
+---
+
+## 🔗 Related Documentation
+
+- [[authorization]] — Role-based access control, system roles, and permissions matrix.
+- [[database]] — User accounts (`users`), active sessions (`user_sessions`), and login history schema.
+- [[architecture]] — Express middleware security pipeline (`requireAuth`, `requireOrganizationMatch`).
+- [[api]] — Authentication endpoints reference (`/api/auth/*`).
+

@@ -13,3 +13,12 @@ Integrate **Google Gemini REST API (`gemini-1.5-flash`)** via a public Express e
 - **Positive**: Accurate, dish-specific recommendations without hallucinating non-existent menu items.
 - **Positive**: Low latency responses using `gemini-1.5-flash`.
 - **Negative**: Requires rate-limiting (`conciergeLimiter`) to manage API quota usage.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Public API routing for AI Concierge and Gemini API integration.
+- [[integrations]] — Technical reference for Google Gemini REST API configuration.
+- [[features/digital-menu-ai-concierge]] — Detailed feature spec for Digital Guest Menu & Aura AI Sommelier.
+

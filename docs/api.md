@@ -162,3 +162,15 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 | `PATCH` | `/api/admin/tenants/:id` | `SUPER_ADMIN` Role | Suspend or activate tenant account. |
 | `POST` | `/api/admin/tenants/bulk-delete` | `SUPER_ADMIN` Role | Bulk delete tenant accounts. |
 | `DELETE` | `/api/admin/tenants/:id` | `SUPER_ADMIN` Role | Delete single tenant workspace. |
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — End-to-end HTTP request execution pipeline and security middleware chain.
+- [[authentication]] — JWT bearer token validation and session cache.
+- [[authorization]] — Granular permission rules and system role access definitions.
+- [[database]] — Database schema directory for mapped entities.
+- [[backend]] — Express server engine, middleware chain, and controllers.
+- [[frontend]] — Web frontend Next.js routing and API client utilities.
+

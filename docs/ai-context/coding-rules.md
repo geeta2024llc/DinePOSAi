@@ -15,3 +15,13 @@
 5. **No Hardcoded Secrets**: Secrets MUST be read from `process.env`. Never commit hardcoded JWT secrets, Stripe tokens, or service role keys.
 6. **Zod Input Validation**: Validate incoming `req.body` using Zod schemas via `validateSchema()` middleware before executing controller handlers.
 7. **Use pnpm Monorepo Tooling**: Always execute package commands using `pnpm`. Do not use `npm` or `yarn`.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo package architecture and request security pipeline.
+- [[api]] — API envelope standard (`ApiResponse<T>`) and endpoint reference.
+- [[frontend]] — Frontend component conventions and HSL design system.
+- [[backend]] — Express server controller conventions and Zod validation middleware.
+

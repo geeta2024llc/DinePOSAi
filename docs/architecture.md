@@ -159,3 +159,18 @@ The API server ([apps/api](file:///h:/Antigravity/DinePosAi/apps/api)) acts as a
 1. **Supabase PostgreSQL Integration**: Uses `@supabase/supabase-js` client initialized with `SUPABASE_SERVICE_ROLE_KEY` ([supabase.ts](file:///h:/Antigravity/DinePosAi/apps/api/src/utils/supabase.ts)). This allows the backend to perform database operations while enforcing application-level tenant isolation.
 2. **Session Memory Cache**: To prevent overloading database connections during rapid POS polling, `authenticateUser` ([auth.ts](file:///h:/Antigravity/DinePosAi/apps/api/src/middleware/auth.ts)) implements an in-memory session cache with a 5-second TTL (`authCache`).
 3. **Atomic Transactions via Database RPCs**: Complex multi-table updates (such as inventory stock deduction on order placement) execute stored PostgreSQL functions (`increment_stock`, etc.) via RPC calls to guarantee database consistency.
+
+---
+
+## 🔗 Related Documentation
+
+- [[project-overview]] — Project goals, target personas, and SaaS capabilities.
+- [[tech-stack]] — Technology stack, framework versions, and package engine.
+- [[folder-structure]] — Directory layout across apps, packages, and scripts.
+- [[frontend]] — Next.js 16 App Router structure, contexts, and UI design system.
+- [[backend]] — Express API server pipeline, middleware chain, and controllers.
+- [[database]] — Relational schema DDL, RLS security policies, and stored RPCs.
+- [[authentication]] — JWT token generation, memory session cache, and sign-in flows.
+- [[authorization]] — Granular role-based access control and permission dictionary.
+- [[deployment]] — Docker containerization, Railway API setup, and Vercel hosting.
+

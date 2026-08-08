@@ -76,3 +76,16 @@ Subscription lifecycle enforcer:
 - Evaluates tenant plan status (`TRIAL`, `ACTIVE`, `PAST_DUE`, `EXPIRED`).
 - Displays non-dismissible banner overlay if trial has expired (`trial_ends_at < NOW()`).
 - Restricts non-paying tenants from creating new orders or managing inventory until plan is renewed.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo workspace architecture and frontend component hierarchy.
+- [[api]] — Endpoints reference for REST API requests dispatched by web client.
+- [[authentication]] — Client AuthContext state management and local storage token handling.
+- [[tech-stack]] — Frontend libraries, Next.js App Router version, and UI dependencies.
+- [[features/pos-cashier-checkout]] — POS Cashier terminal UI and checkout modal state.
+- [[features/kitchen-display-system]] — Kitchen Display System real-time ticket display.
+- [[features/digital-menu-ai-concierge]] — Guest QR menu and Google Gemini AI chatbot widget.
+

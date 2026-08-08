@@ -15,3 +15,13 @@ Adopt a **shared-database, column-level multi-tenancy model** using PostgreSQL. 
 - **Positive**: Low infrastructure cost compared to multi-database-per-tenant designs. Single schema migration deployable across all tenants.
 - **Positive**: High security due to dual-layer enforcement (Middleware + RLS).
 - **Negative**: All queries MUST include `tenant_id` filter conditions to leverage database indexes effectively.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Express middleware security pipeline (`requireOrganizationMatch`).
+- [[database]] — Table schema for `tenants` and database RLS policy definitions.
+- [[authorization]] — Organization matching and tenant status validation guards.
+- [[features/multi-tenant-onboarding-billing]] — Feature spec for tenant account creation and subscription lifecycle.
+

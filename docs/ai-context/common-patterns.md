@@ -37,3 +37,13 @@ if (cached && cached.expiresAt > new Date()) {
   {/* Card Content */}
 </div>
 ```
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — End-to-end request security pipeline.
+- [[backend]] — Express server pipeline and middleware execution chain.
+- [[frontend]] — Web frontend App Router component patterns and HSL design tokens.
+- [[database]] — Database query execution via Supabase RPCs.
+

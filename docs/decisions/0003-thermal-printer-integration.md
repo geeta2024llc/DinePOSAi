@@ -12,3 +12,13 @@ Implement direct **binary ESC/POS buffer encoding** streaming over raw TCP netwo
 ## ⚡ Consequences
 - **Positive**: Instant receipt printing and cash drawer popping without user intervention.
 - **Negative**: Browser environment security restrictions require thermal printers to be accessible on the local network IP subnet or accessed via browser fallback dialogs.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — System hardware printing topology and PrinterContext provider.
+- [[integrations]] — Technical reference for ESC/POS binary byte stream encoding.
+- [[features/hardware-thermal-printing]] — Detailed feature spec for thermal receipt hardware printing.
+- [[features/pos-cashier-checkout]] — POS Cashier terminal checkout workflow.
+

@@ -78,3 +78,16 @@ Direct hardware printing capability for kitchen tickets and customer receipts.
 ### PostHog Product Analytics
 - **Frontend SDK**: `posthog-js` initialized in Next.js providers tree ([providers.tsx](file:///h:/Antigravity/DinePosAi/apps/web/app/providers.tsx)).
 - Tracks user feature interactions, pageviews, and cashier checkout latency.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Component connection diagram across third-party services.
+- [[backend]] — Express server integration hooks and billing/concierge controllers.
+- [[features/hardware-thermal-printing]] — Dedicated specification for ESC/POS socket printing.
+- [[features/digital-menu-ai-concierge]] — Detailed specification for Google Gemini sommelier integration.
+- [[features/multi-tenant-onboarding-billing]] — Specification for Stripe billing and subscription lifecycle.
+- [[decisions/0003-thermal-printer-integration]] — ADR on raw TCP sockets vs browser printing.
+- [[decisions/0004-ai-concierge-gemini]] — ADR on Google Gemini API integration architecture.
+

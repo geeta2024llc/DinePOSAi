@@ -22,3 +22,13 @@ The **Multi-Tenant Onboarding & Billing Module** handles self-serve merchant acc
 3. **Past Due (`PAST_DUE`)**: Failed recurring invoice payment.
 4. **Trial Expired (`EXPIRED`)**: Trial duration elapsed without upgrading. Triggered overlay banner via `TrialGate.tsx`.
 5. **Suspended (`SUSPENDED`)**: Account manually suspended by Super Admin.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Multi-tenant architecture and request isolation middleware pipeline.
+- [[database]] — Relational tables schema for `tenants` and `branches`.
+- [[integrations]] — Stripe Billing API integration and webhook receiver setup.
+- [[decisions/0002-multi-tenancy-isolation]] — Architectural Decision Record on single database RLS multi-tenancy.
+

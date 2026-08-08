@@ -53,3 +53,13 @@ Before submitting pull requests or making modifications to API routes:
    ```bash
    pnpm test
    ```
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Monorepo system architecture and Express request pipeline.
+- [[backend]] — Express REST API engine, controller methods, and route definitions.
+- [[api]] — API endpoints reference manual for test payload schemas.
+- [[database]] — Database schema directory for verification query expectations.
+

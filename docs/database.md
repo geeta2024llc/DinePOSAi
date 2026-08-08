@@ -171,3 +171,16 @@ To ensure maximum security and avoid accidental data exposure from standard clie
 - **`increment_stock(ingredient_id UUID, quantity NUMERIC)`**: Atomically increments stock level in `inventory_items`.
 - **`decrement_stock(ingredient_id UUID, quantity NUMERIC)`**: Atomically decrements stock level in `inventory_items`.
 - **`set_updated_at()`**: Trigger function automatically updating `updated_at` timestamps before record modifications.
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — End-to-end request security pipeline and persistence layer architecture.
+- [[authentication]] — User sessions table structure and login audit logs.
+- [[authorization]] — Role-to-permission mapping schema (`user_permissions`).
+- [[features/pos-cashier-checkout]] — Orders, order items, and payment split tables.
+- [[features/inventory-stock-management]] — Inventory items, recipes, waste logs, and stock transactions.
+- [[features/super-admin-telemetry]] — Multi-tenant global management and system audit logs.
+- [[features/multi-tenant-onboarding-billing]] — Tenants, branches, and subscription management tables.
+

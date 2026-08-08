@@ -66,3 +66,15 @@ Backend business logic is isolated into 10 domain controllers ([apps/api/src/con
 8. `billing.controller.ts`: Handles Stripe Checkout sessions, billing portal links, and Stripe webhooks.
 9. `audit.controller.ts`: Fetches auditable activity streams for security reviews.
 10. `admin.controller.ts`: Platform management endpoints for Super Admins (tenant suspension, MRR analytics, bulk deletion).
+
+---
+
+## 🔗 Related Documentation
+
+- [[architecture]] — Backend server pipeline diagram and Express security flow.
+- [[api]] — Complete REST API reference manual covering all controller endpoints.
+- [[authentication]] — JWT verification, password hashing, and session memory cache (`authCache`).
+- [[authorization]] — Granular permission guards (`requirePermission`) and multi-tenant isolation (`requireOrganizationMatch`).
+- [[database]] — Supabase PostgreSQL schema, RLS policies, and stored RPC functions.
+- [[integrations]] — Third-party SDK integrations (Stripe, Google Gemini AI, Resend Email).
+
