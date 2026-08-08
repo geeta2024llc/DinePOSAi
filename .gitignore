@@ -29,6 +29,8 @@ pnpm-debug.log*
 Thumbs.db
 .idea/
 .vscode/
+.obsidian/
+**/.obsidian/
 *.suo
 *.ntvs*
 *.njsproj
