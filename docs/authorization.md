@@ -5,7 +5,7 @@
 DinePosAi features a fine-grained **Role-Based Access Control (RBAC)** model combined with **Tenant Boundary Isolation**.
 
 - **System Roles**: 7 predefined roles (`SUPER_ADMIN`, `OWNER`, `MANAGER`, `CASHIER`, `WAITER`, `KITCHEN`, `CUSTOMER`).
-- **Granular Permissions**: 28 specific permission string keys defined in `PERMISSIONS` ([shared-types/src/index.ts](file:///h:/Antigravity/DinePosAi/packages/shared-types/src/index.ts)).
+- **Granular Permissions**: 26 specific permission string keys defined in `PERMISSIONS` ([shared-types/src/index.ts](file:///h:/Antigravity/DinePosAi/packages/shared-types/src/index.ts)).
 - **Custom User Overrides**: The `users.custom_permissions` array column allows granting specific permission overrides per individual employee.
 - **Super Admin Bypass**: Users with the `SUPER_ADMIN` role bypass all permission checks and tenant boundaries.
 

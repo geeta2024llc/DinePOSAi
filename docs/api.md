@@ -50,13 +50,13 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 
 | Method | Endpoint | Permission Required | Description |
 |--------|----------|---------------------|-------------|
-| `POST` | `/api/tenant/onboard` | Public | Complete business onboarding wizard. |
-| `GET` | `/api/tenant/info` | Authenticated | Get current tenant profile & business settings. |
-| `PUT` | `/api/tenant/info` | `settings.manage` | Update tenant details (currency, tax rate, name). |
-| `GET` | `/api/tenant/staff` | `staff.view` | List all staff accounts for tenant. |
-| `POST` | `/api/tenant/staff` | `staff.manage` | Add a new staff account. |
-| `PUT` | `/api/tenant/staff/:id` | `staff.manage` | Edit staff role, branch, or custom permissions. |
-| `DELETE` | `/api/tenant/staff/:id` | `staff.manage` | Deactivate/remove a staff account. |
+| `GET` | `/api/tenant/settings` | `settings.manage` | Fetch current tenant profile & business settings. |
+| `PATCH` | `/api/tenant/settings` | `settings.manage` | Update tenant settings (currency, tax rate, name). |
+| `POST` | `/api/tenant/onboard` | `settings.manage` | Complete business onboarding setup. |
+| `GET` | `/api/tenant/users` | `staff.view` | List all staff accounts for tenant. |
+| `POST` | `/api/tenant/users` | `staff.invite` | Create a new staff user account. |
+| `PUT` | `/api/tenant/users/:id` | `staff.manage` | Update staff role, branch, or permissions. |
+| `DELETE` | `/api/tenant/users/:id` | `staff.manage` | Remove a staff user account. |
 
 ---
 
@@ -66,9 +66,7 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 |--------|----------|---------------------|-------------|
 | `GET` | `/api/tables` | `tables.view` | List all dining room tables and real-time status. |
 | `POST` | `/api/tables` | `tables.manage` | Add a new dining table. |
-| `PUT` | `/api/tables/:id` | `tables.manage` | Edit table name or capacity. |
-| `PATCH` | `/api/tables/:id/status` | `tables.manage` | Update table status (`AVAILABLE`, `OCCUPIED`, `RESERVED`). |
-| `DELETE` | `/api/tables/:id` | `tables.manage` | Delete a table. |
+| `PATCH` | `/api/tables/:tableId/status` | `orders.edit` | Update table status (`AVAILABLE`, `OCCUPIED`, `RESERVED`). |
 
 ---
 
@@ -94,13 +92,21 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 |--------|----------|---------------------|-------------|
 | `GET` | `/api/inventory/items` | `inventory.view` | List all inventory raw items & stock levels. |
 | `POST` | `/api/inventory/items` | `inventory.manage` | Create a raw ingredient item. |
-| `PUT` | `/api/inventory/items/:id` | `inventory.manage` | Update stock quantity or cost per unit. |
+| `PUT` | `/api/inventory/items/:id` | `inventory.manage` | Update stock level or unit cost. |
 | `DELETE` | `/api/inventory/items/:id` | `inventory.manage` | Delete an inventory item. |
-| `GET` | `/api/inventory/recipes` | `inventory.view` | List recipe links connecting dishes to stock. |
-| `POST` | `/api/inventory/recipes` | `inventory.manage` | Add ingredient recipe formula to menu item. |
-| `POST` | `/api/inventory/waste` | `inventory.manage` | Log inventory waste / spoilage. |
-| `GET` | `/api/inventory/suppliers` | `inventory.view` | List supplier contacts directory. |
-| `POST` | `/api/inventory/purchase-orders` | `inventory.manage` | Create purchase order to restock inventory. |
+| `GET` | `/api/inventory/recipes` | `inventory.view` | List menu item recipe formulas. |
+| `POST` | `/api/inventory/recipes` | `inventory.manage` | Save ingredient recipe formula for a dish. |
+| `GET` | `/api/inventory/suppliers` | `inventory.view` | List supplier directory. |
+| `POST` | `/api/inventory/suppliers` | `inventory.manage` | Create supplier contact. |
+| `PUT` | `/api/inventory/suppliers/:id` | `inventory.manage` | Update supplier contact. |
+| `DELETE` | `/api/inventory/suppliers/:id` | `inventory.manage` | Delete supplier contact. |
+| `GET` | `/api/inventory/purchase-orders` | `inventory.view` | List purchase orders. |
+| `POST` | `/api/inventory/purchase-orders` | `inventory.manage` | Create purchase order. |
+| `PUT` | `/api/inventory/purchase-orders/:id/receive` | `inventory.manage` | Receive PO & automatically restock inventory. |
+| `PUT` | `/api/inventory/purchase-orders/:id/cancel` | `inventory.manage` | Cancel purchase order. |
+| `GET` | `/api/inventory/waste` | `inventory.view` | List waste logs. |
+| `POST` | `/api/inventory/waste` | `inventory.manage` | Record inventory waste/spoilage. |
+| `GET` | `/api/inventory/transactions` | `inventory.view` | View auditable stock ledger transactions. |
 
 ---
 
@@ -124,12 +130,15 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 
 ## 💳 8. Billing & Stripe Endpoints (`/api/billing`)
 
-| Method | Endpoint | Permission Required | Description |
-|--------|----------|---------------------|-------------|
-| `GET` | `/api/billing/subscription` | `billing.view` | Get current tenant subscription status & invoice history. |
-| `POST` | `/api/billing/create-checkout` | `billing.manage` | Create Stripe Checkout Session for subscription upgrade. |
-| `POST` | `/api/billing/portal` | `billing.manage` | Create Stripe Customer Portal session link. |
-| `POST` | `/api/billing/webhook` | Stripe Webhook Secret | Asynchronous Stripe event listener. |
+| Method | Endpoint | Auth / Permission Required | Description |
+|--------|----------|----------------------------|-------------|
+| `POST` | `/api/billing/webhook` | Public (Stripe Signature) | Webhook receiver for Stripe subscription events. |
+| `POST` | `/api/billing/checkout` | `billing.manage` | Create Stripe Checkout session. |
+| `GET` | `/api/billing/tenant` | `billing.view` | Get tenant plan & billing details. |
+| `GET` | `/api/billing/invoices` | `billing.view` | Get tenant subscription invoices. |
+| `GET` | `/api/billing/config` | `system.manage` | Fetch global Stripe system configuration. |
+| `POST` | `/api/billing/config` | `system.manage` | Update Stripe system settings. |
+| `POST` | `/api/billing/config/unlink` | `system.manage` | Unlink Stripe account integration. |
 
 ---
 
@@ -137,7 +146,9 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 
 | Method | Endpoint | Permission Required | Description |
 |--------|----------|---------------------|-------------|
-| `GET` | `/api/audit` | `audit.view` | Query tenant activity audit logs. |
+| `GET` | `/api/audit/logs` | `audit.view` | Query tenant activity audit logs. |
+| `POST` | `/api/audit/logs` | `audit.view` | Insert custom audit log entry. |
+| `DELETE` | `/api/audit/logs` | `settings.manage` | Clear tenant audit logs. |
 
 ---
 
@@ -146,7 +157,8 @@ All backend endpoints are prefixed with `/api` and return a unified JSON envelop
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|---------------|-------------|
 | `GET` | `/api/admin/overview` | `SUPER_ADMIN` Role | Fetch system-wide SaaS telemetry and platform MRR. |
-| `GET` | `/api/admin/tenants/:id/details` | `SUPER_ADMIN` Role | Fetch deep audit details for specific tenant. |
+| `GET` | `/api/admin/audit-hierarchy` | `SUPER_ADMIN` Role | Fetch cross-tenant platform activity logs. |
+| `GET` | `/api/admin/tenants/:id/details` | `SUPER_ADMIN` Role | Fetch detailed audit telemetry for tenant. |
 | `PATCH` | `/api/admin/tenants/:id` | `SUPER_ADMIN` Role | Suspend or activate tenant account. |
-| `DELETE` | `/api/admin/tenants/:id` | `SUPER_ADMIN` Role | Delete single tenant workspace. |
 | `POST` | `/api/admin/tenants/bulk-delete` | `SUPER_ADMIN` Role | Bulk delete tenant accounts. |
+| `DELETE` | `/api/admin/tenants/:id` | `SUPER_ADMIN` Role | Delete single tenant workspace. |
