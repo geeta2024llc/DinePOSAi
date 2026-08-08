@@ -38,7 +38,7 @@ The Express API backend is containerized using multi-stage Docker builds ([apps/
 #### Railway Deployment Steps:
 1. Connect repository on Railway dashboard.
 2. Set Root Directory to `apps/api`.
-3. Configure Environment Variables (see [environment-variables.md](file:///h:/Antigravity/DinePosAi/docs/environment-variables.md)):
+3. Configure Environment Variables (see [[environment-variables]]):
    - `PORT=4000`
    - `NODE_ENV=production`
    - `JWT_SECRET`
