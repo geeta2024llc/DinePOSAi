@@ -3,8 +3,13 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Ensure WebSocket polyfill is provided for Node < 22 environments
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const ws = typeof globalThis.WebSocket !== 'undefined' ? globalThis.WebSocket : require('ws');
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
 
 if (!supabaseUrl || !supabaseServiceKey) {
   console.warn('WARNING: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not defined in environment variables.');
@@ -21,7 +26,10 @@ export const supabase = createClient(
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
-    }
+    },
+    realtime: {
+      transport: ws,
+    },
   }
 );
 
@@ -36,6 +44,10 @@ export const supabaseAuthClient = createClient(
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
-    }
+    },
+    realtime: {
+      transport: ws,
+    },
   }
 );
+
