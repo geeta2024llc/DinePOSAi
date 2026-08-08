@@ -162,6 +162,35 @@ The API server ([apps/api](file:///h:/Antigravity/DinePosAi/apps/api)) acts as a
 
 ---
 
+## 🤖 AI Development Guidance
+
+### 📚 Prerequisite Documentation Reading Map
+Before modifying code in any area of the codebase, AI coding agents MUST inspect the corresponding subsystem documentation:
+
+- **Authentication / Security Code**: Read [[authentication]] and [[authorization]].
+- **Authorization / RBAC**: Read [[authorization]], [[authentication]], and [[api]].
+- **Database / Schema / RPCs**: Read [[database]] and [[backend]].
+- **Frontend App Router / Components**: Read [[frontend]], [[api]], and relevant feature specifications (e.g. [[features/pos-cashier-checkout]], [[features/kitchen-display-system]], [[features/digital-menu-ai-concierge]]).
+- **Backend Engine / Express REST API**: Read [[backend]], [[api]], [[database]], [[authentication]], and [[authorization]].
+- **Deployment & Infrastructure**: Read [[deployment]], [[environment-variables]], and [[tech-stack]].
+- **Feature-Specific Modules**: Read the corresponding feature specification under `docs/features/` (e.g. [[features/pos-cashier-checkout]], [[features/kitchen-display-system]], [[features/digital-menu-ai-concierge]], [[features/inventory-stock-management]], [[features/multi-tenant-onboarding-billing]], [[features/super-admin-telemetry]], [[features/hardware-thermal-printing]]) plus [[architecture]], [[api]], [[database]], and [[authorization]].
+
+### 🗺 Change Impact Map
+When proposing or making edits to a subsystem, analyze downstream impacts across related modules:
+
+- **If changing Authentication**: Inspect [[authentication]], [[authorization]], [[database]], and [[api]].
+- **If changing Authorization**: Inspect [[authentication]], [[authorization]], [[api]], and the relevant feature specification.
+- **If changing Database / Schema**: Inspect [[database]], [[api]], [[backend]], and the affected feature specification.
+- **If changing Frontend UI / Client State**: Inspect [[frontend]], [[api]], the relevant feature specification, [[authentication]], and [[authorization]].
+- **If changing Backend / API Endpoints**: Inspect [[backend]], [[api]], [[database]], [[authentication]], and [[authorization]].
+- **If changing a Feature Specification / Workflow**: Inspect its feature specification under `docs/features/` plus [[architecture]], [[api]], [[database]], and [[authorization]].
+
+> [!IMPORTANT]
+> **Mandatory Documentation Sync Rule**:
+> Before implementing a significant change, inspect the relevant documentation and update the documentation when the architecture or behavior changes.
+
+---
+
 ## 🔗 Related Documentation
 
 - [[project-overview]] — Project goals, target personas, and SaaS capabilities.
@@ -173,4 +202,5 @@ The API server ([apps/api](file:///h:/Antigravity/DinePosAi/apps/api)) acts as a
 - [[authentication]] — JWT token generation, memory session cache, and sign-in flows.
 - [[authorization]] — Granular role-based access control and permission dictionary.
 - [[deployment]] — Docker containerization, Railway API setup, and Vercel hosting.
+
 
