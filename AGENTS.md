@@ -266,3 +266,30 @@ Conclude every development task with this structured report:
 - **Risks**: Open questions, limitations, or manual checks needed.
 - **Git**: Suggested concise commit message.
 
+---
+
+## 16. Obsidian Documentation Workflow
+
+Before implementing any significant feature, bug fix, refactor, architecture change, database change, authentication/authorization change, API change, or deployment change:
+
+1. Read `docs/architecture.md` first.
+2. Use its AI Development Guidance and Change Impact Map to identify affected subsystems.
+3. Read all relevant documentation before modifying code.
+4. For feature-specific work, read the corresponding document under `docs/features/`.
+5. For architectural decisions, inspect relevant ADRs under `docs/decisions/`.
+6. Use the Obsidian wikilinks in the documentation to discover related context.
+
+During implementation:
+- Treat the documentation as the current architectural source of truth.
+- If implementation reveals that documented architecture or behavior is outdated, update the relevant documentation.
+- Do not create documentation links to nonexistent files.
+
+After implementation:
+1. Verify that affected documentation remains accurate.
+2. Update architecture/feature/ADR documentation when the change materially affects them.
+3. Verify newly added wikilinks resolve to existing Markdown files.
+4. Mention documentation changes in the final task report.
+
+Do not commit or push unless explicitly instructed by the user.
+
+
