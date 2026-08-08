@@ -41,11 +41,10 @@ router.post(
   createCheckoutSession
 );
 
-// Stripe config management (SUPER_ADMIN / SYSTEM_MANAGE only)
+// Stripe config status (accessible to authenticated users to check payment availability)
 router.get(
   '/config', 
   requireAuth, 
-  requirePermission('system.manage'), 
   getStripeConfig
 );
 router.post(
